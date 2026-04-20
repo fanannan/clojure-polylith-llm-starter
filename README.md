@@ -15,8 +15,7 @@
 
 ## このテンプレートは何か
 
-**Clojure + Polylith + Malli + Integrant** を技術スタックとする、
-**LLM 駆動開発向け**のプロジェクトテンプレート。
+**Clojure + Polylith + Malli ** を技術スタックとする、**LLM 駆動開発向け**のプロジェクトテンプレート。
 
 疲労最小化原則（LLM と人間の共同開発における修復コスト最小化）に基づき設計されている。
 詳細思想は `CLAUDE.md` §1、設計原則は `project-guide/MAINTAINERS_GUIDE.md`。
