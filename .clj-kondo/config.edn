@@ -1,0 +1,94 @@
+;; .clj-kondo/config.edn
+;;
+;; 配布形態:
+;;   - LLM 挙動を機械化する核心 linter は有効（必須層）
+;;   - 採用 stack に応じた discouraged-var（I/O ライブラリ等）、ドメイン NS グループは
+;;     デフォルト無効、該当 stack 採用時に有効化
+;;   - lint/init で各ライブラリ提供 hook を取り込む
+
+{:linters
+ {;; --- 致命的: error 扱い（LLM の典型的な誤りを機械化） ---
+  :unresolved-symbol            {:level :error}
+  :unresolved-namespace         {:level :error}
+  :unresolved-var               {:level :error}
+  :type-mismatch                {:level :error}
+  :invalid-arity                {:level :error}
+  :unused-binding               {:level :error}
+  :unused-private-var           {:level :error}
+  :unused-namespace             {:level :error}
+  :unused-import                {:level :error}
+  :unused-referred-var          {:level :error}
+  :duplicate-require            {:level :error}
+  :duplicate-case-test-constant {:level :error}
+  :duplicate-map-key            {:level :error}
+  :duplicate-set-key            {:level :error}
+  :missing-clause-in-try        {:level :error}
+  :missing-body-in-when         {:level :error}
+  :missing-else-branch          {:level :off}      ; if without else は多用する
+  :uninitialized-var            {:level :error}
+  :redundant-do                 {:level :error}
+  :redundant-let                {:level :error}
+  :redundant-fn-wrapper         {:level :error}
+  :redefined-var                {:level :error}
+  :inline-def                   {:level :error}
+  :cond-else                    {:level :error}
+
+  ;; --- 警告 ---
+  :missing-docstring            {:level :warning}
+  :shadowed-var                 {:level :warning}
+  :reduce-without-init          {:level :warning}
+  :loop-without-recur           {:level :warning}
+  :line-length                  {:level :warning :max-line-length 120}
+
+  ;; --- 禁止構文 ---
+  :refer-all                    {:level :error :exclude [clojure.test]}
+  :use                          {:level :error}
+  :unsorted-required-namespaces {:level :warning}}
+
+ ;; ----------------------------------------------------------------
+ ;; Malli の =>: lint-as により typed 関数として扱う
+ ;; ----------------------------------------------------------------
+ :lint-as
+ {malli.core/=> clj-kondo.lint-as/def-catch-all}
+
+ ;; ----------------------------------------------------------------
+ ;; discouraged-var — LLM の悪手を error で機械的に封じる
+ ;; ----------------------------------------------------------------
+ :linters/discouraged-var
+ {;; --- 必須（全プロジェクト）---
+  clojure.core/println       {:message "println は禁止。tap> または構造化ログを使う"}
+  clojure.core/prn           {:message "prn は禁止。tap> または構造化ログを使う"}
+  clojure.core/pr-str        {:message "デバッグ目的なら tap> を使う"}
+  clojure.core/with-redefs   {:message "with-redefs は設計失敗サイン。依存注入を検討"}
+
+  ;; --- 採用 stack に応じて：ドメイン系コンポーネントで I/O を禁止する ---
+  ;; I/O ライブラリを含む stack を採用したら、対応する行を有効化
+  ;; next.jdbc/get-datasource   {:message "ドメイン層からの DB 操作禁止"}
+  ;; hato.client/get            {:message "ドメイン層からの HTTP 呼び出し禁止"}
+  ;; hato.client/post           {:message "ドメイン層からの HTTP 呼び出し禁止"}
+  }
+
+ ;; ----------------------------------------------------------------
+ ;; ns-groups — Polylith brick 単位でのルール適用
+ ;; 最初の component を作ったら :ns-groups / :config-in-ns を有効化
+ ;; ----------------------------------------------------------------
+ ;; :ns-groups
+ ;; [;; ドメイン系 component（I/O 禁止）
+ ;;  {:pattern "^myorg\\.myapp\\.<domain-component-name>\\..*" :name brick.domain}
+ ;;  ;; I/O 系 component / base
+ ;;  {:pattern "^myorg\\.myapp\\.<io-component-name>\\..*"     :name brick.io}]
+
+ ;; :config-in-ns
+ ;; {brick.domain
+ ;;  ;; ドメイン層からの I/O 操作を error 化
+ ;;  {:linters/discouraged-var
+ ;;   {next.jdbc/get-datasource {:message "ドメイン層 I/O 禁止"}
+ ;;    hato.client/get          {:message "ドメイン層 I/O 禁止"}
+ ;;    hato.client/post         {:message "ドメイン層 I/O 禁止"}}}}
+
+ :output
+ {:format :text
+  :show-rule-name-in-message true
+  :exclude-files ["target" "node_modules" ".cpcache" "classes"]}
+
+ :skip-comments true}

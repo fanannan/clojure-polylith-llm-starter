@@ -1,0 +1,151 @@
+;; deps.edn (workspace ルート = development project)
+;;
+;; 技術スタックの構成:
+;;   - 必須層（本ファイルの :deps）: Clojure、Malli など、全プロジェクトで常に採用
+;;   - stack 層のライブラリ: 各 brick (base / component) の deps.edn に書く
+;;     （Polylith の構造: 本番ビルドは brick の deps.edn から依存解決される）
+;;
+;; stack 概念:
+;;   目的別の推奨構成（web-api / batch / cli / library / graphql-api / worker /
+;;   data-pipeline / bot / desktop / dev-tools）として文書的に整理されている。
+;;   選定論理と推奨ライブラリカタログは project-guide/STACK_GUIDE.md を参照。
+;;
+;; 本ファイルの役割:
+;;   - 必須層の依存宣言
+;;   - REPL 駆動開発（:dev）、テスト（:test）、Polylith（:poly）、lint（:lint）、
+;;     format（:format）、依存更新確認（:outdated）、nREPL（:nrepl）の運用エイリアス
+;;   - 本ファイルには stack 別ライブラリ依存は書かない（brick の deps.edn が一次情報源）
+;;
+;; 依存追加・変更は CLAUDE.md §2 により人間承認必須。
+;;
+;; 主要コマンド:
+;;   clj -M:dev:nrepl               REPL 起動
+;;   clj -M:test                    全テスト
+;;   clj -M:lint                    clj-kondo
+;;   clj -M:format check / fix      cljfmt
+;;   clj -M:poly check              Polylith 構造検証
+;;   clj -M:poly info               workspace 状態
+;;   clj -M:poly test               変更影響範囲テスト
+;;   clj -M:poly create component name:foo
+;;   clj -M:outdated                依存最新化チェック
+
+{;; development project はソースを直接持たない。各 brick を :dev の :extra-paths で読み込む
+ :paths []
+
+ ;; -----------------------------------------------------------------
+ ;; 必須層（全プロジェクトで採用、stack 非依存）
+ ;; -----------------------------------------------------------------
+ :deps
+ {org.clojure/clojure {:mvn/version "1.12.0"}
+
+  ;; Malli — §1.1.1 全域性の実装（境界契約、m/=>、instrumentation の基盤）
+  metosin/malli       {:mvn/version "0.16.4"}}
+
+ :aliases
+ {;; ----------------------------------------------------------------
+  ;; :dev — REPL 駆動開発
+  ;;   全 brick を統合 REPL に取り込む構成。以下の 2 つが必要:
+  ;;     1. :extra-paths に brick のソースパスを追加 → REPL で namespace を読める
+  ;;     2. :extra-deps に brick を :local/root で登録 → brick deps.edn の依存を解決
+  ;;   brick deps.edn が一次情報源（選択肢 H、STACK_GUIDE.md §1.2 真実の一箇所化）。
+  ;;   tools.deps は :extra-paths からソースを読むが各 brick の deps.edn を自動解決しない。
+  ;;   :local/root で brick を依存登録して初めて推移的解決が動く。
+  ;; ----------------------------------------------------------------
+  :dev
+  {:extra-paths
+   ["development/src"
+    ;; 最初の brick を作ったらここに追加:
+    ;; "components/<n>/src" "components/<n>/resources" "components/<n>/test"
+    ;; "bases/<n>/src"      "bases/<n>/resources"      "bases/<n>/test"
+    ;; 最初の project を作ったらここも追加（config.edn を io/resource で読むため）:
+    ;; "projects/<deploy>/resources"
+    ]
+
+   :extra-deps
+   {;; tools.namespace — (reset) によるコードリロード。どの Clojure プロジェクトでも必要
+    org.clojure/tools.namespace {:mvn/version "1.5.0"}
+
+    ;; 最初の brick を作ったらここに brick を :local/root で登録する:
+    ;;   poly/<domain> {:local/root "components/<domain>"}
+    ;;   poly/<entry>  {:local/root "bases/<entry>"}
+    ;; これにより brick deps.edn の :deps が推移的解決される。
+    ;;
+    ;; dev-tools stack を採用する場合、以下も追加（STACK_GUIDE.md §4.2.10）:
+    ;;   djblue/portal                {:mvn/version "0.58.5"}
+    ;;   org.clojure/test.check       {:mvn/version "1.1.1"}
+    ;;   nubank/matcher-combinators   {:mvn/version "3.9.1"}
+    ;; Integrant を含む stack 併用時:
+    ;;   integrant/repl               {:mvn/version "0.4.0"}
+    }
+
+   :jvm-opts
+   ["-XX:-OmitStackTraceInFastThrow"
+    "-Dclojure.compiler.direct-linking=false"]}
+
+  ;; ----------------------------------------------------------------
+  ;; :nrepl — エディタ接続用 nREPL サーバ（必須）
+  ;; ----------------------------------------------------------------
+  :nrepl
+  {:extra-deps {nrepl/nrepl                   {:mvn/version "1.3.0"}
+                cider/cider-nrepl             {:mvn/version "0.50.2"}
+                refactor-nrepl/refactor-nrepl {:mvn/version "3.10.0"}}
+   :main-opts  ["-m" "nrepl.cmdline"
+                "--middleware" "[cider.nrepl/cider-middleware,refactor-nrepl.middleware/wrap-refactor]"
+                "--interactive"]}
+
+  ;; ----------------------------------------------------------------
+  ;; :test — kaocha (development project 全体)
+  ;;   通常は :poly test を使う。全部一気に走らせたい時用。
+  ;; ----------------------------------------------------------------
+  :test
+  {:extra-paths
+   [;; 最初の brick を作ったらここに追加:
+    ;; "components/<n>/test" "bases/<n>/test"
+    ]
+   :extra-deps
+   {lambdaisland/kaocha             {:mvn/version "1.91.1392"}
+    lambdaisland/kaocha-cloverage   {:mvn/version "1.1.89"}
+    org.clojure/test.check          {:mvn/version "1.1.1"}
+    nubank/matcher-combinators      {:mvn/version "3.9.1"}}
+   :main-opts ["-m" "kaocha.runner"]}
+
+  ;; ----------------------------------------------------------------
+  ;; :poly — Polylith CLI（必須）
+  ;; ----------------------------------------------------------------
+  :poly
+  {:replace-deps
+   {polyfy/polylith
+    {:git/url   "https://github.com/polyfy/polylith"
+     :git/sha   "ec92b9b50ec1a4083bb5cf57f9f57b8b8eb98603"
+     :deps/root "projects/poly"}}
+   :main-opts ["-m" "polylith.clj.core.poly-cli.core"]}
+
+  ;; ----------------------------------------------------------------
+  ;; :lint — clj-kondo（必須）
+  ;; ----------------------------------------------------------------
+  :lint
+  {:replace-deps {clj-kondo/clj-kondo {:mvn/version "2024.11.14"}}
+   :main-opts    ["-m" "clj-kondo.main"
+                  "--lint" "components" "bases" "development/src"]}
+
+  ;; lint/init — 各ライブラリ提供の clj-kondo hook を取り込む（初回のみ）
+  :lint/init
+  {:replace-deps {clj-kondo/clj-kondo {:mvn/version "2024.11.14"}}
+   :main-opts    ["-m" "clj-kondo.main"
+                  "--copy-configs" "--dependencies"
+                  "--lint" "$(clojure -A:dev -Spath)"]}
+
+  ;; ----------------------------------------------------------------
+  ;; :format — cljfmt（必須）
+  ;; ----------------------------------------------------------------
+  :format
+  {:replace-deps {dev.weavejester/cljfmt {:mvn/version "0.13.0"}}
+   :main-opts    ["-m" "cljfmt.main"]}
+
+  ;; ----------------------------------------------------------------
+  ;; :outdated — antq（必須、依存更新確認）
+  ;;   :dev エイリアス + 各 brick の deps.edn を合わせたグラフ全体を走査
+  ;; ----------------------------------------------------------------
+  :outdated
+  {:replace-deps {com.github.liquidz/antq {:mvn/version "2.11.1264"}}
+   :main-opts    ["-m" "antq.core"]}}}

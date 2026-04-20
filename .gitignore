@@ -1,0 +1,43 @@
+# --- Clojure / tools.deps ---
+.cpcache/
+.clj-kondo/.cache/
+.lsp/.cache/
+.lsp/sqlite.*.db
+.calva/
+.shadow-cljs/
+
+# --- ビルド成果物 (各 project ごとに発生) ---
+target/
+**/target/
+classes/
+**/classes/
+out/
+*.jar
+*.war
+
+# --- nREPL ---
+.nrepl-port
+
+# --- Portal ---
+.portal/
+
+# --- ログ ---
+*.log
+logs/
+
+# --- エディタ ---
+.idea/
+*.iml
+.vscode/
+.DS_Store
+.envrc
+
+# --- OS ---
+Thumbs.db
+
+# --- 環境変数 ---
+.env
+.env.local
+
+# --- キャッシュ ---
+node_modules/

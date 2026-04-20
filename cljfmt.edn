@@ -1,0 +1,15 @@
+;; cljfmt.edn — cljfmt 設定 (Polylith 版)
+;;
+;; 主要コマンド：
+;;   clj -M:format check
+;;   clj -M:format fix
+
+{:remove-surrounding-whitespace?      true
+ :remove-trailing-whitespace?         true
+ :remove-consecutive-blank-lines?     true
+ :insert-missing-whitespace?          true
+ :indentation?                        true
+ :sort-ns-references?                 true
+ :split-keypairs-over-multiple-lines? false
+
+ :paths ["components" "bases" "development/src" "projects"]}

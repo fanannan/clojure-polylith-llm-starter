@@ -1,0 +1,29 @@
+;; workspace.edn — Polylith ワークスペース設定
+;;
+;; 配布形態:
+;;   - development project のみ有効
+;;   - 最初の project を作ったら :projects に追加
+
+{:top-namespace "myorg.myapp"          ; TODO: 実プロジェクト名に変更
+ :interface-ns  "interface"
+
+ :projects
+ {"development" {:alias "dev"}
+  ;; 最初の project を作ったら追加:
+  ;; "api-server" {:alias "api-server"}
+  ;; "worker"     {:alias "worker"}
+  }
+
+ :vcs
+ {:name "git"
+  :auto-add false}
+
+ :tag-patterns
+ {:stable  "stable-*"    ; CI 通過時に打つ安定タグ（poly test の影響範囲判定に使われる）
+  :release "v[0-9]*"}    ; 本番リリースタグ
+
+ :compact-views #{}
+
+ :release {:auto-tag? false}
+
+ :sensitive-data-cleanup {:enabled? true}}
