@@ -21,6 +21,10 @@ WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 cd "$WORKSPACE_ROOT"
 
+# 備考: ここでは :dev の全 classpath を --lint 対象にする。deps.edn :lint
+# エイリアスは "components bases development/src" に限定するが、hook の取り込み
+# には brick deps.edn が引き込む依存ライブラリ由来の .clj-kondo/ 設定も
+# 参照する必要があるため、対象範囲が意図的に異なる。同期修正しないこと。
 CLASSPATH="$(clj -A:dev -Spath)"
 echo "clj-kondo hook を取り込み中 (classpath 長: ${#CLASSPATH} chars)..."
 
