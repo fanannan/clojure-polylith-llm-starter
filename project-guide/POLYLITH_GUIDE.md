@@ -162,10 +162,12 @@ Polylith は **../CLAUDE.md §1.1.3 副作用の隔離 + §1.2.1 機械化** の
          metosin/reitit              {:mvn/version "0.7.2"}
          metosin/reitit-ring         {:mvn/version "0.7.2"}
          metosin/reitit-malli        {:mvn/version "0.7.2"}
+         metosin/muuntaja            {:mvn/version "0.6.10"}   ; reitit の format-middleware で使用（§2.3 参照）
          metosin/jsonista            {:mvn/version "0.3.11"}
          integrant/integrant         {:mvn/version "0.13.1"}
          aero/aero                   {:mvn/version "1.1.6"}
          com.brunobonacci/mulog      {:mvn/version "0.9.0"}
+         com.brunobonacci/mulog-json {:mvn/version "0.9.0"}   ; :console-json publisher 実装（§2.3 config.edn 参照）
          ;; 使う component への依存
          poly/<domain>               {:local/root "../../components/<domain>"}}}
 ```
@@ -367,16 +369,16 @@ components/<n>/
 その後の手順：
 
 1. `deps.edn` に必要な依存を追加（**ライブラリ依存はここに書く**、project には書かない）
-2. `components/user/` を参照して以下を埋める：
+2. 本文書 §2.1 component コード例を参照して以下を埋める：
    - `core.clj`: Malli スキーマ + 純粋関数 + `m/=>` 契約
    - `interface.clj`: core への薄い委譲（100 行超えたら実装漏れ、core に戻す）
    - `interface_test.clj`: clojure.test + プロパティテスト
-3. Integrant key を提供する場合は `bases/api/src/.../system.clj` の defmethod 集約に追加
+3. Integrant key を提供する場合は entry base の `system.clj`（§2.2 のコード例）の defmethod 集約に追加
 4. project の `deps.edn` に `:local/root` で登録
 5. development の `deps.edn` の `:dev` エイリアス `:extra-paths` にソースパスを追加（`components/<n>/src` 等）
 6. **development の `deps.edn` の `:dev` エイリアス `:extra-deps` に `:local/root` で登録**（`poly/<n> {:local/root "components/<n>"}`）。これにより brick deps.edn の `:deps` が推移的解決され、REPL で利用可能になる
 7. `clj -M:poly check` で構造検証
-8. `clj -M:poly test :project <project-name>` でテスト実行
+8. `clj -M:poly test project:<project-name>` で特定 project 配下の brick テストを実行（全 project・全 brick を流すなら `clj -M:poly test :all`）
 
 ### 3.2 新規ベース追加（**ユーザ承認必須**）
 
@@ -384,9 +386,9 @@ components/<n>/
 clj -M:poly create base name:<n>
 ```
 
-用途の例：HTTP API（既存 `api`）とは別の CLI、Lambda 関数、バッチジョブなど。
+用途の例：HTTP API（既存 entry base と）は別の CLI、Lambda 関数、バッチジョブなど。
 
-その後、`bases/<n>/deps.edn` に必要なライブラリを追加、`bases/api/` を雛形として `core.clj`/`system.clj` などを実装。
+その後、`bases/<n>/deps.edn` に必要なライブラリを追加、本文書 §2.2 base コード例を雛形として `core.clj`/`system.clj` などを実装。
 
 ### 3.3 新規プロジェクト追加（**ユーザ承認必須**）
 
@@ -394,12 +396,12 @@ clj -M:poly create base name:<n>
 clj -M:poly create project name:<n>
 ```
 
-デプロイ単位を分ける時に使う（例: `api-server` と `worker` を別の uberjar に）。
+デプロイ単位を分ける時に使う（例: Web API と worker を別の uberjar にする等）。
 
 その後：
 
 1. `projects/<n>/deps.edn` に `:local/root` で components / bases を参照
-2. `projects/<n>/build.clj` を `projects/api-server/build.clj` をコピーして調整
+2. `projects/<n>/build.clj` を新規作成（本文書 §2.3 の build.clj 例を雛形として使う）
 3. `workspace.edn` の `:projects` に登録
 4. CI に組込（lint / format / poly check / test / build uber）
 
@@ -407,7 +409,7 @@ clj -M:poly create project name:<n>
 
 ## 4. コンポーネント境界の判断（**最重要の判断領域**）
 
-**自己判断禁止**。迷ったら必ず `CLAUDE_QUESTIONS.md` に Q を立てる。
+**自己判断禁止**。迷ったら必ず `../project-memory/QUESTIONS.md` に Q を立てる。
 
 ### 4.1 新規コンポーネントを切るべき兆候
 
@@ -458,14 +460,14 @@ Polylith の例題は教育目的で粒度が細かい傾向がある。それ�
 |---|---|---|
 | 内部 NS への直接 require | `poly check`: `Cannot reference internal namespaces from another brick` | `interface.clj` に関数追加し、interface 経由に変更 |
 | 循環参照 | `poly check`: circular dependency | 共通部分を新規 component に抽出（`poly create component`）。既存 2 component を直接合流させない |
-| project の deps が肥大化 | `projects/*/deps.edn` にライブラリが直書きされている | components / bases に移動。../CLAUDE.md §3.3 違反 |
+| project の deps が肥大化 | `projects/*/deps.edn` にライブラリが直書きされている | components / bases に移動。project の `deps.edn` は `:local/root` のみにする（本文書 §2.3 参照） |
 | base 同士の参照 | `poly check`: base→base 依存 | 共通ロジックを component に抽出 |
 | `interface.clj` の肥大化 | 100 行超 | 実装が interface に漏れている。`core.clj` に切り出して interface は薄い委譲に戻す |
 | `poly test` が走らない | 変更検知が効かない | `git status` で未コミット変更を確認。Polylith は git 基準で diff を取る |
 | development project が壊れる | `(reset)` で循環エラー | Integrant `defmethod` の重複・キー名衝突を確認 |
 | brick 作成を手作業で行う | `poly check`: brick 認識されず | 削除して `poly create` で作り直す |
 | library 依存が development にだけある | 本番ビルドで依存不足 | 本来の所属 component / base の `deps.edn` に移動 |
-| `stable` タグが動かない | `poly info` で stable point が出ない | `workspace.edn` の `:tag-patterns` を確認。CI で `poly create tag` が動いているか確認 |
+| `stable` タグが動かない | `poly info` で stable point が出ない | `workspace.edn` の `:tag-patterns` を確認。CI で `git tag stable-<timestamp>` が打たれているか確認（Polylith 公式では `poly create tag` のような専用コマンドは存在せず、git tag を使う） |
 
 ---
 
@@ -477,7 +479,7 @@ Polylith の例題は教育目的で粒度が細かい傾向がある。それ�
 {:top-namespace "myorg.myapp"            ; 全 brick の名前空間プレフィックス
  :interface-ns  "interface"              ; interface ファイル名（固定）
  :projects      {"development" {:alias "dev"}
-                 "api-server"  {:alias "api-server"}}
+                 "<deploy>"    {:alias "<deploy>"}}  ; DESIGN.md §8.2 で定めた project 名
  :vcs           {:name "git" :auto-add false}
  :tag-patterns  {:stable  "stable-*"     ; CI 通過時に打つ安定タグ
                  :release "v[0-9]*"}}    ; 本番リリースタグ
@@ -509,7 +511,9 @@ GitHub Actions などの CI では `fetch-depth: 0` を指定する。
 ### 7.1 役割
 
 - **全 brick を単一 REPL で触れる**環境（§1.2.2 ループ短縮の実装）
-- `clj -M:dev:nrepl` で起動、`dev.user` の `(go)` で Integrant + Malli instrumentation 起動
+- `clj -M:dev:nrepl` で起動
+- Integrant を使うプロジェクトでは `dev.user` の `(go)` で Integrant system + Malli instrumentation を一括起動（dev/user.clj 内部で `(malli-on!)` を呼んでから `(ig-repl/go)` を呼ぶ実装）
+- Integrant を使わないプロジェクトでは REPL 起動後に明示的に `(malli-on!)` を呼んで Malli instrumentation を有効化する
 
 ### 7.2 新規 brick 追加時の development 更新
 
@@ -552,12 +556,12 @@ clj -M:lint                                          # clj-kondo
 clj -M:format check                                  # cljfmt
 clj -M:poly check                                    # Polylith 構造
 clj -M:poly test :all                                # 全テスト
-cd projects/api-server && clj -T:build uber          # ビルド
+cd projects/<deploy> && clj -T:build uber            # ビルド（<deploy> は DESIGN.md §8.2 で定めた project 名）
 ```
 
 通過したら `stable-<timestamp>` タグを打つ（§6.2）。
 
-CI 通過時以外にも、人間が `clj -M:poly create tag` を手動で打つのは問題ない。ただし CI が通らない状態でタグを打つと、以降の `poly test` が誤った安定点を参照する。
+CI 通過時以外にも、人間が `git tag stable-$(date +%Y%m%d-%H%M%S)` を手動で打つのは問題ない。ただし CI が通らない状態でタグを打つと、以降の `poly test` が誤った安定点を参照する。Polylith 公式では `poly create tag` のような専用コマンドは存在せず、安定タグの付与は git tag で行う（`workspace.edn` の `:tag-patterns {:stable "stable-*"}` にマッチするタグ名にする）。
 
 ---
 

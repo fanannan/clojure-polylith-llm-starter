@@ -81,7 +81,7 @@
 |---|---|---|
 | **全域性** | 失敗を契約に持ち上げ、`nil` punning や例外握り潰しなどの逃げ道を封じる | **Malli** による `m/=>` 関数契約と境界検証 |
 | **不変性** | 変更可能性を限定し、ほとんどの値を不変に | Clojure 標準の**持続データ構造**、値中心設計、`defrecord` 限定使用 |
-| **副作用の隔離** | 副作用を最外層に集約し、内側は純粋に保つ | **純粋関数コア / 副作用シェル**（Integrant で副作用をコンポーネント化） |
+| **副作用の隔離** | 副作用を最外層に集約し、内側は純粋に保つ | **純粋関数コア / 副作用シェル**、I/O は依存注入で境界から注入（Integrant 等の起動管理は採用時のみ） |
 
 これら三つは**相互に強化する**。一つ緩めると他二つの効果も目減りする。
 
@@ -90,7 +90,7 @@
 | 戦略 | 意味 | 具体実装 |
 |---|---|---|
 | **機械化** | 規約を人間（LLM）の注意力ではなく、ツールで強制する | clj-kondo 厳格設定、`poly check`、`malli.dev/start!`、cljfmt |
-| **ループ短縮** | LLM の編集から検証までを秒単位に縮める | REPL 常駐、`kaocha --watch`、Malli instrumentation |
+| **ループ短縮** | LLM の編集から検証までを秒単位に縮める | REPL 常駐、Malli instrumentation、**ターン内検証**（編集 → `poly test` → 結果読解を同ターンで閉じる、§8） |
 | **小単位分解** | 大きな塊を一気に生成させない。生成→検証→次を繰り返す | 1 関数 20 行以内、コミット細分化、タスク分解判断（§7.4） |
 | **早期破棄** | 詰まったらアプローチごと捨てる。完遂にこだわらない | 自己停止プロトコル（§7）、ブランチ破棄を悪としない |
 
@@ -113,7 +113,7 @@
 - 新規 base / project の追加（`poly create base` / `poly create project`）
 - DB マイグレーションの実行（生成は可、実行は人間)
 - フォーマッタ / リンタ / Polylith / Malli 設定の変更
-- CLAUDE.md / project-guide/ 配下の各種ガイド の自動編集（提案のみ可）
+- CLAUDE.md / project-guide/ 配下の各種ガイドの自動編集（**提案のみ可**。ユーザからの明示的な改修依頼がある場合も、変更内容を提示して承認を得てから編集する。テンプレート保守タスクも同じ規律に従う。詳細な編集権限マトリクスは `project-guide/COLLABORATION_GUIDE.md` §2.2）
 - **コンポーネントの統合・分割**（境界変更は影響甚大）
 - `components/`、`bases/`、`projects/` 配下のファイル/ディレクトリを手作業で作成（必ず `poly create`）
 - **4 種文書（DESIGN.md / KNOWLEDGE.md / adr/ / QUESTIONS.md）の独断編集・状態変更**（詳細な編集権限マトリクスは `project-guide/COLLABORATION_GUIDE.md` §2.3）
@@ -122,23 +122,18 @@
 
 ## 3. 技術スタック
 
-§1.2 の戦略に基づき選定を固定。LLM が代替ライブラリを提案してはならない。
-右列に**各選定が §1.1 の三原則のどれを実装するか**を示す。
+本テンプレートの**必須層**は以下。入れ替え不可：
 
-| カテゴリ | 採用 | 実現する原則 |
-|---|---|---|
-| ビルド/依存管理 | `tools.deps`（`deps.edn`） | — （補助層） |
-| ワークスペース | **Polylith** | 機械化: 構造規約を `poly check` で強制 |
-| スキーマ/検証 | **Malli** | **全域性**: 境界契約・instrumentation |
-| HTTP サーバ | **Ring + Reitit** | 副作用隔離 + 全域性: Malli coercion |
-| HTTP クライアント | **hato** | 副作用隔離: I/O を境界に限定 |
-| ロギング | **mulog** | 副作用隔離: 構造化ログとして副作用を明示化 |
-| DB 接続 | **next.jdbc + HoneySQL** | 副作用隔離: クエリは値、実行は境界 |
-| コンポーネント管理 | **Integrant** | 副作用隔離: 副作用を物理的にコンポーネント化 |
-| JSON | **jsonista** | 全域性: 型安全な変換 |
-| テスト | **clojure.test + test.check + matcher-combinators** | 全域性: プロパティテストで不変条件検証 |
-| 静的解析 | **clj-kondo** | 機械化: コード規約を error で強制 |
-| フォーマッタ | **cljfmt** | 機械化: スタイル議論の排除 |
+- **Clojure 1.12**（言語）
+- **tools.deps**（`deps.edn` による依存管理。Polylith の前提）
+- **Polylith**（ワークスペース構造。§1.2.1 機械化は `poly check` による強制が核）
+- **Malli**（§1.1.1 全域性の実装。`m/=>` 契約と instrumentation）
+- **clj-kondo**（機械化された静的解析。`.clj-kondo/config.edn` が配布時点で同梱される）
+- **cljfmt**（機械化されたフォーマッタ。`cljfmt.edn` が配布時点で同梱される）
+
+必須層以外の技術選定（テストランナー、HTTP サーバ、DB 接続、ロギング、コンポーネント管理、JSON 変換など）は、プロジェクトの性格に応じて選ぶ **stack 層**に属する。選定の論理と推奨カタログは `project-guide/STACK_GUIDE.md` に一元化されている。採用した stack は `DESIGN.md` §8.3 に記録する。
+
+STACK_GUIDE.md に載っていない領域に遭遇した場合は、§6.3 の手順に従って第一原理から自律的に選定する。必須層が固定される点は変わらない。
 
 ---
 
@@ -152,9 +147,9 @@
 
 - **全公開関数に `m/=>` 契約を付ける**（`interface.clj` の関数は必須、`defn-` は免除）
 - 外部入力（HTTP リクエスト、DB 行、外部 API レスポンス、設定ファイル）は**入口で `m/validate`**
-- 開発時は `(malli.dev/start!)` を `dev/user.clj` で常時起動。契約違反は REPL 評価で即座に例外化
+- 開発時は Malli instrumentation を有効化（`dev/user.clj` の `(malli-on!)` を REPL 起動後に呼ぶ。Integrant を使うプロジェクトでは `(go)` が内部的に呼ぶ）。契約違反は REPL 評価で即座に例外化
 - 関数が失敗し得るなら、戻り値の型を一貫させる（常に `nil` を返すか、`{:error ...}` 形式か、一つに決める）
-- サンプル: `components/user/src/myorg/myapp/user/core.clj`
+- コード例は `project-guide/POLYLITH_GUIDE.md` §2 を参照（本テンプレートには brick サンプルは配布されない）
 
 ### 4.2 不変性の活用（§1.1 原則 2 の実装）
 
@@ -162,7 +157,7 @@
 
 - **素のマップ・ベクタ・セット・キーワード優先**。`defrecord` は次のいずれかのみ: (1) プロトコル多態、(2) ホットパス性能、(3) Java 相互運用
 - **キーは名前空間付き**（`:user/id`、`:order/total`）。修飾子はドメイン / コンポーネント名に揃える
-- **状態（`atom` / `ref` / `agent`）は Integrant コンポーネント内に限定**。関数内で `atom` を作らない
+- **可変状態（`atom` / `ref` / `agent`）は最上位層に限定**。ドメイン関数内で `atom` を作らない。Integrant を採用するプロジェクトでは Integrant コンポーネント内に、採用しないプロジェクトでは起動エントリ（`-main` や test fixture 等）の明示的な管理対象として配置する
 - 蓄積は `reduce` / `into`。ローカル `atom` で回さない
 - 詳細: `project-guide/CODING_GUIDE.md` §2〜§7
 
@@ -171,8 +166,8 @@
 純粋コア / 副作用シェル。
 
 - **ドメイン系コンポーネント**（user, order, …）は I/O ライブラリを `require` しない（clj-kondo で警告化）
-- I/O 系は**Integrant key として提供**し、依存注入で受け取る
-- `println` / `prn` は禁止（代わりに `mulog/log` または `tap>`）
+- I/O 系は**依存注入**で受け取る。Integrant を採用するプロジェクトでは Integrant key として提供、採用しないプロジェクトでは起動エントリで構築して関数引数として渡す（いずれも「ドメインは I/O を知らない」という原則は共通）
+- `println` / `prn` はアプリケーションコード（components / bases）で禁止（代わりに `mulog/log` または `tap>`）。**例外**: ビルドスクリプト（`projects/<deploy>/build.clj` 等）や `development/src/` 配下の一時デバッグコードでは、mulog 依存を引き込むこと自体が疲労増になるため `println` 使用を許容する。この例外は lint 設定 `.clj-kondo/config.edn` でも前提として扱われる（`--lint` 対象が `components bases development/src` で、build.clj は lint 対象外）
 - `with-redefs` は §1.1 全域性を破るので最小範囲のみ。普段は依存注入で回避
 
 ---
@@ -203,8 +198,12 @@
 
 ### 5.4 Malli instrumentation
 
-`(malli.dev/start!)` が `dev/user.clj` の `(go)` で自動起動。
-`m/=>` 契約付き関数を REPL で呼び出した瞬間に契約違反が例外として顕在化。
+Malli は必須層。`dev/user.clj` で `(malli-on!)` / `(malli-off!)` helper を提供する：
+
+- **Integrant を使うプロジェクト**: `(go)` が内部で `(malli-on!)` を呼んでから `(ig-repl/go)` を呼ぶ
+- **Integrant を使わないプロジェクト**（ライブラリ配布・単発 CLI 等）: REPL 起動後に明示的に `(malli-on!)` を呼ぶ
+
+`m/=>` 契約付き関数を REPL で呼び出した瞬間に契約違反が例外として顕在化。詳細は `project-guide/POLYLITH_GUIDE.md` §7.1。
 
 ### 5.5 完了条件（以下全通過で初めて完了報告）
 
@@ -213,7 +212,7 @@ clj -M:lint                                    # clj-kondo
 clj -M:format check                            # cljfmt
 clj -M:poly check                              # Polylith 構造
 clj -M:poly test :all                          # 全テスト
-cd projects/api-server && clj -T:build uber    # ビルド成功
+cd projects/<deploy> && clj -T:build uber      # ビルド成功（<deploy> は DESIGN.md §8.2 で定めた project 名）
 ```
 
 ---
@@ -230,8 +229,8 @@ Polylith 構造の操作と、技術スタック層（stack）の採用・変更
 |---|---|
 | 状態確認（brick 一覧・依存・変更検知） | `clj -M:poly info` |
 | **構造違反の検証**（編集後に必ず実行） | `clj -M:poly check` |
-| 変更影響範囲のみテスト | `clj -M:poly test` |
-| 全 project でテスト | `clj -M:poly test :all` |
+| **日常作業中のテスト**（変更影響範囲のみ、高速） | `clj -M:poly test` |
+| **完了報告前のテスト**（§5.5 完了条件の一部、全 project 全 brick 実行） | `clj -M:poly test :all` |
 | **新規コンポーネント作成** | `clj -M:poly create component name:<n>` |
 | **新規ベース作成**(承認必須) | `clj -M:poly create base name:<n>` |
 | **新規プロジェクト作成**(承認必須) | `clj -M:poly create project name:<n>` |
@@ -346,6 +345,31 @@ stack 表の網羅追求は疲労最小化原則と自己矛盾する(網羅は�
 
 §1.2.3 小単位分解の実装。
 
+### 8.0.0 ターン内で閉じる検証フィードバック
+
+LLM のフィードバックループは**編集単位でターン内に閉じる**。監視型（watch）や非同期通知には依存しない（別プロセスの出力を LLM は読めない）。
+
+**サイクル**:
+
+1. 編集（brick のコード、deps.edn、interface、テスト等）
+2. 影響範囲の検証をターン内で実行（`clj -M:poly check`、`clj -M:lint`、`clj -M:poly test`）
+3. 結果を読む
+4. 失敗があれば下記の振り分け判断に従って対処
+
+`poly test` は stable タグからの diff で**影響範囲を自動判定**するため、LLM が毎回「どこまで走らせるか」を考える必要はない。完了条件（§5.5）では `poly test :all` で全体検証する。
+
+**検出された失敗の振り分け**:
+
+| 失敗の性格 | 対処 |
+|---|---|
+| 自分の編集が原因で原因が明確（typo、契約変更の波及漏れ等） | ターン内で修正（記録不要） |
+| 修正方針に判断が必要（契約変更 vs 実装変更、影響範囲の広さ等） | `project-memory/QUESTIONS.md` に Q を起票 |
+| 将来の同種問題防止に価値ある知見 | `project-memory/KNOWLEDGE.md` に追記（ユーザに提示） |
+| 設計判断に関わる（新規原則導入、既存原則変更等） | ADR 発行（`project-memory/adr/`） |
+| 3 回試みても解決しない / 予想を超えて範囲が広がる | §7 自己停止プロトコル |
+
+この振り分けに載らない「タスク」概念は本テンプレートには存在しない。作業中の全事象は既存の受け皿（QUESTIONS.md / KNOWLEDGE.md / ADR / §7 自己停止）に流す。
+
 ### 8.0 実装着手前の確認（すべての作業に共通）
 
 どの作業を行う時も、着手前に以下を確認する。これは §1.3「生きた知識の活用で再発見の疲労を避ける」の具体実装：
@@ -375,7 +399,7 @@ stack 表の網羅追求は疲労最小化原則と自己矛盾する(網羅は�
 clj -M:poly create component name:<n>
 ```
 
-雛形として `components/user/` を参照。Integrant key を提供する場合は `bases/api/src/.../system.clj` の defmethod 集約に追加。
+雛形は `project-guide/POLYLITH_GUIDE.md` §2 のコード例を参照。Integrant key を提供する場合は entry base の `system.clj`（POLYLITH_GUIDE.md §2.2）の defmethod 集約に追加。
 詳細手順は `project-guide/POLYLITH_GUIDE.md`。
 
 ### 8.3 コミット
@@ -453,7 +477,7 @@ REPL で確認した挙動は**その場でテストに昇格**する。`comment
 
 - **テストは原則 interface 経由で書く**（実装変更に頑健）
 - モックは §1.1.3 副作用隔離の失敗サイン。**依存注入で回避**
-- 開発中は `clj -M:poly test --watch` を別端末で常時起動
+- **検証はターン内で同期的に閉じる**（§8.1）。監視モード（watch）には依存しない。LLM は編集のたびに自分で `poly test` を走らせ、結果を読む
 
 ---
 

@@ -12,22 +12,25 @@
 ;;
 ;; 本ファイルの役割:
 ;;   - 必須層の依存宣言
-;;   - REPL 駆動開発（:dev）、テスト（:test）、Polylith（:poly）、lint（:lint）、
-;;     format（:format）、依存更新確認（:outdated）、nREPL（:nrepl）の運用エイリアス
+;;   - REPL 駆動開発（:dev）、Polylith（:poly）、lint（:lint）、format（:format）、
+;;     依存更新確認（:outdated）、nREPL（:nrepl）の運用エイリアス
+;;   - テスト実行は Polylith の `clj -M:poly test` / `clj -M:poly test :all` で行う
 ;;   - 本ファイルには stack 別ライブラリ依存は書かない（brick の deps.edn が一次情報源）
 ;;
 ;; 依存追加・変更は CLAUDE.md §2 により人間承認必須。
 ;;
 ;; 主要コマンド:
 ;;   clj -M:dev:nrepl               REPL 起動
-;;   clj -M:test                    全テスト
+;;   clj -M:poly test :all          **推奨の完了条件**（Polylith の影響範囲判定 + 全 brick/project テスト）
 ;;   clj -M:lint                    clj-kondo
 ;;   clj -M:format check / fix      cljfmt
 ;;   clj -M:poly check              Polylith 構造検証
 ;;   clj -M:poly info               workspace 状態
-;;   clj -M:poly test               変更影響範囲テスト
+;;   clj -M:poly test               変更影響範囲テスト（stable タグからの diff、日常作業中に使う）
 ;;   clj -M:poly create component name:foo
 ;;   clj -M:outdated                依存最新化チェック
+;;
+;; 完了条件（CLAUDE.md §5.5）の「全テスト」は clj -M:poly test :all を指す。
 
 {;; development project はソースを直接持たない。各 brick を :dev の :extra-paths で読み込む
  :paths []
@@ -94,22 +97,6 @@
                 "--interactive"]}
 
   ;; ----------------------------------------------------------------
-  ;; :test — kaocha (development project 全体)
-  ;;   通常は :poly test を使う。全部一気に走らせたい時用。
-  ;; ----------------------------------------------------------------
-  :test
-  {:extra-paths
-   [;; 最初の brick を作ったらここに追加:
-    ;; "components/<n>/test" "bases/<n>/test"
-    ]
-   :extra-deps
-   {lambdaisland/kaocha             {:mvn/version "1.91.1392"}
-    lambdaisland/kaocha-cloverage   {:mvn/version "1.1.89"}
-    org.clojure/test.check          {:mvn/version "1.1.1"}
-    nubank/matcher-combinators      {:mvn/version "3.9.1"}}
-   :main-opts ["-m" "kaocha.runner"]}
-
-  ;; ----------------------------------------------------------------
   ;; :poly — Polylith CLI（必須）
   ;; ----------------------------------------------------------------
   :poly
@@ -128,12 +115,10 @@
    :main-opts    ["-m" "clj-kondo.main"
                   "--lint" "components" "bases" "development/src"]}
 
-  ;; lint/init — 各ライブラリ提供の clj-kondo hook を取り込む（初回のみ）
-  :lint/init
-  {:replace-deps {clj-kondo/clj-kondo {:mvn/version "2024.11.14"}}
-   :main-opts    ["-m" "clj-kondo.main"
-                  "--copy-configs" "--dependencies"
-                  "--lint" "$(clojure -A:dev -Spath)"]}
+  ;; 初回セットアップで依存ライブラリの clj-kondo hook を取り込む場合、
+  ;; tools.deps の :main-opts はシェル展開されないため、以下をシェルで実行する:
+  ;;   clj -M:lint --copy-configs --dependencies --lint "$(clojure -A:dev -Spath)"
+  ;; BOOTSTRAP_GUIDE.md §2.9 参照。
 
   ;; ----------------------------------------------------------------
   ;; :format — cljfmt（必須）

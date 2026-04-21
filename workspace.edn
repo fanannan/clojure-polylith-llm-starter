@@ -4,14 +4,16 @@
 ;;   - development project のみ有効
 ;;   - 最初の project を作ったら :projects に追加
 
-{:top-namespace "myorg.myapp"          ; TODO: 実プロジェクト名に変更
+{:top-namespace "myorg.myapp"          ; TODO: 実プロジェクトの名前空間プレフィックスに変更（例: "acme.billing"）
  :interface-ns  "interface"
 
  :projects
  {"development" {:alias "dev"}
-  ;; 最初の project を作ったら追加:
-  ;; "api-server" {:alias "api-server"}
-  ;; "worker"     {:alias "worker"}
+  ;; 最初の project を作ったら追加（<deploy> は DESIGN.md §8.2 で定めた project 名）:
+  ;; "<deploy>" {:alias "<deploy>"}
+  ;; 複数デプロイ単位がある場合は複数追加:
+  ;; "<deploy1>" {:alias "<deploy1>"}
+  ;; "<deploy2>" {:alias "<deploy2>"}
   }
 
  :vcs

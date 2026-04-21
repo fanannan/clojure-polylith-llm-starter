@@ -81,7 +81,7 @@ KNOWLEDGE.md の追加・更新・廃止は、**以下のいずれかに該当�
 3. 実装中の発見で、**ユーザに事前承認を得た場合のみ**
 
 それ以外は、LLM は新エントリ案を QUESTIONS.md に Q として立て、承認を経てから追記する。
-**LLM の独断による KNOWLEDGE 編集は禁止**（`project-guide/CLAUDE.md` 相当の不可侵対象）。
+**LLM の独断による KNOWLEDGE 編集は禁止**（`CLAUDE.md` §2 禁止事項の対象、ルート直下の CLAUDE.md を参照）。
 
 ### 0.8 節構成の原則
 

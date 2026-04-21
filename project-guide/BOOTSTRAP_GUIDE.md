@@ -141,7 +141,6 @@ clj -M:poly create project name:<deploy>
 
 - [ ] `workspace.edn` の `:projects` に新 project を登録
 - [ ] ワークスペースルート `deps.edn` の `:dev :extra-paths` に新 brick を追加（components / bases の src・resources・test）、および `projects/<deploy>/resources`（config.edn を `io/resource` で読めるようにするため）
-- [ ] ワークスペースルート `deps.edn` の `:test :extra-paths` に新 brick の test を追加
 - [ ] **ワークスペースルート `deps.edn` の `:dev :extra-deps` に新 brick を `:local/root` で登録**（tools.deps の仕様上、`:extra-paths` のみでは brick 側の `deps.edn` の `:deps` が推移的解決されない。brick を `:local/root` 登録することで初めて brick deps.edn の依存が REPL で利用可能になる）:
   ```clojure
   ;; :dev :extra-deps 内
@@ -162,17 +161,22 @@ clj -M:poly create project name:<deploy>
 
 ### 2.6 development/src/dev/user.clj の調整
 
-採用 stack に応じて dev/user.clj を調整する：
+配布版の dev/user.clj は Integrant によるライフサイクル管理と Portal によるデータ可視化を使う構成を想定した完成例として、Malli instrumentation、Integrant ライフサイクル制御、Portal ヘルパーの 3 セクションを同梱している。プロジェクトで使わないライブラリに対応するセクションは、本テンプレートの方針（YAGNI、疲労最小化、原則 5 LLM は削除が苦手）に従って**削除する**：
 
-- **Integrant を含む stack 採用時**（web-api / graphql-api / batch / worker / data-pipeline / bot / desktop / Integrant 採用の cli）: `integrant.repl` による `(go)` / `(reset)` / `(halt)` ライフサイクル制御セクションを有効化
-- **dev-tools stack 採用時**: Portal による `tap>` 配線、matcher-combinators の読み込みを有効化
-- **library stack のみの場合**: ライフサイクル管理は不要、Malli instrumentation のみ
+- **Integrant を使わないプロジェクト**（ライブラリ配布・単発 CLI 実行など、I/O リソースのライフサイクル管理が不要な場合）: Integrant セクション（ns の require にある Integrant 関連 3 行と、`config` / `ig-state` / `go` / `reset` / `halt` / `system` の定義）を削除する
+- **Integrant を使うプロジェクト**（Web サービス・バッチ・ワーカ等）: Integrant セクションをコメント解除して、`config` 関数を実装する
+- **Portal を使わないプロジェクト**: Portal セクション（`portal-instance` / `portal-tap-fn` の atom、`portal` / `portal-clear` / `portal-close` の定義）を削除する
+- **Portal を使うプロジェクト**: deps.edn の `:dev` に `djblue/portal` を追加し、Portal セクションはそのまま使う
+
+Malli instrumentation セクションはすべてのプロジェクトで有効化したまま使う（必須層）。
+
+「削除」は単純な不要コードの除去であり、承認 L1（COLLABORATION_GUIDE.md §2.3）。dev/user.clj は配布物の一部だが、派生プロジェクトに応じた調整が前提のファイル。try-catch による防御は「依存がまだ導入されていない起動直後の REPL が壊れないため」の一時的な安全網であって、未使用コードを残し続けることを正当化するものではない。
 
 dev/user.clj の具体例は POLYLITH_GUIDE.md §2.4 参照。
 
-### 2.7 Integrant 設定ファイル作成（Integrant を含む stack 採用時のみ）
+### 2.7 Integrant 設定ファイル作成（Integrant を使う場合のみ）
 
-採用 stack に Integrant が含まれる場合：
+Integrant を使うプロジェクトでのみ実施する。ライブラリ配布や単発 CLI などで Integrant を使わない場合は本節をスキップ：
 
 - [ ] `projects/<deploy>/resources/config.edn` を作成（POLYLITH_GUIDE.md §2.3 のコード例参照）
 - [ ] aero の `#profile` / `#env` で環境別設定を記述
@@ -187,6 +191,14 @@ dev/user.clj の具体例は POLYLITH_GUIDE.md §2.4 参照。
 ### 2.9 動作確認（STACK_GUIDE.md §6 整合性チェック）
 
 全項目が通過することを確認：
+
+**clj-kondo hook の初回取り込み**:
+
+- [ ] 新ライブラリ採用後、以下を shell で実行して各ライブラリ提供の clj-kondo hook を取り込む（tools.deps の `:main-opts` はシェル展開されないため、この処理をエイリアスに埋め込めない）:
+  ```bash
+  clj -M:lint --copy-configs --dependencies --lint "$(clojure -A:dev -Spath)"
+  ```
+  これにより `.clj-kondo/.cache/` および `.clj-kondo/configs/` が更新され、以後の `clj -M:lint` でライブラリ固有の lint ルールが機能する
 
 **brick 単位の依存解決確認**:
 

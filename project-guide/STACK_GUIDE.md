@@ -93,9 +93,10 @@ stack は時間とともに増え、選定根拠は詳細化し、機能領域�
 | 依存更新確認 | antq | 2.11.1264 | ライブラリ更新検知 |
 | REPL リロード | tools.namespace | 1.5.0 | `(reset)` の基盤 |
 | nREPL | nrepl + cider-nrepl + refactor-nrepl | — | エディタ接続 |
-| テストランナー | kaocha | 1.91.1392 | 監視モード対応 |
 
-これらは `deps.edn` の `:deps` および必須エイリアス（`:dev`、`:nrepl`、`:test`、`:poly`、`:lint`、`:format`、`:outdated`）で常に有効。
+これらは `deps.edn` の `:deps` および必須エイリアス（`:dev`、`:nrepl`、`:poly`、`:lint`、`:format`、`:outdated`）で常に有効。
+
+テスト実行は Polylith の `poly test`（`clj -M:poly test` / `clj -M:poly test :all`）で行う。Polylith は組み込みの clojure.test ランナーで brick テストを実行し、stable タグからの diff で影響範囲を自動判定する。kaocha 等の追加テストランナーは本テンプレートでは採用しない（詳細は §3.8）。
 
 ### 2.2 stack 層（目的別の推奨構成、brick deps.edn に反映）
 
@@ -258,12 +259,21 @@ stack 層と組み合わせて使う。開発支援ライブラリは通常 **de
 
 ### 3.8 テスト・検証支援
 
-**採用**: kaocha（必須層） + test.check + matcher-combinators（dev-tools stack）
+**採用**: Polylith の組み込みテストランナー（`poly test`） + clojure.test + test.check + matcher-combinators（dev-tools stack）
 
 **採用理由**:
-- kaocha: 監視モード、プラグインエコシステム
+- `poly test`: Polylith ネイティブ。stable タグからの diff で影響範囲を自動判定し、変更された brick とその依存先のみテストを実行する（§1.2.2 ループ短縮の実装）。内部で clojure.test ランナーを使う
+- clojure.test: Clojure 標準、追加依存なし
 - test.check: Malli generator と組で使うプロパティテスト
 - matcher-combinators: アサーション表現力（部分マッチング等）
+
+**テスト実行コマンド**:
+- 日常作業中の変更影響範囲テスト: `clj -M:poly test`
+- 完了報告前の全体テスト（§5.5 完了条件）: `clj -M:poly test :all`
+- 特定 project 配下のテスト: `clj -M:poly test project:<name>`
+- 特定 brick のテスト: `clj -M:poly test brick:<name>`
+
+kaocha 等の追加テストランナーは本テンプレートでは採用しない。派生プロジェクトで追加機能（カバレッジ測定、CI 統合用 JUnit XML 出力等）が必要な場合は、派生プロジェクト側の判断で導入する。
 
 ### 3.9 開発時データインスペクション
 
@@ -482,6 +492,7 @@ stack 層と組み合わせて使う。開発支援ライブラリは通常 **de
 | ルーティング (ring) | `metosin/reitit-ring` | 0.7.2 |
 | ルーティング (malli) | `metosin/reitit-malli` | 0.7.2 |
 | JSON | `metosin/jsonista` | 0.3.11 |
+| コンテント折衝 | `metosin/muuntaja` | 0.6.10 |
 | 構造化ログ | `com.brunobonacci/mulog` | 0.9.0 |
 | ログ JSON 出力 | `com.brunobonacci/mulog-json` | 0.9.0 |
 
@@ -838,7 +849,7 @@ stack は排他的ではなく**タグ的な概念**。複数を組み合わせ�
    - Integrant を含む stack 採用 → Integrant REPL セクションを有効化
    - dev-tools stack 採用 → Portal / matcher-combinators セクションを有効化
 9. `.clj-kondo/config.edn` で該当 stack の `discouraged-var` があれば有効化
-10. `clj -M:lint/init` で新依存の clj-kondo hook を取り込む
+10. clj-kondo の hook 取り込み（shell で実行、tools.deps の :main-opts はシェル展開されないためエイリアス化できない）: `clj -M:lint --copy-configs --dependencies --lint "$(clojure -A:dev -Spath)"`
 11. §6 整合性チェック実施
 12. 独立したコミット（例: `Adopt web-api stack (base deps.edn + dev/user.clj)`）
 

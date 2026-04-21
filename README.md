@@ -15,10 +15,10 @@
 
 ## このテンプレートは何か
 
-**Clojure + Polylith + Malli ** を技術スタックとする、**LLM 駆動開発向け**のプロジェクトテンプレート。
+**Clojure 1.12 + Polylith + Malli** を必須層とし、プロジェクトの性格に応じた **stack 層**（Web API、バッチ、CLI、ライブラリ配布等の目的別推奨構成）を選択できる、**LLM 駆動開発向け**のプロジェクトテンプレート。Integrant・Ring・DB ドライバ等は採用する stack に応じて brick の deps.edn に追加する（必須層ではない）。
 
 疲労最小化原則（LLM と人間の共同開発における修復コスト最小化）に基づき設計されている。
-詳細思想は `CLAUDE.md` §1、設計原則は `project-guide/MAINTAINERS_GUIDE.md`。
+詳細思想は `CLAUDE.md` §1、設計原則は `project-guide/MAINTAINERS_GUIDE.md`、stack 選定は `project-guide/STACK_GUIDE.md`。
 
 ## 前提ツール
 
@@ -203,7 +203,7 @@ CLAUDE.md §2 により base と project の作成は承認必須なので、
     生成された brick の中身を最小動作版として実装
  5. workspace.edn の `:projects` に新 project を追加
  6. deps.edn の `:dev` `:extra-paths` に新 brick を追加
- 7. `clj -M:poly check` と `clj -M:poly test` を実行して結果を報告
+ 7. `clj -M:poly check` と `clj -M:poly test :all` を実行して結果を報告
 
 不明な実装判断があれば、自己解釈で進めず
 project-memory/QUESTIONS.md に Q を立てて質問してほしい。
@@ -212,12 +212,14 @@ project-memory/QUESTIONS.md に Q を立てて質問してほしい。
 #### 🧑 人間の最終確認
 
 - 生成された brick の構造を確認
-- `poly check` / `poly test` の結果を確認
+- `poly check` / `poly test :all` の結果を確認
 - LLM が立てた Q があれば回答
 
 ---
 
-### ステップ 4: Integrant 設定と動作確認
+### ステップ 4: Integrant 設定と動作確認（Integrant 採用時のみ）
+
+**本ステップは Integrant を採用するプロジェクトでのみ実施する**。ライブラリ配布や CLI 単発実行など、I/O ライフサイクル管理を必要としないプロジェクトではスキップし、ステップ 5 に進む。Integrant は Web サービス・バッチ・ワーカ等で I/O リソース（HTTP サーバ・DB 接続・外部 API クライアント等）の起動順序と停止順序を制御する用途で採用する。
 
 #### 🧑 人間が決めること
 
@@ -225,8 +227,6 @@ project-memory/QUESTIONS.md に Q を立てて質問してほしい。
 - `:dev` / `:staging` / `:prod` のどのプロファイルを用意するか
 
 #### 🤖 LLM への指示プロンプト
-
-Integrant を採用した場合：
 
 ```
 Integrant の設定ファイルを作成したい。

@@ -3,6 +3,11 @@
 ;; 主要コマンド：
 ;;   clj -M:format check
 ;;   clj -M:format fix
+;;
+;; :paths について:
+;;   "projects" は初期状態では存在しない（最初の project 作成時に生成される）が、
+;;   予め含めておくことで、project 作成後に本ファイルを修正する必要がない。
+;;   cljfmt は存在しないディレクトリを無視するため実害はない。
 
 {:remove-surrounding-whitespace?      true
  :remove-trailing-whitespace?         true

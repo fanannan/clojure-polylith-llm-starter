@@ -111,7 +111,7 @@ resolved Q の内容が、以下のいずれに該当するか判定する：
 
 - **推測で実装を進めない**
 - 該当箇所のコードに `;; TODO(Q-YYYY-MM-NNN): <保留している判断>` を残す
-- CI で `grep -rn "TODO(Q-" src/` により残存 Q を検出できるようにする
+- CI で `grep -rn "TODO(Q-" components bases development` により残存 Q を検出できるようにする（Polylith 構造では `src/` は存在せず、コードは `components/<n>/src`、`bases/<n>/src`、`development/src` に分散する）
 - Q が `resolved` / `wontfix` / `superseded` になったら、対応する TODO コメントを削除する
 
 ### 0.9 自己停止プロトコル（CLAUDE.md §7）からの連携
@@ -182,7 +182,7 @@ resolved Q の内容が、以下のいずれに該当するか判定する：
   - B. user/id だけ知り、ユーザ情報は base 側で結合（components 間結合を最小化）
   - C. user-context 共通 component を切り出す（過剰設計の懸念）
 - **推奨**: A。Polylith は単方向依存なら component 間 require を許容しており、最小設計に留めるべき
-- **影響範囲**: `components/order/`, `bases/api/src/.../handler.clj`
+- **影響範囲**: `components/order/`, `bases/<entry>/src/.../handler.clj`
 - **反映先**: （resolved 時に記入。例: KNOWLEDGE.md §2.3 境界方針 + adr/0003-order-user-boundary.md）
 -->
 

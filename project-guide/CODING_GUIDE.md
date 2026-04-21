@@ -35,7 +35,8 @@ CLAUDE.md が「日々の作業フロー」を規定するのに対し、本文�
 
 ```clojure
 ;; ✅ Do: 副作用なら doseq
-(doseq [x xs] (println x))
+(doseq [x xs] (println x))   ; 本例の println は副作用の代表として示したもの。
+                              ; アプリケーションコードでは §2.3.3 の通り println 禁止（mulog/log か tap> を使う）
 
 ;; ❌ Don't: 副作用なのに for（遅延されて実行されないことがある）
 (for [x xs] (println x))
@@ -216,7 +217,7 @@ CLAUDE.md が「日々の作業フロー」を規定するのに対し、本文�
 
 #### 2.3.3 副作用の明示化
 
-- `println` / `prn` は禁止。代わりに `mulog/log` で構造化ログ、または `tap>` でデータ確認
+- `println` / `prn` はアプリケーションコード（components / bases）で禁止。代わりに `mulog/log` で構造化ログ、または `tap>` でデータ確認。**例外**: ビルドスクリプト（`projects/<deploy>/build.clj`）や `development/src/` 配下の一時デバッグコードでは許容（mulog 依存を引き込む疲労を避けるため、CLAUDE.md §4.3）
 - `with-redefs` は§1.1 全域性を破る。依存注入で回避を優先
 
 #### 2.3.4 モックは設計失敗のサイン

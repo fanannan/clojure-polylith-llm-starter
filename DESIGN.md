@@ -145,7 +145,7 @@ LLM は本ファイルを読むたびに、以下の観点で**能動的に曖�
 | 受入基準 | 対応テスト | 配置 |
 |---|---|---|
 | 機能的な基準（UC-N の動作） | interface-test + プロパティテスト | `components/<n>/test/.../interface_test.clj` |
-| 性能基準（X 件を Y 秒以内） | ベンチマークテスト | `bases/<n>/test/benchmarks/` または別途 kaocha プロファイル |
+| 性能基準（X 件を Y 秒以内） | ベンチマークテスト | `bases/<n>/test/benchmarks/` |
 | データ整合性基準 | プロパティテスト（`test.check`）で不変条件を検証 | `components/<n>/test/.../interface_test.clj` |
 | セキュリティ・非機能基準 | 統合テスト + 運用チェックリスト | `bases/<n>/test/integration/` + KNOWLEDGE.md §4 |
 
