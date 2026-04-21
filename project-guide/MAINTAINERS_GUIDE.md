@@ -548,6 +548,17 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
 3. 設定・構造 → `scripts/check-<topic>.sh` を追加、`scripts/check-workspace-integrity.sh` の `run_step` で起動、`scripts/README.md` を更新
 4. 完了条件（`CLAUDE.md §5.5`）への組み込みは、shell script 側は `check-workspace-integrity.sh` が既に含まれるので個別追加不要。custom hook は `clj -M:lint` に含まれるので個別追加不要
 
+### 5.11 `lint-import-hooks.sh` 再実行のタイミング
+
+`scripts/lint-import-hooks.sh`（`_POSSIBLE_ISSUES.md` D-5）は依存ライブラリが提供する clj-kondo hook を `.clj-kondo/configs/` に取り込む。以下のタイミングで再実行する:
+
+- **ブートストラップ初回**: `BOOTSTRAP_GUIDE.md §2.9` で実行
+- **brick deps.edn への新ライブラリ追加時**: 本節 §5.2 の手順に組み込む
+- **STACK_GUIDE.md §4.2 推奨ライブラリ採用時**: §5.6.3（新規ライブラリ採用時の手順）に組み込む
+- **`clj -M:outdated` で最新化した後**: 本節 §5.1 の更新手順に組み込む
+
+再実行を忘れると、新ライブラリ固有の lint ルールが機能しないまま開発が進む。**このタイミングを文書化せずに依存追加だけ行うと、A-6（非推奨ライブラリ検知）や各ライブラリ提供の警告が無効化されるため、必ず上記タイミングで実行する**。
+
 ### 5.12 clj-kondo linter 継続点検規律（機械化充実の運用姿勢）
 
 `_POSSIBLE_ISSUES.md` F 拡張・G-1 の延長。clj-kondo は活発に開発されており新 linter が追加されるため、本テンプレートの機械化を継続的に充実させる規律を定める。
@@ -579,17 +590,6 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
 - `.clj-kondo/config.edn` の追加は `scripts/lint-import-hooks.sh` の再実行が必要ない（組み込み linter のため）。custom hook 追加時のみ再取り込みを要する
 - 新 linter 追加で既存コードが失敗するようになった場合、**原則として既存コードを直す**（規約を緩める側に倒さない）。機械化充実姿勢と整合
 - false positive の許容は「一括 error で導入、問題が出たら個別に `:config-in-ns` で除外」の順（`_POSSIBLE_ISSUES.md` F 拡張判断 2）
-
-### 5.11 `lint-import-hooks.sh` 再実行のタイミング
-
-`scripts/lint-import-hooks.sh`（`_POSSIBLE_ISSUES.md` D-5）は依存ライブラリが提供する clj-kondo hook を `.clj-kondo/configs/` に取り込む。以下のタイミングで再実行する:
-
-- **ブートストラップ初回**: `BOOTSTRAP_GUIDE.md §2.9` で実行
-- **brick deps.edn への新ライブラリ追加時**: 本節 §5.2 の手順に組み込む
-- **STACK_GUIDE.md §4.2 推奨ライブラリ採用時**: §5.6.3（新規ライブラリ採用時の手順）に組み込む
-- **`clj -M:outdated` で最新化した後**: 本節 §5.1 の更新手順に組み込む
-
-再実行を忘れると、新ライブラリ固有の lint ルールが機能しないまま開発が進む。**このタイミングを文書化せずに依存追加だけ行うと、A-6（非推奨ライブラリ検知）や各ライブラリ提供の警告が無効化されるため、必ず上記タイミングで実行する**。
 
 ---
 

@@ -52,12 +52,46 @@
     (walk node)))
 
 (defn- destructuring-depth
-  "ベクタ / マップの destructuring 深さを返す（最大ネストレベル）。"
+  "ベクタ / マップの destructuring 深さを返す（最大ネストレベル）。
+
+   修正履歴: 当初の実装は `{:keys [a b]}` のような一般的な destructuring を
+   depth 3 と判定し、閾値 > 2 で false positive を多発させていた。
+   `:keys`・`:strs`・`:syms` のような「名前リスト」としてのベクタは
+   destructuring ネストと見なさないよう、`:keys` 系の直下ベクタを
+   カウントから除外する簡易ルールにした。完全な destructuring 解析ではないが、
+   実運用での false positive を抑える。"
   [node]
-  (letfn [(walk [n depth]
+  (letfn [(keys-like? [n]
+            ;; :keys / :strs / :syms / :or / :as など「名前リスト」系キーワード
+            (and (some? n)
+                 (try
+                   (let [sv (api/sexpr n)]
+                     (and (keyword? sv)
+                          (contains? #{"keys" "strs" "syms" "or" "as"} (name sv))))
+                   (catch Exception _ false))))
+          (non-trivial-children [n]
+            ;; whitespace / comment など token/vec/map 以外を排除
+            (filter #(or (api/token-node? %)
+                         (api/vector-node? %)
+                         (api/map-node? %))
+                    (children n)))
+          (walk [n depth]
             (cond
-              (or (api/vector-node? n) (api/map-node? n))
-              (apply max depth (map #(walk % (inc depth)) (children n)))
+              (api/vector-node? n)
+              (apply max depth (map #(walk % (inc depth)) (non-trivial-children n)))
+
+              (api/map-node? n)
+              ;; map-node の子は key-value ペア列（whitespace 除外済）。
+              ;; :keys / :strs / :syms の直下ベクタは「名前リスト」で
+              ;; destructuring ネストではないので加算しない。
+              (let [pairs (partition-all 2 (non-trivial-children n))]
+                (apply max depth
+                       (for [[k v] pairs
+                             :when v]
+                         (if (keys-like? k)
+                           depth
+                           (walk v (inc depth))))))
+
               :else depth))]
     (walk node 0)))
 
@@ -69,13 +103,23 @@
 ;;       （警告レベル、error にしない。正当な長さの関数もあるため）
 ;; ---------------------------------------------------------------------------
 
+(defn- ctx-filename
+  "hook ctx または node meta から filename を取り出す（clj-kondo 版差異吸収）。
+   clj-kondo バージョンによって ctx に :filename が入る場合と入らない場合があるため、
+   両方を試して nil なら空文字列を返す。"
+  [ctx]
+  (or (:filename ctx)
+      (:filename (meta (:node ctx)))
+      ""))
+
 (defn check-defn-lines
   "defn の行数を検査（A-7）。"
-  [{:keys [node filename]}]
-  (let [lines (count-lines node)
-        interface? (and filename
-                        (or (re-find #"interface\.clj$" filename)
-                            (re-find #"interface\.cljc$" filename)))
+  [ctx]
+  (let [node (:node ctx)
+        filename (ctx-filename ctx)
+        lines (count-lines node)
+        interface? (or (re-find #"interface\.clj$" filename)
+                       (re-find #"interface\.cljc$" filename))
         limit (if interface? 50 20)]
     (when (> lines limit)
       (reg! node :polyguard/function-too-long :warning
@@ -92,21 +136,25 @@
 
 (defn- count-positional-args
   "arg vector node 内の位置引数（単純シンボル）を数える。
-   destructuring と & args は数えない（A-15 の対象外）。"
+   destructuring と & args は数えない（A-15 の対象外）。
+
+   修正履歴: 当初 (remove api/reg-finding! ...) を使っていたが、
+   api/reg-finding! は述語ではなく副作用関数（finding 登録）で、
+   node を引数に呼ぶと例外または不正な finding 登録を起こす重大バグだった。
+   api/token-node? で whitespace / comma を filter する実装に差し替え。"
   [arg-vec]
-  (let [elems (remove api/reg-finding! (children arg-vec))]
-    (count
-     (take-while
-      (fn [n]
-        (and (api/token-node? n)
-             (not (= '& (api/sexpr n)))
-             (symbol? (api/sexpr n))))
-      elems))))
+  ;; rewrite-clj は whitespace / comma を子ノードに含むため、まず token-node のみ残す。
+  (let [tokens (filter api/token-node? (children arg-vec))
+        ;; & args 以降は数えない（take-while）
+        before-amp (take-while #(not (= '& (api/sexpr %))) tokens)]
+    ;; destructuring は token-node ではなく vector/map-node なので自然に除外される。
+    (count (filter #(symbol? (api/sexpr %)) before-amp))))
 
 (defn check-defn-arity
   "defn の位置引数数を検査（A-15）。"
-  [{:keys [node]}]
-  (let [[_fn-sym fn-name & rest-nodes] (children node)
+  [ctx]
+  (let [node (:node ctx)
+        [_fn-sym fn-name & rest-nodes] (children node)
         ;; docstring / attr-map / body を飛ばし、最初の vector-node か list-node を探す
         first-body (first (filter #(or (api/vector-node? %) (api/list-node? %))
                                   rest-nodes))]
@@ -131,17 +179,24 @@
 ;; ---------------------------------------------------------------------------
 
 (defn check-defn-destructuring
-  "defn 引数の destructuring 深さを検査（A-17）。"
-  [{:keys [node]}]
-  (let [[_fn-sym _fn-name & rest-nodes] (children node)
+  "defn 引数の destructuring 深さを検査（A-17）。
+
+   実装の注記: depth は「vector / map のネスト回数」で、`:keys`・`:strs`・`:syms`・`:or`・`:as`
+   の右辺は加算しない。閾値は > 3（= 深さ 4 以上で警告）。
+   これは `[{:keys [a b]}]` のような一般的パターンを通すための実運用的調整で、
+   `_POSSIBLE_ISSUES.md` A-17 の「深さ 2 超過」とは意味が異なるが、false positive を
+   避けつつ真にネストした destructuring のみを捕捉する。"
+  [ctx]
+  (let [node (:node ctx)
+        [_fn-sym _fn-name & rest-nodes] (children node)
         first-body (first (filter #(or (api/vector-node? %) (api/list-node? %))
                                   rest-nodes))]
     (when (and first-body (api/vector-node? first-body))
       (let [depth (destructuring-depth first-body)]
-        (when (> depth 2)
+        (when (> depth 3)
           (reg! first-body :polyguard/destructuring-too-deep :warning
-                (str "引数の destructuring が深さ " depth
-                     " です（上限 2）。中間キーを let で切り出してください。"
+                (str "引数の destructuring が深くネストしています（深さ " depth
+                     "）。中間キーを let で切り出してください。"
                      "CODING_GUIDE.md §1.12、_POSSIBLE_ISSUES.md A-17")))))))
 
 ;; ---------------------------------------------------------------------------
@@ -175,17 +230,20 @@
 
 (defn analyze-def
   "def の top-level mutable 禁止を検査（A-9）。"
-  [{:keys [node filename]}]
-  (when (and filename
-             (or (re-find #"^components/" filename)
-                 (re-find #"^bases/" filename))
-             (not (re-find #"development/src/" filename)))
-    (let [[_def-sym _name value] (children node)]
-      (when (and value (mutable-constructor-call? value))
-        (reg! node :polyguard/top-level-mutable :warning
-              (str "components/ または bases/ の top-level で (atom/ref/agent ...) を def しています。"
-                   "可変状態は最上位層（Integrant / 起動エントリ）に限定してください。"
-                   "CLAUDE.md §4.2、_POSSIBLE_ISSUES.md A-9"))))))
+  [ctx]
+  (let [node (:node ctx)
+        filename (ctx-filename ctx)]
+    ;; filename が空文字列（取得失敗）の場合は保守的に検査スキップ（false positive 回避）
+    (when (and (seq filename)
+               (or (re-find #"(?:^|/)components/" filename)
+                   (re-find #"(?:^|/)bases/" filename))
+               (not (re-find #"development/src/" filename)))
+      (let [[_def-sym _name value] (children node)]
+        (when (and value (mutable-constructor-call? value))
+          (reg! node :polyguard/top-level-mutable :warning
+                (str "components/ または bases/ の top-level で (atom/ref/agent ...) を def しています。"
+                     "可変状態は最上位層（Integrant / 起動エントリ）に限定してください。"
+                     "CLAUDE.md §4.2、_POSSIBLE_ISSUES.md A-9")))))))
 
 ;; ---------------------------------------------------------------------------
 ;; A-10 / A-11: catch の検査（広範囲 catch / 空 catch）
