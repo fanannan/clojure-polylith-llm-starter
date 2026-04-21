@@ -251,6 +251,14 @@ release 前・週次 CI では追加で以下を実行:
 
 `./scripts/check-workspace-integrity.sh` の内訳と役割分担は `scripts/README.md` を参照。機械化の層構造（clj-kondo 組み込み / polyguard hook / Splint / scripts / Polylith / Malli / clj-watson）は `MAINTAINERS_GUIDE.md §5.10` で体系化されている。
 
+### 5.6 CLI 呼び出しの統一
+
+Clojure CLI の呼び出しは `clj` に統一する。`clojure` は使用しない。
+
+- **理由**: `clj` は `clojure` の rlwrap ラッパで、非対話用途では機能等価。不統一は §1.2.1 機械化原則に反する entropy を生み、allowlist・スクリプト・ドキュメントの重複や揺れを招く
+- **適用範囲**: CLAUDE.md・`project-guide/` 配下・`scripts/` 配下・`.claude/settings.local.json`（いずれも git 管理下）、および LLM が新規に提案するコマンド例
+- **例外**: なし（対話 REPL 起動を allowlist やスクリプトに載せる場面は現状存在しない。REPL 対話は開発者がターミナルで直接起動するのみ）
+
 ---
 
 ## 6. Polylith と stack の運用
