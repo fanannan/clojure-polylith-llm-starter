@@ -162,16 +162,30 @@
     ;; destructuring は token-node ではなく vector/map-node なので自然に除外される。
     (count (filter #(symbol? (api/sexpr %)) before-amp))))
 
-(defn- first-defn-body
-  "defn の children から docstring / attr-map を飛ばして最初の
-   vector-node（単純アリティ）または list-node（マルチアリティ）を返す。"
+(defn- arity-vectors
+  "defn の children から全アリティの引数ベクタを抽出。
+   単純アリティ `(defn f [a b] ...)` と多アリティ `(defn f ([a] ...) ([a b] ...))`
+   の両方を扱う。docstring / attr-map は自動で飛ばされる。"
   [rest-nodes]
-  (first (filter #(or (api/vector-node? %) (api/list-node? %)) rest-nodes)))
+  (let [bodies (filter #(or (api/vector-node? %) (api/list-node? %)) rest-nodes)
+        first-body (first bodies)]
+    (cond
+      ;; 単純アリティ: 最初が vector → それ自体が引数ベクタ
+      (api/vector-node? first-body)
+      [first-body]
+      ;; 多アリティ: list-node 群の各先頭が引数ベクタ
+      (api/list-node? first-body)
+      (keep (fn [form]
+              (when (api/list-node? form)
+                (let [head (first (children form))]
+                  (when (api/vector-node? head) head))))
+            bodies)
+      :else [])))
 
 (defn- report-too-many-args!
   "A-15 の finding 登録。"
-  [first-body fn-name n]
-  (reg! first-body
+  [arg-vec fn-name n]
+  (reg! arg-vec
         {:type :polyguard/too-many-positional-args
          :level :warning
          :message (str (api/sexpr fn-name) " の位置引数が " n
@@ -179,15 +193,15 @@
                        "CODING_GUIDE.md §4.2、_POSSIBLE_ISSUES.md A-15")}))
 
 (defn check-defn-arity
-  "defn の位置引数数を検査（A-15、マルチアリティは複雑度回避でスキップ）。"
+  "defn の位置引数数を検査（A-15）。多アリティは各アリティ個別に検査。"
   [ctx]
   (let [node (:node ctx)
-        [_fn-sym fn-name & rest-nodes] (children node)
-        first-body (first-defn-body rest-nodes)]
-    (when (and fn-name first-body (api/vector-node? first-body))
-      (let [n (count-positional-args first-body)]
-        (when (>= n 4)
-          (report-too-many-args! first-body fn-name n))))))
+        [_fn-sym fn-name & rest-nodes] (children node)]
+    (when fn-name
+      (doseq [arg-vec (arity-vectors rest-nodes)
+              :let [n (count-positional-args arg-vec)]
+              :when (>= n 4)]
+        (report-too-many-args! arg-vec fn-name n)))))
 
 ;; ---------------------------------------------------------------------------
 ;; A-17: destructuring のネスト 2 超過
@@ -206,16 +220,14 @@
                        "CODING_GUIDE.md §1.12、_POSSIBLE_ISSUES.md A-17")}))
 
 (defn check-defn-destructuring
-  "defn 引数の destructuring 深さを検査（A-17）。
-   閾値 > 3 で運用（`:keys` 等は加算しない簡易実装）。"
+  "defn 引数の destructuring 深さを検査（A-17）。多アリティ対応、閾値 > 3。"
   [ctx]
   (let [node (:node ctx)
-        [_fn-sym _fn-name & rest-nodes] (children node)
-        first-body (first-defn-body rest-nodes)]
-    (when (and first-body (api/vector-node? first-body))
-      (let [depth (destructuring-depth first-body)]
-        (when (> depth 3)
-          (report-deep-destructuring! first-body depth))))))
+        [_fn-sym _fn-name & rest-nodes] (children node)]
+    (doseq [arg-vec (arity-vectors rest-nodes)
+            :let [depth (destructuring-depth arg-vec)]
+            :when (> depth 3)]
+      (report-deep-destructuring! arg-vec depth))))
 
 ;; ---------------------------------------------------------------------------
 ;; 統合した defn hook（A-7 / A-15 / A-17 をまとめて適用）
