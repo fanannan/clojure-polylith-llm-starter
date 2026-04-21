@@ -117,6 +117,10 @@ stack は時間とともに増え、選定根拠は詳細化し、機能領域�
 | **data-pipeline stack** | データ処理 | ライフサイクル、設定管理、DB、大量データ処理、ログ |
 | **bot stack** | チャット bot | ライフサイクル、HTTP クライアント、イベント駆動、ログ |
 | **desktop stack** | デスクトップ GUI アプリ（JVM） | ライフサイクル、GUI フレームワーク、ログ |
+| **saas stack** | SaaS / マルチテナント Web アプリ | Biff + XTDB、bitemporal DB、認証、HTMX、テナント分離 |
+| **ml stack** | データサイエンス・機械学習 | dataset 操作、ML pipeline、ノートブック、Python interop |
+| **llm-app stack** | LLM / AI 組込アプリ | LLM API 呼出し、embedding、ベクトルストア、プロンプト管理 |
+| **edge stack** | IoT / エッジ | GraalVM Native Image、GPIO、MQTT、軽量ログ |
 
 各 stack で推奨するライブラリは §4.2 参照。採用時は該当 stack の推奨ライブラリを **brick の deps.edn** に記述する（ワークスペースルートの deps.edn ではない）。
 
@@ -389,6 +393,637 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 
 **ノウハウ**: バッチ処理のスケジュールは**永続層との排他制御**（同時実行禁止、advisory lock 等）とセットで設計する。chime 自体は排他制御しない
 
+### 3.16 WebSocket / Server-Sent Events
+
+**採用**: `ring-websocket`（Ring 1.11+ 組込み、Jetty adapter 経由）。大規模同時接続時は `http-kit`。SSE は Ring の chunked response で自作。
+
+**検討した代替**:
+
+| 候補 | 却下理由 |
+|---|---|
+| aleph | Netty 基盤で依存重い、data 駆動でない（G6） |
+| manifold（aleph 同梱） | promise/stream が純粋関数と相性悪い、core.async で代替可（G3） |
+| immutant | 開発停止（G4） |
+| sente | 独自プロトコル層で抽象が厚い、ring-websocket で十分（G6） |
+
+**採用理由**:
+- ring-websocket は Ring 仕様の一部、既存 middleware と統合容易
+- handshake / onmessage / onclose を純粋データ（map）で扱える
+- SSE は Ring の chunked response で自作可、外部依存不要
+
+**採用 stack**: web-api stack（拡張）、bot stack（webhook サーバ側）
+
+**適用条件**:
+- リアルタイム更新が必要 → ring-websocket（Jetty）
+- 10k+ 同時接続 → http-kit（ADR 発行、スレッドモデル違いの記録）
+- SSE のみ → Ring chunked + jsonista、追加依存なし
+
+### 3.17 Rate Limiting / Circuit Breaker / リトライ
+
+**採用**:
+- **Retry / Circuit Breaker**: `sunng87/diehard`（純 Clojure、data 駆動 policy）
+- **Rate Limit (in-process)**: 自作 token-bucket（`atom` + `reduce`、依存ゼロ）
+- **Rate Limit (分散)**: `com.taoensso/carmine` + Redis Lua script
+
+**検討した代替**:
+
+| 候補 | 却下理由 |
+|---|---|
+| resilience4j 直接 interop | Java fluent API、data 駆動でない（G1） |
+| failsafe (Java) | 同上 |
+| ring-ratelimit | メンテ停滞（G4） |
+| robert.bruce | メンテ停止（G4） |
+
+**採用理由**:
+- diehard は `{:retry-on ... :max-retries ...}` の map で policy 指定、data 駆動
+- Malli スキーマで policy を契約化可能
+- 分散 rate limit は Redis で小さく解け、専用ライブラリ不要
+
+**採用 stack**: web-api stack、worker stack、bot stack、llm-app stack（外部 API 呼び出しを伴う全 stack）
+
+**適用条件**:
+- 外部 API 呼び出し → diehard 必須（§1.1.1 全域性: 失敗を契約に持ち上げる）
+- 同一プロセス内の rate limit → 自作 token-bucket
+- 水平スケール時の rate limit → carmine + Redis
+
+### 3.18 CSRF / セッション管理 / CORS
+
+**採用**:
+- **CSRF**: `ring/ring-anti-forgery`
+- **セッション**: Ring 標準 `ring.middleware.session`（cookie 認証時）。store は Redis（`carmine`）、JWT 認証なら store 不要
+- **CORS**: `metosin/reitit-ring` の CORS middleware、または `jumblerg/ring.middleware.cors`
+
+**検討した代替**:
+
+| 候補 | 却下理由 |
+|---|---|
+| buddy-auth 全体採用 | 認証とsession/CSRF が混在、関心分離の観点で避ける（G7） |
+| 自作 CSRF token 管理 | 再発明禁止（G6） |
+| in-memory session store（本番） | スケールアウトで session 消失（G3 設計思想） |
+
+**採用理由**:
+- Ring 標準 middleware は副作用が明示的で、middleware 順序を data として記述可能（Reitit と統合）
+- session store は環境に応じて差替可能な依存注入パターン
+- CSRF / CORS は security header 規約化で済む、フレームワーク不要
+
+**採用 stack**: web-api stack、graphql-api stack、saas stack
+
+**適用条件**:
+- 公開 Web API → ring-anti-forgery + ring-cors を常に適用
+- JWT のみ認証 → session store 不要
+- Cookie 認証 → Redis session store（carmine）
+- 同一オリジン SPA → CSRF 不要、CORS 緩め可（ADR 記録）
+
+### 3.19 分散トレーシング（手動計装）
+
+**採用**: `mulog` の `with-context` による trace ID / span ID 伝播 + 自作 middleware。外部送信は mulog publisher で Jaeger / Tempo / OpenTelemetry Collector へ。
+
+**検討した代替**:
+
+| 候補 | 却下理由 |
+|---|---|
+| OpenTelemetry Java Agent（自動計装） | §8.2 既に却下（構造化ログと分離）|
+| Micrometer Tracing | Spring 文脈が強く、Clojure との親和性低い（G7） |
+| 独自 trace ID 実装 | mulog context で既に可能、再発明禁止（G6） |
+
+**採用理由**:
+- mulog `with-context` は map を継承する仕組みで、data 駆動
+- 同一イベント源（mulog）から logs / metrics / traces を配信、一貫性保持（§3.14 と整合）
+- 手動計装は境界（HTTP request、DB query、外部 API）に限定可能で副作用が明示
+
+**採用 stack**: Integrant を採用する全 stack（web-api / graphql-api / batch / worker / data-pipeline / bot / saas / llm-app）
+
+**適用条件**:
+- 単一サービス → correlation ID（request ID）のみ、trace ID 不要
+- マイクロサービス → W3C Trace Context ヘッダ（`traceparent`）で trace ID を引き回し
+- 本規約は KNOWLEDGE.md §アーキテクチャ上の約束 に明記必須（§3.14 イベント名統一と同格の規約）
+
+### 3.20 i18n / l10n
+
+**採用**: `taoensso/tempura`
+
+**検討した代替**:
+
+| 候補 | 却下理由 |
+|---|---|
+| tower | 開発停止、tempura が後継（G4） |
+| ICU4J 直接 | 重量、tempura で包める範囲では不要（G6） |
+| Java ResourceBundle | data 駆動でない、Clojure 慣用外（G1） |
+
+**採用理由**:
+- tempura は辞書も data（map）、参照も純粋関数
+- Malli スキーマで翻訳キーの型安全化が可能
+- Taoensso 作者は安定的にメンテ継続
+
+**採用 stack**: web-api stack（多言語 UI 時）、bot stack（複数言語サポート時）
+
+**適用条件**:
+- 単一言語 → 採用不要
+- 2 言語以上 → tempura、辞書は `resources/i18n/*.edn` 配置
+- 日付・通貨・数値 → `java.time` + JDK 標準 NumberFormat（tempura と直交）
+
+### 3.21 Feature Flag
+
+**採用**: **自作**（EDN フラグ + aero `#profile` + DB 動的フラグの組合せ）
+
+**検討した代替**:
+
+| 候補 | 却下理由 |
+|---|---|
+| LaunchDarkly Java SDK | コスト、外部サービス依存、クローズドソース（G5/G6） |
+| Flagsmith | OSS 代替、自作で足りる規模では過剰（G6） |
+| feature-flag（Clojure 純） | メンテ不明（G4） |
+
+**採用理由**:
+- フラグは本質的に map。`{:feature/new-checkout true :feature/ab-variant :b}`
+- 静的フラグは aero profile、動的フラグは DB 1 テーブル（`feature_flags`）で十分
+- Malli スキーマで全フラグを契約化、未知フラグは起動時エラー（§1.1.1 全域性）
+
+**採用 stack**: web-api stack、worker stack、saas stack（リリース制御を伴うもの）
+
+**適用条件**:
+- 静的フラグのみ → aero profile、追加依存ゼロ
+- 非開発者がフラグを変更 → LaunchDarkly 採用を ADR で検討
+- A/B テスト → 自作（user-id ハッシュ→variant）、分析基盤は別
+- **規約**: フラグ定義は 1 つの EDN ファイルに集約、Malli スキーマで全網羅
+
+### 3.22 マルチテナント（Biff + XTDB パターン）
+
+**採用方針**: **Biff + XTDB** の組合せを saas stack（§4.2.11）として導入。RDBMS 併用時は tenant-id カラム + row-level isolation パターン。
+
+**検討した代替**:
+
+| 候補 | 却下理由 |
+|---|---|
+| 独自テナント分離フレームワーク | Biff + XTDB で完結、再発明不要（G6） |
+| schema-per-tenant（RDBMS、migratus で切替） | 運用複雑化、row-level で十分なケースが多い（条件付き採用は可） |
+
+**採用理由**:
+- Biff は Polylith brick と流儀が異なるが、data 駆動・純 Clojure・副作用隔離で本テンプレート整合
+- XTDB の valid-time + tenant-id 属性で自然に multi-tenant 実現
+- Datalog クエリに tenant-id 条件を middleware で強制注入可能
+
+**採用 stack**: saas stack（§4.2.11）
+
+**適用条件**:
+- SaaS・社内サービス → saas stack（Biff + XTDB）
+- 既存 RDBMS 継続 → web-api stack + tenant-id middleware（row-level）
+- schema-per-tenant → コンプライアンス要件明確時のみ、ADR 必須
+
+### 3.23 NoSQL 系
+
+**採用**:
+- **Key-Value / Cache / Pub-Sub**: `com.taoensso/carmine`（既採用、primary 用途も公式化）
+- **ドキュメント型（MongoDB）**: `com.novemberain/monger`
+- **AWS DynamoDB**: `com.cognitect.aws/dynamodb`（aws-api 系列）
+
+**検討した代替**:
+
+| 候補 | 却下理由 |
+|---|---|
+| Cassandra Java driver 直接 | Clojure 慣用ラッパなし、必要時 ADR で個別採用 |
+| MongoDB Java Driver 直接 | monger がシンプル data 駆動ラッパ（G6） |
+| faraday (DynamoDB) | aws-api に統一（worker stack と整合） |
+
+**採用理由**:
+- carmine は EDN-native、Redis コマンドを data で記述
+- monger は map で document を表現、Clojure 慣用
+- aws-api は全 AWS サービスで同じパターン、学習コスト低
+
+**採用 stack**: web-api / worker / batch / saas（必要性に応じ）
+
+**適用条件**:
+- Primary DB として NoSQL → ADR 必須（RDBMS 比較検討）
+- キャッシュ・セッション・レートリミット → carmine
+- ドキュメント型が明確に有利（スキーマレス + 集計不要）→ monger
+- AWS native 環境 → aws-api/dynamodb
+
+### 3.24 XTDB / Datomic / グラフ DB
+
+**採用**: **XTDB**（`com.xtdb/xtdb-api`）を第一選択。ライセンス（MIT/Apache）・Clojure 親和性・bitemporal が揃う。
+
+**検討した代替**:
+
+| 候補 | 却下理由 |
+|---|---|
+| Datomic Pro | 商用ライセンス、新規採用時のコスト・ロックインリスク（G5）。既存運用プロジェクトは継続可 |
+| Datomic Free/Solo | 機能制限あり、本番用途なら XTDB が自然 |
+| Neo4j（neo4j-clj） | 複雑グラフ特化用途のみ、一般 Web API では RDBMS/XTDB で足りる（G6） |
+| Datahike | XTDB のサブセット的位置づけ、XTDB 優先 |
+
+**採用理由**:
+- XTDB は EDN-native、クエリは Datalog（data 駆動）、Malli と整合
+- bitemporal で「現在の事実 + 歴史」を扱え、audit log 機能が自然に得られる
+- ライセンスが OSS で SaaS 展開にも制約なし
+
+**採用 stack**: saas stack（既定）、web-api stack（RDBMS の代替）、batch stack（イベントソーシング用途）
+
+**適用条件**:
+- 新規プロジェクトで RDBMS と迷う → XTDB を第一検討
+- bitemporal が要件 → XTDB 一択
+- 複雑な JOIN 中心 → RDBMS + next.jdbc 継続
+- グラフ深掘り（6 hop 以上等） → Neo4j を ADR で検討
+
+### 3.25 マイグレーション
+
+**採用**: `migratus/migratus`
+
+**検討した代替**:
+
+| 候補 | 却下理由 |
+|---|---|
+| ragtime | 互角だが、migratus の方が普及、data 駆動度も十分（G6） |
+| Flyway（Java） | XML/Java 設定が冗長（G1） |
+| Liquibase | 同上、XML DSL |
+
+**採用理由**:
+- SQL ファイルをそのまま書ける、学習コスト最小
+- up/down 管理、履歴テーブル、Clojure から直接起動可能
+- next.jdbc と同じ接続情報を使える
+
+**採用 stack**: next.jdbc を採用する全 stack（batch / worker / data-pipeline / web-api で DB 使用時）
+
+**適用条件**:
+- RDBMS 採用 → migratus 必須（CLAUDE.md §2: 生成は LLM 可、実行は人間）
+- XTDB → スキーマレスのためマイグレーション不要
+- `resources/migrations/` にバージョン付き SQL 配置、命名 `YYYYMMDDHHMMSS-description.{up,down}.sql`
+
+### 3.26 時系列 / EventStore
+
+**採用方針**:
+- **時系列データ** → **TimescaleDB**（PostgreSQL 拡張）+ next.jdbc（追加 Clojure 依存ゼロ）
+- **メトリクス** → mulog publisher（§3.14 既採用）
+- **イベントソーシング** → **XTDB**（bitemporal で代替）
+
+**検討した代替**:
+
+| 候補 | 却下理由 |
+|---|---|
+| InfluxDB Clojure wrapper | 成熟度低、hato で直接 HTTP 叩けば十分（G6） |
+| EventStoreDB (Kurrent) gRPC クライアント | 純 Clojure wrapper なし、XTDB で代替可（G6） |
+| 専用時系列 DB 採用 | プロジェクト規模で正当化されるケースは稀（G6） |
+
+**採用理由**:
+- 既存永続化層（PostgreSQL）の拡張で済む
+- XTDB の bitemporal は EventStore の主要機能を内包
+
+**採用 stack**: batch / worker / data-pipeline（時系列要件時）
+
+**適用条件**:
+- メトリクス保存 → Prometheus / CloudWatch（mulog 経由、独自時系列 DB 不要）
+- ドメイン時系列（IoT センサ等）→ TimescaleDB
+- イベントソーシング → XTDB
+
+### 3.27 E2E テスト
+
+**採用**: `etaoin/etaoin`（WebDriver）
+
+**検討した代替**:
+
+| 候補 | 却下理由 |
+|---|---|
+| clj-webdriver | メンテ停止、etaoin が後継（G4） |
+| Playwright | Node.js / Python 経由、JVM 統合しにくい（G7） |
+| Selenium 直接 | 低レベル、etaoin で包める範囲（G6） |
+
+**採用理由**:
+- etaoin は 100% Clojure、map で driver 設定、data 駆動
+- matcher-combinators と組で assert を書ける
+
+**採用 stack**: dev-tools stack 拡張、必要プロジェクトのみ任意
+
+**適用条件**:
+- ブラウザ UI（SSR or SPA）→ etaoin
+- API-only → 既存 clojure.test + matcher-combinators で十分、E2E 不要
+- CI 実行 → Docker Selenium hub 併用
+
+### 3.28 負荷テスト
+
+**採用**: **Gatling**（Scala DSL、JVM 同居）
+
+**検討した代替**:
+
+| 候補 | 却下理由 |
+|---|---|
+| k6 | JavaScript、Clojure と別スタック（G7） |
+| Apache Bench / wrk | 単純な HTTP 用途のみ、シナリオ書けない |
+| JMeter | XML 設定、data 駆動でない（G1） |
+| 純 Clojure 負荷テスト | 成熟ライブラリなし（G4） |
+
+**採用理由**:
+- Gatling は JVM 内で走る、HTML レポート自動生成
+- シナリオが data として書ける（Scala DSL だが構造は map）
+
+**採用 stack**: 負荷要件があるプロジェクトに任意併用（stack 化しない、別 project として追加）
+
+**適用条件**:
+- パフォーマンス SLO あり → Gatling
+- 単純スループット計測 → wrk 等（外部ツール）
+- **必須層には含めない**。DESIGN.md §8 に「パフォーマンス要件」を明記したプロジェクトのみ
+
+### 3.29 契約テスト
+
+**採用方針**: **Pact（pact-jvm）を Java interop で利用**、純 Clojure ラッパは採用しない。
+
+**検討した代替**:
+
+| 候補 | 却下理由 |
+|---|---|
+| 純 Clojure 契約テストライブラリ | 成熟品なし（G4） |
+| 自作 | 契約テストの標準化効果が失われる |
+
+**採用理由**:
+- Pact は業界標準、broker と連携可能
+- Consumer-Driven Contract を Malli スキーマから生成可能（自作ブリッジ）
+
+**採用 stack**: マイクロサービス構成時のみ（saas stack の兄弟として）
+
+**適用条件**:
+- サービス 3 つ以上で契約保証が必要 → pact-jvm、ADR 必須
+- 単独サービス → 不要
+
+### 3.30 gRPC / Protocol Buffers
+
+**採用方針**: **積極採用しない**。社内で gRPC 必須の場合のみ `protojure/protojure`。
+
+**検討した代替**:
+
+| 候補 | 却下理由 |
+|---|---|
+| io.grpc/grpc-java 直接 | OOP 重い、生成コードが data 駆動でない（G1） |
+| lambdaisland 系 gRPC | 新興、成熟度不足（G4） |
+| HTTP/2 + JSON | ほとんどのユースケースでこちらで十分（G6） |
+
+**採用理由（protojure）**:
+- 純 Clojure 風 API、`.proto` 定義から Clojure 関数生成
+- ただし抽象の厚みは大きい（採用は慎重）
+
+**採用 stack**: なし（プロジェクト固有採用、ADR 必須）
+
+**適用条件**:
+- 社内で gRPC 規約がある → protojure、ADR 発行
+- 性能要件のみ → HTTP/2 + http-kit で十分
+
+### 3.31 PDF / Excel / ドキュメント生成
+
+**採用**:
+- **PDF (純 Clojure)**: `clj-pdf/clj-pdf`（data 駆動 DSL）
+- **HTML → PDF**: `org.xhtmlrenderer/flying-saucer-pdf-openpdf`（複雑レイアウト時）
+- **Excel**: `dk.ative/docjure`（Apache POI の data 駆動ラッパ）
+- **CSV**: `org.clojure/data.csv`（公式）
+
+**検討した代替**:
+
+| 候補 | 却下理由 |
+|---|---|
+| iText 直接 | Java fluent API、data 駆動でない。ライセンス（AGPL）注意（G5） |
+| Apache POI 直接 | docjure が Clojure 慣用ラッパ（G1） |
+| pandoc（外部）| 外部プロセス、本格要件では使うが内部生成には過剰（G7） |
+
+**採用理由**:
+- clj-pdf は hiccup 風 data で PDF 構造を記述、Malli で構造契約化可
+- docjure はセル編集を map で、副作用は関数末尾に集約可能
+
+**採用 stack**: web-api stack 拡張（帳票機能時）、batch stack（レポート生成時）
+
+**適用条件**:
+- シンプル PDF → clj-pdf
+- 複雑レイアウト（CSS 必要）→ Flying Saucer + hiccup→HTML
+- Excel 出力 → docjure
+- Word (docx) → Apache POI 直接 interop（稀、ADR）
+
+### 3.32 Markdown / YAML / TOML / XML
+
+**採用**:
+- **Markdown**: `markdown-clj/markdown-clj`（軽量）または `com.vladsch.flexmark/flexmark-all`（高機能）
+- **YAML**: `clj-commons/clj-yaml`
+- **TOML**: **採用しない**（EDN 推奨）
+- **XML**: `org.clojure/data.xml`
+
+**検討した代替**:
+
+| 候補 | 却下理由 |
+|---|---|
+| endophile (markdown) | 開発停止（G4） |
+| xerces / xalan（独立版） | §8.1 既に禁止（XXE 脆弱性） |
+| snake-yaml 直接 | clj-yaml がラップ（G6） |
+
+**採用理由**:
+- markdown-clj は data 駆動（parsed tree を vector で扱える）
+- data.xml は公式、XXE 対策済み
+- YAML は aero 経由で扱うので clj-yaml を使う場面は限定的
+
+**適用条件**:
+- 設定ファイル → EDN + aero（YAML/TOML 不要）
+- Markdown → markdown-clj（軽量） or Flexmark（拡張必要時）
+- 外部 XML API 連携 → data.xml
+
+### 3.33 メール / SMS / プッシュ通知
+
+**採用**:
+- **SMTP**: `draines/postal`
+- **Transactional Email（SendGrid / SES）**: `hato` 直接 + `jsonista`
+- **SMS（Twilio 等）**: `hato` 直接
+- **FCM（プッシュ通知）**: `hato` 直接 + Firebase Admin Java SDK（認証のみ）
+
+**検討した代替**:
+
+| 候補 | 却下理由 |
+|---|---|
+| 各サービス専用 Clojure wrapper | 多くはメンテ停滞（G4） |
+| Spring Mail 等 Java フレームワーク | 重い、Clojure 慣用外（G7） |
+
+**採用理由**:
+- bot stack と同じ思想（HTTP API は hato 直接が最も寿命長い）
+- SMTP は java mail ベースの postal が実績十分
+
+**採用 stack**: web-api / worker / batch に通知機能を追加する時
+
+**適用条件**:
+- 通知送信 → worker stack に配信ジョブとして隔離（web リクエストスレッドで同期送信しない）
+- テンプレート管理 → selmer や tempura で map → text
+- 認証情報 → aero `#env` のみ（コード埋込禁止、既定）
+
+### 3.34 ファイルストレージ
+
+**採用**:
+- **AWS S3**: `com.cognitect.aws/s3`（aws-api 系列、既採用）
+- **GCS**: `com.google.cloud/google-cloud-storage`（Google Java SDK 直接、薄く利用）
+- **Azure Blob**: Azure Java SDK 直接（稀）
+
+**検討した代替**:
+
+| 候補 | 却下理由 |
+|---|---|
+| Amazonica | メンテ停止傾向、aws-api が後継（G4） |
+| 自作クラウド抽象レイヤー | 疎結合の名目で抽象が漏れる（G6） |
+
+**採用理由**:
+- aws-api の呼出しパターンを流用、学習コスト最小
+- SDK 直接でもブリッジ層を Clojure で薄く書ける
+
+**採用 stack**: web-api / worker / batch に S3 要件が出た時
+
+**適用条件**:
+- ファイル upload → presigned URL 生成（S3 の場合 aws-api で対応）
+- 大容量 → ストリーミング（InputStream）、全メモリ展開禁止
+- マルチクラウド抽象 → 採用しない（各クラウドを直接叩く、ADR）
+
+### 3.35 フルテキスト検索
+
+**採用**:
+- **PostgreSQL 全文検索**（`tsvector`）→ 既存 next.jdbc で完結、**第一選択**
+- **Elasticsearch / OpenSearch**: `mpenet/spandex`（中〜大規模時）
+
+**検討した代替**:
+
+| 候補 | 却下理由 |
+|---|---|
+| clojurewerkz/elastisch | メンテ停止（G4） |
+| Apache Lucene 直接 | 組込み用途で稀に有用だが、通常過剰（G6） |
+| Algolia / Meilisearch 専用 Clojure wrapper | ほぼ無い、HTTP 直接で十分 |
+
+**採用理由**:
+- PostgreSQL の tsvector は既存 DB で完結、追加インフラ不要
+- spandex は data 駆動クエリ（map で ES クエリを記述）
+
+**採用 stack**: web-api stack（検索要件時）
+
+**適用条件**:
+- 数万〜数十万件、日本語形態素解析不要 → PostgreSQL 全文検索
+- 数百万件以上、複雑スコアリング、日本語形態素 → spandex + OpenSearch
+- 組込み（ローカルファイル検索等） → Lucene 直接（ADR）
+
+### 3.36 機械学習・数値計算
+
+**採用**: **scicloj 系**
+- `scicloj/tablecloth`（data.frame 風、data 駆動の頂点）
+- `scicloj/scicloj.ml`（ML pipeline）
+- `scicloj/clay`（ノートブック生成、Portal と共存可）
+- `scicloj/noj`（統合パッケージ、複数採用時）
+
+**深層学習（必要時）**:
+- **Python 側に委譲**を第一選択。`clj-python/libpython-clj` で PyTorch / TensorFlow を呼び出し、モデル学習は Python、推論境界を Clojure で包む
+
+**検討した代替**:
+
+| 候補 | 却下理由 |
+|---|---|
+| incanter | メンテ低迷、tablecloth が後継（G4） |
+| deeplearning4j Clojure wrapper | OOP 重い、mutation 多用（G1/G2） |
+| cortex | 開発停止（G4） |
+| PyTorch 直接 JNI | libpython-clj で包める範囲（G6） |
+
+**採用理由**:
+- scicloj 系は data 駆動が徹底、dataset は map/vector の集合として扱える
+- Malli スキーマで dataset 構造を契約化可能
+- libpython-clj は Python モデルを関数としてラップ、境界で副作用を隔離できる
+
+**採用 stack**: ml stack（§4.2.12）または data-pipeline stack 拡張
+
+**適用条件**:
+- データ分析・特徴量エンジニアリング → tablecloth
+- 古典 ML → scicloj.ml
+- 深層学習 → Python（PyTorch）側で学習、Clojure は推論境界のみ
+- ノートブック駆動 → clay + Portal
+- **純 Clojure で深層学習**→ 射程外、ADR で外部委託判断
+
+### 3.37 LLM / AI API 連携
+
+**採用方針**:
+- **プロバイダ API は hato で直接叩く**を第一選択
+- ラッパとして `wkok/openai-clojure`（OpenAI / Ollama / Azure OpenAI 互換）採用可
+- **ベクトルストア**: **PostgreSQL + pgvector**（追加インフラ不要時）/ pinecone-api（ADR 必須）
+
+**検討した代替**:
+
+| 候補 | 却下理由 |
+|---|---|
+| langchain4j Clojure 移植 | OOP/継承多用、LLM 界隈は変動早く、薄い HTTP の方が長寿命（G1/G6） |
+| llama-clj (native binding) | native 依存、ビルド複雑化（G6） |
+| 専用 agent framework（LangGraph 等 Clojure 移植） | 2025 時点で成熟品なし（G4） |
+
+**採用理由**:
+- LLM プロバイダ API は REST であり、hato 直接で足りる
+- プロンプトは Clojure の map で表現、data 駆動
+- Malli で request/response スキーマ契約化が自然
+- プロバイダ切替（OpenAI ↔ Anthropic ↔ Ollama）は wrapper 層で吸収
+
+**採用 stack**: llm-app stack（§4.2.13）
+
+**適用条件**:
+- 単発 LLM 呼び出し → hato 直接、または `wkok/openai-clojure`
+- RAG → pgvector + `wkok/openai-clojure` (embeddings)
+- ローカル LLM → Ollama HTTP endpoint + hato
+- 複雑 agent → ADR 必須、独自実装、外部ラッパ採用は避ける
+- **規約**: プロンプトテンプレートは EDN、運用変更は ADR（プロンプトもコード扱い）
+
+### 3.38 画像・映像・音声処理
+
+**採用**:
+- **画像処理（軽）**: JDK 標準 `javax.imageio` + 薄い純 Clojure ヘルパ
+- **画像処理（複雑）**: `org.bytedeco/opencv-platform`（OpenCV Java wrapper）
+- **SVG 生成**: `rm-hull/dali`（data 駆動、hiccup 風）
+- **動画トランスコード**: `com.github.kokorin/jaffree`（FFmpeg shell out wrapper）
+- **OCR**: Tesseract（`net.sourceforge.tess4j`）を **shell out で呼び出し**、インプロセス JNI は避ける
+- **音声**: JDK 標準 + 必要時 Java ライブラリ（`overtone` は創作用途のみ）
+
+**検討した代替**:
+
+| 候補 | 却下理由 |
+|---|---|
+| JavaCV 直接 | OpenCV-Clojure 経由が慣用（G7） |
+| Imaging 系の古い Clojure wrapper | メンテ停滞（G4） |
+| overtone（プロダクション） | 創作用途のみ、副作用が内側に漏れる（G3） |
+
+**採用 stack**: 画像・動画処理を扱うプロジェクトに任意追加（web-api / batch / worker 拡張）
+
+**適用条件**:
+- サムネイル生成 → javax.imageio
+- コンピュータビジョン → OpenCV
+- SVG → dali
+- 動画トランスコード → jaffree (FFmpeg shell out)
+- OCR → Tesseract shell out（JVM 内の JNI 同居はクラッシュリスク）
+
+### 3.39 IoT / エッジ
+
+**採用**:
+- **GraalVM Native Image**（必須、起動時間とメモリ削減）
+- **GPIO 制御（Raspberry Pi 等）**: `Pi4J`（Java、純 Clojure ラッパなし）
+- **MQTT**: `eclipse/paho.mqtt.java`（Java 直接、data 駆動ラッパ薄く）
+
+**検討した代替**:
+
+| 候補 | 却下理由 |
+|---|---|
+| Babashka | 本テンプレート方針で不採用（shell script 優先） |
+| 旧 Clojure MQTT ラッパ | メンテ停滞（G4） |
+| ESP32 等の非 JVM 環境 | 射程外（ADR で Rust/Go 推奨を記録） |
+
+**採用理由**:
+- GraalVM Native Image で起動時間 100ms 以下、メモリ 50MB 程度に削減可能
+- Pi4J は Java 界のデファクト、薄く Clojure で包む
+
+**採用 stack**: edge stack（§4.2.14）
+
+**適用条件**:
+- Raspberry Pi クラス → edge stack
+- センサー多数 → MQTT + worker stack の組合せ
+- リアルタイム制御（ms 単位） → 射程外
+
+### 3.40 ゲーム・グラフィクス（射程外）
+
+**採用方針**: **本テンプレート射程外**と明示。
+
+**採用ライブラリ**: なし（参考情報として `quil` / `play-cljc` を挙げるのみ）
+
+**採用理由**:
+- ゲームループは副作用の中心、純粋関数型と相性が悪い
+- 本テンプレートはビジネスアプリ / バッチ / CLI 向け
+- ゲーム開発は別テンプレートを検討
+
+**stack 追加なし**。ゲーム要件プロジェクトは ADR 発行 + 本テンプレート以外の枠組み選択。
+
 ---
 
 ## 4. stack 定義
@@ -408,6 +1043,10 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 | 大量データの ETL・変換処理 | **data-pipeline stack** |
 | チャットボット（Telegram / Slack / Discord 等） | **bot stack** |
 | デスクトップ GUI アプリ（JVM ネイティブ） | **desktop stack** |
+| SaaS / マルチテナント Web アプリ（Biff + XTDB ベース） | **saas stack** |
+| データサイエンス・機械学習（tabular data、古典 ML、ノートブック） | **ml stack** |
+| LLM / AI を組み込んだアプリ（RAG、チャット、Agent） | **llm-app stack** |
+| IoT / エッジ（Raspberry Pi 等、GraalVM Native Image） | **edge stack** |
 
 **複数の性格を持つプロジェクト**（例: Web API + バッチ併設）は**複数 stack の併用**で対応する。採用 stack は DESIGN.md §8.3 に記録し、各 brick の deps.edn にそれぞれの推奨ライブラリ（§4.2）を反映する。brick の構造は Polylith の通常通り（components / bases / projects）。
 
@@ -501,9 +1140,17 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 | コンテント折衝 | `metosin/muuntaja` | 0.6.10 |
 | 構造化ログ | `com.brunobonacci/mulog` | 0.9.0 |
 | ログ JSON 出力 | `com.brunobonacci/mulog-json` | 0.9.0 |
+| WebSocket（リアルタイム必要時） | ring-websocket（Jetty 組込、§3.16） | — |
+| CSRF（公開 Web API 必須） | `ring/ring-anti-forgery` | 1.3.0 |
+| CORS（ブラウザクライアント時） | `metosin/reitit-ring` の CORS middleware | 0.7.2 |
+| Session Store（Cookie 認証 + スケールアウト時） | `com.taoensso/carmine`（Redis） | 3.3.2 |
+| Retry / Circuit Breaker（外部 API 呼出時） | `sunng87/diehard` | 最新 |
+| 全文検索（検索機能時） | PostgreSQL tsvector（next.jdbc）or `mpenet/spandex`（大規模、§3.35） | — |
+| 帳票 PDF（帳票機能時） | `clj-pdf/clj-pdf`（§3.31） | 最新 |
+| i18n（多言語対応時） | `taoensso/tempura`（§3.20） | 最新 |
 
 **選定ポイント**:
-- **HTTP サーバ実装**: Jetty(標準・成熟)が初期推奨。高同時接続性能が重要なら http-kit(NIO、軽量)または aleph(Netty)を検討。プロファイル要件で判断
+- **HTTP サーバ実装**: Jetty(標準・成熟)が初期推奨。高同時接続性能が重要なら http-kit(NIO、軽量)を検討。aleph は §8.2 非推奨（manifold 依存、過剰）。プロファイル要件で判断
 - **middleware の順序**: Reitit の data 駆動ルーティングで middleware を list として明示。順序依存のバグを契約で防ぐ
 - **認証・認可**: §3.12 参照。JWT なら buddy-sign 追加
 - **エラーハンドリング**: Reitit の `exception` middleware で例外 → HTTP エラーレスポンスへの変換を中央集権化
@@ -584,8 +1231,13 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 | SQL ビルダ | `com.github.seancorfield/honeysql` | 2.6.1230 |
 | DB 接続プール | `com.zaxxer/HikariCP` | 6.2.1 |
 | DB ドライバ | 利用 DB に応じて追加(例: `org.postgresql/postgresql` 42.7.4) | — |
+| マイグレーション | `migratus/migratus`（§3.25） | 最新 |
 | 構造化ログ | `com.brunobonacci/mulog` | 0.9.0 |
 | スケジューリング（定期実行時） | `jarohen/chime` | 0.3.3 |
+| Retry（外部 API 呼出時） | `sunng87/diehard`（§3.17） | 最新 |
+| レポート Excel（Excel 出力時） | `dk.ative/docjure`（§3.31） | 最新 |
+| レポート PDF（PDF 出力時） | `clj-pdf/clj-pdf`（§3.31） | 最新 |
+| メール送信（通知時） | `draines/postal`（SMTP）または hato 直接（§3.33） | — |
 
 **選定ポイント**:
 - **冪等性**: バッチは再実行安全（冪等）に設計。途中失敗からのリトライを前提
@@ -622,6 +1274,8 @@ batch stack の全要素 +
 | 機能 | ライブラリ | 備考 |
 |---|---|---|
 | メッセージキュークライアント | プロジェクト依存 | 下記選定ポイント参照 |
+| Retry / Circuit Breaker（必須化） | `sunng87/diehard`（§3.17） | 外部 API 呼出時は常に |
+| S3 等ファイルストレージ（必要時） | `com.cognitect.aws/s3`（§3.34） | 同 aws-api 系列 |
 
 **キュー別の推奨クライアント**:
 
@@ -809,6 +1463,151 @@ batch stack の全要素 +
 - [ ] Integrant を含む stack と併用する場合、`integrant/repl` が `:dev :extra-deps` にある
 - [ ] uberjar ビルドで dev-tools ライブラリが除外されている（`cd projects/<deploy> && clj -T:build uber` の成果物を確認）
 - [ ] test.check generator が Malli スキーマから生成できる（動作確認）
+
+#### 4.2.11 saas stack
+
+**目的**: SaaS・社内サービス向け、Biff + XTDB を軸にしたマルチテナント対応完結ソリューション。
+
+**必要機能**: ライフサイクル、bitemporal DB、認証、HTMX or reitit、セッション、マルチテナント、構造化ログ。
+
+**推奨ライブラリ**:
+
+| 機能 | ライブラリ | バージョン目安 |
+|---|---|---|
+| 統合フレームワーク | `com.biffweb/biff` | 最新 |
+| bitemporal DB | `com.xtdb/xtdb-api` | 2.x |
+| 設定管理 | `aero/aero` | 1.1.6 |
+| HTTP サーバ | `ring/ring-jetty-adapter` | 1.13.0 |
+| ルーティング | `metosin/reitit`（Biff 内蔵と共存） | 0.7.2 |
+| SSR テンプレート | `rum/rum` または `hiccup2/hiccup` | — |
+| 認証 | `buddy/buddy-sign` + `buddy/buddy-hashers` | — |
+| 構造化ログ | `com.brunobonacci/mulog` | 0.9.0 |
+
+**選定ポイント**:
+- Biff は Polylith brick 構造と流儀が異なるため、**Biff 側の helpers を component 化して包む**パターン（ADR 必須）
+- XTDB の tenant 分離は `tenant-id` 属性 + valid-time で実現
+- 認証セッションは XTDB に直接保存可能、別セッションストア不要
+- SSR + HTMX で SPA を避ける設計（ClojureScript 不要）
+
+**避けるべきライブラリ**:
+- ClojureScript フロントエンド全面採用（HTMX で済むなら不要、G6）
+- 別 ORM / 別 query builder（XTDB の Datalog で十分）
+- §4.2.3 web-api stack の避けるべきリストも該当
+
+**採用時の確認事項**:
+- [ ] XTDB submit log / document store が設定されている（in-memory / RocksDB / PostgreSQL backing）
+- [ ] tenant-id 属性が全 document に必須化されている（Malli スキーマで契約）
+- [ ] 認証 middleware が全ルートで tenant-id 検証を実施
+- [ ] Biff の auto-reload が開発時有効、production で無効
+- [ ] バックアップ戦略（XTDB log/docs の対象化）が設計済み
+
+#### 4.2.12 ml stack
+
+**目的**: データサイエンス・機械学習、ノートブック駆動開発。
+
+**必要機能**: dataset 操作、ML pipeline、可視化、ノートブック。
+
+**推奨ライブラリ**:
+
+| 機能 | ライブラリ | バージョン目安 |
+|---|---|---|
+| dataset | `scicloj/tablecloth` | 最新 |
+| ML pipeline | `scicloj/scicloj.ml` | 最新 |
+| ノートブック | `scicloj/clay` | 最新 |
+| 統合（任意） | `scicloj/noj` | 最新 |
+| 可視化 | `djblue/portal` + `scicloj/clay` | — |
+| Python interop（必要時） | `clj-python/libpython-clj` | 最新 |
+| 構造化ログ | `com.brunobonacci/mulog` | 0.9.0 |
+
+**選定ポイント**:
+- data 駆動の頂点、scicloj 系は本テンプレート哲学に最も整合
+- Python 依存は境界に限定、Clojure コアは純粋保持
+- ノートブック（clay）は Markdown + Clojure コード + 結果の data 駆動記録
+- Portal で tap> ベースのインスペクションを活用
+
+**避けるべきライブラリ**:
+- `deeplearning4j`（OOP 重い、§8.2）
+- `incanter`（メンテ低迷、§8.2）
+- 自作 dataset 構造（tablecloth で十分）
+
+**採用時の確認事項**:
+- [ ] tablecloth で dataset 操作が書ける
+- [ ] Malli スキーマで dataset 構造を契約化
+- [ ] Python 連携時は libpython-clj の仮想環境が固定（`requirements.txt` 管理）
+- [ ] 学習済みモデルの serialize / deserialize 経路が明確
+- [ ] ノートブック（clay）の生成先・公開先（HTML）が決まっている
+
+#### 4.2.13 llm-app stack
+
+**目的**: LLM / AI を組み込んだアプリケーション（RAG、チャット、Agent）。
+
+**必要機能**: LLM プロバイダ呼出し、embedding 生成、ベクトルストア、プロンプト管理、リトライ、構造化ログ。
+
+**推奨ライブラリ**:
+
+| 機能 | ライブラリ | バージョン目安 |
+|---|---|---|
+| HTTP クライアント | `hato/hato` | 1.0.0 |
+| LLM wrapper（任意） | `wkok/openai-clojure` | 最新 |
+| JSON | `metosin/jsonista` | 0.3.11 |
+| ベクトルストア（標準） | PostgreSQL + pgvector（next.jdbc 経由） | — |
+| プロンプトテンプレート | `selmer/selmer` または自作 | 1.12.x |
+| リトライ | `sunng87/diehard` | 最新 |
+| 構造化ログ | `com.brunobonacci/mulog` | 0.9.0 |
+| ライフサイクル | `integrant/integrant` | 0.13.1 |
+
+**選定ポイント**:
+- プロンプトは EDN 管理、git 追跡対象（コードと同等）
+- プロバイダ切替は wrapper 層で、core は純粋保持
+- ベクトル検索は PostgreSQL で完結を第一選択、Pinecone 等は ADR
+- token 使用量ログは mulog event `::llm-call` で統一
+
+**避けるべきライブラリ**:
+- `langchain4j` Clojure 移植（OOP 重い、変動早い、§8.2）
+- 専用 agent framework（2025 時点で成熟品なし）
+- `llama-clj`（native 依存、ビルド複雑、条件付き）
+
+**採用時の確認事項**:
+- [ ] API key が aero `#env` 管理、コード埋込なし
+- [ ] token 使用量が mulog で記録、コスト追跡可能
+- [ ] リトライポリシーが diehard で定義、rate limit 対応
+- [ ] プロンプトテンプレート全てに Malli 入出力スキーマ
+- [ ] embedding ベクトル次元が pgvector スキーマと一致（起動時検証）
+- [ ] プロバイダ切替時の wrapper 層インタフェースが明確
+
+#### 4.2.14 edge stack
+
+**目的**: Raspberry Pi / 組込み JVM 環境、GraalVM Native Image による軽量化。
+
+**必要機能**: GraalVM Native Image、GPIO、MQTT、設定管理、軽量構造化ログ。
+
+**推奨ライブラリ**:
+
+| 機能 | ライブラリ | バージョン目安 |
+|---|---|---|
+| Native Image | GraalVM 21 | — |
+| GPIO | `com.pi4j/pi4j-core` + `com.pi4j/pi4j-plugin-pigpio` | 2.x |
+| MQTT | `org.eclipse.paho/org.eclipse.paho.client.mqttv3` | 1.2.5 |
+| 設定管理 | `aero/aero` | 1.1.6 |
+| 構造化ログ | `com.brunobonacci/mulog`（軽量 publisher） | 0.9.0 |
+
+**選定ポイント**:
+- `clj -T:build native-image` を build.clj に追加、GraalVM 必須
+- reflection 回避、`*warn-on-reflection* true` 必須
+- mulog publisher は console または軽量ネットワーク（CloudWatch 等）
+- MQTT 再接続・バックオフ戦略を必須実装
+
+**避けるべきライブラリ**:
+- reflection を伴う Java interop 多用ライブラリ（Native Image ビルド時警告）
+- Babashka（shell script 優先方針、§8.2）
+- 重量 GUI フレームワーク
+
+**採用時の確認事項**:
+- [ ] GraalVM Native Image ビルドが成功する（`reflect-config.json` 必要時）
+- [ ] 起動時間 < 500ms、メモリ < 100MB（計測証跡）
+- [ ] Pi4J の native lib（libpigpio）がデプロイ先にインストール済み
+- [ ] MQTT 再接続戦略が実装済み（ネットワーク断耐性）
+- [ ] 更新配布方法が決まっている（ota / 手動デプロイ）
 
 ---
 
@@ -1037,6 +1836,30 @@ brick deps.edn が採用 stack の §4.2.X 採用時の確認事項を満たし�
 | スケジューリング | Quartz(java interop) | 条件付き | 重量級、設定が冗長。複雑な業務要件があれば検討可 | — |
 | スケジューリング | tea-time | メンテ停止 | chime へ | — |
 | ビルド・依存管理 | Leiningen(新規プロジェクト) | 推奨代替あり + 条件付き | tools.deps へ。Lein ベースの既存は段階移行 | — |
+| HTTP サーバ | aleph | 設計思想不整合 | Jetty / http-kit に移行。Netty 基盤で依存重く、manifold を抱え込む | — |
+| 並行処理 | manifold | 設計思想不整合 | core.async / promise.cljc に移行。aleph と同系統の設計不整合 | — |
+| HTTP サーバ | immutant | メンテ停止 | Jetty へ。WildFly 系はもはやメンテされていない | — |
+| 多言語対応 | tower | メンテ停止 | `taoensso/tempura` へ（§3.20） | — |
+| E2E テスト | clj-webdriver | メンテ停止 | `etaoin/etaoin` へ（§3.27） | — |
+| Markdown | endophile | メンテ停止 | `markdown-clj/markdown-clj` へ（§3.32） | — |
+| 全文検索 | clojurewerkz/elastisch | メンテ停止 | `mpenet/spandex` へ（§3.35） | — |
+| AWS SDK | amazonica | メンテ停止 | `com.cognitect.aws/*` aws-api へ | — |
+| 数値計算 | incanter | メンテ低迷 + 設計思想不整合 | `scicloj/tablecloth` / `scicloj/scicloj.ml` へ（§3.36） | — |
+| 深層学習 | deeplearning4j Clojure wrapper | 設計思想不整合 | libpython-clj 経由で PyTorch/TensorFlow（§3.36） | — |
+| 深層学習 | cortex | メンテ停止 | libpython-clj 経由へ | — |
+| LLM ラッパ | langchain4j Clojure 移植 | 設計思想不整合 | hato 直接 + `wkok/openai-clojure`（§3.37） | — |
+| 音声（プロダクション） | overtone（創作用途以外） | 条件付き | プロダクションでは採用しない。創作・ライブコーディング用途のみ可 | — |
+| PDF | iText 直接利用 | ライセンス（AGPL） + 設計思想不整合 | `clj-pdf/clj-pdf` / Flying Saucer（openpdf 版）へ（§3.31） | — |
+| ORM | Korma 等の ORM | 設計思想不整合 | `HoneySQL` + `next.jdbc` へ | — |
+| ルーティング | bidi（新規採用） | 条件付き | `metosin/reitit` へ。Malli 統合で優位 | — |
+| リトライ | robert.bruce | メンテ停止 | `sunng87/diehard` へ（§3.17） | — |
+| MQTT | machine-head | メンテ状態要確認 | `org.eclipse.paho/org.eclipse.paho.client.mqttv3` 直接へ（§3.39） | — |
+| GUI | seesaw（新規採用） | 条件付き | `humbleui` / `cljfx` へ。レガシー保守は可 | — |
+| マイグレーション | Flyway / Liquibase（Clojure 新規） | 設計思想不整合 | `migratus/migratus` へ（§3.25） | — |
+| 設定管理 | immuconf | 推奨代替あり | `aero/aero` へ | — |
+| JSON | Cheshire（新規採用） | 条件付き | `metosin/jsonista` へ。既存コードは段階移行 | — |
+| スクリプト言語 | Babashka を本番コード基盤として利用 | 設計思想不整合 | 必要な CLI は uberjar + GraalVM Native Image。Babashka は shell script 代替としての本番外利用のみ可 | — |
+| XML パーサ | xerces / xalan（bundled 版） | 既に §8.1 禁止 | `org.clojure/data.xml` へ | — |
 
 **追加する場合の基準**: 推奨代替が明確で、本テンプレートの設計思想と衝突し、採用するより避けたほうが**明白に良い**もの。曖昧な「好みの問題」では追加しない（§9.3 整理優先の姿勢）。
 
