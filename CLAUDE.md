@@ -14,6 +14,7 @@
 |---|---|---|
 | **CLAUDE.md（本文書）** | 第一原理と常時制約 | **毎セッション必読** |
 | **DESIGN.md** | プロダクト仕様（何を作るか） | 実装に着手する前、仕様を確認する時 |
+| **AGENT.md** | 非 Claude エージェント（Codex、Cursor、GitHub Copilot 等）向けリダイレクタ。内容は「CLAUDE.md に従え」の 1 行のみ | 他エージェント実行時 |
 
 ### project-guide/（プロジェクト運営ガイド）
 
@@ -452,7 +453,7 @@ clj -M:poly create component name:<n>
 clj -M:dev:nrepl
 ```
 
-`dev.user` 名前空間で：
+`dev.user` 名前空間で（**Integrant を採用している場合**。§5.4 の二分岐と整合）：
 
 ```clojure
 (go)     ; Integrant 起動 + Malli instrumentation ON
@@ -460,6 +461,8 @@ clj -M:dev:nrepl
 (halt)   ; 停止
 (system) ; 起動中システム参照
 ```
+
+**Integrant を採用していない場合**（ライブラリ配布・単発 CLI 等）は、REPL 起動後に `(malli-on!)` のみを明示的に呼ぶ。`(go)` 等は `development/src/dev/user.clj` でコメントアウトされたままにする（§5.4、POLYLITH_GUIDE.md §7.1 と同じ規律）。
 
 development project から**全 brick が単一 REPL で触れる**。境界は明確化しつつ、開発時はモノリシック。
 
