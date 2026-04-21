@@ -33,6 +33,51 @@
   :inline-def                   {:level :error}
   :cond-else                    {:level :error}
 
+  ;; --- 段階 1: 本テンプレート原則と直結する必須追加（error 昇格、2026-04 拡張） ---
+  :destructured-or-binding-of-same-map {:level :error}  ; 暗黙挙動依存
+  :unused-value                 {:level :error}  ; §1.1.2 副作用明示化
+  :misplaced-docstring          {:level :error}  ; §15.1 docstring
+  :aliased-namespace-var-usage  {:level :error}  ; :as-alias 誤用
+  :missing-test-assertion       {:level :error}  ; 空 deftest 禁止
+  :shadowed-fn-param            {:level :error}  ; バグ検知
+  :unreachable-code             {:level :error}  ; バグ検知
+  :unbound-destructuring-default {:level :error} ; バグ検知
+  :single-logical-operand       {:level :error}  ; (and x) バグ検知
+  :single-operand-comparison    {:level :error}  ; (< 1) バグ検知
+  :deprecated-var               {:level :error}  ; ライブラリ更新対応
+  :deprecated-namespace         {:level :error}  ; 同上
+  :case-quoted-test             {:level :error}  ; case のクォート誤り
+  :quoted-case-test-constant    {:level :error}  ; 同上
+  :self-requiring-namespace     {:level :error}  ; ns 自己参照バグ
+  :namespace-name-mismatch      {:level :error}  ; ns 名とファイル名不一致
+  :clj-kondo-config             {:level :error}  ; 設定ファイル自体の誤り（自己適用）
+  :deps.edn                     {:level :error}  ; deps.edn 記法誤り
+
+  ;; --- 段階 1: バグ温床系の warning 追加 ---
+  :warn-on-reflection           {:level :warning}  ; §9.2 reflection 排除
+  :equals-float                 {:level :warning}  ; 浮動小数点 = 比較バグ
+  :condition-always-true        {:level :warning}  ; 関数値を条件に渡す誤り
+
+  ;; --- 段階 2: コード品質向上 ---
+  :equals-expected-position     {:level :warning :position :first :only-in-test-assertion true}
+  :equals-true                  {:level :warning}
+  :equals-false                 {:level :warning}
+  :def-fn                       {:level :warning}  ; defn 推奨
+  :docstring-blank              {:level :error}    ; 空 docstring 禁止
+  :docstring-no-summary         {:level :off}      ; 英語句読点前提のため日本語 docstring と不整合。off で運用
+  :docstring-leading-trailing-whitespace {:level :warning}
+  :not-empty?                   {:level :error}    ; (not (empty? x)) 慣用違反
+  :underscore-in-namespace      {:level :error}    ; ns 名アンダースコア禁止
+  :unsorted-imports             {:level :error}    ; :unsorted-required-namespaces と対称
+  :keyword-binding              {:level :error}    ; :keys 誤用
+  :aliased-namespace-symbol     {:level :warning}
+  :unused-alias                 {:level :warning}
+  :used-underscored-binding     {:level :warning}
+  :redundant-ignore             {:level :warning}  ; 無効な :clj-kondo/ignore
+  :dynamic-var-not-earmuffed    {:level :warning}  ; ^:dynamic var の earmuff 慣用
+  :earmuffed-var-not-dynamic    {:level :warning}
+  :main-without-gen-class       {:level :warning}  ; uberjar ビルド対応
+
   ;; --- 警告 ---
   :missing-docstring            {:level :warning}
   :shadowed-var                 {:level :warning}
@@ -96,7 +141,30 @@
    cheshire.core/generate-string {:message "Cheshire は非推奨。jsonista を使う（STACK_GUIDE §8.2）"}
    clj-http.client/get        {:message "clj-http は新規採用非推奨。hato を使う（STACK_GUIDE §8.2）"}
    clj-http.client/post       {:message "clj-http は新規採用非推奨。hato を使う（STACK_GUIDE §8.2）"}
-   }}
+   }
+
+  ;; ---------------------------------------------------------------
+  ;; consistent-alias — 本テンプレート推奨 alias カタログ
+  ;; 一貫性の機械化。CODING_GUIDE.md §14.4 / §14.5 に準拠。
+  ;; stack 採用で追加ライブラリを使う場合、ここに追記して統一する。
+  ;; ---------------------------------------------------------------
+  :consistent-alias
+  {:aliases
+   {clojure.string        str
+    clojure.set           set
+    clojure.edn           edn
+    clojure.walk          walk
+    clojure.pprint        pprint
+    clojure.core.async    async
+    malli.core            m
+    malli.generator       mg
+    malli.util            mu
+    malli.dev             mdev
+    malli.dev.pretty      mpretty
+    integrant.core        ig
+    integrant.repl        ig-repl
+    integrant.repl.state  ig-state
+    clojure.tools.namespace.repl tn}}}
 
  ;; ----------------------------------------------------------------
  ;; Malli の =>: lint-as により typed 関数として扱う

@@ -4,19 +4,23 @@
 
 `_POSSIBLE_ISSUES.md` D-4 / D-5 / D-6 / F-1 / F-3、および運用姿勢 G-2（hook と script の役割分担）の実装。
 
-## hook と script の役割分担
+## 機械化の 5 層構造（`MAINTAINERS_GUIDE.md §5.10` の要約）
 
-| 領分 | 実装場所 | 得意領域 |
+| 層 | 実装手段 | 得意領域 |
 |---|---|---|
-| コード内の構文・構造パターン（form 単体） | `.clj-kondo/polyguard/hooks.clj` + `.clj-kondo/config.edn` | Clojure コード AST 解析（A-7 関数行数、A-9 top-level mutable、A-10 catch Throwable、A-11 空 catch、A-15 位置引数、A-16 go blocking、A-17 destructuring 深さ、A-8 近似） |
-| 設定ファイル・ディレクトリ構造・file-level 照合 | `scripts/*.sh` | EDN 構造、ファイル実在、deps.edn 採用宣言、プレースホルダ、brick 登録、**file-level 解析**（A-1 interface 契約・A-14 1 ファイル 1 ns） |
+| **L1** 構文・型・未使用 | clj-kondo 組み込み linter | AST 解析、命名空間解決、アリティ検査（段階 1/2 で 38 linter を有効化） |
+| **L2** 本テンプレート固有パターン | `.clj-kondo/polyguard/hooks.clj` (custom hook) | form 単体の AST 解析（A-7〜A-17） |
+| **L3** スタイル・イディオム | Splint (`clj -M:lint-splint`) | `(= 0 x)` → `(zero? x)` 等のイディオム違反 |
+| **L4** 設定・ディレクトリ構造 | 本ディレクトリの `scripts/*.sh` | EDN 構造、ファイル実在、file-level 照合（A-1・A-14・D-4〜D-6・F-1・F-3） |
+| **L5** 依存脆弱性（時間軸） | clj-watson (`./scripts/check-vulnerabilities.sh`) | NIST NVD + GitHub Advisory Database |
 
-両者は補完関係。例:
+**補完関係の例**:
 
-- **非推奨ライブラリ**（timbre）: コード内使用は `.clj-kondo :discouraged-var`（A-6）、`deps.edn` 採用宣言は `check-deprecated-libs.sh`（F-3）
-- **`m/=>` 契約**: form 単体の形式検査は `polyguard.hooks/analyze-m=>`（A-8 近似）、interface.clj での `defn` と `m/=>` の対応は `check-interface-contracts.sh`（A-1）
+- **非推奨ライブラリ**（timbre）: L1 の `:discouraged-var`（A-6）がコード内使用、L4 の `check-deprecated-libs.sh`（F-3）が `deps.edn` 採用宣言を検知
+- **`m/=>` 契約**: L2 の `analyze-m=>`（A-8 近似）が form 単体、L4 の `check-interface-contracts.sh`（A-1）が `interface.clj` 内の defn との対応
+- **スタイル**: L1 は構文の正しさを、L3 は慣用の美しさを検知（両方通過が本テンプレートの期待）
 
-clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照合（file-level）は苦手。shell script は逆で、AST は読めないが file 単位の検査は得意。役割分担で両者の強みを活かす。
+clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照合（file-level）は苦手。shell script は逆。役割分担で両者の強みを活かす。
 
 ## スクリプト一覧
 
@@ -28,6 +32,7 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 | `check-deprecated-libs.sh` | `STACK_GUIDE.md §8.2` 非推奨ライブラリの `deps.edn` 採用宣言検査 | F-3 |
 | `check-interface-contracts.sh` | `interface.clj` の全公開 `defn` に対応する `m/=>` 契約があるか検査 | A-1 |
 | `check-single-ns-per-file.sh` | 1 つの `.clj` / `.cljc` / `.cljs` ファイルに `(ns ...)` が複数ないか検査 | A-14 |
+| `check-vulnerabilities.sh` | `clj-watson` による依存脆弱性スキャン（release 前必須、完了条件外） | F 拡張 |
 | `lint-import-hooks.sh` | 依存ライブラリ提供の `clj-kondo` hook を `.clj-kondo/configs/` に取り込む | D-5 |
 
 ## 運用タイミング
@@ -40,7 +45,17 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 ./scripts/check-workspace-integrity.sh
 ```
 
-これで D-4 / D-6 / F-3 の 3 検査 + 併存検査 + `:local/root` / `:projects` 実在検査が一括で走る。個別スクリプトを手動で呼ぶ必要はない。
+これで D-4 / D-6 / F-3 / A-1 / A-14 の 5 検査 + 併存検査 + `:local/root` / `:projects` 実在検査が一括で走る。個別スクリプトを手動で呼ぶ必要はない。
+
+### release 前の追加検査（週次 CI / release 時）
+
+完了条件には含めないが、時間軸を跨いだ脆弱性検知として以下を実行する:
+
+```bash
+./scripts/check-vulnerabilities.sh
+```
+
+NVD API key 推奨（`https://nvd.nist.gov/developers/request-an-api-key`）。環境変数 `NVD_API_KEY` に設定すると高速化される。
 
 ### hook 取り込みの起動タイミング（`lint-import-hooks.sh`）
 

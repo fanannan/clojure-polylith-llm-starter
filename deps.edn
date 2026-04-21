@@ -134,4 +134,28 @@
   ;; ----------------------------------------------------------------
   :outdated
   {:replace-deps {com.github.liquidz/antq {:mvn/version "2.11.1264"}}
-   :main-opts    ["-m" "antq.core"]}}}
+   :main-opts    ["-m" "antq.core"]}
+
+  ;; ----------------------------------------------------------------
+  ;; :lint-splint — Splint（必須層、clj-kondo の補完）
+  ;;   スタイル・イディオムレベルの linter。clj-kondo が構文・型・未使用変数を、
+  ;;   Splint が「(= 0 x) → (zero? x)」等の Clojure イディオム違反を検知。
+  ;;   機能重複はないため、完了条件（CLAUDE.md §5.5）で両方走らせる。
+  ;; ----------------------------------------------------------------
+  :lint-splint
+  {:replace-deps {io.github.noahtheduke/splint {:mvn/version "1.19.0"}}
+   :main-opts    ["-m" "noahtheduke.splint"
+                  "components" "bases" "development/src"]}
+
+  ;; ----------------------------------------------------------------
+  ;; :vulnerability-check — clj-watson（必須層、依存脆弱性スキャン）
+  ;;   NIST NVD + GitHub Advisory Database を照合。完了条件（毎ターン）には
+  ;;   入れず、週次 CI / release 前チェックで実行する。scripts/check-vulnerabilities.sh
+  ;;   で包む。NVD API key の設定が推奨（詳細は scripts/check-vulnerabilities.sh）。
+  ;; ----------------------------------------------------------------
+  :vulnerability-check
+  {:replace-deps {io.github.clj-holmes/clj-watson
+                  {:git/tag "v6.0.1" :git/sha "b520351"}}
+   :main-opts    ["-m" "clj-watson.cli" "scan"
+                  "-p" "deps.edn"
+                  "--fail-on-result"]}}}

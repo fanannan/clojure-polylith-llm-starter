@@ -266,7 +266,8 @@ Integrant を使うプロジェクトでのみ実施する。ライブラリ配�
 
 **workspace 全体の品質確認**:
 
-- [ ] `clj -M:lint` がゼロ警告
+- [ ] `clj -M:lint` がゼロ警告（clj-kondo + polyguard custom hook）
+- [ ] `clj -M:lint-splint` がゼロ警告（Splint、スタイル・イディオム、`_POSSIBLE_ISSUES.md` F 拡張により必須層化）
 - [ ] `clj -M:format check` が通る
 - [ ] `clj -M:poly check` が通る
 - [ ] `clj -M:dev:nrepl` で REPL 起動、`(go)` が例外なく完走（Integrant を含む stack の場合）
@@ -274,6 +275,12 @@ Integrant を使うプロジェクトでのみ実施する。ライブラリ配�
 - [ ] 実装した brick の関数を REPL から呼び出して動作確認
 - [ ] `clj -M:poly test :all` がすべて成功
 - [ ] `cd projects/<deploy> && clj -T:build uber` がビルド成功
+
+**依存脆弱性スキャン**（release 前必須、ブートストラップ時は任意）:
+
+- [ ] `./scripts/check-vulnerabilities.sh` が通る（clj-watson、NIST NVD + GitHub Advisory Database）
+  - **NVD API key 推奨**: 無料で `https://nvd.nist.gov/developers/request-an-api-key` から取得し、環境変数 `NVD_API_KEY` に設定するとスキャンが高速化される
+  - 完了条件（`CLAUDE.md §5.5`）には含めない（実行時間が長いため）。週次 CI / release 前で実行
 
 **採用 stack ごとの確認事項（STACK_GUIDE.md §4.2.X）**:
 

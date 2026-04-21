@@ -90,11 +90,15 @@ stack は時間とともに増え、選定根拠は詳細化し、機能領域�
 | ビルド・依存管理 | tools.deps | deps.edn | Clojure 標準、宣言的 |
 | 構造化アーキテクチャ | Polylith | ec92b9b | brick ベースの再利用性 |
 | 契約・検証 | Malli | 0.16.4 | 関数契約 `m/=>`、instrumentation |
-| Lint | clj-kondo | 2024.11.14 | §1.2.1 機械化の実装の柱。`.clj-kondo/config.edn` が配布時点で同梱され、LLM の悪手を error で機械的に封じる |
+| Lint（構文・型） | clj-kondo | 2024.11.14 | §1.2.1 機械化の実装の柱。`.clj-kondo/config.edn` + custom hook が配布時点で同梱され、LLM の悪手を error で機械的に封じる |
+| Lint（スタイル・イディオム） | Splint | 1.19.0 | clj-kondo 補完。`(= 0 x)` → `(zero? x)` のようなイディオム違反を検知（`_POSSIBLE_ISSUES.md` F 拡張で必須層化） |
 | Format | cljfmt | 0.13.0 | §1.2.1 機械化の実装。`cljfmt.edn` が配布時点で同梱され、フォーマット議論を排除する |
+| 依存脆弱性スキャン | clj-watson | v6.0.1 | NIST NVD + GitHub Advisory Database を照合。時間軸を跨いだ機械化（承認済み依存の脆弱化検知）。release 前必須（`_POSSIBLE_ISSUES.md` F 拡張で必須層化） |
 | 依存更新確認 | antq | 2.11.1264 | ライブラリ更新検知 |
 | REPL リロード | tools.namespace | 1.5.0 | `(reset)` の基盤 |
 | nREPL | nrepl + cider-nrepl + refactor-nrepl | — | エディタ接続 |
+
+配布物として `.clj-kondo/polyguard/hooks.clj`（AST 解析型の custom hook）と `scripts/*.sh`（設定ファイル・ディレクトリ構造の機械的検査）も必須層の一部。役割分担は `MAINTAINERS_GUIDE.md §5.10`。
 
 これらは `deps.edn` の `:deps` および必須エイリアス（`:dev`、`:nrepl`、`:poly`、`:lint`、`:format`、`:outdated`）で常に有効。
 

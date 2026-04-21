@@ -527,14 +527,17 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
 - **§3 と §8 の混同**: §3 は機能別の採用判断、§8 はテンプレート全体の禁止・非推奨。同じライブラリが両方に出るのは正常だが、役割を混同しない
 - **§4.2 の「避けるべき」欄の肥大化**: stack 固有の重要な注意のみ記載。汎用的な非推奨は §8 への参照で十分
 
-### 5.10 機械化戦略の実装手段（hook と script の役割分担）
+### 5.10 機械化戦略の実装手段（5 層構造）
 
-`_POSSIBLE_ISSUES.md` G-2 の実装。本テンプレートの §1.2.1 機械化原則を実装する手段は **clj-kondo custom hook**（`.clj-kondo/hooks/`）と **shell script**（`scripts/`）の 2 種に分かれる。両者は補完関係にあり、重複開発を避けるため役割分担を明確にする。
+`_POSSIBLE_ISSUES.md` G-2 の実装。本テンプレートの §1.2.1 機械化原則を実装する手段は 5 層に分かれ、各層が得意な領域を担う。重複開発を避けるため役割分担を明確にする（`_POSSIBLE_ISSUES.md` F 拡張で Splint / clj-watson 導入時に体系化）。
 
-| 領分 | 実装場所 | 得意領域 | 代表例（`_POSSIBLE_ISSUES.md` 参照） |
+| 層 | 実装手段 | 得意領域 | 代表例 |
 |---|---|---|---|
-| **コード内の構文・構造パターン** | `.clj-kondo/hooks/` + `.clj-kondo/config.edn` | Clojure コード AST 解析 | A-1（`m/=>` 付与）、A-4（`Exception.` 禁止）、A-6（非推奨ライブラリの**コード使用**）、A-7（関数行数）、A-10（`catch Throwable` 禁止）、A-11（空 catch）、A-12（ドメイン層 I/O） |
-| **設定ファイル・ディレクトリ構造・配布物整合性** | `scripts/*.sh` | EDN 構造検査、ファイル実在確認、採用宣言検査 | D-4（brick 登録整合）、D-5（hook 取り込み）、D-6（プレースホルダ残存）、F-1（総合検査）、F-3（非推奨ライブラリの**deps.edn 採用**） |
+| **L1 構文・型・未使用** | clj-kondo 組み込み linter | AST 解析、命名空間解決、アリティ検査 | `:unresolved-var`、`:invalid-arity`、`:unused-binding`、段階 1 / 2 の 38 linter |
+| **L2 本テンプレート固有パターン** | `.clj-kondo/polyguard/hooks.clj` (custom hook) | form 単体の AST 解析 | A-7（関数行数）、A-9（top-level mutable）、A-10（catch Throwable）、A-11（空 catch）、A-15（位置引数）、A-16（go blocking）、A-17（destructuring 深さ）、A-8 近似 |
+| **L3 スタイル・イディオム** | Splint (`clj -M:lint-splint`) | Clojure イディオム違反、リファクタリング提案 | `(= 0 x)` → `(zero? x)`、`(first (filter ...))` → `(some ...)` 等 |
+| **L4 設定ファイル・ディレクトリ構造** | `scripts/*.sh` | EDN 構造、ファイル実在、採用宣言、file-level 照合 | D-4（brick 登録）、D-5（hook 取り込み）、D-6（プレースホルダ）、F-1（総合検査）、F-3（非推奨ライブラリ採用）、A-1（interface 契約）、A-14（1 ファイル 1 ns） |
+| **L5 依存脆弱性（時間軸）** | clj-watson (`./scripts/check-vulnerabilities.sh`) | NIST NVD + GitHub Advisory Database 照合 | 承認済み依存が後から脆弱化した場合の検知。release 前必須 |
 
 **補完関係の典型例**: 非推奨ライブラリ `timbre` は、コード内で `timbre/info` を呼び出している使用箇所は `clj-kondo :discouraged-var`（A-6）が、`deps.edn` に `com.taoensso/timbre` を採用宣言している箇所は `scripts/check-deprecated-libs.sh`（F-3）が検知する。両方で二重に防御する。
 
@@ -544,6 +547,38 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
 2. コード内パターン → `.clj-kondo/hooks/` に custom hook を追加、`.clj-kondo/config.edn` で登録
 3. 設定・構造 → `scripts/check-<topic>.sh` を追加、`scripts/check-workspace-integrity.sh` の `run_step` で起動、`scripts/README.md` を更新
 4. 完了条件（`CLAUDE.md §5.5`）への組み込みは、shell script 側は `check-workspace-integrity.sh` が既に含まれるので個別追加不要。custom hook は `clj -M:lint` に含まれるので個別追加不要
+
+### 5.12 clj-kondo linter 継続点検規律（機械化充実の運用姿勢）
+
+`_POSSIBLE_ISSUES.md` F 拡張・G-1 の延長。clj-kondo は活発に開発されており新 linter が追加されるため、本テンプレートの機械化を継続的に充実させる規律を定める。
+
+**点検サイクル**:
+
+1. **四半期に 1 回**、clj-kondo の linter 一覧（`https://github.com/clj-kondo/clj-kondo/blob/master/doc/linters.md`）を確認
+2. **新規追加された linter** を本テンプレートの原則（全域性・不変性・副作用隔離・機械化・疲労最小化）と照合
+3. **採否を判定**:
+   - 原則と整合 + false positive リスク低 → **即有効化**（error / warning）
+   - 原則と整合 + false positive リスク中 → **warning で試験導入**、安定後に error 昇格
+   - 原則と整合しない / 機能重複 → **不採用**として本規律に記録
+4. ADR 発行は**大規模採用時のみ**（軽微な追加は `.clj-kondo/config.edn` のコメントで記録、§7 議論の軌跡に残す）
+
+**新 linter の採否判断基準**:
+
+- **採用**: §1.1 三基底原則に直結、既存 linter と補完関係、false positive が限定的
+- **保留**: 運用検証が必要（試験導入は warning で、本採用は error）
+- **不採用**: 英語前提（docstring 句読点系）、本テンプレート原則と逆行、Polylith 固有構造と不整合
+
+**サードパーティ lint の扱い**:
+
+- **必須層**: Splint（スタイル・イディオム）と clj-watson（依存脆弱性）は必須層として配布（STACK_GUIDE.md §2.1）
+- **補完的 lint**: Eastwood（マクロ展開解析）は保留候補、採用時は別 ADR
+- **kibit / yagni / cljstyle / zprint**: 機能重複または制約ありで不採用（`_POSSIBLE_ISSUES.md` F 拡張の調査結果）
+
+**運用上の注意**:
+
+- `.clj-kondo/config.edn` の追加は `scripts/lint-import-hooks.sh` の再実行が必要ない（組み込み linter のため）。custom hook 追加時のみ再取り込みを要する
+- 新 linter 追加で既存コードが失敗するようになった場合、**原則として既存コードを直す**（規約を緩める側に倒さない）。機械化充実姿勢と整合
+- false positive の許容は「一括 error で導入、問題が出たら個別に `:config-in-ns` で除外」の順（`_POSSIBLE_ISSUES.md` F 拡張判断 2）
 
 ### 5.11 `lint-import-hooks.sh` 再実行のタイミング
 

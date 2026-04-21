@@ -1,7 +1,7 @@
 # CLAUDE.md — LLM 作業ガイド
 
 **このプロジェクトは Clojure + Polylith ワークスペースです**。
-必須技術は **Clojure 1.12 + tools.deps + Polylith + Malli + clj-kondo + cljfmt**（JVM 21 LTS）。
+必須技術は **Clojure 1.12 + tools.deps + Polylith + Malli + clj-kondo + cljfmt + Splint + clj-watson**（JVM 21 LTS）。
 目的別の追加ライブラリ（HTTP、DB、ライフサイクル管理等）は **stack** として構成され、詳細は `project-guide/STACK_GUIDE.md` を参照。
 本ファイルは、本リポジトリで作業する LLM エージェント（Claude Code を主想定）への指示書である。
 人間向けの説明ではない。**LLM はこのファイルを毎セッション必ず最初に読み、ここに書かれた規約から外れない**。
@@ -149,8 +149,11 @@
 - **tools.deps**（`deps.edn` による依存管理。Polylith の前提）
 - **Polylith**（ワークスペース構造。§1.2.1 機械化は `poly check` による強制が核）
 - **Malli**（§1.1.1 全域性の実装。`m/=>` 契約と instrumentation）
-- **clj-kondo**（機械化された静的解析。`.clj-kondo/config.edn` は配布時点で同梱され、設定自体も必須層の一部として無効化・削除不可）
+- **clj-kondo**（機械化された静的解析。`.clj-kondo/config.edn` + `.clj-kondo/polyguard/hooks.clj` は配布時点で同梱され、設定自体も必須層の一部として無効化・削除不可）
 - **cljfmt**（機械化されたフォーマッタ。`cljfmt.edn` は配布時点で同梱され、設定自体も必須層の一部として無効化・削除不可）
+- **Splint**（スタイル・イディオムレベル linter、clj-kondo の補完。`clj -M:lint-splint` で起動、完了条件で実行。`_POSSIBLE_ISSUES.md` F 拡張により必須層化）
+- **clj-watson**（依存脆弱性スキャン、時間軸を跨いだ機械化。`./scripts/check-vulnerabilities.sh` で起動、release 前必須。NVD API key 推奨）
+- **`scripts/` ディレクトリ**（`check-workspace-integrity.sh` / `check-*.sh` / `lint-import-hooks.sh`、設定ファイル・ディレクトリ構造の機械的検査を担う）
 
 必須層以外の技術選定（テストランナー、HTTP サーバ、DB 接続、ロギング、コンポーネント管理、JSON 変換など）は、プロジェクトの性格に応じて選ぶ **stack 層**に属する。選定の論理と推奨カタログは `project-guide/STACK_GUIDE.md` に一元化されている。採用した stack は `DESIGN.md` §8.3 に記録する。
 
@@ -231,7 +234,8 @@ Malli は必須層。`dev/user.clj` で `(malli-on!)` / `(malli-off!)` helper �
 > **※ ブートストラップ期の例外**: `projects/` が未作成の時点（`project-guide/BOOTSTRAP_GUIDE.md` §2.9 完了前）では最終行の uber ビルドはスキップ。`BOOTSTRAP_GUIDE.md` §2.9 完了時点から本節の全行が適用される。また、`workspace.edn` の `:top-namespace` が配布時プレースホルダ `"myorg.myapp"` のままだと `./scripts/check-workspace-integrity.sh` が失敗するので、ブートストラップ §2.1 のプレースホルダ置換完了が前提。
 
 ```bash
-clj -M:lint                                    # clj-kondo
+clj -M:lint                                    # clj-kondo（構文・型・LLM 落とし穴検知）
+clj -M:lint-splint                             # Splint（スタイル・イディオム検知、clj-kondo 補完）
 clj -M:format check                            # cljfmt
 clj -M:poly check                              # Polylith 構造
 ./scripts/check-workspace-integrity.sh         # プレースホルダ残存・brick 登録・非推奨ライブラリ・:local/root 実在の総合検査
@@ -239,7 +243,13 @@ clj -M:poly test :all                          # 全テスト
 cd projects/<deploy> && clj -T:build uber      # ビルド成功（<deploy> は DESIGN.md §8.2 で定めた project 名）
 ```
 
-`./scripts/check-workspace-integrity.sh` の内訳と役割分担は `scripts/README.md` を参照。`.clj-kondo/hooks/` の custom hook（コード内の構文・構造検知）と `scripts/` の shell script（設定ファイル・ディレクトリ構造検知）は補完関係にある。
+release 前・週次 CI では追加で以下を実行:
+
+```bash
+./scripts/check-vulnerabilities.sh             # clj-watson（時間軸を跨いだ脆弱性検知、release 前必須）
+```
+
+`./scripts/check-workspace-integrity.sh` の内訳と役割分担は `scripts/README.md` を参照。機械化の層構造（clj-kondo 組み込み / polyguard hook / Splint / scripts / Polylith / Malli / clj-watson）は `MAINTAINERS_GUIDE.md §5.10` で体系化されている。
 
 ---
 
