@@ -162,29 +162,32 @@
     ;; destructuring は token-node ではなく vector/map-node なので自然に除外される。
     (count (filter #(symbol? (api/sexpr %)) before-amp))))
 
+(defn- first-defn-body
+  "defn の children から docstring / attr-map を飛ばして最初の
+   vector-node（単純アリティ）または list-node（マルチアリティ）を返す。"
+  [rest-nodes]
+  (first (filter #(or (api/vector-node? %) (api/list-node? %)) rest-nodes)))
+
+(defn- report-too-many-args!
+  "A-15 の finding 登録。"
+  [first-body fn-name n]
+  (reg! first-body
+        {:type :polyguard/too-many-positional-args
+         :level :warning
+         :message (str (api/sexpr fn-name) " の位置引数が " n
+                       " 個あります（上限 3 個、4 個以上はマップで受ける）。"
+                       "CODING_GUIDE.md §4.2、_POSSIBLE_ISSUES.md A-15")}))
+
 (defn check-defn-arity
-  "defn の位置引数数を検査（A-15）。"
+  "defn の位置引数数を検査（A-15、マルチアリティは複雑度回避でスキップ）。"
   [ctx]
   (let [node (:node ctx)
         [_fn-sym fn-name & rest-nodes] (children node)
-        ;; docstring / attr-map / body を飛ばし、最初の vector-node か list-node を探す
-        first-body (first (filter #(or (api/vector-node? %) (api/list-node? %))
-                                  rest-nodes))]
-    (when (and fn-name first-body)
-      (cond
-        ;; 単純アリティ: (defn f [a b c] ...)
-        (api/vector-node? first-body)
-        (let [n (count-positional-args first-body)]
-          (when (>= n 4)
-            (reg! first-body
-                  {:type :polyguard/too-many-positional-args
-                   :level :warning
-                   :message (str (api/sexpr fn-name) " の位置引数が " n
-                                 " 個あります（上限 3 個、4 個以上はマップで受ける）。"
-                                 "CODING_GUIDE.md §4.2、_POSSIBLE_ISSUES.md A-15")})))
-
-        ;; マルチアリティ: (defn f ([a] ...) ([a b] ...)) は検査スキップ（複雑度回避）
-        :else nil))))
+        first-body (first-defn-body rest-nodes)]
+    (when (and fn-name first-body (api/vector-node? first-body))
+      (let [n (count-positional-args first-body)]
+        (when (>= n 4)
+          (report-too-many-args! first-body fn-name n))))))
 
 ;; ---------------------------------------------------------------------------
 ;; A-17: destructuring のネスト 2 超過
@@ -192,28 +195,27 @@
 ;; 判定: defn の引数ベクタの destructuring が深さ 3 以上（CODING_GUIDE.md §1.12）。
 ;; ---------------------------------------------------------------------------
 
+(defn- report-deep-destructuring!
+  "A-17 の finding 登録。"
+  [first-body depth]
+  (reg! first-body
+        {:type :polyguard/destructuring-too-deep
+         :level :warning
+         :message (str "引数の destructuring が深くネストしています（深さ " depth
+                       "）。中間キーを let で切り出してください。"
+                       "CODING_GUIDE.md §1.12、_POSSIBLE_ISSUES.md A-17")}))
+
 (defn check-defn-destructuring
   "defn 引数の destructuring 深さを検査（A-17）。
-
-   実装の注記: depth は「vector / map のネスト回数」で、`:keys`・`:strs`・`:syms`・`:or`・`:as`
-   の右辺は加算しない。閾値は > 3（= 深さ 4 以上で警告）。
-   これは `[{:keys [a b]}]` のような一般的パターンを通すための実運用的調整で、
-   `_POSSIBLE_ISSUES.md` A-17 の「深さ 2 超過」とは意味が異なるが、false positive を
-   避けつつ真にネストした destructuring のみを捕捉する。"
+   閾値 > 3 で運用（`:keys` 等は加算しない簡易実装）。"
   [ctx]
   (let [node (:node ctx)
         [_fn-sym _fn-name & rest-nodes] (children node)
-        first-body (first (filter #(or (api/vector-node? %) (api/list-node? %))
-                                  rest-nodes))]
+        first-body (first-defn-body rest-nodes)]
     (when (and first-body (api/vector-node? first-body))
       (let [depth (destructuring-depth first-body)]
         (when (> depth 3)
-          (reg! first-body
-                {:type :polyguard/destructuring-too-deep
-                 :level :warning
-                 :message (str "引数の destructuring が深くネストしています（深さ " depth
-                               "）。中間キーを let で切り出してください。"
-                               "CODING_GUIDE.md §1.12、_POSSIBLE_ISSUES.md A-17")}))))))
+          (report-deep-destructuring! first-body depth))))))
 
 ;; ---------------------------------------------------------------------------
 ;; 統合した defn hook（A-7 / A-15 / A-17 をまとめて適用）
