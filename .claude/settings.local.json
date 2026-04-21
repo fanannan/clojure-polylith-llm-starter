@@ -10,7 +10,18 @@
       "Bash(clj -e '\\(clojure.edn/read-string \\(slurp \"development/src/dev/user.clj\"\\)\\)')",
       "Bash(clj development/src/dev/user.clj)",
       "Bash(clj -M:lint)",
-      "Bash(clj -M:format check)"
+      "Bash(clj -M:format check)",
+      "Bash(bash .llm/scripts/*.sh)",
+      "Bash(echo B^)",
+      "Bash(bash .llm/scripts/session-briefing.sh)",
+      "Bash(echo \"---EXIT $?---\")",
+      "Bash(bash scripts/session-briefing.sh)",
+      "Bash(bash /home/taka/Dropbox/codes/common/clojure-polylith/.llm/scripts/check-placeholders.sh)",
+      "Bash(echo \"placeholders=$?\")",
+      "Bash(bash /home/taka/Dropbox/codes/common/clojure-polylith/.llm/scripts/check-brick-registration.sh)",
+      "Bash(echo \"brick-reg=$?\")",
+      "Bash(bash /home/taka/Dropbox/codes/common/clojure-polylith/.llm/scripts/check-deprecated-libs.sh)",
+      "Bash(bash .llm/scripts/check-deprecated-libs.sh)"
     ]
   }
 }

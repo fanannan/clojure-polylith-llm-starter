@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# scripts/session-briefing.sh
+# .llm/scripts/session-briefing.sh
 #
 # Claude Code の SessionStart hook 経由で毎セッション起動時に呼ばれる状態ブリーフィング。
 # `CLAUDE.md §1.2.1` 機械化 / `§8.0` 実装着手前の確認の機械化バックアップとして、
@@ -14,7 +14,7 @@
 #
 # 手動実行:
 #   Codex 等 SessionStart hook 機構のないエージェント向けに、`AGENTS.md` 経由で
-#   `bash scripts/session-briefing.sh` の手動実行を案内する。
+#   `bash .llm/scripts/session-briefing.sh` の手動実行を案内する。
 #
 # 運用タイミング:
 #   - Claude Code セッション起動時（自動、`.claude/settings.json` の hook）
@@ -167,7 +167,7 @@ recent_commits() {
 echo "# Session Briefing"
 echo ""
 echo "LLM はこのブリーフィングを先に読んだ上で \`CLAUDE.md §8.0\` の確認ステップに従うこと。"
-echo "生成元: \`scripts/session-briefing.sh\`（Claude Code は SessionStart hook で自動、"
+echo "生成元: \`.llm/scripts/session-briefing.sh\`（Claude Code は SessionStart hook で自動、"
 echo "他エージェントは \`AGENTS.md\` 経由で手動実行）。"
 echo ""
 
