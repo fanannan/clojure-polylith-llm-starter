@@ -238,11 +238,60 @@ A-3 と同一問題。A-3 で処理される
 
 ### D. ブートストラップ直後の UX 失敗
 
-テンプレート初期状態が「健全に lint / check が通る」ようにする。
+テンプレート初期状態が「健全に lint / check が通る」ようにする。方針: **Babashka は採用せず、hook / shell script で機械化を充実させる**。サンプルコードはコメント化で価値を保持する。
 
+#### D-1. 配布時点で `clj -M:lint` が error を出す
 
+- **現象**: `components/` と `bases/` ディレクトリ未作成で `:lint` エイリアスの `--lint "components" "bases" "development/src"` 引数が file does not exist を返す
+- **対処**: `components/.gitkeep` と `bases/.gitkeep` を配布物に追加（Polylith 公式慣例と整合）。`clj -M:lint` が「0 files linted」で成功する。`:lint` エイリアス 2 段階化は不採用（構造複雑化回避）
+- **着手コスト**: 極小（2 ファイル追加のみ）
 
-- **対処**: BOOTSTRAP_GUIDE.md §2.1 で真っ先に置換するよう明記（現状は複数タスクの 1 つ扱い）。または `workspace.edn` のこの値が `myorg.*` のままなら `poly check` 前に Babashka タスクで警告を出す
+#### D-2. `dev/user.clj` に Integrant / Portal セクション同梱
+
+- **現状**: Integrant 34 行 + Portal 50 行、一部コメントアウト・一部アクティブの中途半端状態
+- **対処**:
+  - Malli instrumentation セクションのみアクティブ維持（必須層）
+  - Integrant セクション全体を `;;` 行コメント化（IDE で複数行選択 → `;;` 除去で一括解除できる方式。`#_` は S 式単位で不向き）
+  - Portal セクション全体を同様に `;;` コメント化
+  - 各セクション冒頭に「採用時のコメント解除手順」を注記
+- **効果**: 配布時点で `(require 'dev.user)` が評価可能（未導入依存が呼ばれない）、サンプル価値は完全保持、採用時はコメント除去のみ
+- **機械化補強**: 採用時にコメント解除されれば自然に `clj -M:lint` 対象になり、依存引き込み漏れが検知される（追加設定不要）
+
+#### D-3. リッチコメント内の `(go)` / `(reset)` / `(portal)` サンプル
+
+- **対処**: D-2 で自動解消（`(comment ...)` 内はシンボル未解決、Integrant / Portal セクションが `;;` コメント化されていれば参照エラーなし）
+- **追加措置**: リッチコメント冒頭に「Integrant / Portal セクションをコメント解除した後に使える」の注記を追加
+
+#### D-4. brick 追加時の 4 箇所同時更新（「機械化」から「不完全さの機械検知」へ）
+
+- **現状**: `poly create` は brick ディレクトリしか作らず、`workspace.edn :projects` / ルート `deps.edn :dev :extra-paths` / `:extra-deps` / `projects/<deploy>/resources` の 4 箇所は手動更新
+- **却下案**: `scripts/new-brick.sh` で brick 追加を機械化する案は deps.edn の EDN 機械編集（sed 脆弱 / rewrite-clj は Clojure 起動コスト）で複雑化。不採用
+- **採用案**: `scripts/check-brick-registration.sh` を新設し**不完全さを検知**する方向に切り替える
+  - `components/` / `bases/` 配下の全 brick を走査（`.gitkeep` は除外）
+  - 各 brick が deps.edn の `:dev :extra-paths` に登録されているか検査
+  - 各 brick が deps.edn の `:dev :extra-deps` に `:local/root` で登録されているか検査
+  - 登録漏れがあれば error 終了 + 漏れている brick 名と追加先を提示
+  - 完了条件（CLAUDE.md §5.5）に F-1 経由で組み込み、brick 追加の不完全さは必ず検出される
+- **参照強化**: `CLAUDE.md §8.2`（新規コンポーネント追加）→ `BOOTSTRAP_GUIDE.md §2.5` の相互参照を追加（前セッション C-3 で扱った相互参照未構築パターンの解消）
+
+#### D-5. `clj-kondo` hook 初回取り込みの手動実行
+
+- **現状**: `clj -M:lint --copy-configs --dependencies --lint "$(clojure -A:dev -Spath)"` をシェル展開必須で手動実行（tools.deps の `:main-opts` はシェル展開不可）。再取り込みトリガーなし
+- **対処**:
+  - `scripts/lint-import-hooks.sh` を新設（上記コマンドをラップ、Unix 依存は許容）
+  - 運用タイミングを以下に明文化:
+    - 初回セットアップ（`BOOTSTRAP_GUIDE.md §2.9`）
+    - brick `deps.edn` に新ライブラリ追加時（`MAINTAINERS_GUIDE.md §5`）
+    - `STACK_GUIDE.md §4.2` 推奨ライブラリ追加時
+    - `clj -M:outdated` で最新化後
+
+#### D-6. `:top-namespace "myorg.myapp"` プレースホルダ置換忘れの検知なし
+
+- **現状**: `workspace.edn` / `deps.edn` にプレースホルダが残っても `poly check` は検知しない
+- **対処**:
+  - `scripts/check-placeholders.sh` を新設（grep ベース、依存なし）
+  - 検査対象は**設定ファイルのみ**（`workspace.edn` / `deps.edn`）に限定。コード例（`POLYLITH_GUIDE.md` / `KNOWLEDGE.md` のサンプル中）は対象外
+  - 完了条件（CLAUDE.md §5.5）に F-1 経由で組み込み
 
 ### E. 本プラン（前セッション）由来の未回収
 
@@ -255,6 +304,70 @@ A-3 と同一問題。A-3 で処理される
 
 - 本セッションで実装した変更に対して完了条件（CLAUDE.md §5.5）を満たしていない
 - **対処**: 各種チェックを実行して結果を記録する
+
+### F. 機械化候補（`scripts/` と custom hook の新規追加）
+
+Part 1 D で導入する `scripts/` ディレクトリを統合・拡張する機械化候補群。D-4 / D-5 / D-6 と合わせて**設定ファイル・ディレクトリ構造・配布物整合性**の領分を `scripts/` が、**コード内の構文・構造パターン**の領分を `.clj-kondo/hooks/`（A 系）が担う役割分担で運用する。
+
+#### F-1. ワークスペース整合性の総合検査 + 完了条件組み込み
+
+- **位置づけ**: D-4 / D-6 / F-3 を統合するエンドツーエンド検査。完了条件の拡張ポイント
+- **対処**: `scripts/check-workspace-integrity.sh` を新設
+  - 内部で `check-brick-registration.sh`（D-4）・`check-placeholders.sh`（D-6）・`check-deprecated-libs.sh`（F-3）を呼び出す
+  - 加えて以下を検査:
+    - deps.edn の `:local/root` パスが実在するか
+    - workspace.edn の `:projects` に列挙された project が実在するか
+    - 配布時点で削除すべきファイル（`.gitkeep` と brick 併存等）の検査
+- **完了条件（CLAUDE.md §5.5）への追加**: `./scripts/check-workspace-integrity.sh` を 1 行追加することで、D-4 / D-6 / F-3 の検査すべてが §5.5 の必須通過ゲートに入る
+
+#### F-2. `dev/user.clj` セクションコメントアウト状態の整合検査（保留）
+
+- **内容**: Integrant 採用プロジェクト（brick deps.edn に integrant 依存あり）で `dev/user.clj` の Integrant セクションがコメントアウトのままなら警告。逆（Integrant 未採用で Integrant セクションが有効）も同様
+- **判定**: 優先度低。実装複雑度（brick deps.edn 走査 + `dev/user.clj` 解析）に対する価値が未検証。D-2 で `;;` コメントアウト配布を導入した直後は運用観察で十分
+- **対処**: 本セッションでは保留し、将来の実装候補として記録のみ
+
+#### F-3. STACK_GUIDE.md §8.2 非推奨ライブラリの brick deps.edn 検査
+
+- **位置づけ**: A-6 の clj-kondo `:discouraged-var`（コード内使用検知）を補完する、`deps.edn` 採用宣言自体の検査
+- **対処**: `scripts/check-deprecated-libs.sh` を新設
+  - 各 brick の `deps.edn` が非推奨ライブラリ（timbre / Compojure / friend / clj-http 新規 / data.json 等）を含んでいないか grep で検査
+  - 登録があれば error 終了 + 推奨代替を提示
+- **A-6 との役割分担**:
+  - **A-6（clj-kondo）**: コード内で `timbre/info` 等の**関数呼び出し**を検知
+  - **F-3（shell script）**: `deps.edn` での `com.taoensso/timbre` 等の**採用宣言**を検知
+  - 両者で二重に防御。非推奨ライブラリが見逃されない
+
+#### F-4. Malli instrumentation 有効検査（保留）
+
+- **内容**: REPL 起動時に `malli-on!` が呼ばれたかを検査する動的テスト
+- **判定**: REPL 内の動的検査でビルド時検査ではないため、本計画の機械化戦略（静的検査充実）と性質が異なる。優先度低
+- **対処**: 本セッションでは保留し、将来の実装候補として記録のみ
+
+### G. 運用姿勢の昇格候補（KNOWLEDGE 昇格候補）
+
+本セッションの議論から抽出された、本テンプレートの設計哲学・運用姿勢として明文化すべき 3 件。ユーザー合意の上で `CLAUDE.md` / `MAINTAINERS_GUIDE.md` / `KNOWLEDGE.md` に昇格させる候補。
+
+#### G-1. 機械化充実を運用姿勢として明文化
+
+- **観察**: 本テンプレートの §1.2.1 機械化原則は「規約をツールで強制する」と述べるが、**機械化をどこまで充実させるか**の運用姿勢は従来不明だった
+- **方針（ユーザー明示）**: 「機械的なチェックはできるだけ自動化し、充実しているほうが良い」
+- **帰結**: 新しい機械化候補を発見した時の判断基準が「実装可能なら採用、コスト高すぎる場合のみ保留」に変わる。従来の「実装コストとトレードオフで判断」より機械化寄りに軸足を置く
+- **記録先**: `CLAUDE.md §1.2.1` 末尾に運用姿勢として追記、または `MAINTAINERS_GUIDE.md §5`（機械化戦略）に記述
+
+#### G-2. hook と script の役割分担
+
+- **hook の領分**（`.clj-kondo/hooks/` 配下、Clojure コード解析）:
+  - 関数行数（A-7）、`m/=>` 付与（A-1）、`Exception.` 禁止（A-4）、非推奨ライブラリの**コード使用**（A-6）、catch Throwable 禁止（A-10）、空 catch（A-11）、ドメイン層 I/O（A-12）等
+- **script の領分**（`scripts/` 配下、shell）:
+  - プレースホルダ（D-6）、brick 登録（D-4）、非推奨ライブラリの**deps.edn 採用宣言**（F-3）、`dev/user.clj` セクション状態（F-2 保留）、ワークスペース整合性（F-1）等
+- **理由**: clj-kondo は Clojure コード AST 解析が得意で設定ファイル構造の検査は苦手。shell script は逆。役割分担で両者の強みを活かし、重複開発を防ぐ
+- **記録先**: `MAINTAINERS_GUIDE.md §5` に「機械化戦略の実装手段」として追記
+
+#### G-3. 「前提の明示」による LLM 提案解空間の収束
+
+- **観察**: D 群対処検討で、ユーザーが「サンプル価値あり、bb 不採用、shell script 優先」と前提を早期に明示したことで、LLM の提案解空間（Babashka 導入、条件付き生成、2 系統配布等の複雑な方向）が閉じられ、単純な方向（`.gitkeep`、`;;` コメント化、shell script）に収束した
+- **一般化**: LLM 駆動開発では、ユーザーが価値判断・運用制約を早期に明示するほど設計コストが下がる。§1.3「生きた知識の活用で再発見の疲労を避ける」の具体例の一つ
+- **記録先**: `CLAUDE.md §1.3` の実例として追記、または `KNOWLEDGE.md` 新節「LLM 協働の原則」等に記録
 
 ---
 
@@ -368,7 +481,7 @@ adr/README.md の ADR 解説 158 行、CODING_GUIDE.md §1 メタ解説、「迷
 | **高** | A-5（with-redefs 規約を DI+ADR に変更） | 主観語を検査可能運用に置換 | 低（規約改訂） |
 | **高** | B-2（supersede チェイン片方向化） | 双方向更新の儀式撤廃 | 低（規約改訂） |
 | **高** | B-4（`malli-off!` 削除） | §1.2.5 違反の典型解消 | 低 |
-| **高** | D-1（lint error on bootstrap） | テンプレ初期体験の破綻 | 低（エイリアス分割） |
+| **高** | D-1（`components/.gitkeep` と `bases/.gitkeep` 追加） | 配布時点 lint 失敗の解消 | 極小 |
 | **高** | E-2（本プラン完了条件未達） | §5.5 違反をそのまま残している | 低 |
 | **高** | A-1（m/=> 契約 custom hook） | **§1.1.1 全域性の守護機構**、最優先 | 中（hook 1 本） |
 | **中** | A-3（CODING §1.9 見直し、:skip-comments は維持） | 元規約の読み違え解消 | 低（規約削除） |
@@ -376,9 +489,15 @@ adr/README.md の ADR 解説 158 行、CODING_GUIDE.md §1 メタ解説、「迷
 | **中** | A-7（関数行数 clj-kondo hook） | ターン内検証に乗る機械化 | 中（hook 1 本） |
 | **中** | B-1（§7.2 を「必要時のみ」に緩和） | 毎ターン儀式の軽量化 | 低（規約改訂） |
 | **中** | B-3（resolved Q 選別削除） | ADR 昇格 Q のみ削除、他は軽く残す | 低（規約改訂） |
-| **中** | D-2（dev/user.clj 条件付き生成） | ブートストラップ毎回の削除疲労 | 中（Babashka 生成機構） |
-| **中** | D-4（brick 追加の 4 箇所同時更新） | 実行時例外の温床 | 中（Babashka タスク） |
-| **中** | D-5（clj-kondo hook 初回取り込み） | CI 組込困難を解消 | 低〜中 |
+| **高** | D-2（Integrant / Portal セクションを `;;` でコメントアウト + 解除手順明記） | 配布時点 REPL 評価可能化、サンプル価値保持 | 小〜中（`dev/user.clj` 編集） |
+| **中** | D-4 対処（`scripts/check-brick-registration.sh` 新設 + 相互参照強化） | brick 登録漏れの機械検知 | 小（shell + 文書） |
+| **中** | D-5（`scripts/lint-import-hooks.sh` + 運用タイミング明文化） | hook 再取り込みの自動化 | 小 |
+| **高** | D-6（`scripts/check-placeholders.sh` + 完了条件組み込み） | 置換忘れの機械検知 | 小 |
+| **中** | F-1（`scripts/check-workspace-integrity.sh` 統合 + §5.5 組み込み） | 完了条件に総合検査を 1 行追加 | 小 |
+| **中** | F-3（`scripts/check-deprecated-libs.sh` 新設） | A-6 を deps.edn 側で補完 | 小 |
+| **低** | F-2（`dev/user.clj` セクション整合検査） | 保留、実装複雑度高 | 中 |
+| **低** | F-4（Malli instrumentation 動的検査） | 保留、本計画の静的検査戦略と異なる | 中 |
+| — | G-1 / G-2 / G-3（運用姿勢・役割分担・前提明示の KNOWLEDGE 昇格） | 別途ユーザー合意で昇格 | 小（文書追記） |
 | **高** | A-8（m/=> と defn アリティ整合 hook） | Malli 契約整合性、本テンプレ核 | 中（hook 1 本） |
 | **高** | A-9（ドメイン top-level atom 禁止） | §1.1.2 不変性守護 | 低（:config-in-ns 活用） |
 | **高** | A-10（catch Throwable / Exception 禁止） | §7.2 catch 限定化 | 中（hook 1 本） |
@@ -388,7 +507,7 @@ adr/README.md の ADR 解説 158 行、CODING_GUIDE.md §1 メタ解説、「迷
 | **中** | C-2（STACK_GUIDE を正本と明示 + MAINTAINERS に同期規律追加） | version drift 防止、日常参照コスト維持 | 中（2 文書編集） |
 | **中** | C-3（CLAUDE.md §8.0 と下流 3 文書の相互参照構築、空スキャン規約新設） | 規約レベルの欠落是正 | 中（4 文書編集） |
 | — | C-4 は Part 2 L に格下げ | 原理誤読 | — |
-| **低** | D-3 / D-6（リッチコメント整理・プレースホルダ警告） | D-2 / D-5 の副産物 | 低 |
+| — | D-3（D-2 で自動解消、冒頭注記のみ追加） | D-2 の副産物 | 極小 |
 | **中** | A-13（m/validate 戻り値捨て検知） | 初心者ミス検出 | 中（hook 1 本） |
 | **中** | A-14（1 ファイル 1 ns） | false positive なし | 低（hook 1 本） |
 | **中** | A-15（位置引数 4 個以上） | §4.2 機械化 | 低（hook 1 本） |
@@ -397,14 +516,22 @@ adr/README.md の ADR 解説 158 行、CODING_GUIDE.md §1 メタ解説、「迷
 | **中** | A-18（production Thread/sleep 禁止） | 副作用隔離 | 低（:discouraged-var） |
 | — | A-19 | 保留・除外項目（詳細は本文） | — |
 
-**最初のバッチ**（即採用・低コスト、1 日以内）:
-A-2・A-4・A-5・A-9・A-11・A-12・A-14・A-15・A-16・A-18・B-2・B-4・D-1・E-2。規約改訂・`:discouraged-var` 追加・既存 `:config-in-ns` 雛形の有効化・単純 hook のみで完了する。
+段階分けは以下の通り。本ファイル再記述（段階 0）は既に完了、段階 1 以降が実装タスク。
 
-**次のバッチ**（複合 hook 実装、2〜3 日）:
-A-1・A-7・A-8・A-10・A-13・A-17。`.clj-kondo/hooks/` 配下に custom hook を追加する。**A-1 は §1.1.1 全域性、A-8 は Malli 契約整合、A-10 / A-11 は §7.2、A-12 は §1.1.3 で、三基底原則すべてを機械化で守る束**。
+**段階 1**（完了条件に関わる最小セット、半日以内）:
+D-1（`.gitkeep`）・D-6（`check-placeholders.sh` + §5.5 組み込み）。2 ファイル追加 + 1 script + §5.5 の 1 行変更で完了。
 
-**その後**:
-A-6（非推奨ライブラリ登録）・D-2 / D-4 / D-5（Babashka 拡充）・B-1 / B-3 / A-3（規約緩和）・C / E-1（文書整合）。
+**段階 2**（ブートストラップ体験の改善 + shell script 充実、1〜2 日）:
+D-2（`;;` コメント化）・D-3（注記）・D-5（`lint-import-hooks.sh`）・D-4 対処（`check-brick-registration.sh`）・F-1（`check-workspace-integrity.sh` 統合）・F-3（`check-deprecated-libs.sh`）・E-2（前セッション完了条件実行）。`scripts/` ディレクトリ 5 本の新設と `dev/user.clj` の書き換え、関連文書への相互参照追加
+
+**段階 3**（即採用可能な設定変更・規約緩和、1 日以内）:
+A-2・A-4・A-5・A-9・A-11・A-12・A-14・A-15・A-16・A-18・B-2・B-4。規約改訂・`:discouraged-var` 追加・既存 `:config-in-ns` 雛形の有効化・単純 hook のみで完了
+
+**段階 4**（複合 custom hook 実装、2〜3 日）:
+A-1・A-7・A-8・A-10・A-13・A-17。`.clj-kondo/hooks/` 配下に custom hook を追加。**A-1 は §1.1.1 全域性、A-8 は Malli 契約整合、A-10 / A-11 は §7.2、A-12 は §1.1.3 で、三基底原則すべてを機械化で守る束**
+
+**段階 5**（文書整合・運用姿勢の昇格、随時）:
+A-6（非推奨ライブラリ登録）・B-1 / B-3 / A-3（規約緩和）・C-2 / C-3（正本化と相互参照）・E-1（本プラン ADR 発行）・G-1 / G-2 / G-3（運用姿勢の KNOWLEDGE / `CLAUDE.md` / `MAINTAINERS_GUIDE.md` 昇格）
 
 ---
 
