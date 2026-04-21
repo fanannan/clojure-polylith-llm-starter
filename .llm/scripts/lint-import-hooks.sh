@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # scripts/lint-import-hooks.sh
 #
-# #
 # 目的:
 #   依存ライブラリ（Malli、Polylith 等）が提供する clj-kondo hook を
 #   .clj-kondo/configs/ に取り込む。tools.deps の :main-opts は

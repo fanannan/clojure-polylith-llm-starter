@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # scripts/check-single-ns-per-file.sh
 #
-# #
 # 目的:
 #   1 つの .clj / .cljc / .cljs ファイル内に (ns ...) 宣言が複数ないかを検査する。
 #   CODING_GUIDE.md §14.1 の機械化（false positive なし、単純な構文判定）。

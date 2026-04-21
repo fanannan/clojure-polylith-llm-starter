@@ -64,8 +64,7 @@ ADR はこれらを**軽量な記述形式**で解決する。1 件あたり 1�
 | **ADR（本ディレクトリ）** | なぜそう決めたか（経緯） | **一度発行したら変更禁止** |
 | **QUESTIONS.md** | 未決の判断 | open → resolved で閉じる |
 
-**ADR の最重要特性は「不変」**。一度発行した ADR は編集しない。改訂が必要になったら、
-新しい ADR を発行して旧 ADR を supersede する。これにより判断の履歴が完全に保全される。
+**ADR の最重要特性は「不変」**。一度発行した ADR は編集しない。改訂が必要になったら新しい ADR を発行して旧 ADR を supersede する。これにより判断の履歴が完全に保全される。
 
 ## ADR を発行すべき基準
 
@@ -140,7 +139,7 @@ ADR はこれらを**軽量な記述形式**で解決する。1 件あたり 1�
 3. 新 ADR の Decision で新しい判断を述べる
 4. 新 ADR の Related に `Supersedes: NNNN-old-topic.md` を記載
 
-**旧 ADR の Status は触らない**（`accepted` のまま）。遡読者は新 ADR の Related をたどって supersede 関係を知る。従来の「旧 ADR の Status を superseded-by-NNNN に更新する」双方向更新は、チェイン整合を維持する儀式コストに対して遡読者が実質不在のため廃止した（B-2）。
+**旧 ADR の Status は触らない**（`accepted` のまま）。遡読者は新 ADR の Related をたどって supersede 関係を知る。従来の「旧 ADR の Status を superseded-by-NNNN に更新する」双方向更新は、チェイン整合を維持する儀式コストに対して遡読者が実質不在のため廃止した。
 
 **最新の accepted ADR のみが生きた判断**。旧 ADR は「その時点でそう判断した」歴史的記録として残る。
 

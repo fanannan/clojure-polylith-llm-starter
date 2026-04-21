@@ -223,7 +223,7 @@ CLAUDE.md が「日々の作業フロー」を規定するのに対し、本文�
 #### 2.3.3 副作用の明示化
 
 - `println` / `prn` はアプリケーションコード（components / bases）で禁止。代わりに `mulog/log` で構造化ログ、または `tap>` でデータ確認。**例外**: ビルドスクリプト（`projects/<deploy>/build.clj`）や `development/src/` 配下の一時デバッグコードでは許容（mulog 依存を引き込む疲労を避けるため、CLAUDE.md §4.3）
-- `with-redefs` は§1.1 全域性を破るので原則禁止。`clj-kondo` の `:discouraged-var` で警告化済。の反映で「最小範囲」という主観語を外し、例外使用時は **ADR で理由付け必須**とした（「なぜ依存注入で置き換えられなかったか」を記録、依存注入が技術的に不可能な Java interop の境界など）
+- `with-redefs` は§1.1 全域性を破るので原則禁止。`clj-kondo` の `:discouraged-var` で警告化済。例外使用時は **ADR で理由付け必須**とする（「なぜ依存注入で置き換えられなかったか」を記録、依存注入が技術的に不可能な Java interop の境界など）
 
 #### 2.3.4 モックは設計失敗のサイン
 
