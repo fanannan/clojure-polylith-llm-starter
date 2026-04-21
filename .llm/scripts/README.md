@@ -2,7 +2,7 @@
 
 本ディレクトリは、`.clj-kondo/` の custom hook では捕捉できない**設定ファイル・ディレクトリ構造・配布物整合性**の検査と、シェル展開が必要な運用コマンドのラッパーを収容する。各スクリプトは単独でも実行できるが、基本は `check-workspace-integrity.sh` が完了条件（`CLAUDE.md §5.5`）から一括で起動する。
 
-D-5 / D-6 / F-1 / F-3、および運用姿勢 G-2（hook と script の役割分担）の実装。
+hook（`.clj-kondo/polyguard/`）と script（本ディレクトリ）の役割分担は `MAINTAINERS_GUIDE.md §5.10` を参照。
 
 ## 機械化の 5 層構造（`MAINTAINERS_GUIDE.md §5.10` の要約）
 
@@ -95,7 +95,7 @@ NVD API key 推奨（`https://nvd.nist.gov/developers/request-an-api-key`）。�
 1. `.llm/scripts/check-<topic>.sh` を作成（終了コード 0 / 1 で成否表現、エラー時は人間に読めるメッセージ）
 2. `check-workspace-integrity.sh` の `run_step` に 1 行追加
 3. 本 README の「スクリプト一覧」表と「対応項目」欄を更新
-4. 新しい観点が `_POSSIBLE_ISSUES.md` に記録されていない場合、該当節（F 系）に追記
+4. 新しい観点・判断根拠は `MAINTAINERS_GUIDE.md §5.12`（linter 継続点検規律）または ADR として記録
 
 ## 非採用事項
 

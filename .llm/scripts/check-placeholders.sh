@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
 # scripts/check-placeholders.sh
 #
-# #
 # 目的:
 #   workspace.edn / deps.edn にプレースホルダ `myorg.myapp` が残っていないか検査する。
 #   `CLAUDE.md §5.5` 完了条件の一部として `check-workspace-integrity.sh` 経由で呼ばれる。
 #
 # 対象:
 #   設定ファイルのみ（workspace.edn / deps.edn）。
-#   サンプルコード（POLYLITH_GUIDE.md / KNOWLEDGE.md / _POSSIBLE_ISSUES.md 内のコード例）は対象外。
+#   サンプルコード（POLYLITH_GUIDE.md / KNOWLEDGE.md 内のコード例）は対象外。
 #
 # 運用タイミング:
 #   - ブートストラップの早い段階（workspace.edn 編集直後）
