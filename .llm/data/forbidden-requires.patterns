@@ -5,33 +5,32 @@
 # Format: <ns-regex-pattern>|<short-reason>
 
 org\.apache\.log4j|log4j 1.x CVE-2019-17571 等、公式サポート終了。推奨: com.brunobonacci/mulog または ch.qos.logback/logback-classic
-javax\.xml\.parsers\.xerces|XXE 脆弱性、bundled 版は JDK 付属のほうが安全。推奨: org.clojure/data.xml
+taoensso\.timbre|構造化ログの表現力が mulog より弱い。推奨: com.brunobonacci/mulog
+com\.stuartsierra\.component|本テンプレートは Integrant を採用、設計思想が衝突。推奨: integrant/integrant
+mount\.core|グローバル状態を生む、Integrant は依存注入で回避。推奨: integrant/integrant
 org\.json|デシリアライズ脆弱性の歴史、推奨代替あり。推奨: metosin/jsonista
+clojure\.data\.json|パフォーマンスで jsonista に劣る。推奨: metosin/jsonista
+environ\.core|構造化設定に弱い、aero の tagged literal が表現力で優位。推奨: aero/aero
+immuconf\.config|aero が事実上のコミュニティ標準。推奨: aero/aero
+aleph\.http|Netty 基盤で依存重い、manifold を抱え込む。Jetty / http-kit が軽量。推奨: ring/ring-jetty-adapter または http-kit/http-kit
+org\.immutant\.web|WildFly 系列はメンテ停止。推奨: ring/ring-jetty-adapter
+compojure\.core|data 駆動でない、新規は reitit-ring。レガシー保守は可。推奨: metosin/reitit-ring
+taoensso\.tower|メンテ停止、同作者の tempura が後継。推奨: com.taoensso/tempura
+endophile\.core|メンテ停止、markdown-clj へ。推奨: markdown-clj/markdown-clj
+clojurewerkz\.elastisch|メンテ停止、spandex が Elasticsearch の現役クライアント。推奨: mpenet/spandex
+robert\.bruce|メンテ停止、diehard が後継。推奨: sunng87/diehard
 clojure\.java\.jdbc|メンテ停止、推奨代替あり。推奨: com.github.seancorfield/next.jdbc
 korma\.core|data 駆動でない。HoneySQL + next.jdbc で SQL を組み立てる。推奨: com.github.seancorfield/honeysql または com.github.seancorfield/next.jdbc
 joplin\.core|メンテ低迷、migratus へ。推奨: migratus/migratus
-com\.stuartsierra\.component|本テンプレートは Integrant を採用、設計思想が衝突。推奨: integrant/integrant
-mount\.core|グローバル状態を生む、Integrant は依存注入で回避。推奨: integrant/integrant
-environ\.core|構造化設定に弱い、aero の tagged literal が表現力で優位。推奨: aero/aero
-immuconf\.config|aero が事実上のコミュニティ標準。推奨: aero/aero
-clojure\.spec\.alpha|関数契約・generator の表現力で Malli に劣る。推奨: metosin/malli
-compojure\.core|data 駆動でない、新規は reitit-ring。レガシー保守は可。推奨: metosin/reitit-ring
-aleph\.http|Netty 基盤で依存重い、manifold を抱え込む。Jetty / http-kit が軽量。推奨: ring/ring-jetty-adapter または http-kit/http-kit
-org\.immutant\.web|WildFly 系列はメンテ停止。推奨: ring/ring-jetty-adapter
-manifold\.deferred|aleph と同系統の設計不整合、core.async / promise.cljc へ。推奨: org.clojure/core.async
-clojure\.data\.json|パフォーマンスで jsonista に劣る。推奨: metosin/jsonista
-taoensso\.timbre|構造化ログの表現力が mulog より弱い。推奨: com.brunobonacci/mulog
-cemerick\.friend|メンテ停止、Ring 1.11+ 整合性に懸念。推奨: buddy/buddy-sign または buddy/buddy-hashers
-iapetos\.core|mulog のイベント駆動と重複、mulog に一元化。推奨: com.brunobonacci/mulog
 overtone\.at-at|停止制御が弱く Integrant 統合しにくい。推奨: jarohen/chime
 tea-time\.core|メンテ停止、chime へ。推奨: jarohen/chime
-taoensso\.tower|メンテ停止、同作者の tempura が後継。推奨: com.taoensso/tempura
-clj-webdriver\.taxi|メンテ停止、etaoin が現役。推奨: etaoin/etaoin
-endophile\.core|メンテ停止、markdown-clj へ。推奨: markdown-clj/markdown-clj
-clojurewerkz\.elastisch|メンテ停止、spandex が Elasticsearch の現役クライアント。推奨: mpenet/spandex
 amazonica|Cognitect aws-api が SDK v2 ベース、サービスごと分割で軽量。推奨: com.cognitect.aws/api
+manifold\.deferred|aleph と同系統の設計不整合、core.async / promise.cljc へ。推奨: org.clojure/core.async
+cemerick\.friend|メンテ停止、Ring 1.11+ 整合性に懸念。推奨: buddy/buddy-sign または buddy/buddy-hashers
 incanter\.core|メンテ低迷、scicloj エコシステムが活発。推奨: scicloj/tablecloth または scicloj/scicloj.ml
 dl4clj|libpython-clj 経由で PyTorch/TensorFlow が現実的。推奨: clj-python/libpython-clj
 cortex|メンテ停止、libpython-clj 経由へ。推奨: clj-python/libpython-clj
 clojurewerkz\.machine-head|Paho MQTT Java を直接使うほうが依存が薄い。推奨: org.eclipse.paho/org.eclipse.paho.client.mqttv3
-robert\.bruce|メンテ停止、diehard が後継。推奨: sunng87/diehard
+javax\.xml\.parsers\.xerces|XXE 脆弱性、bundled 版は JDK 付属のほうが安全。推奨: org.clojure/data.xml
+clojure\.spec\.alpha|関数契約・generator の表現力で Malli に劣る。推奨: metosin/malli
+iapetos\.core|mulog のイベント駆動と重複、mulog に一元化。推奨: com.brunobonacci/mulog

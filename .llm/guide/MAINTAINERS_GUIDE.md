@@ -502,30 +502,42 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
 6. **deps.edn** を更新
 7. **派生プロジェクトへの影響**: KNOWLEDGE.md への移行ガイド記載を検討
 
-#### 5.9.6 §8.1 禁止ライブラリへの追加
+#### 5.9.6 禁止・非推奨ライブラリの追加先
+
+本テンプレートは**各 stack の `;; lib-catalog` block の「不採用」節**で禁止・非推奨エントリを管理する（§4.2.X ごとに採用・不採用が一望できる形）。追加先は以下で判断:
+
+| エントリの性格 | 追加先 |
+|---|---|
+| 特定 stack の機能領域に属する（例: Compojure は web-api の :routing 非推奨） | **該当 §4.2.X の `;; lib-catalog` block 末尾の「不採用」節** |
+| cross-cutting（stack 固有でない、例: spec.alpha, metrics-clojure, Rama） | **§8.1 / §8.2 の cross-cutting 残余 block** |
+| 特定 coord を持たない（Keycloak / Memcached / Babashka 本番利用 等） | **§8.2 末尾の narrative**（EDN には含めない） |
+
+#### 5.9.7 禁止ライブラリへの追加手順（§4.2.X 不採用節 or §8.1 cross-cutting）
 
 セキュリティ・ライセンス・メンテ停止等の**強い理由**がある場合のみ追加：
 
 1. **事実確認**: CVE 番号、公式声明、ライセンス条項等の**一次資料を確認**（憶測で追加しない）
 2. ADR を発行（`adr/NNNN-forbid-XXX.md`）、事実根拠を記載
-3. **STACK_GUIDE.md §8.1 の `;; lib-catalog` EDN block にエントリ追加**（schema は §5.9.8 参照、`:judgment :status :deprecated :severity :forbidden`）
+3. §5.9.6 の判定に従い、該当の `;; lib-catalog` block にエントリ追加（schema は §5.9.8 参照、`:judgment :status :deprecated :severity :forbidden`）
 4. **`clj -X:gen-lib-catalog` を実行**し、`.llm/data/{libs.edn, deprecated-libs.patterns, forbidden-requires.patterns}` を再生成
 5. 生成 diff を確認の上、STACK_GUIDE.md 変更と artifact 再生成を**同一コミット**にまとめる
 6. 既存の派生プロジェクトで使用されている可能性がある場合、周知が必要
 
-#### 5.9.7 §8.2 非推奨ライブラリへの追加
+#### 5.9.7b 非推奨ライブラリへの追加手順（§4.2.X 不採用節 or §8.2 cross-cutting）
 
 推奨代替が明確な場合の追加：
 
 1. **代替の実在を確認**（代替が推奨できる状態にあるか）
 2. ADR を発行（`adr/NNNN-deprecate-XXX.md`）
-3. **STACK_GUIDE.md §8.2 の `;; lib-catalog` EDN block にエントリ追加**（schema は §5.9.8 参照）
+3. §5.9.6 の判定に従い、該当の `;; lib-catalog` block にエントリ追加（schema は §5.9.8 参照）
 4. **`clj -X:gen-lib-catalog` を実行**し、artifact を再生成、同一コミット
-5. 関連する **§3 検討した代替**表と**§4.2 避けるべきライブラリ**欄を更新
+5. 関連する **§3 検討した代替**表を更新
 
 #### 5.9.8 lib-catalog EDN block の schema と生成フロー
 
-**単一情報源**: STACK_GUIDE.md §4.2 各 stack の `;; lib-catalog` block（stack ごとに必要な推奨・許容エントリ）と §8 の block（禁止・非推奨・条件付き・射程外）が lib catalog 情報の source of truth。cross-cutting lib（mulog / integrant / aero 等）は複数の stack block に現れることがあるが、generator は**構造完全一致のエントリのみ dedup** を許容し、矛盾（同じ coord + purpose で異なる judgment/reason）は error。下記 2 つの shell script と EDN artifact は `clj -X:gen-lib-catalog` が生成する派生物で、手編集禁止（ヘッダに `GENERATED` コメント付き）。
+**単一情報源**: STACK_GUIDE.md 各 stack の `;; lib-catalog` block（§4.2.X、採用 + 不採用の両方を同一 block 内に集約）と、cross-cutting 残余の §8.1 / §8.2 block が lib catalog 情報の source of truth。cross-cutting lib（mulog / integrant / aero 等の adopted）は複数の stack block に現れることがあるが、generator は**構造完全一致のエントリのみ dedup** を許容し、矛盾（同じ coord + purpose で異なる judgment/reason）は error。
+
+**採用 + 不採用の同一 block 集約**: 各 §4.2.X の block は `;; === 不採用 ===` コメントで区切って**その stack の機能領域での採否**を一望できる構成（SSOT 徹底の副次効果: 保守時に同 stack で何が採用され何が避けられているかが単一 block 内で確認できる）。下記 2 つの shell script と EDN artifact は `clj -X:gen-lib-catalog` が生成する派生物で、手編集禁止（ヘッダに `GENERATED` コメント付き）。
 
 - `.llm/data/libs.edn` — 全エントリ（人間可読形式、pretty-print）
 - `.llm/data/deprecated-libs.patterns` — `check-deprecated-libs.sh` が読む `<regex>|<reason>` 行
