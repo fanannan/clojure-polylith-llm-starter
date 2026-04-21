@@ -42,6 +42,39 @@ run_step "プレースホルダ残存検査" \
 run_step "brick 登録整合検査" \
   "$SCRIPT_DIR/check-brick-registration.sh"
 
+# --- lib-catalog 生成物の同期検証 ---
+# STACK_GUIDE.md §8 の ;; lib-catalog EDN block と .llm/data/ 配下の生成物が
+# ずれていないか検証する（生成後の commit 忘れを早期検知）。
+echo ""
+echo "=== lib-catalog 生成物の同期検証 ==="
+if [ -f ".llm/scripts/gen_lib_catalog.clj" ] && [ -d ".llm/data" ]; then
+  lc_tmpdir="$(mktemp -d)"
+  # trap を使わず、各 diff の後に手動で clean up（check 内 exit 時に lc_tmpdir を残さない）
+  if clj -X:gen-lib-catalog :out-dir "\"$lc_tmpdir\"" >/dev/null 2>&1; then
+    lc_fail=0
+    for artifact in libs.edn deprecated-libs.patterns forbidden-requires.patterns; do
+      if ! diff -u ".llm/data/$artifact" "$lc_tmpdir/$artifact" >/dev/null 2>&1; then
+        echo "ERROR: .llm/data/$artifact が STACK_GUIDE.md §8 と同期していません"
+        echo "  Fix: clj -X:gen-lib-catalog && diff を確認して commit"
+        diff -u ".llm/data/$artifact" "$lc_tmpdir/$artifact" | head -40 | sed 's/^/    /'
+        lc_fail=1
+      fi
+    done
+    rm -rf "$lc_tmpdir"
+    if [ "$lc_fail" -eq 1 ]; then
+      failures=$((failures + 1))
+    else
+      echo "check-lib-catalog-sync: OK"
+    fi
+  else
+    rm -rf "$lc_tmpdir"
+    echo "ERROR: clj -X:gen-lib-catalog が失敗しました（STACK_GUIDE.md §8 の EDN block にエラーがある可能性）"
+    failures=$((failures + 1))
+  fi
+else
+  echo "check-lib-catalog-sync: skipped (generator or data dir missing)"
+fi
+
 # --- 非推奨ライブラリ ---
 run_step "非推奨ライブラリ検査" \
   "$SCRIPT_DIR/check-deprecated-libs.sh"

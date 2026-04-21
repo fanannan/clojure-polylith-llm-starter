@@ -168,4 +168,22 @@
                   {:git/tag "v6.0.1" :git/sha "b520351"}}
    :main-opts    ["-m" "clj-watson.cli" "scan"
                   "-p" "deps.edn"
-                  "--fail-on-result"]}}}
+                  "--fail-on-result"]}
+
+  ;; ----------------------------------------------------------------
+  ;; :gen-lib-catalog — STACK_GUIDE.md から lib catalog artifact を生成
+  ;;   `;; lib-catalog` マーカ付き EDN block を抽出 → Malli 検証 →
+  ;;   .llm/data/{libs.edn, deprecated-libs.patterns, forbidden-requires.patterns}
+  ;;   を出力。shell スクリプト（check-deprecated-libs.sh /
+  ;;   check-forbidden-requires.sh）が生成された .patterns を消費する。
+  ;;   check-workspace-integrity.sh が再生成 + diff で drift を検知する。
+  ;;
+  ;; 実行例:
+  ;;   clj -X:gen-lib-catalog
+  ;;   clj -X:gen-lib-catalog :out-dir '"/tmp/out"'
+  ;;
+  ;; Malli は root :deps で既に利用可能のため :extra-deps は不要（-X 継承）。
+  ;; ----------------------------------------------------------------
+  :gen-lib-catalog
+  {:extra-paths [".llm/scripts"]
+   :exec-fn     gen-lib-catalog/generate}}}

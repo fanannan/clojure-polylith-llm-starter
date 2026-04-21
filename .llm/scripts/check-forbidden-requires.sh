@@ -15,9 +15,19 @@
 #   deps.edn の採用宣言レベルは check-deprecated-libs.sh が担当。
 #   本スクリプトは「(:require [org.apache.log4j :as log4j])」のような形を検知する。
 #
+# パターンソース:
+#   `.llm/data/forbidden-requires.patterns`（`.llm/scripts/gen_lib_catalog.clj` が
+#   STACK_GUIDE.md §8 の `;; lib-catalog` EDN block から生成）。
+#   生成物と STACK_GUIDE.md の同期は `check-workspace-integrity.sh` の diff
+#   検証で自動確認される。
+#
+# パターンファイルフォーマット:
+#   `<ns-regex-pattern>|<reason>` の行列（`#` で始まる行と空行は無視）。
+#
 # 終了コード:
 #   0: 禁止 namespace の require なし
 #   1: 禁止 namespace の require あり
+#   2: パターンファイル不在（`clj -X:gen-lib-catalog` 未実行）
 
 set -euo pipefail
 
@@ -26,58 +36,28 @@ WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 cd "$WORKSPACE_ROOT"
 
-# 禁止 namespace の接頭辞（STACK_GUIDE.md §8 と同期）
-# パターン: 各行「接頭辞|§区分 理由」
-FORBIDDEN_PREFIXES=(
-  # === §8.1 セキュリティ・ライセンス禁止 ===
-  'org\.apache\.log4j|§8.1 log4j 1.x CVE。推奨: mulog'
-  'javax\.xml\.parsers\.xerces|§8.1 XXE 脆弱性。推奨: clojure.data.xml'
-  'org\.json|§8.1 デシリアライズ脆弱性。推奨: jsonista'
-  'java\.io\.Serializable|§8.2 RCE 脆弱性。推奨: com.taoensso/nippy'
+PATTERNS_FILE=".llm/data/forbidden-requires.patterns"
 
-  # === §8.2 非推奨（設計思想不整合・メンテ停止） ===
-  'taoensso\.timbre|§8.2 推奨: com.brunobonacci/mulog'
-  'com\.stuartsierra\.component|§8.2 推奨: integrant'
-  'mount\.core|§8.2 推奨: integrant'
-  'environ\.core|§8.2 推奨: aero'
-  'immuconf\.config|§8.2 推奨: aero'
-  'clojure\.spec\.alpha|§8.2 推奨: malli'
-  'compojure\.core|§8.2 推奨: reitit-ring'
-  'io\.pedestal\.http|§8.2 推奨: reitit-ring'
-  'aleph\.http|§8.2 推奨: ring-jetty-adapter / http-kit'
-  'manifold\.(deferred|stream)|§8.2 推奨: core.async'
-  'org\.immutant\.web|§8.2 推奨: ring-jetty-adapter'
-  'bidi\.ring|§8.2 推奨: reitit'
-  'clj-http\.client|§8.2 推奨: hato'
-  'clojure\.data\.json|§8.2 推奨: jsonista'
-  'cheshire\.core|§8.2 推奨: jsonista'
-  'clojure\.java\.jdbc|§8.2 推奨: next.jdbc'
-  'korma\.core|§8.2 推奨: HoneySQL + next.jdbc'
-  'cemerick\.friend|§8.2 推奨: buddy-sign'
-  'taoensso\.tower|§8.2 推奨: tempura'
-  'iapetos\.core|§8.2 推奨: mulog'
-  'overtone\.at-at|§8.2 推奨: chime'
-  'tea-time\.core|§8.2 推奨: chime'
-  'robert\.bruce|§8.2 推奨: diehard'
-  'endophile\.core|§8.2 推奨: markdown-clj'
-  'clojurewerkz\.elastisch|§8.2 推奨: mpenet/spandex'
-  'clj-webdriver\.taxi|§8.2 推奨: etaoin'
-  'amazonica\.|§8.2 推奨: com.cognitect.aws'
-  'incanter\.(core|stats)|§8.2 推奨: scicloj/tablecloth'
-  'dl4clj\.|§8.2 推奨: libpython-clj'
-  'cortex\.|§8.2 推奨: libpython-clj'
-  'clojurewerkz\.machine-head|§8.2 推奨: org.eclipse.paho 直接'
-  'seesaw\.core|§8.2 推奨: humbleui / cljfx'
-  'joplin\.core|§8.2 推奨: migratus'
-  'clojure\.data\.fressian|§8.2 推奨: com.taoensso/nippy'
-  'com\.rpl\.rama|§8.2 商用ライセンス。代替: XTDB + worker + batch stack'
-  'smile\.(classification|clustering|regression)|§8.2 GPL。代替: scicloj/tablecloth'
-  'hyperfiddle\.electric|§3.40.1 射程外'
-)
+if [ ! -f "$PATTERNS_FILE" ]; then
+  echo "ERROR: $PATTERNS_FILE が存在しません" >&2
+  echo "       \`clj -X:gen-lib-catalog\` を実行して生成してください" >&2
+  exit 2
+fi
+
+declare -a FORBIDDEN_PREFIXES=()
+while IFS= read -r line; do
+  [ -z "$line" ] && continue
+  case "$line" in \#*) continue ;; esac
+  FORBIDDEN_PREFIXES+=("$line")
+done < "$PATTERNS_FILE"
+
+if [ "${#FORBIDDEN_PREFIXES[@]}" -eq 0 ]; then
+  echo "check-forbidden-requires: パターン 0 件、skipped"
+  exit 0
+fi
 
 # 検査対象: components/, bases/ 配下の clj* ファイル
 # development/src は一時デバッグ用なので検査対象外。
-found=0
 declare -a SRC_FILES=()
 while IFS= read -r f; do
   SRC_FILES+=("$f")
@@ -88,6 +68,8 @@ if [ "${#SRC_FILES[@]}" -eq 0 ]; then
   echo "check-forbidden-requires: no source files, skipped"
   exit 0
 fi
+
+found=0
 
 for src in "${SRC_FILES[@]}"; do
   for entry in "${FORBIDDEN_PREFIXES[@]}"; do

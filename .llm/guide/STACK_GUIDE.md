@@ -1915,68 +1915,429 @@ brick deps.edn が採用 stack の §4.2.X 採用時の確認事項を満たし�
 
 セキュリティ脆弱性・ライセンス違反リスク・決定的なメンテナンス停止など、**強い理由により採用を禁じる**ライブラリ。新規採用も既存コードでの継続使用も避ける（継続使用は速やかに代替へ移行）。
 
-| 機能領域 | 禁止ライブラリ | 理由タグ | 詳細・代替 | ADR |
-|---|---|---|---|---|
-| ロギング | log4j 1.x | セキュリティ + メンテ停止 | CVE-2019-17571 等の未修正脆弱性、公式サポート終了。mulog またはやむを得ず logback へ | — |
-| XML 処理 | 古い xerces/xalan（bundled 版） | セキュリティ | XXE 脆弱性。JDK 標準 `javax.xml` または最新の `data.xml` を使用 | — |
-| 汎用 JSON | org.json（legacy） | セキュリティ + 推奨代替あり | デシリアライズ脆弱性の歴史、`jsonista` へ | — |
+具体エントリは下の `;; lib-catalog` EDN block が単一情報源（§8.3 手順で追加、`clj -X:gen-lib-catalog` で artifact を再生成）。
+
+```edn
+;; lib-catalog
+[;; log4j 1.x は CVE-2019-17571 等の未修正脆弱性。公式サポート終了 (2015)。
+ ;; mulog 統一が第一選択、互換性制約で段階移行する場合のみ logback で受ける。
+ {:purpose  [:logging]
+  :ids      {:coord   org.apache.logging.log4j/log4j-1.2-api
+             :aliases [log4j/log4j]
+             :ns      "org.apache.log4j"}
+  :judgment {:status      :deprecated
+             :severity    :forbidden
+             :replacement [com.brunobonacci/mulog ch.qos.logback/logback-classic]}
+  :reasons  {:text "log4j 1.x CVE-2019-17571 等、公式サポート終了"
+             :tags [:security :maintenance-stopped]}}
+
+ ;; xerces bundled 版: XXE 脆弱性。JDK 標準 javax.xml または data.xml を使用。
+ {:purpose  [:xml]
+  :ids      {:coord xerces/xercesImpl
+             :ns    "javax.xml.parsers.xerces"}
+  :judgment {:status :deprecated :severity :forbidden :replacement org.clojure/data.xml}
+  :reasons  {:text "XXE 脆弱性、bundled 版は JDK 付属のほうが安全"
+             :tags [:security]}}
+
+ ;; xalan bundled 版: xerces 同系統の XXE リスク
+ {:purpose  [:xml]
+  :ids      {:coord xalan/xalan}
+  :judgment {:status :deprecated :severity :forbidden :replacement org.clojure/data.xml}
+  :reasons  {:text "XXE 脆弱性、bundled 版は JDK 付属のほうが安全"
+             :tags [:security]}}
+
+ ;; org.json (legacy): デシリアライズ脆弱性歴あり、jsonista へ
+ {:purpose  [:json]
+  :ids      {:coord org.json/json
+             :ns    "org.json"}
+  :judgment {:status :deprecated :severity :forbidden :replacement metosin/jsonista}
+  :reasons  {:text "デシリアライズ脆弱性の歴史、推奨代替あり"
+             :tags [:security :replacement-available]}}]
+```
 
 **追加する場合の基準**: CVE 報告 / 公式メンテナンス終了宣言 / ライセンス問題が発覚したもの。**事実駆動**で記録し、憶測では追加しない。
 
 ### 8.2 非推奨ライブラリ（新規採用を避ける）
 
-新規採用は避けるが、既存コードで使われている場合は段階的移行で可。**推奨代替への移行**を基本方針とする。
+新規採用は避けるが、既存コードで使われている場合は段階的移行で可。**推奨代替への移行**を基本方針とする。具体エントリは下の `;; lib-catalog` EDN block が単一情報源。
 
-| 機能領域 | 非推奨ライブラリ | 理由タグ | 推奨代替・移行方針 | ADR |
-|---|---|---|---|---|
-| DB | clojure.java.jdbc | メンテ停止 + 推奨代替あり | next.jdbc へ移行 | — |
-| ライフサイクル | Component | 設計思想不整合 | Integrant(本テンプレート採用) | — |
-| ライフサイクル | Mount | 設計思想不整合 | グローバル状態を生む。Integrant へ | — |
-| 設定管理 | environ | 推奨代替あり | 構造化設定に弱い。aero へ | — |
-| 検証 | clojure.spec.alpha | 設計思想不整合 + 推奨代替あり | 関数契約・generator の表現力で Malli に劣る | — |
-| HTTP | Compojure | 設計思想不整合 + 条件付き | data 駆動でない。新規は Reitit、レガシー保守は可 | — |
-| HTTP | Pedestal | 条件付き | 小〜中規模で過剰。大規模で interceptor 機構が必要なら検討可 | — |
-| HTTP クライアント | clj-http（新規） | 推奨代替あり + 条件付き | hato へ。既存コードは段階的移行 | — |
-| JSON | data.json | 推奨代替あり | パフォーマンスで jsonista に劣る | — |
-| ロギング | timbre | 推奨代替あり | 構造化ログの表現力が mulog より弱い | — |
-| 認証 | friend | メンテ停止 + 条件付き | Ring 1.11 以降との整合性に懸念。buddy-sign 等へ | — |
-| 認証 | Keycloak + adapter | 条件付き | 重量級、小〜中規模で過剰。エンタープライズ認証なら可 | — |
-| キャッシュ | Memcached クライアント | 推奨代替あり | Redis(carmine)が機能的に優位 | — |
-| メトリクス | metrics-clojure(iapetos 等) | 設計思想不整合 | mulog のイベント駆動と重複。mulog に一元化 | — |
-| メトリクス | OpenTelemetry 自動計装 | 設計思想不整合 | 構造化ログとメトリクスが分離し一貫性が下がる | — |
-| スケジューリング | at-at | 設計思想不整合 | 停止制御が弱く Integrant と統合しにくい。chime へ | — |
-| スケジューリング | Quartz(java interop) | 条件付き | 重量級、設定が冗長。複雑な業務要件があれば検討可 | — |
-| スケジューリング | tea-time | メンテ停止 | chime へ | — |
-| ビルド・依存管理 | Leiningen(新規プロジェクト) | 推奨代替あり + 条件付き | tools.deps へ。Lein ベースの既存は段階移行 | — |
-| HTTP サーバ | aleph | 設計思想不整合 | Jetty / http-kit に移行。Netty 基盤で依存重く、manifold を抱え込む | — |
-| 並行処理 | manifold | 設計思想不整合 | core.async / promise.cljc に移行。aleph と同系統の設計不整合 | — |
-| HTTP サーバ | immutant | メンテ停止 | Jetty へ。WildFly 系はもはやメンテされていない | — |
-| 多言語対応 | tower | メンテ停止 | `taoensso/tempura` へ（§3.20） | — |
-| E2E テスト | clj-webdriver | メンテ停止 | `etaoin/etaoin` へ（§3.27） | — |
-| Markdown | endophile | メンテ停止 | `markdown-clj/markdown-clj` へ（§3.32） | — |
-| 全文検索 | clojurewerkz/elastisch | メンテ停止 | `mpenet/spandex` へ（§3.35） | — |
-| AWS SDK | amazonica | メンテ停止 | `com.cognitect.aws/*` aws-api へ | — |
-| 数値計算 | incanter | メンテ低迷 + 設計思想不整合 | `scicloj/tablecloth` / `scicloj/scicloj.ml` へ（§3.36） | — |
-| 深層学習 | deeplearning4j Clojure wrapper | 設計思想不整合 | libpython-clj 経由で PyTorch/TensorFlow（§3.36） | — |
-| 深層学習 | cortex | メンテ停止 | libpython-clj 経由へ | — |
-| LLM ラッパ | langchain4j Clojure 移植 | 設計思想不整合 | hato 直接 + `wkok/openai-clojure`（§3.37） | — |
-| 音声（プロダクション） | overtone（創作用途以外） | 条件付き | プロダクションでは採用しない。創作・ライブコーディング用途のみ可 | — |
-| PDF | iText 直接利用 | ライセンス（AGPL） + 設計思想不整合 | `clj-pdf/clj-pdf` / Flying Saucer（openpdf 版）へ（§3.31） | — |
-| ORM | Korma 等の ORM | 設計思想不整合 | `HoneySQL` + `next.jdbc` へ | — |
-| ルーティング | bidi（新規採用） | 条件付き | `metosin/reitit` へ。Malli 統合で優位 | — |
-| リトライ | robert.bruce | メンテ停止 | `sunng87/diehard` へ（§3.17） | — |
-| MQTT | machine-head | メンテ状態要確認 | `org.eclipse.paho/org.eclipse.paho.client.mqttv3` 直接へ（§3.39） | — |
-| GUI | seesaw（新規採用） | 条件付き | `humbleui` / `cljfx` へ。レガシー保守は可 | — |
-| マイグレーション | Flyway / Liquibase（Clojure 新規） | 設計思想不整合 | `migratus/migratus` へ（§3.25） | — |
-| 設定管理 | immuconf | 推奨代替あり | `aero/aero` へ | — |
-| JSON | Cheshire（新規採用） | 条件付き | `metosin/jsonista` へ。既存コードは段階移行 | — |
-| スクリプト言語 | Babashka を本番コード基盤として利用 | 設計思想不整合 | 必要な CLI は uberjar + GraalVM Native Image。Babashka は shell script 代替としての本番外利用のみ可 | — |
-| XML パーサ | xerces / xalan（bundled 版） | 既に §8.1 禁止 | `org.clojure/data.xml` へ | — |
-| 統合プラットフォーム | Rama（Red Planet Labs） | 条件付き + 設計思想不整合 + ライセンス | 商用ライセンス（community edition は小規模無料、本番大規模は有償）、framework 重量、ベンダーロックイン。XTDB + worker stack + batch stack の組合せで多くの要件を代替可。採用時は ADR + DESIGN.md §8.3 に採用不可避性を明記 | — |
-| 機械学習 | SMILE (Statistical Machine Intelligence and Learning Engine) | ライセンス + 条件付き | **GPL 3.0 ライセンス**で SaaS/商用配布と衝突。機能は広範だが scicloj/tablecloth + scicloj.ml または libpython-clj で代替可。研究・社内閉じ利用のみ ADR 発行で条件付き採用可 | — |
-| フルスタック DAG | Electric Clojure (`hyperfiddle/electric`) | 設計思想不整合 + 条件付き | ClojureScript 前提（本テンプレート JVM 単独）、macro 重依存、API 変動が激しい（§3.40.1 射程外、採用しない）| — |
-| Fressian（新規採用） | `org.clojure/data.fressian` | 推奨代替あり + 条件付き | `com.taoensso/nippy` へ（速度・型対応で優位、§3.41）。既存採用プロジェクトは継続可 | — |
-| Java Serialization 直接 | `java.io.Serializable` 経由 | セキュリティ + 設計思想不整合 | RCE 脆弱性の歴史、`com.taoensso/nippy` へ（§3.41） | — |
+```edn
+;; lib-catalog
+[;; === DB 層 ===
+ ;; clojure.java.jdbc: メンテ停止、next.jdbc へ
+ {:purpose  [:db :jdbc]
+  :ids      {:coord org.clojure/java.jdbc
+             :ns    "clojure.java.jdbc"}
+  :judgment {:status      :deprecated
+             :severity    :superseded
+             :replacement com.github.seancorfield/next.jdbc}
+  :reasons  {:text "メンテ停止、推奨代替あり"
+             :tags [:maintenance-stopped :replacement-available]}}
+
+ ;; Korma ORM: data 駆動不整合
+ {:purpose  [:db :orm]
+  :ids      {:coord korma/korma
+             :ns    "korma.core"}
+  :judgment {:status      :deprecated
+             :severity    :superseded
+             :replacement [com.github.seancorfield/honeysql com.github.seancorfield/next.jdbc]}
+  :reasons  {:text "data 駆動でない。HoneySQL + next.jdbc で SQL を組み立てる"
+             :tags [:philosophy-mismatch]}}
+
+ ;; Flyway / Liquibase (Clojure 新規): conditional — Java 資産保守なら可
+ {:purpose  [:db :migration]
+  :ids      {:coord org.flywaydb/flyway-core}
+  :judgment {:status          :conditional
+             :applicable-when "既存 Java 資産の互換保守、新規 Clojure プロジェクトは migratus"
+             :replacement     migratus/migratus}
+  :reasons  {:text "新規 Clojure プロジェクトでは migratus が自然"
+             :tags [:conditional]}}
+
+ {:purpose  [:db :migration]
+  :ids      {:coord org.liquibase/liquibase-core}
+  :judgment {:status          :conditional
+             :applicable-when "既存 Java 資産の互換保守、新規 Clojure プロジェクトは migratus"
+             :replacement     migratus/migratus}
+  :reasons  {:text "新規 Clojure プロジェクトでは migratus が自然"
+             :tags [:conditional]}}
+
+ {:purpose  [:db :migration]
+  :ids      {:coord joplin/joplin.core
+             :ns    "joplin.core"}
+  :judgment {:status :deprecated :severity :superseded :replacement migratus/migratus}
+  :reasons  {:text "メンテ低迷、migratus へ"
+             :tags [:maintenance-stopped]}}
+
+ ;; === ライフサイクル ===
+ {:purpose  [:lifecycle]
+  :ids      {:coord com.stuartsierra/component
+             :ns    "com.stuartsierra.component"}
+  :judgment {:status :deprecated :severity :superseded :replacement integrant/integrant}
+  :reasons  {:text "本テンプレートは Integrant を採用、設計思想が衝突"
+             :tags [:philosophy-mismatch]}}
+
+ {:purpose  [:lifecycle]
+  :ids      {:coord mount/mount
+             :ns    "mount.core"}
+  :judgment {:status :deprecated :severity :superseded :replacement integrant/integrant}
+  :reasons  {:text "グローバル状態を生む、Integrant は依存注入で回避"
+             :tags [:philosophy-mismatch]}}
+
+ ;; === 設定管理 ===
+ {:purpose  [:config]
+  :ids      {:coord environ/environ
+             :ns    "environ.core"}
+  :judgment {:status :deprecated :severity :superseded :replacement aero/aero}
+  :reasons  {:text "構造化設定に弱い、aero の tagged literal が表現力で優位"
+             :tags [:replacement-available]}}
+
+ {:purpose  [:config]
+  :ids      {:coord immuconf/immuconf
+             :ns    "immuconf.config"}
+  :judgment {:status :deprecated :severity :superseded :replacement aero/aero}
+  :reasons  {:text "aero が事実上のコミュニティ標準"
+             :tags [:replacement-available]}}
+
+ ;; === 検証 ===
+ {:purpose  [:validation]
+  :ids      {:coord org.clojure/spec.alpha
+             :ns    "clojure.spec.alpha"}
+  :judgment {:status :deprecated :severity :superseded :replacement metosin/malli}
+  :reasons  {:text "関数契約・generator の表現力で Malli に劣る"
+             :tags [:philosophy-mismatch :replacement-available]}}
+
+ ;; === HTTP ルーティング / フレームワーク ===
+ {:purpose  [:web :routing]
+  :ids      {:coord compojure/compojure
+             :ns    "compojure.core"}
+  :judgment {:status :deprecated :severity :superseded :replacement metosin/reitit-ring}
+  :reasons  {:text "data 駆動でない、新規は reitit-ring。レガシー保守は可"
+             :tags [:philosophy-mismatch]}}
+
+ {:purpose  [:web :routing]
+  :ids      {:coord io.pedestal/pedestal
+             :ns    "io.pedestal.http"}
+  :judgment {:status          :conditional
+             :applicable-when "大規模 interceptor 機構が必要"
+             :replacement     metosin/reitit-ring}
+  :reasons  {:text "小〜中規模で過剰、interceptor 機構が要るなら検討可"
+             :tags [:conditional]}}
+
+ {:purpose  [:web :routing]
+  :ids      {:coord bidi/bidi
+             :ns    "bidi.ring"}
+  :judgment {:status          :conditional
+             :applicable-when "Malli 統合が不要な既存プロジェクトの保守"
+             :replacement     metosin/reitit}
+  :reasons  {:text "Malli 統合で reitit が優位、新規採用不可"
+             :tags [:conditional :replacement-available]}}
+
+ ;; === HTTP クライアント ===
+ {:purpose  [:web :http-client]
+  :ids      {:coord clj-http/clj-http
+             :ns    "clj-http.client"}
+  :judgment {:status          :conditional
+             :applicable-when "既存コードの段階移行、新規は hato"
+             :replacement     hato/hato}
+  :reasons  {:text "hato が Java 11+ HttpClient ベースで第一選択"
+             :tags [:conditional :replacement-available]}}
+
+ ;; === HTTP サーバ ===
+ {:purpose  [:web :http-server]
+  :ids      {:coord aleph/aleph
+             :ns    "aleph.http"}
+  :judgment {:status      :deprecated
+             :severity    :superseded
+             :replacement [ring/ring-jetty-adapter http-kit/http-kit]}
+  :reasons  {:text "Netty 基盤で依存重い、manifold を抱え込む。Jetty / http-kit が軽量"
+             :tags [:philosophy-mismatch]}}
+
+ {:purpose  [:web :http-server]
+  :ids      {:coord org.immutant/web
+             :ns    "org.immutant.web"}
+  :judgment {:status :deprecated :severity :superseded :replacement ring/ring-jetty-adapter}
+  :reasons  {:text "WildFly 系列はメンテ停止"
+             :tags [:maintenance-stopped]}}
+
+ ;; === 並行処理 ===
+ {:purpose  [:async]
+  :ids      {:coord manifold/manifold
+             :ns    "manifold.deferred"}
+  :judgment {:status :deprecated :severity :superseded :replacement org.clojure/core.async}
+  :reasons  {:text "aleph と同系統の設計不整合、core.async / promise.cljc へ"
+             :tags [:philosophy-mismatch]}}
+
+ ;; === JSON ===
+ {:purpose  [:json]
+  :ids      {:coord org.clojure/data.json
+             :ns    "clojure.data.json"}
+  :judgment {:status :deprecated :severity :superseded :replacement metosin/jsonista}
+  :reasons  {:text "パフォーマンスで jsonista に劣る"
+             :tags [:replacement-available]}}
+
+ {:purpose  [:json]
+  :ids      {:coord cheshire/cheshire
+             :ns    "cheshire.core"}
+  :judgment {:status          :conditional
+             :applicable-when "既存コードの段階移行、新規は jsonista"
+             :replacement     metosin/jsonista}
+  :reasons  {:text "jsonista が Jackson 直叩きで高速"
+             :tags [:conditional :replacement-available]}}
+
+ ;; === ロギング ===
+ {:purpose  [:logging]
+  :ids      {:coord com.taoensso/timbre
+             :ns    "taoensso.timbre"}
+  :judgment {:status :deprecated :severity :superseded :replacement com.brunobonacci/mulog}
+  :reasons  {:text "構造化ログの表現力が mulog より弱い"
+             :tags [:replacement-available]}}
+
+ ;; === 認証 ===
+ {:purpose  [:auth]
+  :ids      {:coord   cemerick/friend
+             :aliases [clj-commons/cemerick.friend]
+             :ns      "cemerick.friend"}
+  :judgment {:status      :deprecated
+             :severity    :superseded
+             :replacement [buddy/buddy-sign buddy/buddy-hashers]}
+  :reasons  {:text "メンテ停止、Ring 1.11+ 整合性に懸念"
+             :tags [:maintenance-stopped]}}
+
+ ;; === メトリクス (mulog 一元化) ===
+ {:purpose  [:metrics :dropwizard-ring]
+  :ids      {:coord io.github.metrics-clojure-ring/metrics-clojure-ring}
+  :judgment {:status :deprecated :severity :superseded :replacement com.brunobonacci/mulog}
+  :reasons  {:text "mulog のイベント駆動と重複、mulog に一元化"
+             :tags [:philosophy-mismatch]}}
+
+ {:purpose  [:metrics :dropwizard]
+  :ids      {:coord metrics-clojure/metrics-clojure}
+  :judgment {:status :deprecated :severity :superseded :replacement com.brunobonacci/mulog}
+  :reasons  {:text "mulog のイベント駆動と重複、mulog に一元化"
+             :tags [:philosophy-mismatch]}}
+
+ {:purpose  [:metrics :prometheus]
+  :ids      {:coord clj-commons/iapetos
+             :ns    "iapetos.core"}
+  :judgment {:status :deprecated :severity :superseded :replacement com.brunobonacci/mulog}
+  :reasons  {:text "mulog のイベント駆動と重複、mulog に一元化"
+             :tags [:philosophy-mismatch]}}
+
+ ;; === スケジューリング (chime 一元化) ===
+ {:purpose  [:scheduling]
+  :ids      {:coord overtone/at-at
+             :ns    "overtone.at-at"}
+  :judgment {:status :deprecated :severity :superseded :replacement jarohen/chime}
+  :reasons  {:text "停止制御が弱く Integrant 統合しにくい"
+             :tags [:philosophy-mismatch]}}
+
+ {:purpose  [:scheduling]
+  :ids      {:coord clojurewerkz/quartzite}
+  :judgment {:status          :conditional
+             :applicable-when "複雑な業務要件 (cron 式・永続化) が必要"
+             :replacement     jarohen/chime}
+  :reasons  {:text "重量級、設定が冗長。単純用途は chime"
+             :tags [:conditional]}}
+
+ {:purpose  [:scheduling]
+  :ids      {:coord tea-time/tea-time
+             :ns    "tea-time.core"}
+  :judgment {:status :deprecated :severity :superseded :replacement jarohen/chime}
+  :reasons  {:text "メンテ停止、chime へ"
+             :tags [:maintenance-stopped]}}
+
+ ;; === ビルド・依存管理 ===
+ {:purpose  [:build]
+  :ids      {:coord leiningen/leiningen}
+  :judgment {:status          :conditional
+             :applicable-when "既存 Lein ベースプロジェクトの段階移行"
+             :replacement     org.clojure/tools.deps}
+  :reasons  {:text "新規プロジェクトは tools.deps"
+             :tags [:conditional :replacement-available]}}
+
+ ;; === 多言語対応 ===
+ {:purpose  [:i18n]
+  :ids      {:coord com.taoensso/tower
+             :ns    "taoensso.tower"}
+  :judgment {:status :deprecated :severity :superseded :replacement com.taoensso/tempura}
+  :reasons  {:text "メンテ停止、同作者の tempura が後継"
+             :tags [:maintenance-stopped]}}
+
+ ;; === E2E テスト ===
+ {:purpose  [:testing :e2e]
+  :ids      {:coord clj-webdriver/clj-webdriver
+             :ns    "clj-webdriver.taxi"}
+  :judgment {:status :deprecated :severity :superseded :replacement etaoin/etaoin}
+  :reasons  {:text "メンテ停止、etaoin が現役"
+             :tags [:maintenance-stopped]}}
+
+ ;; === Markdown ===
+ {:purpose  [:markdown]
+  :ids      {:coord endophile/endophile
+             :ns    "endophile.core"}
+  :judgment {:status :deprecated :severity :superseded :replacement markdown-clj/markdown-clj}
+  :reasons  {:text "メンテ停止、markdown-clj へ"
+             :tags [:maintenance-stopped]}}
+
+ ;; === 全文検索 ===
+ {:purpose  [:search]
+  :ids      {:coord clojurewerkz/elastisch
+             :ns    "clojurewerkz.elastisch"}
+  :judgment {:status :deprecated :severity :superseded :replacement mpenet/spandex}
+  :reasons  {:text "メンテ停止、spandex が Elasticsearch の現役クライアント"
+             :tags [:maintenance-stopped]}}
+
+ ;; === AWS SDK ===
+ {:purpose  [:aws]
+  :ids      {:coord amazonica/amazonica
+             :ns    "amazonica"}
+  :judgment {:status :deprecated :severity :superseded :replacement com.cognitect.aws/api}
+  :reasons  {:text "Cognitect aws-api が SDK v2 ベース、サービスごと分割で軽量"
+             :tags [:replacement-available]}}
+
+ ;; === 数値計算・ML ===
+ {:purpose  [:ml :data]
+  :ids      {:coord incanter/incanter
+             :ns    "incanter.core"}
+  :judgment {:status      :deprecated
+             :severity    :superseded
+             :replacement [scicloj/tablecloth scicloj/scicloj.ml]}
+  :reasons  {:text "メンテ低迷、scicloj エコシステムが活発"
+             :tags [:maintenance-stopped :philosophy-mismatch]}}
+
+ {:purpose  [:ml :dl]
+  :ids      {:coord dl4clj/dl4clj
+             :ns    "dl4clj"}
+  :judgment {:status :deprecated :severity :superseded :replacement clj-python/libpython-clj}
+  :reasons  {:text "libpython-clj 経由で PyTorch/TensorFlow が現実的"
+             :tags [:philosophy-mismatch]}}
+
+ {:purpose  [:ml :dl]
+  :ids      {:coord thinktopic/cortex
+             :ns    "cortex"}
+  :judgment {:status :deprecated :severity :superseded :replacement clj-python/libpython-clj}
+  :reasons  {:text "メンテ停止、libpython-clj 経由へ"
+             :tags [:maintenance-stopped]}}
+
+ ;; === MQTT ===
+ {:purpose  [:messaging :mqtt]
+  :ids      {:coord   clojurewerkz/machine_head
+             :aliases [clojurewerkz/machine-head]
+             :ns      "clojurewerkz.machine-head"}
+  :judgment {:status :deprecated :severity :superseded :replacement org.eclipse.paho/org.eclipse.paho.client.mqttv3}
+  :reasons  {:text "Paho MQTT Java を直接使うほうが依存が薄い"
+             :tags [:replacement-available]}}
+
+ ;; === GUI ===
+ {:purpose  [:desktop :gui]
+  :ids      {:coord seesaw/seesaw
+             :ns    "seesaw.core"}
+  :judgment {:status          :conditional
+             :applicable-when "レガシー保守"
+             :replacement     [io.github.humbleui/humbleui cljfx/cljfx]}
+  :reasons  {:text "Swing ベースで古い、新規は humbleui / cljfx"
+             :tags [:conditional]}}
+
+ ;; === リトライ ===
+ {:purpose  [:resilience :retry]
+  :ids      {:coord robert/robert.bruce
+             :ns    "robert.bruce"}
+  :judgment {:status :deprecated :severity :superseded :replacement sunng87/diehard}
+  :reasons  {:text "メンテ停止、diehard が後継"
+             :tags [:maintenance-stopped]}}
+
+ ;; === Fressian ===
+ {:purpose  [:serialization]
+  :ids      {:coord org.clojure/data.fressian
+             :ns    "clojure.data.fressian"}
+  :judgment {:status          :conditional
+             :applicable-when "既存採用プロジェクトは継続可、新規は nippy"
+             :replacement     com.taoensso/nippy}
+  :reasons  {:text "nippy が速度・型対応で優位"
+             :tags [:conditional :replacement-available]}}
+
+ ;; === 統合プラットフォーム (ライセンス制約) ===
+ {:purpose  [:platform]
+  :ids      {:coord   com.rpl/rama
+             :aliases [rama/rama]
+             :ns      "com.rpl.rama"}
+  :judgment {:status          :conditional
+             :applicable-when "商用ライセンス取得済み、不可避な大規模要件で採用判断、ADR 必須"
+             :replacement     [com.xtdb/xtdb]}
+  :reasons  {:text "商用ライセンス、ベンダーロックイン。XTDB + worker + batch stack で多くは代替可"
+             :tags [:license :conditional :philosophy-mismatch]}}
+
+ ;; === 機械学習 (ライセンス) ===
+ {:purpose  [:ml]
+  :ids      {:coord   com.github.haifengl/smile
+             :aliases [haifengl/smile]
+             :ns      "smile.classification"}
+  :judgment {:status          :conditional
+             :applicable-when "研究・社内閉じ利用のみ、SaaS / 商用配布不可、ADR 必須"
+             :replacement     [scicloj/tablecloth clj-python/libpython-clj]}
+  :reasons  {:text "GPL 3.0 ライセンスで SaaS 配布と衝突"
+             :tags [:license :conditional]}}
+
+ ;; === 射程外 (本テンプレート JVM 単独) ===
+ {:purpose  [:web :fullstack]
+  :ids      {:coord   com.hyperfiddle/electric
+             :aliases [hyperfiddle/electric]
+             :ns      "hyperfiddle.electric"}
+  :judgment {:status :scope-excluded}
+  :reasons  {:text "§3.40.1 射程外、cljs 前提・macro 重依存・API 変動"
+             :tags [:philosophy-mismatch :conditional]}}]
+```
+
+**narrative のみ（data に含まれない）**:
+- **Keycloak + adapter**（:auth :conditional）: エンタープライズ認証ならば可、重量級で小〜中規模は過剰
+- **Memcached クライアント**（:cache）: 特定 coord なし、Redis (`com.taoensso/carmine`) が機能的に優位
+- **OpenTelemetry 自動計装**（:metrics）: mulog とメトリクスを分離し一貫性が下がる
+- **Babashka 本番基盤**（:scripting）: shell script 代替のみ可、本番コードは uberjar + GraalVM Native Image
+- **iText 直接利用**（:pdf）: AGPL ライセンスで SaaS/商用配布と衝突、`clj-pdf` や Flying Saucer (openpdf 版) が安全
+- **langchain4j Clojure 移植**（:llm）: hato + wkok/openai-clojure で直接実装推奨
+- **Java Serialization 直接** (`java.io.Serializable`)（:serialization）: RCE 脆弱性歴、com.taoensso/nippy へ
+
+これらは特定 coord を持たない（カテゴリ / 技術 / 方針レベル）ため EDN からは外し、人間向け注意喚起として narrative にとどめる。
 
 **追加する場合の基準**: 推奨代替が明確で、本テンプレートの設計思想と衝突し、採用するより避けたほうが**明白に良い**もの。曖昧な「好みの問題」では追加しない（§9.3 整理優先の姿勢）。
 

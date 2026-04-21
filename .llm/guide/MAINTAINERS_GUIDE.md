@@ -508,8 +508,10 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
 
 1. **事実確認**: CVE 番号、公式声明、ライセンス条項等の**一次資料を確認**（憶測で追加しない）
 2. ADR を発行（`adr/NNNN-forbid-XXX.md`）、事実根拠を記載
-3. **STACK_GUIDE.md §8.1** に追加（理由タグを §8.0 の標準から選択）
-4. 既存の派生プロジェクトで使用されている可能性がある場合、周知が必要
+3. **STACK_GUIDE.md §8.1 の `;; lib-catalog` EDN block にエントリ追加**（schema は §5.9.8 参照、`:judgment :status :deprecated :severity :forbidden`）
+4. **`clj -X:gen-lib-catalog` を実行**し、`.llm/data/{libs.edn, deprecated-libs.patterns, forbidden-requires.patterns}` を再生成
+5. 生成 diff を確認の上、STACK_GUIDE.md 変更と artifact 再生成を**同一コミット**にまとめる
+6. 既存の派生プロジェクトで使用されている可能性がある場合、周知が必要
 
 #### 5.9.7 §8.2 非推奨ライブラリへの追加
 
@@ -517,10 +519,49 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
 
 1. **代替の実在を確認**（代替が推奨できる状態にあるか）
 2. ADR を発行（`adr/NNNN-deprecate-XXX.md`）
-3. **STACK_GUIDE.md §8.2** に追加（理由タグ・推奨代替・移行方針を記載）
-4. 関連する **§3 検討した代替**表と**§4.2 避けるべきライブラリ**欄を更新
+3. **STACK_GUIDE.md §8.2 の `;; lib-catalog` EDN block にエントリ追加**（schema は §5.9.8 参照）
+4. **`clj -X:gen-lib-catalog` を実行**し、artifact を再生成、同一コミット
+5. 関連する **§3 検討した代替**表と**§4.2 避けるべきライブラリ**欄を更新
 
-#### 5.9.8 避けるべき改訂パターン
+#### 5.9.8 lib-catalog EDN block の schema と生成フロー
+
+**単一情報源**: STACK_GUIDE.md §8 の `;; lib-catalog` fenced EDN block が lib 禁止・非推奨情報の source of truth。下記 2 つの shell script と EDN artifact は `clj -X:gen-lib-catalog` が生成する派生物で、手編集禁止（ヘッダに `GENERATED` コメント付き）。
+
+- `.llm/data/libs.edn` — 全エントリ（人間可読形式、pretty-print）
+- `.llm/data/deprecated-libs.patterns` — `check-deprecated-libs.sh` が読む `<regex>|<reason>` 行
+- `.llm/data/forbidden-requires.patterns` — `check-forbidden-requires.sh` が読む `<ns-regex>|<reason>` 行
+
+**schema**（詳細は `.llm/scripts/gen_lib_catalog.clj` 内の `entry-schema` 参照）:
+
+```clojure
+{:purpose  [:domain :subdomain]                    ; 任意、1 要素以上の keyword vec
+ :ids      {:coord <sym>                           ; 必須
+            :aliases [<sym>...]                    ; 任意、代替 coord
+            :ns "<ns-prefix>"}                     ; 任意、require 検知用
+ :judgment {:status :deprecated                    ; 必須、5 値 enum
+            :severity :forbidden                   ; 任意 (:deprecated 時)
+            :replacement <sym-or-vec>              ; 任意、symbol または symbol vec
+            :version "1.2.3"                       ; 任意 (:recommended 用)
+            :applicable-when "条件文"}             ; 任意 (:conditional 用)
+ :reasons  {:text "1 行要約"                        ; 任意
+            :tags [:security ...]}                 ; 任意、§8.0 の 6 種
+ :relations {...}}                                 ; 任意
+```
+
+**`:status` 5 値**:
+- `:deprecated` — 使用禁止 / 新規採用禁止（`:severity :forbidden` / `:superseded` で強度）
+- `:recommended` — 推奨一択（同 `:purpose` に 1 件、generator が検証）
+- `:acceptable` — 許容される選択肢
+- `:conditional` — 特定条件下で採用可（`:applicable-when` 必須）
+- `:scope-excluded` — 本テンプレートの射程外
+
+**generator の検証項目**: 必須フィールド、enum 値、`[[:ids :coord] :purpose]` pair 重複、`:recommended` × `:purpose` 一意性。違反時は明示的に error 終了。
+
+**生成物の同期保証**: `check-workspace-integrity.sh` が再生成 + diff で drift を検知（完了条件 `CLAUDE.md §5.5` 経由で毎セッション検証）。STACK_GUIDE.md 編集後に `clj -X:gen-lib-catalog` を忘れてコミットした場合、この検査で fail する。
+
+**非 lib エントリ（特定 coord を持たない技術・カテゴリ）**: Keycloak / Memcached / OpenTelemetry / Babashka 本番利用 / iText 直接 / langchain4j 移植 / Java Serialization 直接 等は EDN ではなく STACK_GUIDE.md §8.2 末尾の narrative に記録。data には載せない（schema が `:coord` を必須にするため）。
+
+#### 5.9.9 避けるべき改訂パターン
 
 - **根拠なき追加**: 「なんとなく嫌い」「流行りでない」等、一次資料のない判断による追加
 - **理由タグなしの分類**: §8.0 理由タグを付けずに追加すると、後続の判断者が根拠を再構築できない
@@ -536,7 +577,7 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
 | **L1 構文・型・未使用** | clj-kondo 組み込み linter | AST 解析、命名空間解決、アリティ検査 | `:unresolved-var`、`:invalid-arity`、`:unused-binding`、段階 1 / 2 の 38 linter |
 | **L2 本テンプレート固有パターン** | `.clj-kondo/polyguard/hooks.clj` (custom hook) | form 単体の AST 解析 | 関数行数、top-level mutable、catch Throwable、空 catch（位置引数）、go blocking、destructuring 深さ 近似 |
 | **L3 スタイル・イディオム** | Splint (`clj -M:lint-splint`) | Clojure イディオム違反、リファクタリング提案 | `(= 0 x)` → `(zero? x)`、`(first (filter ...))` → `(some ...)` 等 |
-| **L4 設定ファイル・ディレクトリ構造** | `.llm/scripts/*.sh` | EDN 構造、ファイル実在、採用宣言、file-level 照合 | brick 登録（hook 取り込み）（プレースホルダ）（総合検査）、非推奨ライブラリ採用、interface 契約、1 ファイル 1 ns |
+| **L4 設定ファイル・ディレクトリ構造** | `.llm/scripts/*.sh` + `.llm/scripts/*.clj` | EDN 構造、ファイル実在、採用宣言、file-level 照合、source 文書から artifact 生成 | brick 登録（hook 取り込み）（プレースホルダ）（総合検査）、非推奨ライブラリ採用、interface 契約、1 ファイル 1 ns、`gen_lib_catalog.clj` による STACK_GUIDE.md §8 からの artifact 生成 |
 | **L5 依存脆弱性（時間軸）** | clj-watson (`./.llm/scripts/check-vulnerabilities.sh`) | NIST NVD + GitHub Advisory Database 照合 | 承認済み依存が後から脆弱化した場合の検知。release 前必須 |
 
 **補完関係の典型例**: 非推奨ライブラリ `timbre` は、コード内で `timbre/info` を呼び出している使用箇所は `clj-kondo :discouraged-var`が、`deps.edn` に `com.taoensso/timbre` を採用宣言している箇所は `.llm/scripts/check-deprecated-libs.sh`が検知する。両方で二重に防御する。
@@ -546,6 +587,7 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
 1. 検査対象が Clojure コード内のパターンか、設定ファイル・ディレクトリ構造か
 2. コード内パターン → `.clj-kondo/hooks/` に custom hook を追加、`.clj-kondo/config.edn` で登録
 3. 設定・構造 → `.llm/scripts/check-<topic>.sh` を追加、`.llm/scripts/check-workspace-integrity.sh` の `run_step` で起動、`.llm/scripts/README.md` を更新
+4. Markdown 文書からの artifact 生成が必要（SSOT 化による drift 防止）→ `.llm/scripts/gen_<topic>.clj` を追加（`gen_lib_catalog.clj` が雛形）、`deps.edn` に `:gen-<topic>` alias 追加、`check-workspace-integrity.sh` に再生成 + diff 検証を追加
 4. 完了条件（`CLAUDE.md §5.5`）への組み込みは、shell script 側は `check-workspace-integrity.sh` が既に含まれるので個別追加不要。custom hook は `clj -M:lint` に含まれるので個別追加不要
 
 #### 5.10.1 状態提示層（セッション起動時、L1〜L5 とは別の役割）
@@ -615,7 +657,7 @@ L1〜L5 との関係:
 
 - `.clj-kondo/config.edn` の追加は `.llm/scripts/lint-import-hooks.sh` の再実行が必要ない（組み込み linter のため）。custom hook 追加時のみ再取り込みを要する
 - 新 linter 追加で既存コードが失敗するようになった場合、**原則として既存コードを直す**（規約を緩める側に倒さない）。機械化充実姿勢と整合
-- false positive の許容は「一括 error で導入、問題が出たら個別に `:config-in-ns` で除外」の順（��断 2）
+- false positive の許容は「一括 error で導入、問題が出たら個別に `:config-in-ns` で除外」の順（��断 2）
 
 ---
 
