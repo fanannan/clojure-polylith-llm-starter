@@ -409,7 +409,7 @@ clj -M:poly create project name:<n>
 
 ## 4. コンポーネント境界の判断（**最重要の判断領域**）
 
-**自己判断禁止**。迷ったら必ず `../project-memory/QUESTIONS.md` に Q を立てる。
+**自己判断禁止**。迷ったら必ず `../.llm/memory/QUESTIONS.md` に Q を立てる。
 
 ### 4.1 新規コンポーネントを切るべき兆候
 

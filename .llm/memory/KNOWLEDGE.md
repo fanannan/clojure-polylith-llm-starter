@@ -1,7 +1,7 @@
 # KNOWLEDGE.md — 生きた知識
 
 本プロジェクトの**現時点で有効な契約・不変条件・暗黙知**を集約する。
-原則 13（`project-guide/MAINTAINERS_GUIDE.md` §4）で定義される**生きた知識（KNOWLEDGE）**の実装であり、QUESTIONS.md（判断保留）、adr/（決定履歴）とは性質が異なる。
+原則 13（`.llm/guide/MAINTAINERS_GUIDE.md` §4）で定義される**生きた知識（KNOWLEDGE）**の実装であり、QUESTIONS.md（判断保留）、adr/（決定履歴）とは性質が異なる。
 
 **核心的な違い**: KNOWLEDGE は**上書き更新**される。旧版は消える。更新時の経緯が重要なら ADR に記録する。
 

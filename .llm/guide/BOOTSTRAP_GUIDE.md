@@ -1,7 +1,6 @@
 # BOOTSTRAP_GUIDE.md — 初期化時のみ使用する手順書
 
 本文書は**テンプレートから派生した新規プロジェクトの初期化作業**における、**LLM 側の詳細手順**を扱う。
-初期化完了後は `project-guide/archived/` へ移動し、日常コンテキストから外す。
 
 ## README.md との役割分担
 
@@ -10,7 +9,7 @@
 | 文書 | 視点 | 主な対象 |
 |---|---|---|
 | `../README.md` §開始手順 | **人間の作業フロー**（意思決定・承認・プロンプト例） | 人間 |
-| `../project-guide/BOOTSTRAP_GUIDE.md`（本文書） | **LLM の技術手順**（ファイル編集・コマンド実行・整合性確認） | LLM |
+| `../.llm/guide/BOOTSTRAP_GUIDE.md`（本文書） | **LLM の技術手順**（ファイル編集・コマンド実行・整合性確認） | LLM |
 
 README.md が「**誰が何をするか**」を示すのに対し、本文書は「**LLM がどうファイルを操作するか**」を示す。
 **人間は通常 README.md のプロンプト例を使えば済む**。本文書は LLM が詳細手順を参照する際に使う。
@@ -118,7 +117,7 @@ ADR の発行（§4）は L2 として LLM が自動実施、事後報告。ゲ�
 - [ ] **DESIGN.md §8.3 採用 stack 欄に採用 stack を記録**（例: web-api stack + dev-tools stack）
 - [ ] DESIGN.md の推奨項目（§5〜§7）のうち該当するものを埋める
 
-**ここで決めたことを `../project-memory/QUESTIONS.md` に `Q` として記録する必要はない**（確定事項として扱う）。
+**ここで決めたことを `../.llm/memory/QUESTIONS.md` に `Q` として記録する必要はない**（確定事項として扱う）。
 ただし、決定できずに保留した事項があれば Q として記録し、ブロッカーとして明示する。
 
 **stack 選択に迷う場合**: STACK_GUIDE.md §4.1 選定基準を参照。それでも迷う場合は **Q を立ててユーザに相談**（自己判断禁止）。
@@ -302,7 +301,7 @@ Integrant を使うプロジェクトでのみ実施する。ライブラリ配�
 - [ ] 採用各 stack の §4.2.X 採用時の確認事項がすべて点検済み
 - [ ] CI が設定されている（lint / format / poly check / poly test / uber build、brick 依存解決確認含む）
 - [ ] 初回の `stable` タグが打たれている（CI 通過後）
-- [ ] `../project-memory/QUESTIONS.md` に残っている open Q を点検済み
+- [ ] `../.llm/memory/QUESTIONS.md` に残っている open Q を点検済み
 - [ ] **`../README.md` がプロダクト向けに書き換えられている**（§4 で実施）
 
 ---
@@ -315,9 +314,9 @@ Integrant を使うプロジェクトでのみ実施する。ライブラリ配�
    - テンプレート配布時の README.md は本テンプレートの説明に特化している
    - プロダクト README には、プロダクトの機能紹介・利用者向けビルド手順・API 紹介等を記述
    - 迷ったら `../DESIGN.md` §1 目的と §3 主要ユースケースをベースに書き起こす
-2. 初期化中に立てた `../project-memory/QUESTIONS.md` の `open` Q を点検し、解決したものを `resolved` に
-3. 解決した Q の結果が継続参照されるものは `../project-memory/KNOWLEDGE.md` へ昇格（L1、ゲート 3 承認対象、実テキストで提示）
-4. 重要な設計判断（採用 stack の根拠、STACK_GUIDE.md 推奨からの逸脱、技術選定等）は `../project-memory/adr/NNNN-topic.md` として ADR を発行（**L2、LLM 独断実施、事後報告**。`COLLABORATION_GUIDE.md` §2.2）。決定内容はゲート 1/2 で既に承認済なので、ADR は形式化に過ぎない。誤記は新 ADR で supersede
+2. 初期化中に立てた `../.llm/memory/QUESTIONS.md` の `open` Q を点検し、解決したものを `resolved` に
+3. 解決した Q の結果が継続参照されるものは `../.llm/memory/KNOWLEDGE.md` へ昇格（L1、ゲート 3 承認対象、実テキストで提示）
+4. 重要な設計判断（採用 stack の根拠、STACK_GUIDE.md 推奨からの逸脱、技術選定等）は `../.llm/memory/adr/NNNN-topic.md` として ADR を発行（**L2、LLM 独断実施、事後報告**。`COLLABORATION_GUIDE.md` §2.2）。決定内容はゲート 1/2 で既に承認済なので、ADR は形式化に過ぎない。誤記は新 ADR で supersede
 5. 初期化完了をコミット（例: `"Complete project bootstrap"`）— **このコマンドは LLM が提示、実行はユーザが行う**
 
 以降は `../CLAUDE.md` §8 作業プロトコルで日常開発に移行する。本文書（BOOTSTRAP_GUIDE.md）は物理的には残るが、CLAUDE.md §0 の参照指示（「初期化が未完了の場合のみ参照」）により、完了後は自動的に読まれない。
@@ -371,5 +370,5 @@ STACK_GUIDE.md §4.2.X の「採用時の確認事項」リストを点検し、
 `../CLAUDE.md` §7 自己停止プロトコルの発動条件に達したら：
 
 1. 選択肢 D（人間による設計判断を求める）を選ぶ
-2. `../project-memory/QUESTIONS.md` §0.9 の手順で新規 Q を立てる
+2. `../.llm/memory/QUESTIONS.md` §0.9 の手順で新規 Q を立てる
 3. ユーザの判断を待つ（自走しない）

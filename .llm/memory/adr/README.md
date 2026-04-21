@@ -1,7 +1,7 @@
 # ADR (Architecture Decision Records)
 
 本ディレクトリは、プロジェクトにおける**重要な設計判断の経緯を不変の履歴として記録**する。
-原則 13（`../../project-guide/MAINTAINERS_GUIDE.md` §4）で定義される**決定履歴（ADR）**の実装である。
+原則 13（`../../.llm/guide/MAINTAINERS_GUIDE.md` §4）で定義される**決定履歴（ADR）**の実装である。
 
 ## ADR とは
 
@@ -125,8 +125,8 @@ ADR はこれらを**軽量な記述形式**で解決する。1 件あたり 1�
 
 ### 新規 ADR の発行
 
-1. 次の番号を確認（`ls project-memory/adr/` で既存 ADR の最大番号を確認）
-2. `cp project-memory/adr/template.md project-memory/adr/NNNN-topic.md`
+1. 次の番号を確認（`ls .llm/memory/adr/` で既存 ADR の最大番号を確認）
+2. `cp .llm/memory/adr/template.md .llm/memory/adr/NNNN-topic.md`
 3. 本文を記述
 4. Status を `proposed` で開始、チームレビュー後に `accepted` に変更
 5. 関連文書（KNOWLEDGE.md、DESIGN.md、QUESTIONS.md）への参照を追記

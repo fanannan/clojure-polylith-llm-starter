@@ -2001,4 +2001,4 @@ brick deps.edn が採用 stack の §4.2.X 採用時の確認事項を満たし�
 | `COLLABORATION_GUIDE.md` §2.3 | 編集権限マトリクス。stack 追加は人間承認必須 |
 | `MAINTAINERS_GUIDE.md` §2 配布物の判断 | stack 層・必須層・横断層の配布形態の根拠 |
 | `../DESIGN.md` §8 プロジェクト固有情報 | 採用 stack を記録する欄がある |
-| `../project-memory/adr/` | stack 採用・削除時は ADR を発行 |
+| `../.llm/memory/adr/` | stack 採用・削除時は ADR を発行 |

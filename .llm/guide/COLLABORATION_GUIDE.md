@@ -80,11 +80,11 @@ LLM 駆動開発では、**LLM の能力と同じくらい「人間との連携�
 | 文書 | LLM 独断編集 | LLM 提案 + 承認 | 不変（改訂不可） | 承認手順の詳細 |
 |---|---|---|---|---|
 | `DESIGN.md` | ❌ | ✅（改訂提案） | 全体不変ではないが大きな方針変更は ADR 経由 | `DESIGN.md` §0 本ファイルの埋め方 |
-| `project-memory/KNOWLEDGE.md` | ❌（§0.7 の限定例外のみ） | ✅（追加・更新・廃止提案） | — | `KNOWLEDGE.md` §0.7 LLM による更新の承認 |
-| `project-memory/adr/NNNN-topic.md` | ✅（新規発行、決定内容が事前承認済の場合のみ、L2） | ✅（決定内容が未承認の場合は L1） | **一度 accepted は本文不変**、改訂は新 ADR で supersede | `adr/README.md` 運用手順、§2.2 ADR 階層マッピング |
-| `project-memory/adr/README.md` | ❌ | 🟡（運用ルール変更は慎重） | — | `MAINTAINERS_GUIDE.md` §5.7.2 |
-| `project-memory/QUESTIONS.md` | 🟡（Q 起票・状態遷移の一部は可） | ✅（resolved 化は承認必須） | アーカイブ済み Q は不変 | `QUESTIONS.md` §0.4 解決確認プロセス |
-| `CLAUDE.md` / `project-guide/` 配下 | ❌ | ✅（提案） | テンプレート保守時のみ改訂 | `MAINTAINERS_GUIDE.md` §5 |
+| `.llm/memory/KNOWLEDGE.md` | ❌（§0.7 の限定例外のみ） | ✅（追加・更新・廃止提案） | — | `KNOWLEDGE.md` §0.7 LLM による更新の承認 |
+| `.llm/memory/adr/NNNN-topic.md` | ✅（新規発行、決定内容が事前承認済の場合のみ、L2） | ✅（決定内容が未承認の場合は L1） | **一度 accepted は本文不変**、改訂は新 ADR で supersede | `adr/README.md` 運用手順、§2.2 ADR 階層マッピング |
+| `.llm/memory/adr/README.md` | ❌ | 🟡（運用ルール変更は慎重） | — | `MAINTAINERS_GUIDE.md` §5.7.2 |
+| `.llm/memory/QUESTIONS.md` | 🟡（Q 起票・状態遷移の一部は可） | ✅（resolved 化は承認必須） | アーカイブ済み Q は不変 | `QUESTIONS.md` §0.4 解決確認プロセス |
+| `CLAUDE.md` / `.llm/guide/` 配下 | ❌ | ✅（提案） | テンプレート保守時のみ改訂 | `MAINTAINERS_GUIDE.md` §5 |
 
 **LLM が独自判断できる限定例外**：
 - `QUESTIONS.md` への Q 起票（内容はユーザが検討）
@@ -108,7 +108,7 @@ LLM 駆動開発では、**LLM の能力と同じくらい「人間との連携�
   - 修正指示を受けた場合は LLM が全体を再提示して再承認を得る
   - 理由: 部分承認プロトコルの未定義状態は LLM の解釈揺れを生み、依存関係の破綻リスクを抱える。単純な全承認サイクルの方が失敗時の原因特定と修正が早い
 
-**運用上の帰結**: ブートストラップ完了処理に CLAUDE.md / project-guide/ の編集は**含まれない**（該当儀式を廃止したため）。ユーザが直接叩くのは最終コミットコマンドのみ。
+**運用上の帰結**: ブートストラップ完了処理に CLAUDE.md / .llm/guide/ の編集は**含まれない**（該当儀式を廃止したため）。ユーザが直接叩くのは最終コミットコマンドのみ。
 
 ---
 
@@ -149,7 +149,7 @@ brick 追加・機能実装期。
 
 QUESTIONS サイクル発動中。
 
-- **主な文書**: `../project-memory/QUESTIONS.md`
+- **主な文書**: `../.llm/memory/QUESTIONS.md`
 - **特徴**: 自己解釈できない判断を Q として起票、議論で解決
 - **LLM の姿勢**: §4 作業前確認プロトコル、§6 サイクル協働に従う
 - **人間の姿勢**: Q ごとに判断、昇格先を指示
@@ -366,9 +366,9 @@ DESIGN.md §3.UC-2「未払い検知」の実装に着手しようとしてい�
 | `../CLAUDE.md` §7 自己停止プロトコル | 本文書 §3.3 曖昧性解消モードのトリガー |
 | `../CLAUDE.md` §8 作業プロトコル | 本文書 §3.2 実装モードの詳細 |
 | `../CLAUDE.md` §11 プロジェクト記憶の運用 | 本文書 §6 サイクル協働の根拠 |
-| `../project-memory/QUESTIONS.md` §0 | Q 運用プロセス |
-| `../project-memory/KNOWLEDGE.md` §0 | エントリライフサイクル |
-| `../project-memory/adr/README.md` | ADR 発行基準・不変性ルール |
+| `../.llm/memory/QUESTIONS.md` §0 | Q 運用プロセス |
+| `../.llm/memory/KNOWLEDGE.md` §0 | エントリライフサイクル |
+| `../.llm/memory/adr/README.md` | ADR 発行基準・不変性ルール |
 | `../README.md` §開始手順 | 本文書 §3.1 ブートストラップモードの人間視点 |
 | `BOOTSTRAP_GUIDE.md` | 本文書 §3.1 ブートストラップモードの LLM 視点 |
 | `MAINTAINERS_GUIDE.md` 原則 11 | 本文書の根拠原則（判断とプロセスの対称性） |

@@ -86,7 +86,7 @@ describe_bootstrap_gaps() {
 # -----------------------------------------------------------------------------
 
 extract_open_questions() {
-  local file="project-memory/QUESTIONS.md"
+  local file=".llm/memory/QUESTIONS.md"
   if [ ! -f "$file" ]; then
     echo "- （QUESTIONS.md が存在しません）"
     return
@@ -117,7 +117,7 @@ extract_open_questions() {
 # -----------------------------------------------------------------------------
 
 latest_adr() {
-  local adr_dir="project-memory/adr"
+  local adr_dir=".llm/memory/adr"
   if [ ! -d "$adr_dir" ]; then
     echo "- （adr/ ディレクトリが存在しません）"
     return
@@ -178,19 +178,19 @@ if is_bootstrap_phase; then
   describe_bootstrap_gaps
   echo ""
   echo "### 次に読む文書"
-  echo "- \`project-guide/BOOTSTRAP_GUIDE.md\` §2（初期化手順）"
+  echo "- \`.llm/guide/BOOTSTRAP_GUIDE.md\` §2（初期化手順）"
   echo "- \`DESIGN.md\`（§1-§4, §8 の埋め込み対象）"
 else
   echo "## Phase: development（ブートストラップ完了済）"
   echo ""
   echo "### 次に読む文書（作業内容に応じて）"
   echo "- \`DESIGN.md\` の関連節（仕様確認）"
-  echo "- \`project-memory/KNOWLEDGE.md\` の関連節（契約・不変条件）"
+  echo "- \`.llm/memory/KNOWLEDGE.md\` の関連節（契約・不変条件）"
   echo "- \`CLAUDE.md §8\` 作業プロトコル"
 fi
 
 echo ""
-echo "## 未解決の判断（QUESTIONS.md §2 open）"
+echo "## 未解決の判断（.llm/memory/QUESTIONS.md §2 open）"
 echo ""
 extract_open_questions
 echo ""

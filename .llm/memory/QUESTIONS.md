@@ -3,7 +3,7 @@
 LLM が作業中に判断に迷った事項、設計判断が必要な事項を記録する。
 **CLAUDE.md §7.3 撤退プロトコルの「D. 人間による設計判断を求める」の受け皿**でもある。
 
-本ファイルは `project-memory/` 配下に置かれる。原則 13（MAINTAINERS_GUIDE.md §4）で定義される**判断保留（QUESTIONS）**の実装であり、同配下の KNOWLEDGE.md（生きた知識）、adr/（決定履歴）と役割が異なる。
+本ファイルは `.llm/memory/` 配下に置かれる。原則 13（MAINTAINERS_GUIDE.md §4）で定義される**判断保留（QUESTIONS）**の実装であり、同配下の KNOWLEDGE.md（生きた知識）、adr/（決定履歴）と役割が異なる。
 
 ---
 
@@ -135,7 +135,7 @@ resolved / wontfix / superseded になった Q は、**昇格先によって扱�
 
 1. §7.3 の報告フォーマット（試みた内容・残障害・仮説）を、そのまま**本ファイルの新規 Q の `文脈` と `選択肢` に転記**
 2. ID を採番（`Q-YYYY-MM-NNN`）、状態を `open` で記録
-3. ユーザへの報告で「`project-memory/QUESTIONS.md` に Q-YYYY-MM-NNN として記録しました」と言及
+3. ユーザへの報告で「`.llm/memory/QUESTIONS.md` に Q-YYYY-MM-NNN として記録しました」と言及
 4. 以降は §0.1 〜 §0.8 の通常運用に従う
 
 ### 0.10 スクラブ運用
@@ -166,7 +166,7 @@ resolved / wontfix / superseded になった Q は、**昇格先によって扱�
 
 ### 1.2 技術選定・設計
 
-- brick（base / component）deps.edn へのライブラリ追加・変更（採用 stack の推奨反映、CLAUDE.md §6.2、選定論理は `project-guide/STACK_GUIDE.md`）
+- brick（base / component）deps.edn へのライブラリ追加・変更（採用 stack の推奨反映、CLAUDE.md §6.2、選定論理は `.llm/guide/STACK_GUIDE.md`）
 - 新しいライブラリの採用提案
 - §1 原則（全域性・不変性・副作用隔離）の解釈で迷う場面
 - 原則間の競合（例: 副作用隔離と性能のトレードオフ）
@@ -208,7 +208,7 @@ resolved / wontfix / superseded になった Q は、**昇格先によって扱�
 ## 3. 解決済み（アーカイブ）
 
 <!-- 解決済み Q はここに移動。削除しない（原則 10）。
-     年間 100 件超で project-memory/questions-archive-YYYY.md に分離する。 -->
+     年間 100 件超で .llm/memory/questions-archive-YYYY.md に分離する。 -->
 
 （現在アーカイブはありません）
 

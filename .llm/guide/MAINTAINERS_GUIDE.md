@@ -91,16 +91,16 @@
 | CLAUDE.md | A | 毎セッション必読、第一原理と常時制約。§0 は極小（DESIGN.md への導線のみ） |
 | DESIGN.md | A（テンプレートでは雛形）→ E（プロジェクトでは継続更新対象） | プロダクト仕様。テンプレートは必須/推奨/任意項目の骨組みのみ。プロジェクト固有情報（§8）もここに集約 |
 
-#### project-guide/（プロジェクト運営ガイド）
+#### .llm/guide/（プロジェクト運営ガイド）
 
 | ファイル | 区分 | 役割 |
 |---|---|---|
-| project-guide/CODING_GUIDE.md | A | Clojure 書き方詳細、LLM 特有の落とし穴 |
-| project-guide/POLYLITH_GUIDE.md | A | Polylith 運用詳細、brick コード例 |
-| project-guide/STACK_GUIDE.md | A（継続充実） | 技術スタック選定の論理と実装。**他ガイドと異なり、テンプレート側で継続的に充実される**（STACK_GUIDE.md §1.2、本文書 §5.9）。派生プロジェクトでは更新しない |
-| project-guide/COLLABORATION_GUIDE.md | A | LLM と人間の協働プロトコル。原則 11（判断とプロセスの対称性）の具体実装 |
-| project-guide/BOOTSTRAP_GUIDE.md | A | プロジェクト初期化手順。完了後は `archived/` へ移動 |
-| project-guide/MAINTAINERS_GUIDE.md（本文書） | A | テンプレート保守の羅針盤 |
+| .llm/guide/CODING_GUIDE.md | A | Clojure 書き方詳細、LLM 特有の落とし穴 |
+| .llm/guide/POLYLITH_GUIDE.md | A | Polylith 運用詳細、brick コード例 |
+| .llm/guide/STACK_GUIDE.md | A（継続充実） | 技術スタック選定の論理と実装。**他ガイドと異なり、テンプレート側で継続的に充実される**（STACK_GUIDE.md §1.2、本文書 §5.9）。派生プロジェクトでは更新しない |
+| .llm/guide/COLLABORATION_GUIDE.md | A | LLM と人間の協働プロトコル。原則 11（判断とプロセスの対称性）の具体実装 |
+| .llm/guide/BOOTSTRAP_GUIDE.md | A | プロジェクト初期化手順。完了後は `archived/` へ移動 |
+| .llm/guide/MAINTAINERS_GUIDE.md（本文書） | A | テンプレート保守の羅針盤 |
 
 ### 3.2 ツール設定（B: 機械化）
 
@@ -118,18 +118,18 @@
 | workspace.edn | D | `:projects` は `development` のみ有効、`:top-namespace` は placeholder |
 | development/src/dev/user.clj | D | tn/set-refresh-dirs は有効、Integrant/Malli-dev/Portal のセクションは採用 stack に応じて有効化 |
 
-### 3.4 project-memory（E: プロジェクト固有の継続更新対象）
+### 3.4 .llm/memory（E: プロジェクト固有の継続更新対象）
 
 テンプレートは**骨組みのみ配布**し、プロジェクト実装中に継続的に更新される。
 原則 13（§4）の 4 区分のうち 3 つがここに集約される：
 
 | ファイル | 区分 | 配布形態 | プロジェクト運用 |
 |---|---|---|---|
-| project-memory/QUESTIONS.md | E | §0 運用プロセス + 空の §2〜§4 | Q を継続追加、resolved → アーカイブ |
-| project-memory/KNOWLEDGE.md | E | §0 運用プロセス + 空の §1〜§5 | エントリを上書き更新 |
-| project-memory/adr/README.md | E | 運用ルール（不変） | — |
-| project-memory/adr/template.md | E | ADR 雛形（不変） | — |
-| project-memory/adr/NNNN-topic.md | E | テンプレートには含めない | プロジェクトで発行、発行後は不変 |
+| .llm/memory/QUESTIONS.md | E | §0 運用プロセス + 空の §2〜§4 | Q を継続追加、resolved → アーカイブ |
+| .llm/memory/KNOWLEDGE.md | E | §0 運用プロセス + 空の §1〜§5 | エントリを上書き更新 |
+| .llm/memory/adr/README.md | E | 運用ルール（不変） | — |
+| .llm/memory/adr/template.md | E | ADR 雛形（不変） | — |
+| .llm/memory/adr/NNNN-topic.md | E | テンプレートには含めない | プロジェクトで発行、発行後は不変 |
 
 ### 3.5 不配布（C: 特定用途）
 
@@ -141,7 +141,7 @@
 - `projects/<any>/resources/config.edn`（aero + profile 構成の仮定）
 - `projects/<any>/build.clj`（tools.build 採用とメインクラス名の仮定）
 
-これらは `poly create` で生成される、または `project-guide/BOOTSTRAP_GUIDE.md` に従って初回作成される。
+これらは `poly create` で生成される、または `.llm/guide/BOOTSTRAP_GUIDE.md` に従って初回作成される。
 
 ---
 
@@ -238,9 +238,9 @@
 | 種別 | 性質 | 配置 | ライフサイクル |
 |---|---|---|---|
 | **仕様（DESIGN）** | 何を作るか。合意の起点 | `DESIGN.md`（ルート） | プロジェクト初期に確定、大きな方針転換時のみ改訂 |
-| **生きた知識（KNOWLEDGE）** | 現時点の真実。契約・不変条件・暗黙知 | `project-memory/KNOWLEDGE.md` | 実装中に継続更新、常に最新状態を保つ（上書き） |
-| **決定履歴（ADR）** | なぜそう決めたかの不変記録 | `project-memory/adr/NNNN-topic.md` | 一度発行したら変更禁止、改訂は新 ADR で supersede |
-| **判断保留（QUESTIONS）** | 未決の判断。一時的 | `project-memory/QUESTIONS.md` | open → resolved で閉じる、軌跡はアーカイブ |
+| **生きた知識（KNOWLEDGE）** | 現時点の真実。契約・不変条件・暗黙知 | `.llm/memory/KNOWLEDGE.md` | 実装中に継続更新、常に最新状態を保つ（上書き） |
+| **決定履歴（ADR）** | なぜそう決めたかの不変記録 | `.llm/memory/adr/NNNN-topic.md` | 一度発行したら変更禁止、改訂は新 ADR で supersede |
+| **判断保留（QUESTIONS）** | 未決の判断。一時的 | `.llm/memory/QUESTIONS.md` | open → resolved で閉じる、軌跡はアーカイブ |
 
 **守らないとどうなるか**:
 - KNOWLEDGE（現時点の真実）が ADR（不変履歴）に混入 → 後から書き換えられて歴史改変が起きる
@@ -382,7 +382,7 @@ STACK_GUIDE.md §4.2 で推奨カタログとして配布されている各 stac
 
 **新 stack の追加・既存 stack の廃止**は `STACK_GUIDE.md` と MAINTAINERS_GUIDE.md §5.9.2 / §5.9.3 の手順に従う。
 
-### 5.7 project-memory 文書群の保守（原則 13 の実装）
+### 5.7 .llm/memory 文書群の保守（原則 13 の実装）
 
 区分 E（プロジェクト固有の継続更新対象）に属する QUESTIONS.md / KNOWLEDGE.md / adr/ は、テンプレートから派生したプロジェクトで運用される。テンプレート保守者はこれらの**運用規則自体**を保守する責任を持つ。
 
@@ -398,7 +398,7 @@ STACK_GUIDE.md §4.2 で推奨カタログとして配布されている各 stac
 
 #### 5.7.2 ADR 運用規則の改訂
 
-`project-memory/adr/README.md` を改訂する場合：
+`.llm/memory/adr/README.md` を改訂する場合：
 
 1. **発行基準の変更**は慎重に。ADR は不変性が本質なので、ルール変更は過去の ADR 全てに影響する
 2. 過去 ADR の status 更新規則変更は禁止（superseded の仕組みは変更不可）
@@ -431,7 +431,7 @@ README.md はテンプレート配布時と派生プロジェクト運用中で*
 - 冒頭の**警告ブロック**（書き換え前提の明示）は**絶対に消さない**
 - ファイル構成図・導線表・開始手順はテンプレート全体の変更に応じて更新
 - プロダクト機能の説明は書かない（それは DESIGN.md の役割）
-- 書き換え手順への参照（`project-guide/BOOTSTRAP_GUIDE.md` §4）を維持
+- 書き換え手順への参照（`.llm/guide/BOOTSTRAP_GUIDE.md` §4）を維持
 
 #### 5.8.2 派生プロジェクトでの書き換え検証
 
@@ -774,15 +774,15 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
 - **判断**:
   - **原則 13「仕様・知識・決定履歴・判断保留の分離」を §4 に新設**
   - **DESIGN.md を新設**（ルート配置、必須/推奨/任意項目の区別、LLM 向け注記付き）
-  - **KNOWLEDGE.md を新設**（project-memory 配下、§0 ライフサイクル規定）
+  - **KNOWLEDGE.md を新設**（.llm/memory 配下、§0 ライフサイクル規定）
   - **adr/ を新設**（README.md に運用ルール、template.md に雛形、命名規則 `NNNN-topic.md`）
   - **QUESTIONS.md §0.5 に昇格先判定を追加**（resolved Q が KNOWLEDGE / ADR / DESIGN のどこへ昇格するか）
 - **配置判断（ユーザ提案で確定）**:
-  - `CLAUDE_QUESTIONS.md` → `project-memory/QUESTIONS.md` に改名・移動（`CLAUDE_` 冠は冗長）
-  - `docs/` は最終配布物と混同されるため不採用。**`project-memory/`**（プロジェクトの記憶）を採用
-  - ガイド類（CODING / POLYLITH / BOOTSTRAP / MAINTAINERS）も `project-guide/` に集約
+  - `CLAUDE_QUESTIONS.md` → `.llm/memory/QUESTIONS.md` に改名・移動（`CLAUDE_` 冠は冗長）
+  - `docs/` は最終配布物と混同されるため不採用。**`.llm/memory/`**（プロジェクトの記憶）を採用
+  - ガイド類（CODING / POLYLITH / BOOTSTRAP / MAINTAINERS）も `.llm/guide/` に集約
   - **ルート直下は CLAUDE.md と DESIGN.md の 2 つのみ**（最重要 2 文書を顔として目立たせる）
-  - `project-guide/`（助言）と `project-memory/`（記憶）の対称配置
+  - `.llm/guide/`（助言）と `.llm/memory/`（記憶）の対称配置
   - ADR ファイル名は `NNNN.md` ではなく `NNNN-topic.md`（一覧性・検索性向上、業界標準準拠）
 - **根拠**: 原則 13（新設）、原則 7（自己整合性）、原則 10（軌跡保全）、原則 11（判断とプロセスの対称性）
 - **却下案**:
@@ -793,21 +793,21 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
   - ガイドをルート直下に残す → CLAUDE.md と DESIGN.md の「顔」としての存在感が埋没
 - **全体改善の判定**:
   - テンプレートの致命的な穴（仕様・継続更新知識の居場所不在）が解消
-  - 4 層構造（CLAUDE.md + DESIGN.md + project-guide/ + project-memory/）で役割純度が最大化
+  - 4 層構造（CLAUDE.md + DESIGN.md + .llm/guide/ + .llm/memory/）で役割純度が最大化
   - 区分 E（プロジェクト固有の継続更新対象）を §3 に新設
   - 原則 12 の遡及適用が初めて実地で機能した事例（11 項目の不整合を一括発見・改善）
 
 #### ADR 説明の追加、CLAUDE.md §0 の極小化、README.md 新設
 - **背景**: 3 つの初見者視点の指摘を受けて対応：
-  1. ADR という業界用語を暗黙前提にしていた（プロジェクトで初めて本テンプレートに触れる人が `project-memory/adr/README.md` を開いた時、定義が不在）
+  1. ADR という業界用語を暗黙前提にしていた（プロジェクトで初めて本テンプレートに触れる人が `.llm/memory/adr/README.md` を開いた時、定義が不在）
   2. CLAUDE.md §0 に残っていた「目的/配布形態/ランタイム/トップ名前空間」が原則 13 違反（仕様情報が規約文書に混入していた遡及適用の見落とし）
   3. リポジトリを初めて見る人間（LLM ではなく人間）の入口となる README.md が不在
 - **判断**:
-  - `project-memory/adr/README.md` の冒頭に「**ADR とは何か**」セクションを追加（定義、解決する問題、不変性の本質、似て非なるものとの比較）
+  - `.llm/memory/adr/README.md` の冒頭に「**ADR とは何か**」セクションを追加（定義、解決する問題、不変性の本質、似て非なるものとの比較）
   - **CLAUDE.md §0 を 5 行程度に極小化**。プロジェクト固有情報は DESIGN.md §8 に新設した「プロジェクト固有情報」節に一元化
   - **README.md をルート直下に新設**（テンプレート配布時の警告付き雛形。プロジェクト初期化完了時に完全書換を前提）
-  - `project-guide/BOOTSTRAP_GUIDE.md` §3 完了チェックリストと §4 完了後作業に「README.md の書き換え」を追加
-  - `project-guide/MAINTAINERS_GUIDE.md` §3.1 区分表に README.md を追加、§5.8 に README.md 雛形の保守規則を追加
+  - `.llm/guide/BOOTSTRAP_GUIDE.md` §3 完了チェックリストと §4 完了後作業に「README.md の書き換え」を追加
+  - `.llm/guide/MAINTAINERS_GUIDE.md` §3.1 区分表に README.md を追加、§5.8 に README.md 雛形の保守規則を追加
 - **根拠**:
   - 原則 13（§0 の情報を DESIGN.md に委譲し、CLAUDE.md は規約文書に専念）
   - 原則 7（文書の自己整合性 = 業界用語の暗黙前提を避ける）
@@ -902,7 +902,7 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
   - **CLAUDE.md §11.7 に「LLM の仕様書開発者としての役割」を新設**（5 つの役割：実装者・仕様提案者・知識記録者・決定履歴保全者・未決判断管理者）
   - **DESIGN.md 冒頭に仕様成熟の 3 段階**（初期・成熟期・安定期）を明示
   - **DESIGN.md §4.1 にテストケースとの対応**を追加
-  - **`project-guide/COLLABORATION_GUIDE.md` を新設**（役割分担の 4 階層、編集権限マトリクス、協働モード 4 分類、作業前確認プロトコル、[ASSUMPTION] マーク制度、段階的承認チェックポイント、ONE BY ONE 質問原則、6 つのアンチパターン）
+  - **`.llm/guide/COLLABORATION_GUIDE.md` を新設**（役割分担の 4 階層、編集権限マトリクス、協働モード 4 分類、作業前確認プロトコル、[ASSUMPTION] マーク制度、段階的承認チェックポイント、ONE BY ONE 質問原則、6 つのアンチパターン）
 - **根拠**:
   - **原則 11（判断とプロセスの対称性）の本質的実装**: 協働プロトコル文書は、本テンプレートが本来持つべき「両輪」の片方
   - **原則 7（文書の自己整合性）**: 「仕様書開発」という本テンプレートの本質が文書上で認識されていなかった
@@ -1003,7 +1003,7 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
   - LLM が自動判断する根拠が弱く、結局毎回プロンプトで伝える負担が残っていた
   - **開発者の知見**（なぜこれを選んだか、何を却下したか）を蓄積する場が不在
 - **判断（段階実施）**:
-  - **STACK_GUIDE.md を新設**（`project-guide/` 配下）し、技術スタック選定の一次情報源とする
+  - **STACK_GUIDE.md を新設**（`.llm/guide/` 配下）し、技術スタック選定の一次情報源とする
   - **stack 概念を導入**（命名: `stack` 単独）：
     - 候補検討: `profile`（aero と衝突）、`stack-profile`（冗長）、`target` / `preset`（意味が曖昧）、`stack` 単独（業界標準、衝突なし、簡潔）
     - 機械的 grep で衝突確認（deps.edn の `-XX:-OmitStackTraceInFastThrow` のみ、識別子としての衝突ゼロ）
@@ -1042,7 +1042,7 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
   - **§8 を単一表のまま維持** → 禁止（事実根拠強）と非推奨（判断根拠）の性格差を区別できず、LLM の判断を混乱させる
   - **§4.2 に「避けるべき」欄を置かない** → stack 文脈での即時判断材料が不足、§8 一覧のみでは文脈が薄い
 - **副次的発見**:
-  - **文書の性格が他ガイドと異なる場合がある**: 従来「project-guide/ 配下 = テンプレート側の安定した知見」と暗黙視していたが、STACK_GUIDE.md は「継続充実」が本質。区分表で明示することが重要
+  - **文書の性格が他ガイドと異なる場合がある**: 従来「.llm/guide/ 配下 = テンプレート側の安定した知見」と暗黙視していたが、STACK_GUIDE.md は「継続充実」が本質。区分表で明示することが重要
   - **命名の階層感覚**: 修飾語を足して衝突を避けるより、**単純名で衝突が起きないか先に問う**（`stack-profile` より `stack` 単独）。KISS の実地適用
   - **文書の厚みと性格の関係**: 同じ区分 A の文書でも、CODING_GUIDE.md（安定）と STACK_GUIDE.md（継続充実）は更新頻度・担当主体が異なる。「誰が・いつ・どの頻度で更新するか」を文書設計時に明示する規律の重要性
   - **理由タグの標準化**: 分類のための分類にならないよう、§5.9.8 で「理由タグなしの分類」を避けるべきアンチパターンとして明記
@@ -1533,24 +1533,24 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
 | **CLAUDE.md** | 日常使用の常時制約。§1 に疲労最小化原則が展開。本文書 §4.原則 1 の結果。§0 は DESIGN.md への導線のみに極小化 |
 | **DESIGN.md** | プロダクト仕様の雛形。テンプレートは骨組みのみ、プロジェクトで埋める。§8 にプロジェクト固有情報を集約。原則 13 の実装 |
 
-#### project-guide/
+#### .llm/guide/
 
 | 文書 | 本文書との関係 |
 |---|---|
-| **project-guide/CODING_GUIDE.md** | Clojure 書き方詳細。§1 に LLM 落とし穴、§2 に三基底原則の詳細展開 |
-| **project-guide/POLYLITH_GUIDE.md** | Polylith 運用詳細。brick コード例を埋め込み |
-| **project-guide/STACK_GUIDE.md** | 技術スタック選定の一次情報源。10 stack の定義と 15 機能領域の選定根拠、禁止・非推奨ライブラリ。本文書 §5.9 で保守規律を規定 |
-| **project-guide/COLLABORATION_GUIDE.md** | LLM と人間の協働プロトコル。原則 11 の具体実装、仕様書開発の両輪 |
-| **project-guide/BOOTSTRAP_GUIDE.md** | プロジェクト初期化手順。完了後は `project-guide/archived/` に移動。原則 1 の効率性・原則 11 の実装 |
+| **.llm/guide/CODING_GUIDE.md** | Clojure 書き方詳細。§1 に LLM 落とし穴、§2 に三基底原則の詳細展開 |
+| **.llm/guide/POLYLITH_GUIDE.md** | Polylith 運用詳細。brick コード例を埋め込み |
+| **.llm/guide/STACK_GUIDE.md** | 技術スタック選定の一次情報源。10 stack の定義と 15 機能領域の選定根拠、禁止・非推奨ライブラリ。本文書 §5.9 で保守規律を規定 |
+| **.llm/guide/COLLABORATION_GUIDE.md** | LLM と人間の協働プロトコル。原則 11 の具体実装、仕様書開発の両輪 |
+| **.llm/guide/BOOTSTRAP_GUIDE.md** | プロジェクト初期化手順。完了後は `.llm/guide/archived/` に移動。原則 1 の効率性・原則 11 の実装 |
 
-#### project-memory/
+#### .llm/memory/
 
 | 文書 | 本文書との関係 |
 |---|---|
-| **project-memory/QUESTIONS.md** | 判断保留トラッカー + **運用プロセス規定（§0）**。原則 2・10・11・13 の実装 |
-| **project-memory/KNOWLEDGE.md** | 生きた知識 + **ライフサイクル規定（§0）**。原則 13（上書き更新）の実装 |
-| **project-memory/adr/README.md** | ADR 運用ルール。原則 13（不変記録）の実装 |
-| **project-memory/adr/template.md** | ADR 雛形 |
+| **.llm/memory/QUESTIONS.md** | 判断保留トラッカー + **運用プロセス規定（§0）**。原則 2・10・11・13 の実装 |
+| **.llm/memory/KNOWLEDGE.md** | 生きた知識 + **ライフサイクル規定（§0）**。原則 13（上書き更新）の実装 |
+| **.llm/memory/adr/README.md** | ADR 運用ルール。原則 13（不変記録）の実装 |
+| **.llm/memory/adr/template.md** | ADR 雛形 |
 
 ### 8.2 外部参照
 
@@ -1578,8 +1578,8 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
 
 1. **全文書リストで点検対象を確定**:
    - ルート: README.md、CLAUDE.md、DESIGN.md
-   - project-guide/: CODING_GUIDE.md、POLYLITH_GUIDE.md、STACK_GUIDE.md、COLLABORATION_GUIDE.md、BOOTSTRAP_GUIDE.md、本文書
-   - project-memory/: QUESTIONS.md、KNOWLEDGE.md、adr/README.md、adr/template.md、既発行 ADR
+   - .llm/guide/: CODING_GUIDE.md、POLYLITH_GUIDE.md、STACK_GUIDE.md、COLLABORATION_GUIDE.md、BOOTSTRAP_GUIDE.md、本文書
+   - .llm/memory/: QUESTIONS.md、KNOWLEDGE.md、adr/README.md、adr/template.md、既発行 ADR
 2. **各文書を新原則で読み直し、違反箇所を洗い出す**
 3. **違反一覧を表にまとめ、「修正コスト × 修正効果」で判定**（全体として改善するか）
 4. **修正実施。単独追記ではなく既存体系の改善として統合実施**
@@ -1595,8 +1595,8 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
 
 ファイル・文書の配置において、**対称性や一貫性の欠落に気付いたら即時に解消する**。
 原則追加時でなくても、既存体系の対称性を高める機会は逃さない。
-実例：当初 `CLAUDE_QUESTIONS.md` のみルート直下だった配置を `project-memory/` 対称配置に修正、
-`docs/` への違和感から `project-memory/` と `project-guide/` の対称構造に再編成。
+実例：当初 `CLAUDE_QUESTIONS.md` のみルート直下だった配置を `.llm/memory/` 対称配置に修正、
+`docs/` への違和感から `.llm/memory/` と `.llm/guide/` の対称構造に再編成。
 これらは新原則追加ではなく、構造的直感に基づく改善であった。
 
 ### 9.3 保守作業における姿勢：整理優先（開発・保守共通）
@@ -1638,7 +1638,7 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
 
 **場面 D: 既存文書の役割が曖昧になってきた時**
 
-- 責務の再確認。4 種文書分離（原則 13）、project-guide / project-memory の区分に照らす
+- 責務の再確認。4 種文書分離（原則 13）、.llm/guide / .llm/memory の区分に照らす
 - 複数の責務が 1 文書に混在しているなら分割を検討
 - 同じ責務が複数文書に分散しているなら統合を検討
 
