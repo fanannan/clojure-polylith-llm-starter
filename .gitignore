@@ -45,5 +45,6 @@ Thumbs.db
 
 # --- キャッシュ ---
 node_modules/
-/.claude/
+/.claude/*
 !/.claude/settings.local.json
+!/.claude/settings.json
