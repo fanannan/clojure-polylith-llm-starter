@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # scripts/check-vulnerabilities.sh
 #
-# _POSSIBLE_ISSUES.md F 拡張（サードパーティ追加）の実装。
+# （サードパーティ追加）の実装。
 # 本テンプレートの §2 依存承認規律を時間軸に拡張する機械化:
 # 承認済み依存が後から脆弱性を抱えた場合の自動検知。
 #
@@ -32,7 +32,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 cd "$WORKSPACE_ROOT"
 

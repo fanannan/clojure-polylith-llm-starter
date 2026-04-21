@@ -104,15 +104,15 @@
 
    ;; --- A-4: 生の Exception コンストラクタ禁止（ex-info 義務化、CODING_GUIDE §7.1）---
    ;; Clojure 例外は必ず ex-info で投げる。catch 側で ex-data が nil になるのを防ぐ。
-   java.lang.Exception.         {:message "生の Exception コンストラクタ禁止。(ex-info msg data) を使う（CODING_GUIDE §7.1、_POSSIBLE_ISSUES.md A-4）"}
-   java.lang.RuntimeException.  {:message "生の RuntimeException コンストラクタ禁止。(ex-info msg data) を使う（CODING_GUIDE §7.1、_POSSIBLE_ISSUES.md A-4）"}
+   java.lang.Exception.         {:message "生の Exception コンストラクタ禁止。(ex-info msg data) を使う（CODING_GUIDE §7.1
+   java.lang.RuntimeException.  {:message "生の RuntimeException コンストラクタ禁止。(ex-info msg data) を使う（CODING_GUIDE §7.1
    java.lang.IllegalStateException. {:message "生の IllegalStateException コンストラクタ禁止。(ex-info msg data) を使う"}
    java.lang.IllegalArgumentException. {:message "生の IllegalArgumentException コンストラクタ禁止。(ex-info msg data) を使う"}
 
    ;; --- A-18: production コードでの Thread/sleep 禁止（副作用隔離）---
    ;; development/src は clj-kondo の除外対象外だが、REPL 駆動開発中の一時的な使用は許容。
    ;; components/ / bases/ で検知された場合のみ問題化。
-   java.lang.Thread/sleep       {:message "production コードで Thread/sleep 禁止。スケジューリングは chime、非同期制御は core.async で表現（_POSSIBLE_ISSUES.md A-18）"}
+   java.lang.Thread/sleep       {:message "production コードで Thread/sleep 禁止。スケジューリングは chime、非同期制御は core.async で表現"}
 
    ;; --- I/O 系ライブラリを採用したら、対応する行をコメント解除して有効化 ---
    ;; ドメイン層での I/O 呼び出しを error 化したい場合に使う。
@@ -248,7 +248,7 @@
  {malli.core/=> clj-kondo.lint-as/def-catch-all}
 
  ;; ----------------------------------------------------------------
- ;; custom hook 登録（_POSSIBLE_ISSUES.md A 系の AST 解析実装）
+ ;; custom hook 登録
  ;; hook 本体は .clj-kondo/polyguard/hooks.clj（clj-kondo の classpath
  ;; root は .clj-kondo/ 直下）。
  ;; file-level 解析は scripts/check-*.sh（hook と script の役割分担は

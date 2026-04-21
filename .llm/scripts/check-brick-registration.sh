@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # scripts/check-brick-registration.sh
 #
-# _POSSIBLE_ISSUES.md D-4 の実装（「機械化」ではなく「不完全さの機械検知」）。
+# の実装（「機械化」ではなく「不完全さの機械検知」）。
 #
 # 目的:
 #   `poly create` は brick ディレクトリのみを作成し、ルート deps.edn と
@@ -20,7 +20,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 cd "$WORKSPACE_ROOT"
 

@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # scripts/lint-import-hooks.sh
 #
-# _POSSIBLE_ISSUES.md D-5 の実装。
-#
+# #
 # 目的:
 #   依存ライブラリ（Malli、Polylith 等）が提供する clj-kondo hook を
 #   .clj-kondo/configs/ に取り込む。tools.deps の :main-opts は
@@ -19,11 +18,11 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 cd "$WORKSPACE_ROOT"
 
-CLASSPATH="$(clojure -A:dev -Spath)"
+CLASSPATH="$(clj -A:dev -Spath)"
 echo "clj-kondo hook を取り込み中 (classpath 長: ${#CLASSPATH} chars)..."
 
 clj -M:lint --copy-configs --dependencies --lint "$CLASSPATH"

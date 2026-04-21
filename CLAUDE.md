@@ -97,7 +97,7 @@
 | **小単位分解** | 大きな塊を一気に生成させない。生成→検証→次を繰り返す | 1 関数 20 行以内、コミット細分化、タスク分解判断（§7.4） |
 | **早期破棄** | 詰まったらアプローチごと捨てる。完遂にこだわらない | 自己停止プロトコル（§7）、ブランチ破棄を悪としない |
 
-**機械化充実の運用姿勢**（`_POSSIBLE_ISSUES.md` G-1 の反映）: 機械化は「実装可能なら採用、コスト高すぎる場合のみ保留」の方針で積極的に充実させる。新しい機械化候補を発見した時の判断基準は「実装コストとトレードオフ」ではなく「機械化できるか否か」に寄せる。これは §1.2.5「失敗早期検知 > 事前承認」と同じ思想（可逆な静的検査を厚くして、不可逆な本番障害を減らす）。機械化の実装手段は 2 種（`.clj-kondo/hooks/` = Clojure コード解析、`.llm/scripts/*.sh` = 設定ファイル・構造検査）で役割分担する（`MAINTAINERS_GUIDE.md §5.10`）。
+**機械化充実の運用姿勢**: 機械化は「実装可能なら採用、コスト高すぎる場合のみ保留」の方針で積極的に充実させる。新しい機械化候補を発見した時の判断基準は「実装コストとトレードオフ」ではなく「機械化できるか否か」に寄せる。これは §1.2.5「失敗早期検知 > 事前承認」と同じ思想（可逆な静的検査を厚くして、不可逆な本番障害を減らす）。機械化の実装手段は 2 種（`.clj-kondo/polyguard/` = Clojure コード解析、`.llm/scripts/*.sh` = 設定ファイル・構造検査）で役割分担する（`MAINTAINERS_GUIDE.md §5.10`）。
 
 ### 1.2.5 失敗早期検知 > 事前承認（§1.2.4 の承認設計への拡張）
 
@@ -120,7 +120,7 @@
 - **新しい規約や手順を提案する前に §1.2 の四戦略のどれに該当するかを明示せよ**
 - **「規約で縛れば守られる」は誤り**。§1.2.1 機械化、または §7 の自己停止プロトコルのように、**守る手段**を同時に設計する
 - **生きた知識の活用で再発見の疲労を避ける**: 実装中に判明した契約・不変条件・暗黙知は `.llm/memory/KNOWLEDGE.md` に集約される。LLM は実装着手前に関連する KNOWLEDGE 節を必ず確認し、同じ判断を繰り返さないこと（詳細は §8, §11）
-- **「前提の明示」で解空間を早期に収束させる**（`_POSSIBLE_ISSUES.md` G-3 の反映）: LLM との協働では、ユーザーが価値判断・運用制約・採否の向きを**早期に明示**するほど、LLM の提案解空間が適切に狭まり、設計コストが下がる。例: 「Babashka は使わない、shell script で書く」「サンプルコードはコメントで残す」のように採否の向きを与えると、LLM は条件付き生成・動的削除のような複雑な方向を自発的に閉じる。これは §1.3「生きた知識の活用」の延長で、**前提の言語化自体が協働の知識**になる。判断根拠が不明な時はユーザーに前提を訊くのが効率的（`.llm/guide/COLLABORATION_GUIDE.md` §4）
+- **「前提の明示」で解空間を早期に収束させる**: LLM との協働では、ユーザーが価値判断・運用制約・採否の向きを**早期に明示**するほど、LLM の提案解空間が適切に狭まり、設計コストが下がる。例: 「Babashka は使わない、shell script で書く」「サンプルコードはコメントで残す」のように採否の向きを与えると、LLM は条件付き生成・動的削除のような複雑な方向を自発的に閉じる。これは §1.3「生きた知識の活用」の延長で、**前提の言語化自体が協働の知識**になる。判断根拠が不明な時はユーザーに前提を訊くのが効率的（`.llm/guide/COLLABORATION_GUIDE.md` §4）
 
 ---
 
@@ -151,7 +151,7 @@
 - **Malli**（§1.1.1 全域性の実装。`m/=>` 契約と instrumentation）
 - **clj-kondo**（機械化された静的解析。`.clj-kondo/config.edn` + `.clj-kondo/polyguard/hooks.clj` は配布時点で同梱され、設定自体も必須層の一部として無効化・削除不可）
 - **cljfmt**（機械化されたフォーマッタ。`cljfmt.edn` は配布時点で同梱され、設定自体も必須層の一部として無効化・削除不可）
-- **Splint**（スタイル・イディオムレベル linter、clj-kondo の補完。`clj -M:lint-splint` で起動、完了条件で実行。`_POSSIBLE_ISSUES.md` F 拡張により必須層化）
+- **Splint**（スタイル・イディオムレベル linter、clj-kondo の補完。`clj -M:lint-splint` で起動、完了条件で実行。により必須層化）
 - **clj-watson**（依存脆弱性スキャン、時間軸を跨いだ機械化。`./.llm/scripts/check-vulnerabilities.sh` で起動、release 前必須。NVD API key 推奨）
 - **`.llm/scripts/` ディレクトリ**（`check-workspace-integrity.sh` / `check-*.sh` / `lint-import-hooks.sh`、設定ファイル・ディレクトリ構造の機械的検査を担う）
 
@@ -192,7 +192,7 @@ STACK_GUIDE.md に載っていない領域に遭遇した場合は、§6.3 の�
 - **ドメイン系コンポーネント**（user, order, …）は I/O ライブラリを `require` しない（clj-kondo で警告化）
 - I/O 系は**依存注入**で受け取る。Integrant を採用するプロジェクトでは Integrant key として提供、採用しないプロジェクトでは起動エントリで構築して関数引数として渡す（いずれも「ドメインは I/O を知らない」という原則は共通）
 - `println` / `prn` はアプリケーションコード（components / bases）で禁止（代わりに `mulog/log` または `tap>`）。**例外**: ビルドスクリプト（`projects/<deploy>/build.clj` 等）や `development/src/` 配下の一時デバッグコードでは、mulog 依存を引き込むこと自体が疲労増になるため `println` 使用を許容する。この例外は lint 設定 `.clj-kondo/config.edn` でも前提として扱われる（`--lint` 対象が `components bases development/src` で、build.clj は lint 対象外）
-- `with-redefs` は §1.1 全域性を破るので原則禁止（`clj-kondo` の `:discouraged-var` で警告化済）。`_POSSIBLE_ISSUES.md` A-5 の反映により「最小範囲」という主観語を外した。例外的に使用する場合は **ADR で理由付け必須**（「なぜ依存注入で置き換えられなかったか」を記録）
+- `with-redefs` は §1.1 全域性を破るので原則禁止（`clj-kondo` の `:discouraged-var` で警告化済）。の反映により「最小範囲」という主観語を外した。例外的に使用する場合は **ADR で理由付け必須**（「なぜ依存注入で置き換えられなかったか」を記録）
 
 ---
 
@@ -275,11 +275,16 @@ Polylith 構造の操作と、技術スタック層（stack）の採用・変更
 | **構造違反の検証**（編集後に必ず実行） | `clj -M:poly check` |
 | **日常作業中のテスト**（変更影響範囲のみ、高速） | `clj -M:poly test` |
 | **完了報告前のテスト**（§5.5 完了条件の一部、全 project 全 brick 実行） | `clj -M:poly test :all` |
-| **新規コンポーネント作成** | `clj -M:poly create component name:<n>` |
-| **新規ベース作成**(承認必須) | `clj -M:poly create base name:<n>` |
-| **新規プロジェクト作成**(承認必須) | `clj -M:poly create project name:<n>` |
+| **新規コンポーネント作成** | `clj -M:poly create component name:<name>` |
+| **新規ベース作成**(承認必須) | `clj -M:poly create base name:<name>` |
+| **新規プロジェクト作成**(承認必須) | `clj -M:poly create project name:<name>` |
 | 依存グラフ表示 | `clj -M:poly deps` |
 | ヘルプ | `clj -M:poly help` / `clj -M:poly help <cmd>` |
+| **静的解析（clj-kondo）** | `clj -M:lint` |
+| **スタイル解析（Splint）** | `clj -M:lint-splint` |
+| **フォーマット検査** | `clj -M:format check` |
+| **依存脆弱性スキャン（clj-watson、release 前）** | `./.llm/scripts/check-vulnerabilities.sh` |
+| **ワークスペース整合性検査** | `./.llm/scripts/check-workspace-integrity.sh` |
 
 **brick の書き方は `.llm/guide/POLYLITH_GUIDE.md` §2 のコード例を参照**(本テンプレートには brick サンプルは配布されない)。
 詳細手順・境界判断も **`.llm/guide/POLYLITH_GUIDE.md`**。
@@ -334,7 +339,7 @@ stack 表の網羅追求は疲労最小化原則と自己矛盾する(網羅は�
 
 ### 7.2 詰まり状況下の進捗メモ（必要時のみ）
 
-以下のいずれかが発動条件になったら、各ターン冒頭に進捗メモを出す（`_POSSIBLE_ISSUES.md` B-1 の反映、全ターン必須から緩和）:
+以下のいずれかが発動条件になったら、各ターン冒頭に進捗メモを出す（の反映、全ターン必須から緩和）:
 
 - §7.1 自己停止条件の**閾値に近づいた時**（同一試行 2 回目、同一ファイル編集 3 回目以降）
 - **仮説→検証のループに入った時**（2 回以上の仮説立案）
@@ -431,7 +436,7 @@ LLM のフィードバックループは**編集単位でターン内に閉じ�
 3. **未決判断の確認**: `.llm/memory/QUESTIONS.md` の `open` / `in-discussion` に関連する Q がないか確認。関連 Q があれば、その解決を待つか、Q のコンテキストで作業する。状態遷移と昇格先判定は同ファイル §0
 4. **過去の決定の確認**: `.llm/memory/adr/` で関連する ADR があれば読む。発行・改訂手順は `.llm/memory/adr/README.md`
 
-**空スキャン規約**（`_POSSIBLE_ISSUES.md` C-3 の反映）: 上記 4 つの確認は、該当文書が空（初期状態・該当エントリなし）の場合、**空スキャンで完了**とみなす。空を確認する行為自体が §1.3 の実装であり、スキップしてよい対象ではない。ただし、空であることを確認した後は次のステップに進む。下流 3 文書（KNOWLEDGE.md / QUESTIONS.md / adr/README.md）の §0 はこの §8.0 から呼び出される運用プロセスを定義する。
+**空スキャン規約**: 上記 4 つの確認は、該当文書が空（初期状態・該当エントリなし）の場合、**空スキャンで完了**とみなす。空を確認する行為自体が §1.3 の実装であり、スキップしてよい対象ではない。ただし、空であることを確認した後は次のステップに進む。下流 3 文書（KNOWLEDGE.md / QUESTIONS.md / adr/README.md）の §0 はこの §8.0 から呼び出される運用プロセスを定義する。
 
 仕様・知識・未決に**曖昧さ・矛盾・欠落**を発見したら、`.llm/memory/QUESTIONS.md` に Q を立てて**自己解釈で進めない**。
 
@@ -450,7 +455,7 @@ LLM のフィードバックループは**編集単位でターン内に閉じ�
 ### 8.2 新規コンポーネント追加（承認必須）
 
 ```bash
-clj -M:poly create component name:<n>
+clj -M:poly create component name:<name>
 ```
 
 **重要**: `poly create` は brick ディレクトリしか作らない。ルート `deps.edn` の `:dev :extra-paths` / `:extra-deps` とワークスペース構成の追従は手動で、`.llm/guide/BOOTSTRAP_GUIDE.md §2.5` の brick 追加チェックリストに従う。作業後は完了条件（§5.5）の `./.llm/scripts/check-workspace-integrity.sh` が登録漏れを検知する。
@@ -529,9 +534,9 @@ REPL で確認した挙動は**その場でテストに昇格**する。`comment
 
 | 層 | ツール | 配置 |
 |---|---|---|
-| インターフェーステスト | `clojure.test` + `matcher-combinators` | `components/<n>/test/.../interface_test.clj` |
+| インターフェーステスト | `clojure.test` + `matcher-combinators` | `components/<name>/test/.../interface_test.clj` |
 | プロパティテスト | `test.check` + `malli.generator` | 同上 |
-| base 統合テスト | `clojure.test` + テストコンテナ | `bases/<n>/test/` |
+| base 統合テスト | `clojure.test` + テストコンテナ | `bases/<name>/test/` |
 
 - **テストは原則 interface 経由で書く**（実装変更に頑健）
 - モックは §1.1.3 副作用隔離の失敗サイン。**依存注入で回避**

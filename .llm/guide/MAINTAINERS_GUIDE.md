@@ -273,7 +273,7 @@
    - STACK_GUIDE.md §3 選定根拠・§4.2 推奨ライブラリ表を更新
    - 変更影響を CODING_GUIDE.md / POLYLITH_GUIDE.md に反映
    - 必要なら CLAUDE.md の記述も修正
-4. **version 更新の記載先規律**（`_POSSIBLE_ISSUES.md` C-2 の反映）:
+4. **version 更新の記載先規律**:
    - **version は `STACK_GUIDE.md §2` のみに記載**（必須層・横断層の正本）
    - `CLAUDE.md §3` と `BOOTSTRAP_GUIDE.md §1` は概念的な必須層列挙のみを保持し、version は書かない。version 更新時に同期する必要がない運用に倒す（drift 防止）
    - 更新後は必ず `./.llm/scripts/lint-import-hooks.sh` を実行し、依存ライブラリ提供の clj-kondo hook を再取り込む（§5.11）
@@ -529,7 +529,7 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
 
 ### 5.10 機械化戦略の実装手段（5 層構造）
 
-`_POSSIBLE_ISSUES.md` G-2 の実装。本テンプレートの §1.2.1 機械化原則を実装する手段は 5 層に分かれ、各層が得意な領域を担う。重複開発を避けるため役割分担を明確にする（`_POSSIBLE_ISSUES.md` F 拡張で Splint / clj-watson 導入時に体系化）。
+本テンプレートの §1.2.1 機械化原則を実装する手段は 5 層に分かれ、各層が得意な領域を担う。重複開発を避けるため役割分担を明確にする（で Splint / clj-watson 導入時に体系化）。
 
 | 層 | 実装手段 | 得意領域 | 代表例 |
 |---|---|---|---|
@@ -576,7 +576,7 @@ L1〜L5 との関係:
 
 ### 5.11 `lint-import-hooks.sh` 再実行のタイミング
 
-`.llm/scripts/lint-import-hooks.sh`（`_POSSIBLE_ISSUES.md` D-5）は依存ライブラリが提供する clj-kondo hook を `.clj-kondo/configs/` に取り込む。以下のタイミングで再実行する:
+`.llm/scripts/lint-import-hooks.sh`は依存ライブラリが提供する clj-kondo hook を `.clj-kondo/configs/` に取り込む。以下のタイミングで再実行する:
 
 - **ブートストラップ初回**: `BOOTSTRAP_GUIDE.md §2.9` で実行
 - **brick deps.edn への新ライブラリ追加時**: 本節 §5.2 の手順に組み込む
@@ -587,7 +587,7 @@ L1〜L5 との関係:
 
 ### 5.12 clj-kondo linter 継続点検規律（機械化充実の運用姿勢）
 
-`_POSSIBLE_ISSUES.md` F 拡張・G-1 の延長。clj-kondo は活発に開発されており新 linter が追加されるため、本テンプレートの機械化を継続的に充実させる規律を定める。
+・G-1 の延長。clj-kondo は活発に開発されており新 linter が追加されるため、本テンプレートの機械化を継続的に充実させる規律を定める。
 
 **点検サイクル**:
 
@@ -609,13 +609,13 @@ L1〜L5 との関係:
 
 - **必須層**: Splint（スタイル・イディオム）と clj-watson（依存脆弱性）は必須層として配布（STACK_GUIDE.md §2.1）
 - **補完的 lint**: Eastwood（マクロ展開解析）は保留候補、採用時は別 ADR
-- **kibit / yagni / cljstyle / zprint**: 機能重複または制約ありで不採用（`_POSSIBLE_ISSUES.md` F 拡張の調査結果）
+- **kibit / yagni / cljstyle / zprint**: 機能重複または制約ありで不採用（の調査結果）
 
 **運用上の注意**:
 
 - `.clj-kondo/config.edn` の追加は `.llm/scripts/lint-import-hooks.sh` の再実行が必要ない（組み込み linter のため）。custom hook 追加時のみ再取り込みを要する
 - 新 linter 追加で既存コードが失敗するようになった場合、**原則として既存コードを直す**（規約を緩める側に倒さない）。機械化充実姿勢と整合
-- false positive の許容は「一括 error で導入、問題が出たら個別に `:config-in-ns` で除外」の順（`_POSSIBLE_ISSUES.md` F 拡張判断 2）
+- false positive の許容は「一括 error で導入、問題が出たら個別に `:config-in-ns` で除外」の順（��断 2）
 
 ---
 
@@ -1537,7 +1537,7 @@ L1〜L5 との関係:
   - `poly test --watch` が存在しない旨の記述（前回修正済み、正しい）
   - `poly test project:<n>` の記法（公式例と一致、正しい）
   - `poly check` / `poly info` / `poly libs` / `poly deps` の記法（公式例と一致、正しい）
-  - `poly create component name:<n>` / `poly create base name:<n>` / `poly create project name:<n>` の引数形式（公式例と一致、正しい）
+  - `poly create component name:<name>` / `poly create base name:<name>` / `poly create project name:<name>` の引数形式（公式例と一致、正しい）
 - **副次的発見**:
   - **公式ドキュメントは版ごとに変化する**: tag-patterns の正規表現は 0.2.21 以前と 0.2.22 以降で異なる。「公式に準拠」と思い込んでいても、**どの版の公式か**を常に意識する必要がある
   - **Configuration ページと実例のブレ**: 公式 Configuration ページの表では `:compact-view`（単数）と記載されていたが、実際の例・他ページ・公式 workspace.edn 例はすべて `:compact-views`（複数形）だった。公式ドキュメント内にも typo や表記ブレがあり、**表記だけでなく実例と照合することが重要**

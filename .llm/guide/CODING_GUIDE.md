@@ -72,7 +72,7 @@ CLAUDE.md が「日々の作業フロー」を規定するのに対し、本文�
 
 ### 1.9 `comment` フォームの中のコード忘れ（機械化不可能な努力目標）
 
-**注記**（`_POSSIBLE_ISSUES.md` A-3 の反映）: `(comment ...)` は Clojure の慣用として **REPL 駆動開発中の試行コード置き場**として広く使われ、意図的に「動かないコード」「仮のコード」を置くのが標準作法。`.clj-kondo/config.edn` の `:skip-comments true` はこの慣用を壊さないための適切な設定。本規約は**機械的に検知できない意図論の問題**で、努力目標として残す。
+**注記**: `(comment ...)` は Clojure の慣用として **REPL 駆動開発中の試行コード置き場**として広く使われ、意図的に「動かないコード」「仮のコード」を置くのが標準作法。`.clj-kondo/config.edn` の `:skip-comments true` はこの慣用を壊さないための適切な設定。本規約は**機械的に検知できない意図論の問題**で、努力目標として残す。
 
 **兆候**: 実装を `(comment ...)` に書いたまま、本体に戻し忘れる。
 
@@ -160,8 +160,11 @@ CLAUDE.md が「日々の作業フロー」を規定するのに対し、本文�
 
 #### 2.1.4 instrumentation の活用
 
-- `(malli.dev/start!)` を開発時常時 ON（`dev/user.clj` の `(go)` で自動）
+- `dev/user.clj` で `(malli-on!)` / `(malli-off!)` ヘルパが提供される。起動方法はプロジェクト構成で 2 分岐:
+  - **Integrant を採用**: `(go)` が内部で `(malli-on!)` を呼ぶ
+  - **Integrant 非採用**（ライブラリ配布・単発 CLI 等）: REPL 起動後に明示的に `(malli-on!)` を呼ぶ
 - 契約違反は REPL 呼び出し即時に例外。LLM は例外メッセージから自己修正できる
+- 詳細は CLAUDE.md §5.4 / POLYLITH_GUIDE.md §7.1
 
 ### 2.2 不変性（Immutability）の Clojure 実装
 
@@ -220,7 +223,7 @@ CLAUDE.md が「日々の作業フロー」を規定するのに対し、本文�
 #### 2.3.3 副作用の明示化
 
 - `println` / `prn` はアプリケーションコード（components / bases）で禁止。代わりに `mulog/log` で構造化ログ、または `tap>` でデータ確認。**例外**: ビルドスクリプト（`projects/<deploy>/build.clj`）や `development/src/` 配下の一時デバッグコードでは許容（mulog 依存を引き込む疲労を避けるため、CLAUDE.md §4.3）
-- `with-redefs` は§1.1 全域性を破るので原則禁止。`clj-kondo` の `:discouraged-var` で警告化済。`_POSSIBLE_ISSUES.md` A-5 の反映で「最小範囲」という主観語を外し、例外使用時は **ADR で理由付け必須**とした（「なぜ依存注入で置き換えられなかったか」を記録、依存注入が技術的に不可能な Java interop の境界など）
+- `with-redefs` は§1.1 全域性を破るので原則禁止。`clj-kondo` の `:discouraged-var` で警告化済。の反映で「最小範囲」という主観語を外し、例外使用時は **ADR で理由付け必須**とした（「なぜ依存注入で置き換えられなかったか」を記録、依存注入が技術的に不可能な Java interop の境界など）
 
 #### 2.3.4 モックは設計失敗のサイン
 

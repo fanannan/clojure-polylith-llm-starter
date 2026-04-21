@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash scripts/session-briefing.sh"
+            "command": "bash .llm/scripts/session-briefing.sh"
           }
         ]
       }

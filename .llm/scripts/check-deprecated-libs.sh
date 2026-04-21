@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # scripts/check-deprecated-libs.sh
 #
-# _POSSIBLE_ISSUES.md F-3 の実装。A-6（clj-kondo :discouraged-var）を補完する、
+# A-6（clj-kondo :discouraged-var）を補完する、
 # brick deps.edn 採用宣言レベルの検査。
 #
 # 目的:
@@ -64,7 +64,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 cd "$WORKSPACE_ROOT"
 
@@ -146,6 +146,11 @@ done < <(find . \
   -not -path "./.clj-kondo/*" \
   -not -path "*/target/*" \
   -not -path "*/.cpcache/*")
+
+if [ "${#DEPS_FILES[@]}" -eq 0 ]; then
+  echo "check-deprecated-libs: no deps.edn found, skipped"
+  exit 0
+fi
 
 for deps in "${DEPS_FILES[@]}"; do
   for entry in "${DEPRECATED_PATTERNS[@]}"; do

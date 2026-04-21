@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # scripts/check-interface-contracts.sh
 #
-# _POSSIBLE_ISSUES.md A-1 の実装。
-#
+# #
 # 目的:
 #   各 components/*/src/**/interface.clj について、`defn` で宣言された公開関数すべてに
 #   対応する `m/=>` 契約が同一ファイル内（または同一 namespace 内）に存在するかを検査する。
@@ -25,7 +24,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 cd "$WORKSPACE_ROOT"
 
@@ -51,7 +50,7 @@ while IFS= read -r ifile; do
     if ! echo "$contracts" | grep -qx "$fn"; then
       echo "ERROR: $ifile の公開関数 \`$fn\` に対応する (m/=> $fn ...) 契約がありません"
       echo "  → interface.clj 内で (m/=> $fn [:=> [:cat <入力>] <出力>]) を追加してください"
-      echo "  → CLAUDE.md §4.1 / CODING_GUIDE.md §2.1.1 / _POSSIBLE_ISSUES.md A-1"
+      echo "  → CLAUDE.md §4.1 / CODING_GUIDE.md §2.1.1 / "
       missing=1
     fi
   done

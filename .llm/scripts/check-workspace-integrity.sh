@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # scripts/check-workspace-integrity.sh
 #
-# _POSSIBLE_ISSUES.md F-1 の実装（総合検査）。
+# の実装（総合検査）。
 #
 # 目的:
 #   他の script 群を束ね、ワークスペース全体の整合性を一括検査する。
@@ -18,7 +18,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 cd "$WORKSPACE_ROOT"
 

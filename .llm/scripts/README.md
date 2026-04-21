@@ -2,7 +2,7 @@
 
 本ディレクトリは、`.clj-kondo/` の custom hook では捕捉できない**設定ファイル・ディレクトリ構造・配布物整合性**の検査と、シェル展開が必要な運用コマンドのラッパーを収容する。各スクリプトは単独でも実行できるが、基本は `check-workspace-integrity.sh` が完了条件（`CLAUDE.md §5.5`）から一括で起動する。
 
-`_POSSIBLE_ISSUES.md` D-4 / D-5 / D-6 / F-1 / F-3、および運用姿勢 G-2（hook と script の役割分担）の実装。
+D-5 / D-6 / F-1 / F-3、および運用姿勢 G-2（hook と script の役割分担）の実装。
 
 ## 機械化の 5 層構造（`MAINTAINERS_GUIDE.md §5.10` の要約）
 
@@ -99,5 +99,5 @@ NVD API key 推奨（`https://nvd.nist.gov/developers/request-an-api-key`）。�
 
 ## 非採用事項
 
-- **Babashka による実装**: 必須層を拡張しないため不採用（`_POSSIBLE_ISSUES.md` D 群方針）
-- **`.llm/scripts/new-brick.sh`（brick 追加自動化）**: EDN 機械編集は sed では脆弱、rewrite-clj は Clojure 起動コスト大。代わりに `check-brick-registration.sh` で**不完全さを検知**する方向に切り替えた（`_POSSIBLE_ISSUES.md` D-4）
+- **Babashka による実装**: 必須層を拡張しないため不採用
+- **`.llm/scripts/new-brick.sh`（brick 追加自動化）**: EDN 機械編集は sed では脆弱、rewrite-clj は Clojure 起動コスト大。代わりに `check-brick-registration.sh` で**不完全さを検知**する方向に切り替えた

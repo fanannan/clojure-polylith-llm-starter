@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # scripts/check-placeholders.sh
 #
-# _POSSIBLE_ISSUES.md D-6 の実装。
-#
+# #
 # 目的:
 #   workspace.edn / deps.edn にプレースホルダ `myorg.myapp` が残っていないか検査する。
 #   `CLAUDE.md §5.5` 完了条件の一部として `check-workspace-integrity.sh` 経由で呼ばれる。
@@ -22,7 +21,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 cd "$WORKSPACE_ROOT"
 

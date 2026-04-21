@@ -79,7 +79,7 @@ stack は時間とともに増え、選定根拠は詳細化し、機能領域�
 
 ## 2. 技術スタックの階層
 
-**本節は必須層・stack 層・横断層の正本**（`_POSSIBLE_ISSUES.md` C-2 による正本化）。`CLAUDE.md §3` と `BOOTSTRAP_GUIDE.md §1` は LLM 日常参照と初期化導線のための概念的抜粋であり、**version 情報は本節のみに記載**する。version drift 防止の保守規律は `MAINTAINERS_GUIDE.md §5.1` を参照。
+**本節は必須層・stack 層・横断層の正本**。`CLAUDE.md §3` と `BOOTSTRAP_GUIDE.md §1` は LLM 日常参照と初期化導線のための概念的抜粋であり、**version 情報は本節のみに記載**する。version drift 防止の保守規律は `MAINTAINERS_GUIDE.md §5.1` を参照。
 
 ### 2.1 必須層（常に採用、stack 非依存）
 
@@ -91,9 +91,9 @@ stack は時間とともに増え、選定根拠は詳細化し、機能領域�
 | 構造化アーキテクチャ | Polylith | c804c2c | brick ベースの再利用性（master 最新、2026-04 時点） |
 | 契約・検証 | Malli | 0.16.4 | 関数契約 `m/=>`、instrumentation |
 | Lint（構文・型） | clj-kondo | 2024.11.14 | §1.2.1 機械化の実装の柱。`.clj-kondo/config.edn` + custom hook が配布時点で同梱され、LLM の悪手を error で機械的に封じる |
-| Lint（スタイル・イディオム） | Splint | 1.19.0 | clj-kondo 補完。`(= 0 x)` → `(zero? x)` のようなイディオム違反を検知（`_POSSIBLE_ISSUES.md` F 拡張で必須層化） |
+| Lint（スタイル・イディオム） | Splint | 1.19.0 | clj-kondo 補完。`(= 0 x)` → `(zero? x)` のようなイディオム違反を検知（で必須層化） |
 | Format | cljfmt | 0.13.0 | §1.2.1 機械化の実装。`cljfmt.edn` が配布時点で同梱され、フォーマット議論を排除する |
-| 依存脆弱性スキャン | clj-watson | v6.0.1 | NIST NVD + GitHub Advisory Database を照合。時間軸を跨いだ機械化（承認済み依存の脆弱化検知）。release 前必須（`_POSSIBLE_ISSUES.md` F 拡張で必須層化） |
+| 依存脆弱性スキャン | clj-watson | v6.0.1 | NIST NVD + GitHub Advisory Database を照合。時間軸を跨いだ機械化（承認済み依存の脆弱化検知）。release 前必須（で必須層化） |
 | 依存更新確認 | antq | 2.11.1264 | ライブラリ更新検知 |
 | REPL リロード | tools.namespace | 1.5.0 | `(reset)` の基盤 |
 | nREPL | nrepl + cider-nrepl + refactor-nrepl | — | エディタ接続 |

@@ -242,7 +242,7 @@ Integrant を使うプロジェクトでのみ実施する。ライブラリ配�
 
 **clj-kondo hook の初回取り込み**:
 
-- [ ] 新ライブラリ採用後、以下のスクリプトで各ライブラリ提供の clj-kondo hook を取り込む（tools.deps の `:main-opts` はシェル展開されないため、エイリアスに埋め込めない。`_POSSIBLE_ISSUES.md` D-5 の実装）:
+- [ ] 新ライブラリ採用後、以下のスクリプトで各ライブラリ提供の clj-kondo hook を取り込む（tools.deps の `:main-opts` はシェル展開されないため、エイリアスに埋め込めない。の実装）:
   ```bash
   ./.llm/scripts/lint-import-hooks.sh
   ```
@@ -258,7 +258,7 @@ Integrant を使うプロジェクトでのみ実施する。ライブラリ配�
 
 **workspace 整合性の総合検査**:
 
-- [ ] プレースホルダ残存・brick 登録漏れ・非推奨ライブラリ採用の一括検査（`_POSSIBLE_ISSUES.md` D-4 / D-6 / F-1 / F-3 の統合）:
+- [ ] プレースホルダ残存・brick 登録漏れ・非推奨ライブラリ採用の一括検査:
   ```bash
   ./.llm/scripts/check-workspace-integrity.sh
   ```
@@ -266,7 +266,7 @@ Integrant を使うプロジェクトでのみ実施する。ライブラリ配�
 **workspace 全体の品質確認**:
 
 - [ ] `clj -M:lint` がゼロ警告（clj-kondo + polyguard custom hook）
-- [ ] `clj -M:lint-splint` がゼロ警告（Splint、スタイル・イディオム、`_POSSIBLE_ISSUES.md` F 拡張により必須層化）
+- [ ] `clj -M:lint-splint` がゼロ警告（Splint、スタイル・イディオムにより必須層化）
 - [ ] `clj -M:format check` が通る
 - [ ] `clj -M:poly check` が通る
 - [ ] `clj -M:dev:nrepl` で REPL 起動、`(go)` が例外なく完走（Integrant を含む stack の場合）
@@ -327,7 +327,7 @@ Integrant を使うプロジェクトでのみ実施する。ライブラリ配�
 
 各ステップで動作確認が通らない場合：
 
-### 5.1 brick の依存解決が失敗する（`cd bases/<n> && clj -Spath` で例外）
+### 5.1 brick の依存解決が失敗する（`cd bases/<name> && clj -Spath` で例外）
 
 - brick の deps.edn の記述内容を STACK_GUIDE.md §4.2 該当節と照合
 - バージョンの組合せが Maven Central / Clojars に実在するか確認

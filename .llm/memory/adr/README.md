@@ -46,7 +46,7 @@ ADR はこれらを**軽量な記述形式**で解決する。1 件あたり 1�
 
 ## 目的
 
-> **呼び出し元**: 本ディレクトリの ADR 群は `CLAUDE.md §8.0`（実装着手前の確認）の「過去の決定の確認」ステップから参照される決定履歴。空の場合の扱い（空スキャンで完了）は呼び出し元 §8.0 で一括規定（`_POSSIBLE_ISSUES.md` C-3 による相互参照構築）。
+> **呼び出し元**: 本ディレクトリの ADR 群は `CLAUDE.md §8.0`（実装着手前の確認）の「過去の決定の確認」ステップから参照される決定履歴。空の場合の扱い（空スキャンで完了）は呼び出し元 §8.0 で一括規定（による相互参照構築）。
 >
 > **初期状態**: 本ディレクトリは `README.md`（本文書）と `template.md` のみ、実 ADR は 0 件（テンプレート配布時）。ADR は以降のプロジェクト運営で「ADR を発行すべき基準」（後述）に該当した時に発行される。
 
@@ -99,7 +99,7 @@ ADR はこれらを**軽量な記述形式**で解決する。1 件あたり 1�
 ### してよいこと
 
 - 初回発行時の記述
-- **status フィールドの更新のみ**（proposed → accepted、accepted → deprecated）。`accepted → superseded-by-NNNN` は `_POSSIBLE_ISSUES.md` B-2 により廃止（新 ADR 側の Related だけで supersede 関係を表現）
+- **status フィールドの更新のみ**（proposed → accepted、accepted → deprecated）。`accepted → superseded-by-NNNN` は により廃止（新 ADR 側の Related だけで supersede 関係を表現）
 
 ### してはいけないこと
 
@@ -133,7 +133,7 @@ ADR はこれらを**軽量な記述形式**で解決する。1 件あたり 1�
 
 ### 既存 ADR の改訂が必要になった時
 
-**ADR 本文を直接編集しない**。以下の手順で（`_POSSIBLE_ISSUES.md` B-2 により片方向更新に簡素化）：
+**ADR 本文を直接編集しない**。以下の手順で（により片方向更新に簡素化）：
 
 1. 新しい ADR を発行（次の番号で）
 2. 新 ADR の Context で「`NNNN-old-topic.md` の判断を改訂する必要がある理由」を述べる

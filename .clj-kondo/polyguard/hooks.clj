@@ -1,6 +1,6 @@
 (ns polyguard.hooks
   "Polylith template 固有の custom hook 群。
-   _POSSIBLE_ISSUES.md A 系の機械化実装（AST 解析が必要なもの）。
+   系の機械化実装（AST 解析が必要なもの）。
 
    file-level 解析が必要な項目（A-1 interface 契約・A-14 1 ファイル 1 ns）は
    scripts/check-interface-contracts.sh / scripts/check-single-ns-per-file.sh で
@@ -137,7 +137,7 @@
              :level :warning
              :message (str "関数が " lines " 行あります（上限 " limit " 行、"
                            (if interface? "interface 関数" "ロジック関数")
-                           "）。機能分解してください（CODING_GUIDE.md §4.4、_POSSIBLE_ISSUES.md A-7）")}))))
+                           "）。機能分解してください（CODING_GUIDE.md §4.4
 
 ;; ---------------------------------------------------------------------------
 ;; A-15: 位置引数 4 個以上の禁止
@@ -190,7 +190,7 @@
          :level :warning
          :message (str (api/sexpr fn-name) " の位置引数が " n
                        " 個あります（上限 3 個、4 個以上はマップで受ける）。"
-                       "CODING_GUIDE.md §4.2、_POSSIBLE_ISSUES.md A-15")}))
+                       "CODING_GUIDE.md §4.2
 
 (defn check-defn-arity
   "defn の位置引数数を検査（A-15）。多アリティは各アリティ個別に検査。"
@@ -217,7 +217,7 @@
          :level :warning
          :message (str "引数の destructuring が深くネストしています（深さ " depth
                        "）。中間キーを let で切り出してください。"
-                       "CODING_GUIDE.md §1.12、_POSSIBLE_ISSUES.md A-17")}))
+                       "CODING_GUIDE.md §1.12
 
 (defn check-defn-destructuring
   "defn 引数の destructuring 深さを検査（A-17）。多アリティ対応、閾値 > 3。"
@@ -275,7 +275,7 @@
                  :level :warning
                  :message (str "components/ または bases/ の top-level で (atom/ref/agent ...) を def しています。"
                                "可変状態は最上位層（Integrant / 起動エントリ）に限定してください。"
-                               "CLAUDE.md §4.2、_POSSIBLE_ISSUES.md A-9")}))))))
+                               "CLAUDE.md §4.2
 
 ;; ---------------------------------------------------------------------------
 ;; A-10 / A-11: catch の検査（広範囲 catch / 空 catch）
@@ -309,7 +309,7 @@
                :level :warning
                :message (str "(catch " class-sym " ...) は広すぎます。"
                              "ex-info の具体クラス、または Java の具体例外を catch してください。"
-                             "CODING_GUIDE.md §7.2、_POSSIBLE_ISSUES.md A-10")})))))
+                             "CODING_GUIDE.md §7.2
 
 (defn- nil-or-false-token?
   "node が nil / false を表す token-node か。"
@@ -328,7 +328,7 @@
              :level :error
              :message (str "catch 本体が空または nil / false のみです。例外の握り潰しは禁止。"
                            "少なくとも構造化ログ（mulog/log）または ex-info で再 throw する。"
-                           "CODING_GUIDE.md §7.2、_POSSIBLE_ISSUES.md A-11")}))))
+                           "CODING_GUIDE.md §7.2
 
 (defn- check-catch
   "1 つの catch form を検査（A-10 / A-11 をまとめて適用）。"
@@ -379,7 +379,7 @@
            :level :error
            :message (str "go ブロック内で <!! / >!! を呼び出しています。"
                          "go 内では <! / >! を使ってください（blocking 版は OS スレッドを占有してデッドロックの原因）。"
-                         "CODING_GUIDE.md §10.2、_POSSIBLE_ISSUES.md A-16")})))
+                         "CODING_GUIDE.md §10.2
 
 ;; ---------------------------------------------------------------------------
 ;; A-8: m/=> と defn のアリティ整合

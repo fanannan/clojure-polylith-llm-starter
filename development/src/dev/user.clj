@@ -12,7 +12,7 @@
      - Integrant ライフサイクル制御 (go / reset / halt)（コメントアウト配布、採用時に解除）
      - Portal ヘルパー (portal / portal-clear / portal-close)（コメントアウト配布、採用時に解除）
 
-   扱い指針（_POSSIBLE_ISSUES.md D-2 の実装）:
+   扱い指針:
      - 配布時点では Malli instrumentation のみが有効。Integrant / Portal セクションは
        セクションヘッダごと `;;` で無効化されている。
      - **Integrant を使うプロジェクト**: Integrant セクションを有効化する。
@@ -65,7 +65,7 @@
 (defn malli-on!
   "Malli instrumentation を起動。全 m/=> 契約が REPL 評価時にチェックされる。
    停止する必要が生じた場合は `(malli.dev/stop!)` を直接呼ぶ
-   （_POSSIBLE_ISSUES.md B-4 の B-1 に伴う `malli-off!` 削除）。"
+   （の B-1 に伴う `malli-off!` 削除）。"
   []
   (mdev/start! {:report (mpretty/reporter)}))
 
@@ -128,7 +128,7 @@
 ;; Portal — データインスペクタ
 ;;
 ;; 【このセクションの扱い】
-;;   - 配布時点ではセクション全体が `;;` で無効化されている（_POSSIBLE_ISSUES.md D-2）
+;;   - 配布時点ではセクション全体が `;;` で無効化されている
 ;;   - Portal を使う場合: deps.edn の :dev に djblue/portal を追加し、
 ;;     以下の `(def` / `(defn` の行頭 `;;` を一括除去して有効化する
 ;;     （IDE で複数行選択 → `;;` 除去）

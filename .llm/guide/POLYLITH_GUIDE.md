@@ -350,19 +350,19 @@ Polylith は **../CLAUDE.md §1.1.3 副作用の隔離 + §1.2.1 機械化** の
 ### 3.1 新規コンポーネント追加（**ユーザ承認必須**）
 
 ```bash
-clj -M:poly create component name:<n>
+clj -M:poly create component name:<name>
 ```
 
 これで以下が自動生成される：
 
 ```
-components/<n>/
+components/<name>/
 ├── deps.edn
 ├── resources/
-├── src/myorg/myapp/<n>/
+├── src/myorg/myapp/<name>/
 │   ├── interface.clj
 │   └── core.clj
-└── test/myorg/myapp/<n>/
+└── test/myorg/myapp/<name>/
     └── interface_test.clj
 ```
 
@@ -375,33 +375,33 @@ components/<n>/
    - `interface_test.clj`: clojure.test + プロパティテスト
 3. Integrant key を提供する場合は entry base の `system.clj`（§2.2 のコード例）の defmethod 集約に追加
 4. project の `deps.edn` に `:local/root` で登録
-5. development の `deps.edn` の `:dev` エイリアス `:extra-paths` にソースパスを追加（`components/<n>/src` 等）
-6. **development の `deps.edn` の `:dev` エイリアス `:extra-deps` に `:local/root` で登録**（`poly/<n> {:local/root "components/<n>"}`）。これにより brick deps.edn の `:deps` が推移的解決され、REPL で利用可能になる
+5. development の `deps.edn` の `:dev` エイリアス `:extra-paths` にソースパスを追加（`components/<name>/src` 等）
+6. **development の `deps.edn` の `:dev` エイリアス `:extra-deps` に `:local/root` で登録**（`poly/<name> {:local/root "components/<name>"}`）。これにより brick deps.edn の `:deps` が推移的解決され、REPL で利用可能になる
 7. `clj -M:poly check` で構造検証
 8. `clj -M:poly test project:<project-name>` で特定 project 配下の brick テストを実行（全 project・全 brick を流すなら `clj -M:poly test :all`）
 
 ### 3.2 新規ベース追加（**ユーザ承認必須**）
 
 ```bash
-clj -M:poly create base name:<n>
+clj -M:poly create base name:<name>
 ```
 
 用途の例：HTTP API（既存 entry base と）は別の CLI、Lambda 関数、バッチジョブなど。
 
-その後、`bases/<n>/deps.edn` に必要なライブラリを追加、本文書 §2.2 base コード例を雛形として `core.clj`/`system.clj` などを実装。
+その後、`bases/<name>/deps.edn` に必要なライブラリを追加、本文書 §2.2 base コード例を雛形として `core.clj`/`system.clj` などを実装。
 
 ### 3.3 新規プロジェクト追加（**ユーザ承認必須**）
 
 ```bash
-clj -M:poly create project name:<n>
+clj -M:poly create project name:<name>
 ```
 
 デプロイ単位を分ける時に使う（例: Web API と worker を別の uberjar にする等）。
 
 その後：
 
-1. `projects/<n>/deps.edn` に `:local/root` で components / bases を参照
-2. `projects/<n>/build.clj` を新規作成（本文書 §2.3 の build.clj 例を雛形として使う）
+1. `projects/<name>/deps.edn` に `:local/root` で components / bases を参照
+2. `projects/<name>/build.clj` を新規作成（本文書 §2.3 の build.clj 例を雛形として使う）
 3. `workspace.edn` の `:projects` に登録
 4. CI に組込（lint / format / poly check / test / build uber）
 
@@ -522,15 +522,15 @@ GitHub Actions などの CI では `fetch-depth: 0` を指定する。
 **`:extra-paths` に追加**（ソースパス、REPL で namespace を読むため）:
 
 ```clojure
-"components/<n>/src"
-"components/<n>/resources"
-"components/<n>/test"
+"components/<name>/src"
+"components/<name>/resources"
+"components/<name>/test"
 ```
 
 **`:extra-deps` に追加**（`:local/root` 登録、brick deps.edn の依存を推移的解決するため）:
 
 ```clojure
-poly/<n> {:local/root "components/<n>"}
+poly/<name> {:local/root "components/<name>"}
 ```
 
 これを忘れると、新規 brick は以下のいずれかの問題を起こす:
@@ -543,7 +543,7 @@ poly/<n> {:local/root "components/<n>"}
 プロダクションで使うライブラリ依存は**本来の所属 brick の `deps.edn`** に追加する（選択肢 H、真実の一箇所化、STACK_GUIDE.md §1.2）。development の `:dev :extra-deps` に直接追加してよいのは：
 
 - **開発ツール**: nrepl, portal, integrant.repl, tools.namespace, test.check, matcher-combinators など（本番ビルドに混入させない）
-- **brick の `:local/root` 登録**: `poly/<n> {:local/root "..."}` の形（brick deps.edn の依存を REPL で使うため）
+- **brick の `:local/root` 登録**: `poly/<name> {:local/root "..."}` の形（brick deps.edn の依存を REPL で使うため）
 
 ---
 

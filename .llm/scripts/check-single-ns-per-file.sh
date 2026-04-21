@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # scripts/check-single-ns-per-file.sh
 #
-# _POSSIBLE_ISSUES.md A-14 の実装。
-#
+# #
 # 目的:
 #   1 つの .clj / .cljc / .cljs ファイル内に (ns ...) 宣言が複数ないかを検査する。
 #   CODING_GUIDE.md §14.1 の機械化（false positive なし、単純な構文判定）。
@@ -22,7 +21,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 cd "$WORKSPACE_ROOT"
 
@@ -32,7 +31,7 @@ while IFS= read -r f; do
   [ -z "$f" ] && continue
   count="$(grep -cE '^\(ns[[:space:]]' "$f" || true)"
   if [ "$count" -gt 1 ]; then
-    echo "ERROR: $f に (ns ...) 宣言が $count 個あります（CODING_GUIDE.md §14.1、_POSSIBLE_ISSUES.md A-14）"
+    echo "ERROR: $f に (ns ...) 宣言が $count 個あります（CODING_GUIDE.md §14.1
     grep -nE '^\(ns[[:space:]]' "$f" | sed 's/^/  /'
     found=1
   fi
