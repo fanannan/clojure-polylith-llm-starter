@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(clojure -e '\\(read-string \\(slurp \"deps.edn\"\\)\\)')",
+      "Bash(clojure -e '\\(read-string \\(slurp \"workspace.edn\"\\)\\)')",
+      "Bash(clojure -e '\\(read-string \\(slurp \".clj-kondo/config.edn\"\\)\\)')",
+      "Bash(clojure -e '\\(read-string \\(slurp \"cljfmt.edn\"\\)\\)')",
+      "Bash(clj -M:dev -e '\\(require \"[clojure.tools.namespace.repl :as tn]\"\\)')",
+      "Bash(clj -M:dev -e '\\(require \"[malli.dev :as mdev]\\)')",
+      "Bash(clj -e '\\(clojure.edn/read-string \\(slurp \"development/src/dev/user.clj\"\\)\\)')",
+      "Bash(clojure development/src/dev/user.clj)",
+      "Bash(clojure -M:lint)",
+      "Bash(clj -M:lint)",
+      "Bash(clj -M:format check)"
+    ]
+  }
+}
