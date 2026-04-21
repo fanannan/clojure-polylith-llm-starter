@@ -53,6 +53,55 @@ README.md が「**誰が何をするか**」を示すのに対し、本文書は
 
 以下の順序で実施する。各ステップ完了後、次へ進む前に**動作確認**を行う。
 
+### 2.0 自律オーケストレーションの流れ（ゲート位置マップ）
+
+README.md のキックオフプロンプトを受信した LLM は、以下のゲート位置で人間の承認を求めつつ、実手順は §2.1〜§2.9 および §4 に従う。**ガバナンス（L0/L1/L2/L3、ADR の L2 規定、特別承認・部分承認の不採用）は `COLLABORATION_GUIDE.md` §2 を一次情報源とする**。本節はフロー順序の指針であり、権限階層の再定義ではない。
+
+#### 前提読解
+
+- `../CLAUDE.md` §1-§3（特に §1.2.5 失敗早期検知 > 事前承認）、`../DESIGN.md` §0、本文書 §2.1-§2.9、`STACK_GUIDE.md` §4.1、**`COLLABORATION_GUIDE.md` §2-§4（§2.2 マッピング、§2.3 マトリクス、§2.3.1 特別承認・部分承認不採用、§3.1 ブートストラップモード）** を読む
+- キックオフから人間が記入済の L0 コンテンツ（目的・ユースケース・受入基準・エントリ種別・組織名・ドメイン名候補・デプロイ構成・環境別設定）を抽出
+- 不足・矛盾は `COLLABORATION_GUIDE.md` §4 ONE BY ONE で解消
+
+#### 主要バッチゲート
+
+| ゲート | 直前で提示する内容（実テキスト / 実操作） | 承認後に実施する節 |
+|---|---|---|
+| ★ゲート 1（仕様 + stack） | `../DESIGN.md` §1-§4,§8 反映案／`workspace.edn` :top-namespace 差分／`../README.md` 冒頭差分／採用 stack 提案（STACK_GUIDE.md §4.2 記載有無を明示） | §2.1 |
+| ★ゲート 2（構造 + 依存） | `poly create component/base/project` 3 コマンド／brick `deps.edn` 追加内容（実コード） | §2.3, §2.4 |
+
+ゲート 3 は**縮退**（`COLLABORATION_GUIDE.md` §2.2 で ADR 発行を L2 化済）:
+
+| 最終提示 | 内容 | 権限 |
+|---|---|---|
+| KNOWLEDGE 追加エントリ（実テキスト） | §4 | L1 |
+| README プロダクト版（実テキスト全文） | §4 | L1 |
+
+ADR の発行（§4）は L2 として LLM が自動実施、事後報告。ゲート 1/2 で承認済の決定内容を形式化するだけのため、事前承認不要（誤記は新 ADR で supersede）。
+
+#### ゲート外の個別 L1 承認（成果物単位で事前提示）
+
+| 成果物 | 対応する §番号 | 採用条件 |
+|---|---|---|
+| `workspace.edn` :projects 登録 | §2.5 | 常に |
+| ルート `deps.edn` :dev :extra-deps/:extra-paths 更新 | §2.5 | 常に |
+| `dev/user.clj` 調整（Integrant / Portal セクション削除） | §2.6 | 常に |
+| Integrant `config.edn` | §2.7 | Integrant 採用プロジェクトのみ |
+| `build.clj` | §2.8 | uberjar 配布時のみ |
+| CI 設定ファイル | §2.9 前後 | 常に |
+
+いずれも L1 として扱い、実内容を事前提示して個別承認を得る（ゲートに丸め込まない。影響範囲が異なる L1 変更を 1 つの Yes/No に潰さないため）。
+
+#### 整合性チェックと仕上げ
+
+- §2.9 整合性チェックを自動実行、結果報告
+- §4 のうち LLM が実施: ADR 自動発行（L2）、KNOWLEDGE 追加・README プロダクト版書き換え（ゲート 3 縮退承認後）
+- §4 のうち人間が実行: **最終コミットのみ**
+
+**CLAUDE.md §2 禁止事項は例外なく維持する**（`COLLABORATION_GUIDE.md` §2.3.1 参照）。本文書 §4 は BOOTSTRAP_GUIDE.md の archived/ 移動・CLAUDE.md 文書参照表編集を**指示しない**（該当儀式は廃止）。
+
+曖昧性検出・自己停止・Q 起票は `../CLAUDE.md` §7, §8, §11 および `COLLABORATION_GUIDE.md` §4 の規定通り。ONE BY ONE 原則は維持。
+
 ### 2.1 プロジェクト想定と採用 stack の決定（ユーザ判断必須）
 
 以下を決定する：
@@ -246,20 +295,18 @@ Integrant を使うプロジェクトでのみ実施する。ライブラリ配�
 
 ## 4. 完了後の作業
 
-初期化が完了したら、**本文書を日常コンテキストから外す**：
+初期化が完了したら、以下を実施する。**BOOTSTRAP_GUIDE.md の移動や CLAUDE.md 文書参照表の編集は不要**（機能的に冗長な儀式であり、`COLLABORATION_GUIDE.md` §2.3.1 の方針に従い廃止。完了後は CLAUDE.md §0 の参照指示により本文書は自然にスキップされる）。
 
-1. 本ファイルを `archived/BOOTSTRAP_GUIDE.md` に移動（`project-guide/archived/` 配下）
-2. `../CLAUDE.md` の文書参照表から BOOTSTRAP_GUIDE.md の行を削除（または「完了済みのため archived に移動」と追記）
-3. **`../README.md` をプロダクト向け README として完全に書き換える**
+1. **`../README.md` をプロダクト向け README として完全に書き換える**（L1、ゲート 3 承認対象）
    - テンプレート配布時の README.md は本テンプレートの説明に特化している
    - プロダクト README には、プロダクトの機能紹介・利用者向けビルド手順・API 紹介等を記述
    - 迷ったら `../DESIGN.md` §1 目的と §3 主要ユースケースをベースに書き起こす
-4. 初期化中に立てた `../project-memory/QUESTIONS.md` の `open` Q を点検し、解決したものを `resolved` に
-5. 解決した Q の結果が継続参照されるものは `../project-memory/KNOWLEDGE.md` へ昇格
-6. 重要な設計判断（採用 stack の根拠、STACK_GUIDE.md 推奨からの逸脱、技術選定等）は `../project-memory/adr/NNNN-topic.md` として ADR を発行
-7. 初期化完了をコミット（例: `"Complete project bootstrap"`）
+2. 初期化中に立てた `../project-memory/QUESTIONS.md` の `open` Q を点検し、解決したものを `resolved` に
+3. 解決した Q の結果が継続参照されるものは `../project-memory/KNOWLEDGE.md` へ昇格（L1、ゲート 3 承認対象、実テキストで提示）
+4. 重要な設計判断（採用 stack の根拠、STACK_GUIDE.md 推奨からの逸脱、技術選定等）は `../project-memory/adr/NNNN-topic.md` として ADR を発行（**L2、LLM 独断実施、事後報告**。`COLLABORATION_GUIDE.md` §2.2）。決定内容はゲート 1/2 で既に承認済なので、ADR は形式化に過ぎない。誤記は新 ADR で supersede
+5. 初期化完了をコミット（例: `"Complete project bootstrap"`）— **このコマンドは LLM が提示、実行はユーザが行う**
 
-以降は `../CLAUDE.md` §8 作業プロトコルで日常開発に移行する。
+以降は `../CLAUDE.md` §8 作業プロトコルで日常開発に移行する。本文書（BOOTSTRAP_GUIDE.md）は物理的には残るが、CLAUDE.md §0 の参照指示（「初期化が未完了の場合のみ参照」）により、完了後は自動的に読まれない。
 
 ---
 

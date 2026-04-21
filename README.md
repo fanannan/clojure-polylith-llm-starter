@@ -29,70 +29,33 @@
 
 ---
 
-## 開始手順（ブートストラップ）
+## 開始手順（LLM 駆動ブートストラップ）
 
-**原則**: 人間は**意思決定・承認・最終確認**に専念し、それ以外の作業は LLM に委譲する。
-各ステップに **🧑 人間** と **🤖 LLM への指示** の区別を明記した。LLM への指示は**コピペして `<...>` を埋めるだけ**で使える形で提示する。
+### 1 回のキックオフで始める
 
-### ステップ 0: テンプレートの取得と LLM セッション開始
+以下のいずれかのキックオフプロンプトを LLM エージェントに送信する。以降、LLM は `project-guide/BOOTSTRAP_GUIDE.md` §2 に従って自走し、**主要バッチゲート 2 箇所** + **個別 L1 承認**（作成時ごと）+ **必要時の ONE BY ONE 曖昧性解消**で人間の判断を求める。
 
-#### 🧑 人間が行うこと
-
-1. リポジトリを clone またはテンプレートとして新規作成
-2. LLM エージェント（Claude Code 等）をプロジェクトディレクトリで起動
-3. LLM に**初回プロンプト**を送る：
-
-```
-このプロジェクトのテンプレートを使ってブートストラップを行いたい。
-まず `CLAUDE.md` §1 第一原理と §2 禁止事項を読んで、
-理解した内容を 3〜5 行で要約して教えて。
-その後、`README.md` の開始手順を参照して、ステップ 1 の質問をしてほしい。
-```
-
-#### 🤖 LLM が行うこと
-
-- CLAUDE.md §1, §2, §3 を読む
-- 理解を要約して人間に提示
-- ステップ 1 の意思決定質問を人間に投げる
+- **完全版**（事前に L0 項目を決めてから送信するタイプ）: 目的・ユースケース・受入基準・エントリ種別・組織名・ドメイン名候補・デプロイ構成・環境別設定を 1 通に収める。往復数最小
+- **最小版**（対話しながら埋めるタイプ）: 目的 1-2 行とエントリ種別のみ埋めて送信。残りは LLM が `project-guide/COLLABORATION_GUIDE.md` §4 の ONE BY ONE 原則で引き出す
 
 ---
 
-### ステップ 1: プロジェクトの基本情報を決定（人間の意思決定）
-
-本ステップの**詳細な埋め方・担当分担・曖昧性の取り扱いは `DESIGN.md` §0 本ファイルの埋め方に一元化**されている。本節は最小のガイドのみ示す。
-
-#### 🧑 人間が決めること
-
-事前にメモしておくと LLM との対話が最小回数で済む項目：
-
-| 決定項目 | 例 |
-|---|---|
-| **プロジェクト名** | `billing-service` |
-| **トップ名前空間** | `acme.billing`（`<組織>.<プロダクト>` の 2 階層推奨） |
-| **ドメイン名** | `invoice`（最初の component 名になる） |
-| **エントリ種別** | Web API / CLI / バッチ / ライブラリ |
-| **デプロイ構成** | 単一 uberjar / 複数 uberjar / Docker / Lambda |
-| **目的**（1〜2 行） | DESIGN.md §1 の核心 |
-| **主要ユースケース**（3〜5 個） | DESIGN.md §3 の材料 |
-| **受入基準**（3〜5 個） | DESIGN.md §4 の材料 |
-
-詳細な記入基準・セクション区分（必須 🔴 / 推奨 🟡 / 任意 ⚪）は `DESIGN.md` §0 を参照。
-
-#### 🤖 LLM への指示プロンプト
-
-人間が上記を決めたら、以下のプロンプトで LLM に伝える：
+#### 完全版キックオフプロンプト
 
 ```
-プロジェクトの基本情報が決まった。
-DESIGN.md §0 本ファイルの埋め方に従って、以下を反映してほしい：
- - DESIGN.md §1〜§4、§8 の必須項目を埋める
- - workspace.edn の :top-namespace を更新
- - README.md 冒頭の <TODO: プロジェクト名> を更新
+このプロジェクトのテンプレートを使ってブートストラップを行う。
+まず以下を読んでから着手してほしい：
+ - CLAUDE.md §1-§3（特に §1.2.5 失敗早期検知 > 事前承認）
+ - DESIGN.md §0 本ファイルの埋め方
+ - project-guide/BOOTSTRAP_GUIDE.md §2（§2.0 オーケストレーション、§2.1-§2.9 手順）
+ - project-guide/COLLABORATION_GUIDE.md §2-§4（§2.3.1 特別承認・部分承認不採用、§3.1 ブートストラップモード）
+ - project-guide/STACK_GUIDE.md §4.1-§4.2
 
 【プロジェクト名】<例: billing-service>
+【組織名】<例: acme>
 【トップ名前空間】<例: acme.billing>
 【最初のドメイン名】<例: invoice>
-【エントリ種別】<例: Web API>
+【エントリ種別】<例: Web API / CLI / バッチ / ライブラリ / ワーカ / bot / GUI>
 【デプロイ構成】<例: 単一 uberjar を Docker イメージに同梱して ECS で実行>
 【目的】
 <例: 社内経理部門の請求書発行・追跡業務を自動化する。
@@ -105,251 +68,76 @@ DESIGN.md §0 本ファイルの埋め方に従って、以下を反映してほ
 1. <例: 上記 3 ユースケースが全て動作する>
 2. <例: 月次締め処理が 1000 件に対して 10 秒以内に完了する>
 3. <例: PII を DB に平文保存しない>
+【環境別設定】<任意>
+<例: DB 接続情報（dev/prod）・ポート番号・外部 API キー等>
 
-DESIGN.md §0.3 の曖昧性点検を実施し、不明点があれば
-ONE BY ONE で質問して。編集後は変更点を diff 形式で報告。
+BOOTSTRAP_GUIDE.md §2.0 のゲート位置マップに従って進めてほしい。
+DESIGN.md §0.3 の曖昧性点検を実施し、不明点があれば COLLABORATION_GUIDE.md §4 の
+ONE BY ONE 原則で 1 点ずつ確認して。
 ```
 
-#### 🧑 人間の最終確認
+#### 最小版キックオフプロンプト
 
-- LLM が報告した diff を確認
-- 埋めた内容が意図通りか、曖昧・矛盾がないかをチェック
-- 問題があれば修正指示、OK なら次のステップへ
+```
+このプロジェクトのテンプレートを使ってブートストラップを行う。
+まず以下を読んでから着手してほしい：
+ - CLAUDE.md §1-§3（特に §1.2.5 失敗早期検知 > 事前承認）
+ - DESIGN.md §0 本ファイルの埋め方
+ - project-guide/BOOTSTRAP_GUIDE.md §2
+ - project-guide/COLLABORATION_GUIDE.md §2-§4
+ - project-guide/STACK_GUIDE.md §4.1-§4.2
+
+【目的】<1-2 行で>
+【エントリ種別】<Web API / CLI / バッチ / ライブラリ / ワーカ / bot / GUI>
+
+残りの L0 項目（プロジェクト名・組織名・トップ名前空間・ドメイン名候補・
+デプロイ構成・主要ユースケース・受入基準・環境別設定）は
+COLLABORATION_GUIDE.md §4 の ONE BY ONE 原則で 1 点ずつ確認して。
+```
 
 ---
 
-### ステップ 2: 採用 stack の決定と deps.edn の整理
+### 承認構造
 
-本ステップの**詳細手順・選定論理は `project-guide/STACK_GUIDE.md`** に一次情報源として集約されている。本節は最小のガイドのみ示す。
+**主要バッチゲート 2 箇所**で実テキストを提示して承認を求める：
 
-#### 🧑 人間が決めること
+| ゲート | 承認対象 | 権限根拠 |
+|---|---|---|
+| 1. 仕様 + stack | DESIGN.md §1-§4,§8 反映案／workspace.edn :top-namespace 差分／README.md 冒頭差分／採用 stack 提案（根拠付き） | L1 × DESIGN、**stack は L0/L1 ハイブリッド**（STACK_GUIDE.md §4.2 記載有無を LLM が明示、`COLLABORATION_GUIDE.md` §2.2） |
+| 2. 構造 + 依存 | `poly create component/base/project` 3 コマンド／brick deps.edn 追加内容（実コード） | L0 × base/project 作成・依存追加（CLAUDE.md §2） |
 
-以下を決定：
+**ゲート外の個別 L1 承認**（作成時に個別提示）:
 
-- **主たる stack**: プロジェクトの主目的に対応するもの（`STACK_GUIDE.md` §4.1 選定基準の表を参照）
-  - Web API → web-api stack、GraphQL API → graphql-api stack
-  - CLI → cli stack、ライブラリ配布 → library stack
-  - バッチ → batch stack、ワーカ → worker stack、データパイプライン → data-pipeline stack
-  - bot → bot stack、デスクトップ GUI → desktop stack
-- **補助 stack**（必要時）: 複数性格を持つプロジェクト（例: Web API + バッチ併設）
-- **dev-tools stack の併用**（強く推奨）
-- **推奨構成からの逸脱**（必要時）: STACK_GUIDE.md §4.2 の推奨が合わない場合の変更内容
+| 成果物 | 採用条件 |
+|---|---|
+| config.edn（Integrant 採用時）／CI 設定／build.clj（uberjar 時）／dev/user.clj 調整／workspace.edn :projects 登録／ルート deps.edn :dev :extra-deps/:extra-paths | いずれも L1、実内容を事前提示して個別承認 |
 
-#### 🤖 LLM への指示プロンプト
+**ゲート 3 の縮退**: 完了処理のうち LLM が L1 として担うのは **KNOWLEDGE 追加エントリ（実テキスト）** と **README プロダクト版全文** のみ。**ADR 発行は L2**（`COLLABORATION_GUIDE.md` §2.2）として LLM が自動実施、事後報告する（決定はゲート 1/2 で承認済、ADR は形式化に過ぎない。誤記は新 ADR で supersede）。
 
-```
-ステップ 2 の採用 stack を決定したい。
-BOOTSTRAP_GUIDE.md §2.1〜§2.3 の手順に従って進めてほしい。
+### 完了時
 
-【採用 stack】
-- 主 stack: <例: web-api stack>
-- 補助 stack: <例: なし / batch stack>
-- 横断: <例: dev-tools stack（併用）>
+LLM が最終コミットコマンド（例: `git commit -m "Complete project bootstrap"`）を提示する。ユーザが実行して完了。
 
-【推奨構成からの逸脱】
-<例: なし / mulog を timbre に差し替え（組織方針のため、ADR で記録希望）>
+**BOOTSTRAP_GUIDE.md の移動や CLAUDE.md 参照表編集は行わない**（機能的に不要、CLAUDE.md §0 の参照指示で「完了後は BOOTSTRAP_GUIDE.md を参照しない」は既に明文化されているため冗長）。CLAUDE.md §2「CLAUDE.md / project-guide/ の自動編集は提案のみ可」は例外なく維持される（`COLLABORATION_GUIDE.md` §2.3.1 参照）。
 
-【プロジェクト固有の追加ライブラリ】
-<例: PostgreSQL ドライバ / AWS SQS クライアント 等>
+### 曖昧点が見つかったとき
 
-以下を順に実施してほしい:
- 1. STACK_GUIDE.md §4.2 の該当 stack 推奨ライブラリを確認
- 2. 最初の brick 作成後、brick の deps.edn に推奨ライブラリを反映
- 3. プロジェクト固有の追加ライブラリも brick の deps.edn に追加
- 4. dev-tools stack 採用時はワークスペースルート deps.edn の :dev :extra-deps に追加
- 5. development/src/dev/user.clj を採用 stack に合わせて調整
- 6. 推奨構成から逸脱する場合は ADR を起案
- 7. DESIGN.md §8.3 に採用 stack を記録
- 8. 整合性チェック（STACK_GUIDE.md §6、BOOTSTRAP_GUIDE.md §2.9、採用各 stack の §4.2.X 確認事項）を実施
- 9. 編集対象ファイルと変更概要を先に提示して承認を求めてから実行
+LLM は `COLLABORATION_GUIDE.md` §4 の ONE BY ONE 原則に従い、1 点ずつ人間に確認する（ゲートとは別に発生）。自己解釈で進めない（`CLAUDE.md` §0、§7）。
 
-CLAUDE.md §2 禁止事項により、依存変更はすべてユーザ承認後に実施。
-```
+### 詰まったとき
 
-#### 🧑 人間の最終確認
+LLM が自己停止プロトコル（`CLAUDE.md` §7）発動時、`project-memory/QUESTIONS.md` に Q を起票して停止する。人間は Q の内容を読んで判断を提示する。
 
-- LLM が提示した変更プラン（brick deps.edn の記述内容 / 追加ライブラリ）を確認
-- 逸脱がある場合、ADR の内容を確認
-- CLAUDE.md §2 の「brick deps.edn へのライブラリ追加・変更」は承認必須事項。**明示的に「承認します、進めてください」と伝える**
-- 整合性チェック結果を確認
+### 詳細を追いたい場合
 
----
-
-### ステップ 3: 最初の brick 作成
-
-#### 🧑 人間が決めること
-
-ステップ 1 で決めた以下を再確認：
-
-- **ドメイン名**（最初の component 名）
-- **エントリ名**（最初の base 名、例: `api`, `cli`, `worker`）
-- **デプロイ単位名**（最初の project 名、例: `api-server`, `batch-worker`）
-
-#### 🤖 LLM への指示プロンプト
-
-```
-最初の brick を作成したい。以下の名前で進めてほしい。
-
-【component 名】<例: invoice>
-【base 名】<例: api>
-【project 名】<例: api-server>
-
-CLAUDE.md §2 により base と project の作成は承認必須なので、
-以下を進めていい：
- 1. `clj -M:poly create component name:<component 名>`
- 2. `clj -M:poly create base name:<base 名>`
- 3. `clj -M:poly create project name:<project 名>`
- 4. project-guide/POLYLITH_GUIDE.md §2 のコード例を参照して、
-    生成された brick の中身を最小動作版として実装
- 5. workspace.edn の `:projects` に新 project を追加
- 6. deps.edn の `:dev` `:extra-paths` に新 brick を追加
- 7. `clj -M:poly check` と `clj -M:poly test :all` を実行して結果を報告
-
-不明な実装判断があれば、自己解釈で進めず
-project-memory/QUESTIONS.md に Q を立てて質問してほしい。
-```
-
-#### 🧑 人間の最終確認
-
-- 生成された brick の構造を確認
-- `poly check` / `poly test :all` の結果を確認
-- LLM が立てた Q があれば回答
-
----
-
-### ステップ 4: Integrant 設定と動作確認（Integrant 採用時のみ）
-
-**本ステップは Integrant を採用するプロジェクトでのみ実施する**。ライブラリ配布や CLI 単発実行など、I/O ライフサイクル管理を必要としないプロジェクトではスキップし、ステップ 5 に進む。Integrant は Web サービス・バッチ・ワーカ等で I/O リソース（HTTP サーバ・DB 接続・外部 API クライアント等）の起動順序と停止順序を制御する用途で採用する。
-
-#### 🧑 人間が決めること
-
-- 環境別設定が必要な項目（DB 接続情報、ポート番号、外部 API URL 等）
-- `:dev` / `:staging` / `:prod` のどのプロファイルを用意するか
-
-#### 🤖 LLM への指示プロンプト
-
-```
-Integrant の設定ファイルを作成したい。
-以下の環境別設定を含めてほしい：
-
-【ポート】
- - :dev → <例: 3000>
- - :prod → <例: 環境変数 PORT、デフォルト 8080>
-
-【DB 接続】（DB 採用時のみ）
- - :dev → <例: postgresql://localhost:5432/billing_dev>
- - :prod → <例: 環境変数 DATABASE_URL>
-
-【その他の外部 API 連携】
-<例: Stripe API キーは環境変数 STRIPE_API_KEY から読む>
-
-以下を進めてほしい：
- 1. `projects/<project名>/resources/config.edn` を作成
-    （aero の `#profile` / `#env` を使った環境別設定、
-     project-guide/POLYLITH_GUIDE.md §2.3 のコード例を参照）
- 2. `development/src/dev/user.clj` の `config` 関数を実装
- 3. `clj -M:dev:nrepl` で REPL を起動し、`(go)` が完走することを
-    確認するコマンドを示してほしい（実行は人間が行う）
-
-実行前に config.edn の内容を提示して承認を求めて。
-```
-
-#### 🧑 人間の最終確認
-
-- config.edn の内容確認（特に PII / 機密情報の扱い）
-- LLM が提示したコマンドを実行して REPL で `(go)` を確認
-- 成功したら次のステップへ、失敗したら LLM に状況を共有
-
----
-
-### ステップ 5: uberjar ビルド確認（配布形態が uberjar の場合）
-
-#### 🤖 LLM への指示プロンプト
-
-```
-uberjar ビルド環境を整えたい。以下を進めてほしい：
-
- 1. `projects/<project名>/build.clj` を
-    project-guide/POLYLITH_GUIDE.md §2.3 のコード例を参照して作成
- 2. `lib` 名を `<組織>/<プロダクト>` の形式で設定
-    （例: `acme/billing-service`）
- 3. `cd projects/<project名> && clj -T:build uber` を実行する
-    コマンドを示す（実行は人間が行う）
- 4. ビルド成功後、生成された jar ファイルの位置と起動コマンド例を
-    報告してほしい
-```
-
-#### 🧑 人間の最終確認
-
-- LLM が示したビルドコマンドを実行
-- jar 生成を確認
-- 必要に応じて起動テストを実施
-
----
-
-### ステップ 6: CI 設定
-
-#### 🧑 人間が決めること
-
-- CI プラットフォーム（GitHub Actions / GitLab CI / CircleCI 等）
-
-#### 🤖 LLM への指示プロンプト
-
-```
-CI 設定を作成したい。プラットフォームは <例: GitHub Actions>。
-
-以下を含む CI ワークフローを作成してほしい：
- - `actions/checkout@v4` で `fetch-depth: 0` 指定（poly 差分判定のため必須）
- - `clj -M:lint` が通ること
- - `clj -M:format check` が通ること
- - `clj -M:poly check` が通ること
- - `clj -M:poly test :all` が通ること
- - `cd projects/<project名> && clj -T:build uber` が成功すること
- - 全通過時に `stable-<timestamp>` タグを自動付与
-
-ファイルを作成したら、変更点を報告してほしい。
-```
-
-#### 🧑 人間の最終確認
-
-- CI 設定ファイルをレビュー
-- コミット・プッシュして実際の CI 実行を確認
-- 通過したら初回の `stable` タグが付与されることを確認
-
----
-
-### ステップ 7: ブートストラップ完了処理
-
-#### 🤖 LLM への指示プロンプト
-
-```
-ブートストラップが完了したので、仕上げの作業を進めたい。
-project-guide/BOOTSTRAP_GUIDE.md §4 に従って以下を実施してほしい：
-
- 1. `project-guide/BOOTSTRAP_GUIDE.md` を
-    `project-guide/archived/BOOTSTRAP_GUIDE.md` に移動
- 2. `CLAUDE.md` の文書参照表から BOOTSTRAP_GUIDE.md の行を削除
-    （または「完了済み、archived に移動」と追記）
- 3. **`README.md` をプロダクト向け README として完全に書き換える**：
-    - DESIGN.md §1 目的と §3 主要ユースケースをベースに
-    - 外部利用者向けの説明・ビルド手順・API 概要等を含める
-    - テンプレート配布時の内容は全て削除
- 4. `project-memory/QUESTIONS.md` に残っている open Q を点検して報告
- 5. 重要な設計判断（例: Polylith 採用、技術スタック選定）を
-    `project-memory/adr/NNNN-topic.md` として ADR 発行を提案
- 6. 「Complete project bootstrap」というコミットメッセージで
-    コミットするコマンドを示す（実行は人間が行う）
-
-README.md の書き換え内容は、実行前に提示して承認を求めてほしい。
-ADR 発行候補も先に一覧で提示して、どれを発行するかの指示を待って。
-```
-
-#### 🧑 人間の最終確認
-
-- 新しい README.md の内容をレビュー・承認
-- ADR 発行候補を選定（CLAUDE.md §11.1 に照らしてどれが ADR 相当か判断）
-- コミットを実行
-- **ブートストラップ完了**
+| 目的 | 参照先 |
+|---|---|
+| LLM 側の技術手順（ゲート位置マップ + §2.1-§2.9 実手順） | `project-guide/BOOTSTRAP_GUIDE.md` §2 |
+| 承認権限・ADR L2 規定・特別承認/部分承認不採用 | `project-guide/COLLABORATION_GUIDE.md` §2 |
+| 曖昧性解消プロトコル（ONE BY ONE） | `project-guide/COLLABORATION_GUIDE.md` §4 |
+| ブートストラップモードの詳細 | `project-guide/COLLABORATION_GUIDE.md` §3.1 |
+| 失敗早期検知の原理 | `CLAUDE.md` §1.2.5 |
+| 文書間の役割分担 | `CLAUDE.md` §0〜§1 |
 
 ---
 
@@ -366,9 +154,8 @@ ADR 発行候補も先に一覧で提示して、どれを発行するかの指�
 │   ├── POLYLITH_GUIDE.md        Polylith 運用・brick コード例
 │   ├── STACK_GUIDE.md           技術スタック選定カタログ（判断結果のメモリー）
 │   ├── COLLABORATION_GUIDE.md   LLM と人間の協働プロトコル
-│   ├── BOOTSTRAP_GUIDE.md       初期化手順詳細（LLM 向け、完了後 archived/ へ）
-│   ├── MAINTAINERS_GUIDE.md     テンプレート自体の保守・設計原則
-│   └── archived/                完了した手順書の保管先
+│   ├── BOOTSTRAP_GUIDE.md       初期化手順詳細（LLM 向け、完了後は CLAUDE.md §0 の参照指示で自然にスキップ）
+│   └── MAINTAINERS_GUIDE.md     テンプレート自体の保守・設計原則
 │
 ├── project-memory/              ← プロジェクトの記憶（実装中に蓄積）
 │   ├── QUESTIONS.md             判断保留トラッカー

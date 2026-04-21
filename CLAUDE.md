@@ -24,7 +24,7 @@
 | `project-guide/POLYLITH_GUIDE.md` | Polylith 構造の詳細運用、brick 追加手順、境界判断 | brick 追加時・`poly check` で詰まった時 |
 | `project-guide/STACK_GUIDE.md` | 技術スタック選定の論理と実装（必須層 / stack 層 / 横断層） | stack 選択時、新ライブラリ採用検討時、技術選定根拠の確認時 |
 | `project-guide/COLLABORATION_GUIDE.md` | LLM と人間の協働プロトコル（役割分担・曖昧性解消・対話） | 協働方針・質問粒度・役割優先順位で迷った時 |
-| `project-guide/BOOTSTRAP_GUIDE.md` | プロジェクト初期化手順 | **初期化期のみ**。完了後は `project-guide/archived/` に移動 |
+| `project-guide/BOOTSTRAP_GUIDE.md` | プロジェクト初期化手順 | **初期化期のみ**（完了後は §0 の参照指示で自然にスキップされる） |
 | `project-guide/MAINTAINERS_GUIDE.md` | テンプレート自体の設計原則・保守者向け | テンプレート改修・ライブラリ更新・規約追加時 |
 
 ### project-memory/（プロジェクトの記憶）
@@ -66,7 +66,7 @@
 仕様が曖昧・矛盾を含む場合は `project-memory/QUESTIONS.md` に Q を立てる（自己解釈で進めない）。
 
 > **プロジェクト初期化が未完了の場合、`project-guide/BOOTSTRAP_GUIDE.md` を参照して完了させる**。
-> 初期化完了後、BOOTSTRAP_GUIDE.md は `project-guide/archived/` に移動する。
+> 初期化完了後は BOOTSTRAP_GUIDE.md を参照する必要はない（DESIGN.md §1-§4, §8 の埋まり具合・brick の存在等から完了状態は判定可能）。ファイル移動は行わない。
 ---
 
 ## 1. 第一原理: 疲労最小化
@@ -96,6 +96,21 @@
 | **ループ短縮** | LLM の編集から検証までを秒単位に縮める | REPL 常駐、Malli instrumentation、**ターン内検証**（編集 → `poly test` → 結果読解を同ターンで閉じる、§8） |
 | **小単位分解** | 大きな塊を一気に生成させない。生成→検証→次を繰り返す | 1 関数 20 行以内、コミット細分化、タスク分解判断（§7.4） |
 | **早期破棄** | 詰まったらアプローチごと捨てる。完遂にこだわらない | 自己停止プロトコル（§7）、ブランチ破棄を悪としない |
+
+### 1.2.5 失敗早期検知 > 事前承認（§1.2.4 の承認設計への拡張）
+
+**原則**: 不要な承認プロセスよりも失敗を早く検知し、違うアプローチで成功させることを優先する。
+
+**帰結**:
+
+- 承認は「不可逆な失敗」を防ぐためにのみ置く（§2 禁止事項はこの定義に合致）
+- 可逆・修復可能な操作（ADR 発行、実装コード生成、文書記述など）は L2（LLM 実施 + 事後報告）で運用し、誤りは supersede / 新規発行 / 修正コミットで回復する
+- 承認の粒度を細かくすればするほど、失敗時のサイクル（提示→却下→再提示）が長大化し、**かえって失敗の早期検知を阻害する**。承認は粗い単位で、判定は早く行うことを優先する
+- 「念のため承認を入れる」は本原則に反する。承認の付加は**不可逆性の根拠**を明示して初めて正当化される
+
+**本原則と §1.2.4 早期破棄の関係**: §1.2.4 は LLM の編集試行の早期中断、本節は承認プロセスの設計原理への拡張。両者は同じ「早期ピボット」思想に立脚する。
+
+**承認階層との対応は `project-guide/COLLABORATION_GUIDE.md` §2 を参照**（本原則の具体実装としての L0/L1/L2/L3 マッピング）。
 
 ### 1.3 原則の使い方（LLM への指示）
 
@@ -498,7 +513,7 @@ REPL で確認した挙動は**その場でテストに昇格**する。`comment
 |---|---|---|---|
 | **仕様（DESIGN）** | `DESIGN.md` | 何を作るか | `DESIGN.md` §0 本ファイルの埋め方 |
 | **生きた知識（KNOWLEDGE）** | `project-memory/KNOWLEDGE.md` | 現時点の契約・不変条件・暗黙知（上書き更新） | `KNOWLEDGE.md` §0 運用プロセス |
-| **決定履歴（ADR）** | `project-memory/adr/NNNN-topic.md` | なぜそう決めたか（発行後不変） | `project-memory/adr/README.md` |
+| **決定履歴（ADR）** | `project-memory/adr/NNNN-topic.md` | なぜそう決めたか（発行後不変、誤記は新 ADR で supersede）。発行権限は L2（`COLLABORATION_GUIDE.md` §2.2） | `project-memory/adr/README.md` |
 | **判断保留（QUESTIONS）** | `project-memory/QUESTIONS.md` | 未決の判断（open → resolved） | `QUESTIONS.md` §0 運用プロセス |
 
 編集権限・協働プロトコルは **`project-guide/COLLABORATION_GUIDE.md`** に一元化されている。**Q を立てるべき場面の一覧は `QUESTIONS.md` §1**、LLM の仕様書開発者としての複数役割は §11.3。
