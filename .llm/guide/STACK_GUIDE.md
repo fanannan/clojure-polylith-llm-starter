@@ -98,7 +98,7 @@ stack は時間とともに増え、選定根拠は詳細化し、機能領域�
 | REPL リロード | tools.namespace | 1.5.0 | `(reset)` の基盤 |
 | nREPL | nrepl + cider-nrepl + refactor-nrepl | — | エディタ接続 |
 
-配布物として `.clj-kondo/polyguard/hooks.clj`（AST 解析型の custom hook）と `scripts/*.sh`（設定ファイル・ディレクトリ構造の機械的検査）も必須層の一部。役割分担は `MAINTAINERS_GUIDE.md §5.10`。
+配布物として `.clj-kondo/polyguard/hooks.clj`（AST 解析型の custom hook）と `.llm/scripts/*.sh`（設定ファイル・ディレクトリ構造の機械的検査）も必須層の一部。役割分担は `MAINTAINERS_GUIDE.md §5.10`。
 
 これらは `deps.edn` の `:deps` および必須エイリアス（`:dev`、`:nrepl`、`:poly`、`:lint`、`:format`、`:outdated`）で常に有効。
 

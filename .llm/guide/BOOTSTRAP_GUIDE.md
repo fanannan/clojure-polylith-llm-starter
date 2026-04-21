@@ -244,7 +244,7 @@ Integrant を使うプロジェクトでのみ実施する。ライブラリ配�
 
 - [ ] 新ライブラリ採用後、以下のスクリプトで各ライブラリ提供の clj-kondo hook を取り込む（tools.deps の `:main-opts` はシェル展開されないため、エイリアスに埋め込めない。`_POSSIBLE_ISSUES.md` D-5 の実装）:
   ```bash
-  ./scripts/lint-import-hooks.sh
+  ./.llm/scripts/lint-import-hooks.sh
   ```
   これにより `.clj-kondo/.cache/` および `.clj-kondo/configs/` が更新され、以後の `clj -M:lint` でライブラリ固有の lint ルールが機能する。**再実行のタイミング**: brick deps.edn に新ライブラリを追加したとき、`clj -M:outdated` で依存を更新したとき、`STACK_GUIDE.md §4.2` 推奨ライブラリを採用したとき
 
@@ -260,7 +260,7 @@ Integrant を使うプロジェクトでのみ実施する。ライブラリ配�
 
 - [ ] プレースホルダ残存・brick 登録漏れ・非推奨ライブラリ採用の一括検査（`_POSSIBLE_ISSUES.md` D-4 / D-6 / F-1 / F-3 の統合）:
   ```bash
-  ./scripts/check-workspace-integrity.sh
+  ./.llm/scripts/check-workspace-integrity.sh
   ```
 
 **workspace 全体の品質確認**:
@@ -277,7 +277,7 @@ Integrant を使うプロジェクトでのみ実施する。ライブラリ配�
 
 **依存脆弱性スキャン**（release 前必須、ブートストラップ時は任意）:
 
-- [ ] `./scripts/check-vulnerabilities.sh` が通る（clj-watson、NIST NVD + GitHub Advisory Database）
+- [ ] `./.llm/scripts/check-vulnerabilities.sh` が通る（clj-watson、NIST NVD + GitHub Advisory Database）
   - **NVD API key 推奨**: 無料で `https://nvd.nist.gov/developers/request-an-api-key` から取得し、環境変数 `NVD_API_KEY` に設定するとスキャンが高速化される
   - 完了条件（`CLAUDE.md §5.5`）には含めない（実行時間が長いため）。週次 CI / release 前で実行
 

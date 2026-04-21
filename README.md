@@ -4,12 +4,12 @@
 
 - 必須技術: Clojure 1.12 + tools.deps + Polylith + Malli 契約 + clj-kondo + cljfmt（JVM 21 LTS）
 - 目的別の追加ライブラリは **stack**（web-api stack / batch stack / cli stack / library stack / worker stack / data-pipeline stack / dev-tools stack）として構成
-- stack 選定論理と実装マッピングの一次情報源は `project-guide/STACK_GUIDE.md`
+- stack 選定論理と実装マッピングの一次情報源は `.llm/guide/STACK_GUIDE.md`
 
 > ⚠️ **このファイルはテンプレート配布時のものです。**
 >
 > プロジェクト初期化完了時に、**プロダクト README として完全に書き換えてください**。
-> 書き換え手順は `project-guide/BOOTSTRAP_GUIDE.md` §4 を参照。
+> 書き換え手順は `.llm/guide/BOOTSTRAP_GUIDE.md` §4 を参照。
 
 ---
 
@@ -18,7 +18,7 @@
 **Clojure 1.12 + tools.deps + Polylith + Malli + clj-kondo + cljfmt** を必須層とし、プロジェクトの性格に応じた **stack 層**（Web API、バッチ、CLI、ライブラリ配布等の目的別推奨構成）を選択できる、**LLM 駆動開発向け**のプロジェクトテンプレート。Integrant・Ring・DB ドライバ等は採用する stack に応じて brick の deps.edn に追加する（必須層ではない）。
 
 疲労最小化原則（LLM と人間の共同開発における修復コスト最小化）に基づき設計されている。
-詳細思想は `CLAUDE.md` §1、設計原則は `project-guide/MAINTAINERS_GUIDE.md`、stack 選定は `project-guide/STACK_GUIDE.md`。
+詳細思想は `CLAUDE.md` §1、設計原則は `.llm/guide/MAINTAINERS_GUIDE.md`、stack 選定は `.llm/guide/STACK_GUIDE.md`。
 
 ## 前提ツール
 
@@ -33,10 +33,10 @@
 
 ### 1 回のキックオフで始める
 
-以下のいずれかのキックオフプロンプトを LLM エージェントに送信する。以降、LLM は `project-guide/BOOTSTRAP_GUIDE.md` §2 に従って自走し、**主要バッチゲート 2 箇所** + **個別 L1 承認**（作成時ごと）+ **必要時の ONE BY ONE 曖昧性解消**で人間の判断を求める。
+以下のいずれかのキックオフプロンプトを LLM エージェントに送信する。以降、LLM は `.llm/guide/BOOTSTRAP_GUIDE.md` §2 に従って自走し、**主要バッチゲート 2 箇所** + **個別 L1 承認**（作成時ごと）+ **必要時の ONE BY ONE 曖昧性解消**で人間の判断を求める。
 
 - **完全版**（事前に L0 項目を決めてから送信するタイプ）: 目的・ユースケース・受入基準・エントリ種別・組織名・ドメイン名候補・デプロイ構成・環境別設定を 1 通に収める。往復数最小
-- **最小版**（対話しながら埋めるタイプ）: 目的 1-2 行とエントリ種別のみ埋めて送信。残りは LLM が `project-guide/COLLABORATION_GUIDE.md` §4 の ONE BY ONE 原則で引き出す
+- **最小版**（対話しながら埋めるタイプ）: 目的 1-2 行とエントリ種別のみ埋めて送信。残りは LLM が `.llm/guide/COLLABORATION_GUIDE.md` §4 の ONE BY ONE 原則で引き出す
 
 ---
 
@@ -47,9 +47,9 @@
 まず以下を読んでから着手してほしい：
  - CLAUDE.md §1-§3（特に §1.2.5 失敗早期検知 > 事前承認）
  - DESIGN.md §0 本ファイルの埋め方
- - project-guide/BOOTSTRAP_GUIDE.md §2（§2.0 オーケストレーション、§2.1-§2.9 手順）
- - project-guide/COLLABORATION_GUIDE.md §2-§4（§2.3.1 特別承認・部分承認不採用、§3.1 ブートストラップモード）
- - project-guide/STACK_GUIDE.md §4.1-§4.2
+ - .llm/guide/BOOTSTRAP_GUIDE.md §2（§2.0 オーケストレーション、§2.1-§2.9 手順）
+ - .llm/guide/COLLABORATION_GUIDE.md §2-§4（§2.3.1 特別承認・部分承認不採用、§3.1 ブートストラップモード）
+ - .llm/guide/STACK_GUIDE.md §4.1-§4.2
 
 【プロジェクト名】<例: billing-service>
 【組織名】<例: acme>
@@ -83,9 +83,9 @@ ONE BY ONE 原則で 1 点ずつ確認して。
 まず以下を読んでから着手してほしい：
  - CLAUDE.md §1-§3（特に §1.2.5 失敗早期検知 > 事前承認）
  - DESIGN.md §0 本ファイルの埋め方
- - project-guide/BOOTSTRAP_GUIDE.md §2
- - project-guide/COLLABORATION_GUIDE.md §2-§4
- - project-guide/STACK_GUIDE.md §4.1-§4.2
+ - .llm/guide/BOOTSTRAP_GUIDE.md §2
+ - .llm/guide/COLLABORATION_GUIDE.md §2-§4
+ - .llm/guide/STACK_GUIDE.md §4.1-§4.2
 
 【目的】<1-2 行で>
 【エントリ種別】<Web API / CLI / バッチ / ライブラリ / ワーカ / bot / GUI>
@@ -118,7 +118,7 @@ COLLABORATION_GUIDE.md §4 の ONE BY ONE 原則で 1 点ずつ確認して。
 
 LLM が最終コミットコマンド（例: `git commit -m "Complete project bootstrap"`）を提示する。ユーザが実行して完了。
 
-**BOOTSTRAP_GUIDE.md の移動や CLAUDE.md 参照表編集は行わない**（機能的に不要、CLAUDE.md §0 の参照指示で「完了後は BOOTSTRAP_GUIDE.md を参照しない」は既に明文化されているため冗長）。CLAUDE.md §2「CLAUDE.md / project-guide/ の自動編集は提案のみ可」は例外なく維持される（`COLLABORATION_GUIDE.md` §2.3.1 参照）。
+**BOOTSTRAP_GUIDE.md の移動や CLAUDE.md 参照表編集は行わない**（機能的に不要、CLAUDE.md §0 の参照指示で「完了後は BOOTSTRAP_GUIDE.md を参照しない」は既に明文化されているため冗長）。CLAUDE.md §2「CLAUDE.md / .llm/guide/ の自動編集は提案のみ可」は例外なく維持される（`COLLABORATION_GUIDE.md` §2.3.1 参照）。
 
 ### 曖昧点が見つかったとき
 
@@ -126,16 +126,16 @@ LLM は `COLLABORATION_GUIDE.md` §4 の ONE BY ONE 原則に従い、1 点ず�
 
 ### 詰まったとき
 
-LLM が自己停止プロトコル（`CLAUDE.md` §7）発動時、`project-memory/QUESTIONS.md` に Q を起票して停止する。人間は Q の内容を読んで判断を提示する。
+LLM が自己停止プロトコル（`CLAUDE.md` §7）発動時、`.llm/memory/QUESTIONS.md` に Q を起票して停止する。人間は Q の内容を読んで判断を提示する。
 
 ### 詳細を追いたい場合
 
 | 目的 | 参照先 |
 |---|---|
-| LLM 側の技術手順（ゲート位置マップ + §2.1-§2.9 実手順） | `project-guide/BOOTSTRAP_GUIDE.md` §2 |
-| 承認権限・ADR L2 規定・特別承認/部分承認不採用 | `project-guide/COLLABORATION_GUIDE.md` §2 |
-| 曖昧性解消プロトコル（ONE BY ONE） | `project-guide/COLLABORATION_GUIDE.md` §4 |
-| ブートストラップモードの詳細 | `project-guide/COLLABORATION_GUIDE.md` §3.1 |
+| LLM 側の技術手順（ゲート位置マップ + §2.1-§2.9 実手順） | `.llm/guide/BOOTSTRAP_GUIDE.md` §2 |
+| 承認権限・ADR L2 規定・特別承認/部分承認不採用 | `.llm/guide/COLLABORATION_GUIDE.md` §2 |
+| 曖昧性解消プロトコル（ONE BY ONE） | `.llm/guide/COLLABORATION_GUIDE.md` §4 |
+| ブートストラップモードの詳細 | `.llm/guide/COLLABORATION_GUIDE.md` §3.1 |
 | 失敗早期検知の原理 | `CLAUDE.md` §1.2.5 |
 | 文書間の役割分担 | `CLAUDE.md` §0〜§1 |
 
@@ -149,7 +149,7 @@ LLM が自己停止プロトコル（`CLAUDE.md` §7）発動時、`project-memo
 ├── CLAUDE.md                    ← LLM 向け作業規約（毎セッション必読）
 ├── DESIGN.md                    ← プロダクト仕様（ブートストラップ時に埋める）
 │
-├── project-guide/               ← プロジェクト運営ガイド
+├── .llm/guide/               ← プロジェクト運営ガイド
 │   ├── CODING_GUIDE.md          Clojure 書き方詳細
 │   ├── POLYLITH_GUIDE.md        Polylith 運用・brick コード例
 │   ├── STACK_GUIDE.md           技術スタック選定カタログ（判断結果のメモリー）
@@ -157,7 +157,7 @@ LLM が自己停止プロトコル（`CLAUDE.md` §7）発動時、`project-memo
 │   ├── BOOTSTRAP_GUIDE.md       初期化手順詳細（LLM 向け、完了後は CLAUDE.md §0 の参照指示で自然にスキップ）
 │   └── MAINTAINERS_GUIDE.md     テンプレート自体の保守・設計原則
 │
-├── project-memory/              ← プロジェクトの記憶（実装中に蓄積）
+├── .llm/memory/              ← プロジェクトの記憶（実装中に蓄積）
 │   ├── QUESTIONS.md             判断保留トラッカー
 │   ├── KNOWLEDGE.md             生きた知識（契約・不変条件）
 │   └── adr/                     アーキテクチャ決定記録
@@ -179,25 +179,25 @@ LLM が自己停止プロトコル（`CLAUDE.md` §7）発動時、`project-memo
 |---|---|
 | LLM 作業規約 | `CLAUDE.md` |
 | プロダクト仕様の確認・記入 | `DESIGN.md` |
-| 初期化手順の詳細 | `project-guide/BOOTSTRAP_GUIDE.md` |
-| 技術スタック選定・stack の判断 | `project-guide/STACK_GUIDE.md` |
-| Clojure の書き方で迷った | `project-guide/CODING_GUIDE.md` |
-| Polylith 構造判断・brick 追加 | `project-guide/POLYLITH_GUIDE.md` |
-| LLM と人間の協働方針で迷った | `project-guide/COLLABORATION_GUIDE.md` |
-| テンプレート自体の改修 | `project-guide/MAINTAINERS_GUIDE.md` |
-| 判断に迷った時（Q を立てる） | `project-memory/QUESTIONS.md` |
-| 契約・不変条件の記録 | `project-memory/KNOWLEDGE.md` |
-| 重要な設計判断の記録 | `project-memory/adr/README.md`（運用ルール） |
+| 初期化手順の詳細 | `.llm/guide/BOOTSTRAP_GUIDE.md` |
+| 技術スタック選定・stack の判断 | `.llm/guide/STACK_GUIDE.md` |
+| Clojure の書き方で迷った | `.llm/guide/CODING_GUIDE.md` |
+| Polylith 構造判断・brick 追加 | `.llm/guide/POLYLITH_GUIDE.md` |
+| LLM と人間の協働方針で迷った | `.llm/guide/COLLABORATION_GUIDE.md` |
+| テンプレート自体の改修 | `.llm/guide/MAINTAINERS_GUIDE.md` |
+| 判断に迷った時（Q を立てる） | `.llm/memory/QUESTIONS.md` |
+| 契約・不変条件の記録 | `.llm/memory/KNOWLEDGE.md` |
+| 重要な設計判断の記録 | `.llm/memory/adr/README.md`（運用ルール） |
 
 ## 設計の基底思想（要約）
 
 - **疲労最小化**: LLM の誤りを構造的に封じる（全域性・不変性・副作用の隔離）
 - **機械化**: 規約を人間の注意力ではなくツール（clj-kondo、cljfmt、Polylith の `poly check`、Malli instrumentation）で強制
-- **stack 方式の技術スタック**: 必須層（Clojure、tools.deps、Polylith、Malli、clj-kondo、cljfmt）はワークスペースルートで常に採用、目的別の stack 層は各 brick の deps.edn に配置。推奨カタログは `project-guide/STACK_GUIDE.md`（真実の一箇所化）
+- **stack 方式の技術スタック**: 必須層（Clojure、tools.deps、Polylith、Malli、clj-kondo、cljfmt）はワークスペースルートで常に採用、目的別の stack 層は各 brick の deps.edn に配置。推奨カタログは `.llm/guide/STACK_GUIDE.md`（真実の一箇所化）
 - **4 種の文書分離**: 仕様（DESIGN）/ 知識（KNOWLEDGE）/ 決定履歴（ADR）/ 判断保留（QUESTIONS）
 - **自己停止プロトコル**: LLM が時間感覚なく詰まった時、ターン数閾値で停止し Q を立てる
 
-詳細は `CLAUDE.md` §1 と `project-guide/MAINTAINERS_GUIDE.md`。
+詳細は `CLAUDE.md` §1 と `.llm/guide/MAINTAINERS_GUIDE.md`。
 
 ## ライセンス
 

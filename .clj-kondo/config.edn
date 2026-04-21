@@ -19,7 +19,6 @@
   :unused-import                {:level :error}
   :unused-referred-var          {:level :error}
   :duplicate-require            {:level :error}
-  :duplicate-case-test-constant {:level :error}
   :duplicate-map-key            {:level :error}
   :duplicate-set-key            {:level :error}
   :missing-clause-in-try        {:level :error}
@@ -47,7 +46,6 @@
   :deprecated-var               {:level :error}  ; ライブラリ更新対応
   :deprecated-namespace         {:level :error}  ; 同上
   :case-quoted-test             {:level :error}  ; case のクォート誤り
-  :quoted-case-test-constant    {:level :error}  ; 同上
   :self-requiring-namespace     {:level :error}  ; ns 自己参照バグ
   :namespace-name-mismatch      {:level :error}  ; ns 名とファイル名不一致
   :clj-kondo-config             {:level :error}  ; 設定ファイル自体の誤り（自己適用）

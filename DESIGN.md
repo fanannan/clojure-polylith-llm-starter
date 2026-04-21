@@ -1,7 +1,7 @@
 # DESIGN.md — プロダクト仕様
 
 本ファイルは**このプロジェクトで何を作るか**を定義する。
-原則 13（`project-guide/MAINTAINERS_GUIDE.md` §4）で定義される**仕様（DESIGN）**の実装であり、プロジェクトの合意の起点である。
+原則 13（`.llm/guide/MAINTAINERS_GUIDE.md` §4）で定義される**仕様（DESIGN）**の実装であり、プロジェクトの合意の起点である。
 
 **本ファイルは「現在の仕様」の一次情報源**であり、常に現在形で書かれる。変更履歴は本ファイル内に残さず、ADR（判断経緯）・git（差分）・QUESTIONS.md（未決事項のアーカイブ）で保全される。改訂時は該当節を全面書き換えする（§0.5 参照）。
 
@@ -19,7 +19,7 @@
 
 ### 0.2 埋める順序と担当
 
-**LLM が独断で本ファイルを編集することは禁止**（`project-guide/COLLABORATION_GUIDE.md` §2.3）。
+**LLM が独断で本ファイルを編集することは禁止**（`.llm/guide/COLLABORATION_GUIDE.md` §2.3）。
 以下の順序で、**人間の意思決定 → LLM による文章化・整形 → 人間の最終承認**のサイクルで進める：
 
 | 順序 | セクション | 区分 | 主な担当 | LLM の役割 |
@@ -38,7 +38,7 @@
 
 ### 0.3 LLM による仕様曖昧性の能動的指摘
 
-LLM は本ファイルを読むたびに、以下の観点で**能動的に曖昧性を探し**、発見したら**質問してから進める**（詳細は `project-guide/COLLABORATION_GUIDE.md` §4）：
+LLM は本ファイルを読むたびに、以下の観点で**能動的に曖昧性を探し**、発見したら**質問してから進める**（詳細は `.llm/guide/COLLABORATION_GUIDE.md` §4）：
 
 - **用語定義の曖昧さ**（業務用語の具体的定義）
 - **例外条件の欠落**（異常系・境界ケース）
@@ -63,16 +63,16 @@ LLM は本ファイルを読むたびに、以下の観点で**能動的に曖�
 
 本ファイルは**現在の仕様**を示す一次情報源であり、**変更履歴は本ファイル内に残さない**（原則 13 の 4 種文書分離、疲労最小化原則）。変更の記録は以下の 3 箇所で保全される：
 
-- **判断の経緯・根拠**: `project-memory/adr/NNNN-topic.md`（不変、supersede で改訂）
+- **判断の経緯・根拠**: `.llm/memory/adr/NNNN-topic.md`（不変、supersede で改訂）
 - **ファイルレベルの差分**: git コミット履歴
-- **変更過程の未決事項**: `project-memory/QUESTIONS.md`（open → resolved）
+- **変更過程の未決事項**: `.llm/memory/QUESTIONS.md`（open → resolved）
 
 これらが揃っているため、本ファイル内に追記・差分表記・変更履歴節を持つ必要はない。本ファイルは常に**現在形で上書き更新**する（KNOWLEDGE.md §0.5 と同じ運用）。
 
 改訂時の具体的ルール：
 
 - **LLM 独断編集禁止**。改訂はユーザ承認必須（`COLLABORATION_GUIDE.md` §2.3、権限 L1）
-- 大きな方針変更は**ADR を先に発行**してから本ファイルを改訂（詳細は `project-memory/adr/README.md`）
+- 大きな方針変更は**ADR を先に発行**してから本ファイルを改訂（詳細は `.llm/memory/adr/README.md`）
 - 改訂時は該当節を**全面書き換え**し、古い記述は残さない（差分表示・追記形式にしない）
 - コミットメッセージに ADR 番号を含める（例: `Revise DESIGN.md §3 for streaming inference (ADR-0012)`）
 - 成熟期以降は、KNOWLEDGE.md / ADR に吸収可能な内容は**本ファイルから移す**ことを検討
@@ -151,7 +151,7 @@ LLM は本ファイルを読むたびに、以下の観点で**能動的に曖�
 | データ整合性基準 | プロパティテスト（`test.check`）で不変条件を検証 | `components/<n>/test/.../interface_test.clj` |
 | セキュリティ・非機能基準 | 統合テスト + 運用チェックリスト | `bases/<n>/test/integration/` + KNOWLEDGE.md §4 |
 
-受入基準が曖昧でテストに落とせない場合は、`project-memory/QUESTIONS.md` に Q を立てて明示化を求める（CLAUDE.md §8.0 仕様曖昧性点検）。
+受入基準が曖昧でテストに落とせない場合は、`.llm/memory/QUESTIONS.md` に Q を立てて明示化を求める（CLAUDE.md §8.0 仕様曖昧性点検）。
 
 ---
 
@@ -212,7 +212,7 @@ LLM は本ファイルを読むたびに、以下の観点で**能動的に曖�
 
 ### 8.3 採用 stack
 
-本プロジェクトで採用する技術スタック構成を記録する。選定論理と詳細は `project-guide/STACK_GUIDE.md` を参照。
+本プロジェクトで採用する技術スタック構成を記録する。選定論理と詳細は `.llm/guide/STACK_GUIDE.md` を参照。
 
 - **主 stack**: ＜TODO: 例 web-api stack、batch stack、library stack 等＞
 - **補助 stack**: ＜TODO: なし / batch stack 等（複数目的を持つプロジェクトの場合）＞
@@ -229,7 +229,7 @@ LLM は本ファイルを読むたびに、以下の観点で**能動的に曖�
 ### 8.5 アーキテクチャ構造
 
 - **Polylith**（components / bases / projects / development）
-- 構造詳細は `project-guide/POLYLITH_GUIDE.md` を参照
+- 構造詳細は `.llm/guide/POLYLITH_GUIDE.md` を参照
 
 ---
 

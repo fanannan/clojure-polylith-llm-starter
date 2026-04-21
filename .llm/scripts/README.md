@@ -1,4 +1,4 @@
-# scripts/ — ワークスペース運用スクリプト群
+# .llm/scripts/ — ワークスペース運用スクリプト群
 
 本ディレクトリは、`.clj-kondo/` の custom hook では捕捉できない**設定ファイル・ディレクトリ構造・配布物整合性**の検査と、シェル展開が必要な運用コマンドのラッパーを収容する。各スクリプトは単独でも実行できるが、基本は `check-workspace-integrity.sh` が完了条件（`CLAUDE.md §5.5`）から一括で起動する。
 
@@ -11,8 +11,8 @@
 | **L1** 構文・型・未使用 | clj-kondo 組み込み linter | AST 解析、命名空間解決、アリティ検査（段階 1/2 で 38 linter を有効化） |
 | **L2** 本テンプレート固有パターン | `.clj-kondo/polyguard/hooks.clj` (custom hook) | form 単体の AST 解析（A-7〜A-17） |
 | **L3** スタイル・イディオム | Splint (`clj -M:lint-splint`) | `(= 0 x)` → `(zero? x)` 等のイディオム違反 |
-| **L4** 設定・ディレクトリ構造 | 本ディレクトリの `scripts/*.sh` | EDN 構造、ファイル実在、file-level 照合（A-1・A-14・D-4〜D-6・F-1・F-3） |
-| **L5** 依存脆弱性（時間軸） | clj-watson (`./scripts/check-vulnerabilities.sh`) | NIST NVD + GitHub Advisory Database |
+| **L4** 設定・ディレクトリ構造 | 本ディレクトリの `.llm/scripts/*.sh` | EDN 構造、ファイル実在、file-level 照合（A-1・A-14・D-4〜D-6・F-1・F-3） |
+| **L5** 依存脆弱性（時間軸） | clj-watson (`./.llm/scripts/check-vulnerabilities.sh`) | NIST NVD + GitHub Advisory Database |
 
 **補完関係の例**:
 
@@ -43,7 +43,7 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 `clj -M:poly check` と `clj -M:poly test :all` の間に以下を挟む:
 
 ```bash
-./scripts/check-workspace-integrity.sh
+./.llm/scripts/check-workspace-integrity.sh
 ```
 
 これで D-4 / D-6 / F-3 / A-1 / A-14 の 5 検査 + 併存検査 + `:local/root` / `:projects` 実在検査が一括で走る。個別スクリプトを手動で呼ぶ必要はない。
@@ -53,7 +53,7 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 完了条件には含めないが、時間軸を跨いだ脆弱性検知として以下を実行する:
 
 ```bash
-./scripts/check-vulnerabilities.sh
+./.llm/scripts/check-vulnerabilities.sh
 ```
 
 NVD API key 推奨（`https://nvd.nist.gov/developers/request-an-api-key`）。環境変数 `NVD_API_KEY` に設定すると高速化される。
@@ -68,7 +68,7 @@ NVD API key 推奨（`https://nvd.nist.gov/developers/request-an-api-key`）。�
 - `clj -M:outdated` による最新化後
 
 ```bash
-./scripts/lint-import-hooks.sh
+./.llm/scripts/lint-import-hooks.sh
 ```
 
 本スクリプトを完了条件に含めない理由は、新ライブラリを採用するたびに実行するのが本来の運用で、毎回の完了条件検査に入れると遅くなるため。新ライブラリ採用のたびにユーザが明示的に実行する運用が正しい。
@@ -78,8 +78,8 @@ NVD API key 推奨（`https://nvd.nist.gov/developers/request-an-api-key`）。�
 `session-briefing.sh` は pass/fail 系の検査とは役割が異なる**状態提示スクリプト**。CLAUDE.md §8.0 で定めた「実装着手前に DESIGN.md / KNOWLEDGE.md / QUESTIONS.md / adr/ を確認する」運用を機械化バックアップする。
 
 - **Claude Code**: `.claude/settings.json` の `SessionStart` hook で起動時に自動実行、出力は system-reminder として LLM の文脈に注入される
-- **Codex / 他エージェント**: SessionStart hook 機構がないため `AGENTS.md` の指示に従い、LLM が起動直後に `bash scripts/session-briefing.sh` を手動実行する
-- **手動実行**: 任意のタイミングで `bash scripts/session-briefing.sh` を実行し、現時点の状態を確認できる
+- **Codex / 他エージェント**: SessionStart hook 機構がないため `AGENTS.md` の指示に従い、LLM が起動直後に `bash .llm/scripts/session-briefing.sh` を手動実行する
+- **手動実行**: 任意のタイミングで `bash .llm/scripts/session-briefing.sh` を実行し、現時点の状態を確認できる
 
 本スクリプトは副作用ゼロ（stdout のみ）、終了コードは常に 0。`check-workspace-integrity.sh` のような重検査は呼ばず、フェーズ判定・open Q 抽出・最新 ADR 抽出・`git log -5` に限定して軽量に保つ。
 
@@ -92,7 +92,7 @@ NVD API key 推奨（`https://nvd.nist.gov/developers/request-an-api-key`）。�
 
 ## 新しい検査の追加手順
 
-1. `scripts/check-<topic>.sh` を作成（終了コード 0 / 1 で成否表現、エラー時は人間に読めるメッセージ）
+1. `.llm/scripts/check-<topic>.sh` を作成（終了コード 0 / 1 で成否表現、エラー時は人間に読めるメッセージ）
 2. `check-workspace-integrity.sh` の `run_step` に 1 行追加
 3. 本 README の「スクリプト一覧」表と「対応項目」欄を更新
 4. 新しい観点が `_POSSIBLE_ISSUES.md` に記録されていない場合、該当節（F 系）に追記
@@ -100,4 +100,4 @@ NVD API key 推奨（`https://nvd.nist.gov/developers/request-an-api-key`）。�
 ## 非採用事項
 
 - **Babashka による実装**: 必須層を拡張しないため不採用（`_POSSIBLE_ISSUES.md` D 群方針）
-- **`scripts/new-brick.sh`（brick 追加自動化）**: EDN 機械編集は sed では脆弱、rewrite-clj は Clojure 起動コスト大。代わりに `check-brick-registration.sh` で**不完全さを検知**する方向に切り替えた（`_POSSIBLE_ISSUES.md` D-4）
+- **`.llm/scripts/new-brick.sh`（brick 追加自動化）**: EDN 機械編集は sed では脆弱、rewrite-clj は Clojure 起動コスト大。代わりに `check-brick-registration.sh` で**不完全さを検知**する方向に切り替えた（`_POSSIBLE_ISSUES.md` D-4）

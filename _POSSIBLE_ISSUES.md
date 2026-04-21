@@ -7,7 +7,7 @@
 
 - **完了**: A-1〜A-18（A 系全件、A-8 と A-13 は近似実装、A-19 は保留確定）、B-1〜B-4、C-1〜C-3、D-1〜D-6、F-1 / F-3、F 拡張（Splint / clj-watson 必須層化、clj-kondo linter 38 追加・昇格）、G-1 / G-2 / G-3、§4 相互参照点検（後続タスクとして記録）
 - **未着手**: E-1（本プラン ADR 発行、ユーザー指示で除外）、E-2（前セッションの完了条件未実行、除外）、F-2 / F-4（保留確定）、A-9 / A-12 の `:ns-groups` 活性化（brick 名確定後の bootstrap タスク）
-- **既知の制限**: A-8 の defn-vs-m/=> アリティ突合は `scripts/check-interface-contracts.sh`（file-level）で補完、A-13 は最小実装（厳密な戻り値未使用検知は parent-node API 拡張待ち）、A-17 destructuring 深さは `:keys`/`:strs`/`:syms` 系を除外する簡易実装で閾値 `> 3`（A-17 の本来「深さ 2 超過」より緩い、false positive 回避のため）
+- **既知の制限**: A-8 の defn-vs-m/=> アリティ突合は `.llm/scripts/check-interface-contracts.sh`（file-level）で補完、A-13 は最小実装（厳密な戻り値未使用検知は parent-node API 拡張待ち）、A-17 destructuring 深さは `:keys`/`:strs`/`:syms` 系を除外する簡易実装で閾値 `> 3`（A-17 の本来「深さ 2 超過」より緩い、false positive 回避のため）
 
 ---
 
@@ -228,7 +228,7 @@ A-3 と同一問題。A-3 で処理される
   - `CLAUDE.md §3` と `BOOTSTRAP_GUIDE.md §1` は**概念的な必須層列挙のみ**に留め、version は書かない運用を維持（現状どおり、明文化で保全）
   - `MAINTAINERS_GUIDE.md §5.1`（依存更新手順）に「必須層 version 更新時は `STACK_GUIDE.md §2` のみ更新、`CLAUDE.md §3` / `BOOTSTRAP §1` は参照関係を保つ」の 1 行を追加し、同期規律を機械化の代替とする
 
-#### C-3. CLAUDE.md §8.0 と project-memory 3 文書の相互参照欠落
+#### C-3. CLAUDE.md §8.0 と .llm/memory 3 文書の相互参照欠落
 
 - **事実**:
   - `CLAUDE.md §8.0` は DESIGN / KNOWLEDGE / QUESTIONS / ADR を「読む」4 ステップを記述するが、
@@ -271,8 +271,8 @@ A-3 と同一問題。A-3 で処理される
 #### D-4. brick 追加時の 4 箇所同時更新（「機械化」から「不完全さの機械検知」へ）
 
 - **現状**: `poly create` は brick ディレクトリしか作らず、`workspace.edn :projects` / ルート `deps.edn :dev :extra-paths` / `:extra-deps` / `projects/<deploy>/resources` の 4 箇所は手動更新
-- **却下案**: `scripts/new-brick.sh` で brick 追加を機械化する案は deps.edn の EDN 機械編集（sed 脆弱 / rewrite-clj は Clojure 起動コスト）で複雑化。不採用
-- **採用案**: `scripts/check-brick-registration.sh` を新設し**不完全さを検知**する方向に切り替える
+- **却下案**: `.llm/scripts/new-brick.sh` で brick 追加を機械化する案は deps.edn の EDN 機械編集（sed 脆弱 / rewrite-clj は Clojure 起動コスト）で複雑化。不採用
+- **採用案**: `.llm/scripts/check-brick-registration.sh` を新設し**不完全さを検知**する方向に切り替える
   - `components/` / `bases/` 配下の全 brick を走査（`.gitkeep` は除外）
   - 各 brick が deps.edn の `:dev :extra-paths` に登録されているか検査
   - 各 brick が deps.edn の `:dev :extra-deps` に `:local/root` で登録されているか検査
@@ -284,7 +284,7 @@ A-3 と同一問題。A-3 で処理される
 
 - **現状**: `clj -M:lint --copy-configs --dependencies --lint "$(clojure -A:dev -Spath)"` をシェル展開必須で手動実行（tools.deps の `:main-opts` はシェル展開不可）。再取り込みトリガーなし
 - **対処**:
-  - `scripts/lint-import-hooks.sh` を新設（上記コマンドをラップ、Unix 依存は許容）
+  - `.llm/scripts/lint-import-hooks.sh` を新設（上記コマンドをラップ、Unix 依存は許容）
   - 運用タイミングを以下に明文化:
     - 初回セットアップ（`BOOTSTRAP_GUIDE.md §2.9`）
     - brick `deps.edn` に新ライブラリ追加時（`MAINTAINERS_GUIDE.md §5`）
@@ -295,25 +295,25 @@ A-3 と同一問題。A-3 で処理される
 
 - **現状**: `workspace.edn` / `deps.edn` にプレースホルダが残っても `poly check` は検知しない
 - **対処**:
-  - `scripts/check-placeholders.sh` を新設（grep ベース、依存なし）
+  - `.llm/scripts/check-placeholders.sh` を新設（grep ベース、依存なし）
   - 検査対象は**設定ファイルのみ**（`workspace.edn` / `deps.edn`）に限定。コード例（`POLYLITH_GUIDE.md` / `KNOWLEDGE.md` のサンプル中）は対象外
   - 完了条件（CLAUDE.md §5.5）に F-1 経由で組み込み
 
 
-### F. 機械化候補（`scripts/` と custom hook の新規追加）
+### F. 機械化候補（`.llm/scripts/` と custom hook の新規追加）
 
-Part 1 D で導入する `scripts/` ディレクトリを統合・拡張する機械化候補群。D-4 / D-5 / D-6 と合わせて**設定ファイル・ディレクトリ構造・配布物整合性**の領分を `scripts/` が、**コード内の構文・構造パターン**の領分を `.clj-kondo/hooks/`（A 系）が担う役割分担で運用する。
+Part 1 D で導入する `.llm/scripts/` ディレクトリを統合・拡張する機械化候補群。D-4 / D-5 / D-6 と合わせて**設定ファイル・ディレクトリ構造・配布物整合性**の領分を `.llm/scripts/` が、**コード内の構文・構造パターン**の領分を `.clj-kondo/hooks/`（A 系）が担う役割分担で運用する。
 
 #### F-1. ワークスペース整合性の総合検査 + 完了条件組み込み
 
 - **位置づけ**: D-4 / D-6 / F-3 を統合するエンドツーエンド検査。完了条件の拡張ポイント
-- **対処**: `scripts/check-workspace-integrity.sh` を新設
+- **対処**: `.llm/scripts/check-workspace-integrity.sh` を新設
   - 内部で `check-brick-registration.sh`（D-4）・`check-placeholders.sh`（D-6）・`check-deprecated-libs.sh`（F-3）を呼び出す
   - 加えて以下を検査:
     - deps.edn の `:local/root` パスが実在するか
     - workspace.edn の `:projects` に列挙された project が実在するか
     - 配布時点で削除すべきファイル（`.gitkeep` と brick 併存等）の検査
-- **完了条件（CLAUDE.md §5.5）への追加**: `./scripts/check-workspace-integrity.sh` を 1 行追加することで、D-4 / D-6 / F-3 の検査すべてが §5.5 の必須通過ゲートに入る
+- **完了条件（CLAUDE.md §5.5）への追加**: `./.llm/scripts/check-workspace-integrity.sh` を 1 行追加することで、D-4 / D-6 / F-3 の検査すべてが §5.5 の必須通過ゲートに入る
 
 #### F-2. `dev/user.clj` セクションコメントアウト状態の整合検査（保留）
 
@@ -324,7 +324,7 @@ Part 1 D で導入する `scripts/` ディレクトリを統合・拡張する�
 #### F-3. STACK_GUIDE.md §8.2 非推奨ライブラリの brick deps.edn 検査
 
 - **位置づけ**: A-6 の clj-kondo `:discouraged-var`（コード内使用検知）を補完する、`deps.edn` 採用宣言自体の検査
-- **対処**: `scripts/check-deprecated-libs.sh` を新設
+- **対処**: `.llm/scripts/check-deprecated-libs.sh` を新設
   - 各 brick の `deps.edn` が非推奨ライブラリ（timbre / Compojure / friend / clj-http 新規 / data.json 等）を含んでいないか grep で検査
   - 登録があれば error 終了 + 推奨代替を提示
 - **A-6 との役割分担**:
@@ -353,7 +353,7 @@ Part 1 D で導入する `scripts/` ディレクトリを統合・拡張する�
 
 - **hook の領分**（`.clj-kondo/hooks/` 配下、Clojure コード解析）:
   - 関数行数（A-7）、`m/=>` 付与（A-1）、`Exception.` 禁止（A-4）、非推奨ライブラリの**コード使用**（A-6）、catch Throwable 禁止（A-10）、空 catch（A-11）、ドメイン層 I/O（A-12）等
-- **script の領分**（`scripts/` 配下、shell）:
+- **script の領分**（`.llm/scripts/` 配下、shell）:
   - プレースホルダ（D-6）、brick 登録（D-4）、非推奨ライブラリの**deps.edn 採用宣言**（F-3）、`dev/user.clj` セクション状態（F-2 保留）、ワークスペース整合性（F-1）等
 - **理由**: clj-kondo は Clojure コード AST 解析が得意で設定ファイル構造の検査は苦手。shell script は逆。役割分担で両者の強みを活かし、重複開発を防ぐ
 - **記録先**: `MAINTAINERS_GUIDE.md §5` に「機械化戦略の実装手段」として追記
@@ -485,11 +485,11 @@ adr/README.md の ADR 解説 158 行、CODING_GUIDE.md §1 メタ解説、「迷
 | **中** | B-1（§7.2 を「必要時のみ」に緩和） | 毎ターン儀式の軽量化 | 低（規約改訂） |
 | **中** | B-3（resolved Q 選別削除） | ADR 昇格 Q のみ削除、他は軽く残す | 低（規約改訂） |
 | **高** | D-2（Integrant / Portal セクションを `;;` でコメントアウト + 解除手順明記） | 配布時点 REPL 評価可能化、サンプル価値保持 | 小〜中（`dev/user.clj` 編集） |
-| **中** | D-4 対処（`scripts/check-brick-registration.sh` 新設 + 相互参照強化） | brick 登録漏れの機械検知 | 小（shell + 文書） |
-| **中** | D-5（`scripts/lint-import-hooks.sh` + 運用タイミング明文化） | hook 再取り込みの自動化 | 小 |
-| **高** | D-6（`scripts/check-placeholders.sh` + 完了条件組み込み） | 置換忘れの機械検知 | 小 |
-| **中** | F-1（`scripts/check-workspace-integrity.sh` 統合 + §5.5 組み込み） | 完了条件に総合検査を 1 行追加 | 小 |
-| **中** | F-3（`scripts/check-deprecated-libs.sh` 新設） | A-6 を deps.edn 側で補完 | 小 |
+| **中** | D-4 対処（`.llm/scripts/check-brick-registration.sh` 新設 + 相互参照強化） | brick 登録漏れの機械検知 | 小（shell + 文書） |
+| **中** | D-5（`.llm/scripts/lint-import-hooks.sh` + 運用タイミング明文化） | hook 再取り込みの自動化 | 小 |
+| **高** | D-6（`.llm/scripts/check-placeholders.sh` + 完了条件組み込み） | 置換忘れの機械検知 | 小 |
+| **中** | F-1（`.llm/scripts/check-workspace-integrity.sh` 統合 + §5.5 組み込み） | 完了条件に総合検査を 1 行追加 | 小 |
+| **中** | F-3（`.llm/scripts/check-deprecated-libs.sh` 新設） | A-6 を deps.edn 側で補完 | 小 |
 | **低** | F-2（`dev/user.clj` セクション整合検査） | 保留、実装複雑度高 | 中 |
 | **低** | F-4（Malli instrumentation 動的検査） | 保留、本計画の静的検査戦略と異なる | 中 |
 | — | G-1 / G-2 / G-3（運用姿勢・役割分担・前提明示の KNOWLEDGE 昇格） | 別途ユーザー合意で昇格 | 小（文書追記） |
@@ -517,7 +517,7 @@ adr/README.md の ADR 解説 158 行、CODING_GUIDE.md §1 メタ解説、「迷
 D-1（`.gitkeep`）・D-6（`check-placeholders.sh` + §5.5 組み込み）。2 ファイル追加 + 1 script + §5.5 の 1 行変更で完了。
 
 **段階 2**（ブートストラップ体験の改善 + shell script 充実、1〜2 日）:
-D-2（`;;` コメント化）・D-3（注記）・D-5（`lint-import-hooks.sh`）・D-4 対処（`check-brick-registration.sh`）・F-1（`check-workspace-integrity.sh` 統合）・F-3（`check-deprecated-libs.sh`）・E-2（前セッション完了条件実行）。`scripts/` ディレクトリ 5 本の新設と `dev/user.clj` の書き換え、関連文書への相互参照追加
+D-2（`;;` コメント化）・D-3（注記）・D-5（`lint-import-hooks.sh`）・D-4 対処（`check-brick-registration.sh`）・F-1（`check-workspace-integrity.sh` 統合）・F-3（`check-deprecated-libs.sh`）・E-2（前セッション完了条件実行）。`.llm/scripts/` ディレクトリ 5 本の新設と `dev/user.clj` の書き換え、関連文書への相互参照追加
 
 **段階 3**（即採用可能な設定変更・規約緩和、1 日以内）:
 A-2・A-4・A-5・A-9・A-11・A-12・A-14・A-15・A-16・A-18・B-2・B-4。規約改訂・`:discouraged-var` 追加・既存 `:config-in-ns` 雛形の有効化・単純 hook のみで完了

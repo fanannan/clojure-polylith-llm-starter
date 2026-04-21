@@ -276,7 +276,7 @@
 4. **version 更新の記載先規律**（`_POSSIBLE_ISSUES.md` C-2 の反映）:
    - **version は `STACK_GUIDE.md §2` のみに記載**（必須層・横断層の正本）
    - `CLAUDE.md §3` と `BOOTSTRAP_GUIDE.md §1` は概念的な必須層列挙のみを保持し、version は書かない。version 更新時に同期する必要がない運用に倒す（drift 防止）
-   - 更新後は必ず `./scripts/lint-import-hooks.sh` を実行し、依存ライブラリ提供の clj-kondo hook を再取り込む（§5.11）
+   - 更新後は必ず `./.llm/scripts/lint-import-hooks.sh` を実行し、依存ライブラリ提供の clj-kondo hook を再取り込む（§5.11）
 
 ### 5.2 新しいライブラリを採用する場合
 
@@ -536,26 +536,26 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
 | **L1 構文・型・未使用** | clj-kondo 組み込み linter | AST 解析、命名空間解決、アリティ検査 | `:unresolved-var`、`:invalid-arity`、`:unused-binding`、段階 1 / 2 の 38 linter |
 | **L2 本テンプレート固有パターン** | `.clj-kondo/polyguard/hooks.clj` (custom hook) | form 単体の AST 解析 | A-7（関数行数）、A-9（top-level mutable）、A-10（catch Throwable）、A-11（空 catch）、A-15（位置引数）、A-16（go blocking）、A-17（destructuring 深さ）、A-8 近似 |
 | **L3 スタイル・イディオム** | Splint (`clj -M:lint-splint`) | Clojure イディオム違反、リファクタリング提案 | `(= 0 x)` → `(zero? x)`、`(first (filter ...))` → `(some ...)` 等 |
-| **L4 設定ファイル・ディレクトリ構造** | `scripts/*.sh` | EDN 構造、ファイル実在、採用宣言、file-level 照合 | D-4（brick 登録）、D-5（hook 取り込み）、D-6（プレースホルダ）、F-1（総合検査）、F-3（非推奨ライブラリ採用）、A-1（interface 契約）、A-14（1 ファイル 1 ns） |
-| **L5 依存脆弱性（時間軸）** | clj-watson (`./scripts/check-vulnerabilities.sh`) | NIST NVD + GitHub Advisory Database 照合 | 承認済み依存が後から脆弱化した場合の検知。release 前必須 |
+| **L4 設定ファイル・ディレクトリ構造** | `.llm/scripts/*.sh` | EDN 構造、ファイル実在、採用宣言、file-level 照合 | D-4（brick 登録）、D-5（hook 取り込み）、D-6（プレースホルダ）、F-1（総合検査）、F-3（非推奨ライブラリ採用）、A-1（interface 契約）、A-14（1 ファイル 1 ns） |
+| **L5 依存脆弱性（時間軸）** | clj-watson (`./.llm/scripts/check-vulnerabilities.sh`) | NIST NVD + GitHub Advisory Database 照合 | 承認済み依存が後から脆弱化した場合の検知。release 前必須 |
 
-**補完関係の典型例**: 非推奨ライブラリ `timbre` は、コード内で `timbre/info` を呼び出している使用箇所は `clj-kondo :discouraged-var`（A-6）が、`deps.edn` に `com.taoensso/timbre` を採用宣言している箇所は `scripts/check-deprecated-libs.sh`（F-3）が検知する。両方で二重に防御する。
+**補完関係の典型例**: 非推奨ライブラリ `timbre` は、コード内で `timbre/info` を呼び出している使用箇所は `clj-kondo :discouraged-var`（A-6）が、`deps.edn` に `com.taoensso/timbre` を採用宣言している箇所は `.llm/scripts/check-deprecated-libs.sh`（F-3）が検知する。両方で二重に防御する。
 
 **新しい機械化候補を導入する際の判断手順**:
 
 1. 検査対象が Clojure コード内のパターンか、設定ファイル・ディレクトリ構造か
 2. コード内パターン → `.clj-kondo/hooks/` に custom hook を追加、`.clj-kondo/config.edn` で登録
-3. 設定・構造 → `scripts/check-<topic>.sh` を追加、`scripts/check-workspace-integrity.sh` の `run_step` で起動、`scripts/README.md` を更新
+3. 設定・構造 → `.llm/scripts/check-<topic>.sh` を追加、`.llm/scripts/check-workspace-integrity.sh` の `run_step` で起動、`.llm/scripts/README.md` を更新
 4. 完了条件（`CLAUDE.md §5.5`）への組み込みは、shell script 側は `check-workspace-integrity.sh` が既に含まれるので個別追加不要。custom hook は `clj -M:lint` に含まれるので個別追加不要
 
 #### 5.10.1 状態提示層（セッション起動時、L1〜L5 とは別の役割）
 
-上記 L1〜L5 はすべて **pass/fail 系の検査**（機械化による規約違反の検出）である。これとは別の役割として、**LLM のセッション起動時に現状を提示する層**を `scripts/session-briefing.sh` + `.claude/settings.json` の `SessionStart` hook で実装している。
+上記 L1〜L5 はすべて **pass/fail 系の検査**（機械化による規約違反の検出）である。これとは別の役割として、**LLM のセッション起動時に現状を提示する層**を `.llm/scripts/session-briefing.sh` + `.claude/settings.json` の `SessionStart` hook で実装している。
 
 | 項目 | 内容 |
 |---|---|
 | **目的** | `CLAUDE.md §8.0`「実装着手前に DESIGN.md / KNOWLEDGE.md / QUESTIONS.md / adr/ を確認」を規律依存から機械化バックアップへ引き上げる |
-| **実装手段** | `scripts/session-briefing.sh`（副作用なし、stdout のみ、常に exit 0）|
+| **実装手段** | `.llm/scripts/session-briefing.sh`（副作用なし、stdout のみ、常に exit 0）|
 | **起動経路** | Claude Code は `SessionStart` hook で自動、Codex 等は `AGENTS.md` 経由で LLM が手動実行 |
 | **出力内容** | フェーズ判定（bootstrap / development）、未完了指標、open Q 一覧、最新 ADR、直近コミット、`§8.0` チェックリスト |
 
@@ -565,18 +565,18 @@ L1〜L5 との関係:
 - **状態提示層は現状を見せる**（LLM が何を読むべきかの判断材料を提供）
 - 両者は排他ではなく、併用によって「規約違反の早期検知」と「着手前の文脈確立」の両方を機械化する
 
-**Codex 側の非対称性**: Codex には SessionStart hook 機構が存在しないため、`AGENTS.md` に「起動時に `bash scripts/session-briefing.sh` を実行してから CLAUDE.md に従え」を明記することで、**文書経由の規律依存**にとどまる。構造的制約であり回避しない（`CLAUDE.md §1.2.5` 失敗早期検知 > 事前承認の思想と整合。LLM の規律逸脱は可逆、AGENTS.md の記述は明示的、Codex 実行頻度も Claude Code より低い、の 3 点で許容範囲）。
+**Codex 側の非対称性**: Codex には SessionStart hook 機構が存在しないため、`AGENTS.md` に「起動時に `bash .llm/scripts/session-briefing.sh` を実行してから CLAUDE.md に従え」を明記することで、**文書経由の規律依存**にとどまる。構造的制約であり回避しない（`CLAUDE.md §1.2.5` 失敗早期検知 > 事前承認の思想と整合。LLM の規律逸脱は可逆、AGENTS.md の記述は明示的、Codex 実行頻度も Claude Code より低い、の 3 点で許容範囲）。
 
 **状態提示層を追加する際の規律**:
 
 1. **pass/fail にしない**: ブリーフィングは終了コード 0 で常に完走する。検査は L1〜L5 の責務
 2. **重検査を呼ばない**: `check-workspace-integrity.sh` / `check-vulnerabilities.sh` は起動遅延を招くため、ブリーフィングには入れない
 3. **情報の鮮度を優先**: キャッシュせず毎回算出する（ファイル走査は軽量な grep / awk / find / git log に限定）
-4. **拡張時の追加先**: ブリーフィングの新項目は `scripts/session-briefing.sh` の出力関数として追加、`scripts/README.md` の「セッション起動時のブリーフィング」節を更新
+4. **拡張時の追加先**: ブリーフィングの新項目は `.llm/scripts/session-briefing.sh` の出力関数として追加、`.llm/scripts/README.md` の「セッション起動時のブリーフィング」節を更新
 
 ### 5.11 `lint-import-hooks.sh` 再実行のタイミング
 
-`scripts/lint-import-hooks.sh`（`_POSSIBLE_ISSUES.md` D-5）は依存ライブラリが提供する clj-kondo hook を `.clj-kondo/configs/` に取り込む。以下のタイミングで再実行する:
+`.llm/scripts/lint-import-hooks.sh`（`_POSSIBLE_ISSUES.md` D-5）は依存ライブラリが提供する clj-kondo hook を `.clj-kondo/configs/` に取り込む。以下のタイミングで再実行する:
 
 - **ブートストラップ初回**: `BOOTSTRAP_GUIDE.md §2.9` で実行
 - **brick deps.edn への新ライブラリ追加時**: 本節 §5.2 の手順に組み込む
@@ -613,7 +613,7 @@ L1〜L5 との関係:
 
 **運用上の注意**:
 
-- `.clj-kondo/config.edn` の追加は `scripts/lint-import-hooks.sh` の再実行が必要ない（組み込み linter のため）。custom hook 追加時のみ再取り込みを要する
+- `.clj-kondo/config.edn` の追加は `.llm/scripts/lint-import-hooks.sh` の再実行が必要ない（組み込み linter のため）。custom hook 追加時のみ再取り込みを要する
 - 新 linter 追加で既存コードが失敗するようになった場合、**原則として既存コードを直す**（規約を緩める側に倒さない）。機械化充実姿勢と整合
 - false positive の許容は「一括 error で導入、問題が出たら個別に `:config-in-ns` で除外」の順（`_POSSIBLE_ISSUES.md` F 拡張判断 2）
 
