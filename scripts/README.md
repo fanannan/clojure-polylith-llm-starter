@@ -34,6 +34,7 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 | `check-single-ns-per-file.sh` | 1 つの `.clj` / `.cljc` / `.cljs` ファイルに `(ns ...)` が複数ないか検査 | A-14 |
 | `check-vulnerabilities.sh` | `clj-watson` による依存脆弱性スキャン（release 前必須、完了条件外） | F 拡張 |
 | `lint-import-hooks.sh` | 依存ライブラリ提供の `clj-kondo` hook を `.clj-kondo/configs/` に取り込む | D-5 |
+| `session-briefing.sh` | セッション起動時の状態ブリーフィング（フェーズ判定・open Q・最新 ADR・直近コミット）を stdout 出力 | `§8.0` 実装着手前の確認の機械化バックアップ（状態提示、pass/fail 検査ではない） |
 
 ## 運用タイミング
 
@@ -71,6 +72,16 @@ NVD API key 推奨（`https://nvd.nist.gov/developers/request-an-api-key`）。�
 ```
 
 本スクリプトを完了条件に含めない理由は、新ライブラリを採用するたびに実行するのが本来の運用で、毎回の完了条件検査に入れると遅くなるため。新ライブラリ採用のたびにユーザが明示的に実行する運用が正しい。
+
+### セッション起動時のブリーフィング（`session-briefing.sh`）
+
+`session-briefing.sh` は pass/fail 系の検査とは役割が異なる**状態提示スクリプト**。CLAUDE.md §8.0 で定めた「実装着手前に DESIGN.md / KNOWLEDGE.md / QUESTIONS.md / adr/ を確認する」運用を機械化バックアップする。
+
+- **Claude Code**: `.claude/settings.json` の `SessionStart` hook で起動時に自動実行、出力は system-reminder として LLM の文脈に注入される
+- **Codex / 他エージェント**: SessionStart hook 機構がないため `AGENTS.md` の指示に従い、LLM が起動直後に `bash scripts/session-briefing.sh` を手動実行する
+- **手動実行**: 任意のタイミングで `bash scripts/session-briefing.sh` を実行し、現時点の状態を確認できる
+
+本スクリプトは副作用ゼロ（stdout のみ）、終了コードは常に 0。`check-workspace-integrity.sh` のような重検査は呼ばず、フェーズ判定・open Q 抽出・最新 ADR 抽出・`git log -5` に限定して軽量に保つ。
 
 ## 実装規律
 
