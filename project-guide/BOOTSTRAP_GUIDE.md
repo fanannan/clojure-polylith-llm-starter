@@ -243,11 +243,11 @@ Integrant を使うプロジェクトでのみ実施する。ライブラリ配�
 
 **clj-kondo hook の初回取り込み**:
 
-- [ ] 新ライブラリ採用後、以下を shell で実行して各ライブラリ提供の clj-kondo hook を取り込む（tools.deps の `:main-opts` はシェル展開されないため、この処理をエイリアスに埋め込めない）:
+- [ ] 新ライブラリ採用後、以下のスクリプトで各ライブラリ提供の clj-kondo hook を取り込む（tools.deps の `:main-opts` はシェル展開されないため、エイリアスに埋め込めない。`_POSSIBLE_ISSUES.md` D-5 の実装）:
   ```bash
-  clj -M:lint --copy-configs --dependencies --lint "$(clojure -A:dev -Spath)"
+  ./scripts/lint-import-hooks.sh
   ```
-  これにより `.clj-kondo/.cache/` および `.clj-kondo/configs/` が更新され、以後の `clj -M:lint` でライブラリ固有の lint ルールが機能する
+  これにより `.clj-kondo/.cache/` および `.clj-kondo/configs/` が更新され、以後の `clj -M:lint` でライブラリ固有の lint ルールが機能する。**再実行のタイミング**: brick deps.edn に新ライブラリを追加したとき、`clj -M:outdated` で依存を更新したとき、`STACK_GUIDE.md §4.2` 推奨ライブラリを採用したとき
 
 **brick 単位の依存解決確認**:
 
@@ -255,6 +255,13 @@ Integrant を使うプロジェクトでのみ実施する。ライブラリ配�
   ```bash
   cd bases/<entry> && clj -Spath > /dev/null && echo ok
   cd components/<domain> && clj -Spath > /dev/null && echo ok
+  ```
+
+**workspace 整合性の総合検査**:
+
+- [ ] プレースホルダ残存・brick 登録漏れ・非推奨ライブラリ採用の一括検査（`_POSSIBLE_ISSUES.md` D-4 / D-6 / F-1 / F-3 の統合）:
+  ```bash
+  ./scripts/check-workspace-integrity.sh
   ```
 
 **workspace 全体の品質確認**:

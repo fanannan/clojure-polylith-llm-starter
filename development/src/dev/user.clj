@@ -4,44 +4,49 @@
    本ファイルは REPL 駆動開発の補助を提供する。Integrant によるライフサイクル管理と
    Portal によるデータ可視化を使う構成を想定した完成例として、3 セクション（Malli
    instrumentation、Integrant、Portal）を同梱している。Integrant や Portal を使わない
-   プロジェクトでは、該当セクションを削除する。
+   プロジェクトでも配布状態のまま壊れないよう、Integrant / Portal セクションは
+   行コメント `;;` で無効化されている。採用時に `;;` を一括除去して有効化する。
 
    含まれるもの:
      - Malli instrumentation セットアップ（必須層、全プロジェクトで有効化したまま使う）
-     - Integrant ライフサイクル制御 (go / reset / halt)（Integrant を使う場合のみ）
-     - Portal ヘルパー (portal / portal-clear / portal-close)（Portal を使う場合のみ）
+     - Integrant ライフサイクル制御 (go / reset / halt)（コメントアウト配布、採用時に解除）
+     - Portal ヘルパー (portal / portal-clear / portal-close)（コメントアウト配布、採用時に解除）
 
-   扱い指針:
-     - **Integrant を使わないプロジェクト**（ライブラリ配布・単発 CLI 等）では、
-       Integrant セクション（ns :require の該当行、ig-state / config / go / reset /
-       halt / system の定義）を削除する。Malli instrumentation は REPL 起動後に
-       明示的に (malli-on!) を呼んで有効化する
-     - **Portal を使わないプロジェクト**では、Portal セクション（portal-instance /
-       portal-tap-fn / portal / portal-clear / portal-close の定義）を削除する
-     - 上記を削除しても try-catch で壊れないが、**未使用コードは残さない**のが本テンプレート
-       の方針（YAGNI、疲労最小化、原則 5 LLM は削除が苦手）。try-catch は依存がまだ導入
-       されていない起動直後の防御であって、未使用コードの放置を正当化するものではない
-     - Malli instrumentation セクションはすべてのプロジェクトで有効化したまま使う
-       （必須層、削除不可）
+   扱い指針（_POSSIBLE_ISSUES.md D-2 の実装）:
+     - 配布時点では Malli instrumentation のみが有効。Integrant / Portal セクションは
+       セクションヘッダごと `;;` で無効化されている。
+     - **Integrant を使うプロジェクト**: Integrant セクションを有効化する。
+       1. ns :require の `[integrant.core :as ig]` などの `;;` を除去
+       2. `config` / `go` / `halt` / `reset` / `reset-all` / `system` の各 defn の
+          `;;` を除去（IDE で複数行選択 → `;;` 一括除去）
+       3. `config` 関数の中身を実装（採用 stack に応じた読み込みロジック）
+     - **Portal を使うプロジェクト**: Portal セクションを同様に有効化する。
+       1. `portal-instance` / `portal-tap-fn` の atom 定義の `;;` を除去
+       2. `portal` / `portal-clear` / `portal-close` の defn の `;;` を除去
+     - Integrant や Portal を使わないプロジェクト: そのまま放置してよい。
+       コメントアウトされているため評価されず、依存が未解決でも REPL は壊れない。
+     - Malli instrumentation セクションは全プロジェクトで有効化したまま使う（必須層、削除不可）
 
    主要コマンド:
      (malli-on!)   Malli instrumentation を起動（全プロジェクト共通、必須層の活用）
      (malli-off!)  Malli instrumentation を停止
-     (go)          システム起動 + Malli instrumentation（Integrant を使う場合）
-     (reset)       リロード + 再起動（Integrant を使う場合）
-     (halt)        停止（Integrant を使う場合）
-     (system)      起動中システム参照（Integrant を使う場合）
-     (portal)      Portal 起動（Portal を使う場合）"
+     (go)          システム起動 + Malli instrumentation（Integrant を使う場合、解除後）
+     (reset)       リロード + 再起動（Integrant を使う場合、解除後）
+     (halt)        停止（Integrant を使う場合、解除後）
+     (system)      起動中システム参照（Integrant を使う場合、解除後）
+     (portal)      Portal 起動（Portal を使う場合、解除後）"
   (:require
    [clojure.tools.namespace.repl :as tn]
-   ;; --- Malli instrumentation（必須層、全プロジェクトで有効化）---
    [malli.dev :as mdev]
-   [malli.dev.pretty :as mpretty]
-   ;; --- Integrant を使う場合のみ（使わないなら以下 3 行を削除）---
-   ;; [integrant.core :as ig]
-   ;; [integrant.repl :as ig-repl]
-   ;; [integrant.repl.state :as ig-state]
-   ))
+   [malli.dev.pretty :as mpretty]))
+
+;; Integrant 採用時に追加する :require（上記 ns 宣言の :require 内にコピー）:
+;;
+;;   [integrant.core :as ig]
+;;   [integrant.repl :as ig-repl]
+;;   [integrant.repl.state :as ig-state]
+;;
+;; cljfmt の :sort-ns-references? により、コピー後も自動的にアルファベット順に並ぶ。
 
 ;; tools.namespace の refresh 対象
 ;; dev は対象から外す（ここをリロードすると user が消える事故を防ぐ）
@@ -124,75 +129,77 @@
 ;; Portal — データインスペクタ
 ;;
 ;; 【このセクションの扱い】
-;;   - Portal を使う場合: deps.edn の :dev に djblue/portal を追加し、そのまま使う
-;;   - Portal を使わない場合: 本セクション全体を削除する（portal-instance と
-;;     portal-tap-fn の atom、portal / portal-clear / portal-close の定義すべて）
+;;   - 配布時点ではセクション全体が `;;` で無効化されている（_POSSIBLE_ISSUES.md D-2）
+;;   - Portal を使う場合: deps.edn の :dev に djblue/portal を追加し、
+;;     以下の `(def` / `(defn` の行頭 `;;` を一括除去して有効化する
+;;     （IDE で複数行選択 → `;;` 除去）
+;;   - Portal を使わない場合: そのまま放置してよい。評価されないのでエラーにならない
 ;;
 ;; Portal は tap> で値を流し込んで GUI で可視化するインスペクタ。REPL 駆動開発で
 ;; 中間データ構造やトランザクション内容を可視化する用途に強い。
-;;
-;; 実装上の防御: Portal 依存がまだ導入されていない起動直後でも REPL が落ちないよう
-;; try-catch でラップしているが、これは未使用コードを残し続ける言い訳ではない。
-;; 使わないことが確定したら削除する。
 ;;
 ;; tap> ハンドラの増殖と残存を防ぐため、submit 関数を atom で保持し、
 ;; portal 呼び出し時は前回 submit があれば remove-tap してから新たに add-tap、
 ;; portal-close 時も必ず remove-tap してから atom をクリアする。
 ;; ---------------------------------------------------------------------------
 
-(def ^:private portal-instance (atom nil))
-(def ^:private portal-tap-fn   (atom nil))
+;; (def ^:private portal-instance (atom nil))
+;; (def ^:private portal-tap-fn   (atom nil))
 
-(defn portal
-  "Portal を起動し、tap> の出力先として登録する。
-   既に起動済みなら再起動せず、tap ハンドラも重複登録しない。
-   Portal 依存が存在しない環境では :portal-not-available を返す。"
-  []
-  (try
-    (require '[portal.api])
-    (let [open   (resolve 'portal.api/open)
-          submit (resolve 'portal.api/submit)]
-      (when-not @portal-instance
-        (reset! portal-instance (open)))
-      ;; 前回の tap 登録があれば外してから新たに登録（重複防止）
-      (when-let [prev @portal-tap-fn]
-        (remove-tap prev))
-      (add-tap @submit)
-      (reset! portal-tap-fn @submit)
-      @portal-instance)
-    (catch Exception _
-      :portal-not-available)))
+;; (defn portal
+;;   "Portal を起動し、tap> の出力先として登録する。
+;;    既に起動済みなら再起動せず、tap ハンドラも重複登録しない。
+;;    Portal 依存が存在しない環境では :portal-not-available を返す。"
+;;   []
+;;   (try
+;;     (require '[portal.api])
+;;     (let [open   (resolve 'portal.api/open)
+;;           submit (resolve 'portal.api/submit)]
+;;       (when-not @portal-instance
+;;         (reset! portal-instance (open)))
+;;       ;; 前回の tap 登録があれば外してから新たに登録（重複防止）
+;;       (when-let [prev @portal-tap-fn]
+;;         (remove-tap prev))
+;;       (add-tap @submit)
+;;       (reset! portal-tap-fn @submit)
+;;       @portal-instance)
+;;     (catch Exception _
+;;       :portal-not-available)))
 
-(defn portal-clear
-  "Portal ウィンドウの表示を消去する。成功時 :cleared、未接続時 :portal-not-available。"
-  []
-  (try
-    (require '[portal.api])
-    ((resolve 'portal.api/clear))
-    :cleared
-    (catch Exception _ :portal-not-available)))
+;; (defn portal-clear
+;;   "Portal ウィンドウの表示を消去する。成功時 :cleared、未接続時 :portal-not-available。"
+;;   []
+;;   (try
+;;     (require '[portal.api])
+;;     ((resolve 'portal.api/clear))
+;;     :cleared
+;;     (catch Exception _ :portal-not-available)))
 
-(defn portal-close
-  "Portal を閉じ、tap> への登録も解除する。
-   成功時 :closed、Portal 依存が存在しない等で呼び出せない時は :portal-not-available を返す。"
-  []
-  (try
-    (require '[portal.api])
-    ;; tap 登録解除を先に（close 後に submit 呼び出しが走らないように）
-    (when-let [prev @portal-tap-fn]
-      (remove-tap prev)
-      (reset! portal-tap-fn nil))
-    ((resolve 'portal.api/close))
-    (reset! portal-instance nil)
-    :closed
-    (catch Exception _ :portal-not-available)))
+;; (defn portal-close
+;;   "Portal を閉じ、tap> への登録も解除する。
+;;    成功時 :closed、Portal 依存が存在しない等で呼び出せない時は :portal-not-available を返す。"
+;;   []
+;;   (try
+;;     (require '[portal.api])
+;;     ;; tap 登録解除を先に（close 後に submit 呼び出しが走らないように）
+;;     (when-let [prev @portal-tap-fn]
+;;       (remove-tap prev)
+;;       (reset! portal-tap-fn nil))
+;;     ((resolve 'portal.api/close))
+;;     (reset! portal-instance nil)
+;;     :closed
+;;     (catch Exception _ :portal-not-available)))
 
 ;; ---------------------------------------------------------------------------
 ;; リッチコメント — 典型操作
+;;
+;; 以下は Integrant / Portal セクションのコメントを解除した後に使える例。
+;; 配布状態のままでは (go) / (portal) 等は未定義のため評価するとエラーになる。
+;; clj-kondo の :skip-comments true により lint 対象外。
 ;; ---------------------------------------------------------------------------
 
 (comment
-  ;; ブートストラップ後、採用 stack に応じて各セクションを有効化してから:
+  ;; ブートストラップ後、採用 stack に応じて上記セクションを有効化してから:
 
   ;; --- 立ち上げ（Integrant を含む stack 採用時）---
   ;; (go)
@@ -205,9 +212,9 @@
   ;; (keys (system))
 
   ;; --- Portal（dev-tools stack 採用時）---
-  (portal)
-  (tap> {:check :hello})
-  (portal-clear)
+  ;; (portal)
+  ;; (tap> {:check :hello})
+  ;; (portal-clear)
 
   ;; --- 終了 ---
   ;; (halt)

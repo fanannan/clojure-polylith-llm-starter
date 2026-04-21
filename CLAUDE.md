@@ -225,15 +225,18 @@ Malli は必須層。`dev/user.clj` で `(malli-on!)` / `(malli-off!)` helper �
 
 ### 5.5 完了条件（以下全通過で初めて完了報告）
 
-> **※ ブートストラップ期の例外**: `projects/` が未作成の時点（`project-guide/BOOTSTRAP_GUIDE.md` §2.9 完了前）では最終行の uber ビルドはスキップ。`BOOTSTRAP_GUIDE.md` §2.9 完了時点から本節の全行が適用される。
+> **※ ブートストラップ期の例外**: `projects/` が未作成の時点（`project-guide/BOOTSTRAP_GUIDE.md` §2.9 完了前）では最終行の uber ビルドはスキップ。`BOOTSTRAP_GUIDE.md` §2.9 完了時点から本節の全行が適用される。また、`workspace.edn` の `:top-namespace` が配布時プレースホルダ `"myorg.myapp"` のままだと `./scripts/check-workspace-integrity.sh` が失敗するので、ブートストラップ §2.1 のプレースホルダ置換完了が前提。
 
 ```bash
 clj -M:lint                                    # clj-kondo
 clj -M:format check                            # cljfmt
 clj -M:poly check                              # Polylith 構造
+./scripts/check-workspace-integrity.sh         # プレースホルダ残存・brick 登録・非推奨ライブラリ・:local/root 実在の総合検査
 clj -M:poly test :all                          # 全テスト
 cd projects/<deploy> && clj -T:build uber      # ビルド成功（<deploy> は DESIGN.md §8.2 で定めた project 名）
 ```
+
+`./scripts/check-workspace-integrity.sh` の内訳と役割分担は `scripts/README.md` を参照。`.clj-kondo/hooks/` の custom hook（コード内の構文・構造検知）と `scripts/` の shell script（設定ファイル・ディレクトリ構造検知）は補完関係にある。
 
 ---
 
@@ -419,8 +422,10 @@ LLM のフィードバックループは**編集単位でターン内に閉じ�
 clj -M:poly create component name:<n>
 ```
 
+**重要**: `poly create` は brick ディレクトリしか作らない。ルート `deps.edn` の `:dev :extra-paths` / `:extra-deps` とワークスペース構成の追従は手動で、`project-guide/BOOTSTRAP_GUIDE.md §2.5` の brick 追加チェックリストに従う。作業後は完了条件（§5.5）の `./scripts/check-workspace-integrity.sh` が登録漏れを検知する。
+
 雛形は `project-guide/POLYLITH_GUIDE.md` §2 のコード例を参照。Integrant key を提供する場合は entry base の `system.clj`（POLYLITH_GUIDE.md §2.2）の defmethod 集約に追加。
-詳細手順は `project-guide/POLYLITH_GUIDE.md`。
+詳細手順は `project-guide/POLYLITH_GUIDE.md` と `project-guide/BOOTSTRAP_GUIDE.md §2.5`。
 
 ### 8.3 コミット
 

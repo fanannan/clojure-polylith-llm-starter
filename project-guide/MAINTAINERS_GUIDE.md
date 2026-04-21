@@ -523,6 +523,35 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
 - **§3 と §8 の混同**: §3 は機能別の採用判断、§8 はテンプレート全体の禁止・非推奨。同じライブラリが両方に出るのは正常だが、役割を混同しない
 - **§4.2 の「避けるべき」欄の肥大化**: stack 固有の重要な注意のみ記載。汎用的な非推奨は §8 への参照で十分
 
+### 5.10 機械化戦略の実装手段（hook と script の役割分担）
+
+`_POSSIBLE_ISSUES.md` G-2 の実装。本テンプレートの §1.2.1 機械化原則を実装する手段は **clj-kondo custom hook**（`.clj-kondo/hooks/`）と **shell script**（`scripts/`）の 2 種に分かれる。両者は補完関係にあり、重複開発を避けるため役割分担を明確にする。
+
+| 領分 | 実装場所 | 得意領域 | 代表例（`_POSSIBLE_ISSUES.md` 参照） |
+|---|---|---|---|
+| **コード内の構文・構造パターン** | `.clj-kondo/hooks/` + `.clj-kondo/config.edn` | Clojure コード AST 解析 | A-1（`m/=>` 付与）、A-4（`Exception.` 禁止）、A-6（非推奨ライブラリの**コード使用**）、A-7（関数行数）、A-10（`catch Throwable` 禁止）、A-11（空 catch）、A-12（ドメイン層 I/O） |
+| **設定ファイル・ディレクトリ構造・配布物整合性** | `scripts/*.sh` | EDN 構造検査、ファイル実在確認、採用宣言検査 | D-4（brick 登録整合）、D-5（hook 取り込み）、D-6（プレースホルダ残存）、F-1（総合検査）、F-3（非推奨ライブラリの**deps.edn 採用**） |
+
+**補完関係の典型例**: 非推奨ライブラリ `timbre` は、コード内で `timbre/info` を呼び出している使用箇所は `clj-kondo :discouraged-var`（A-6）が、`deps.edn` に `com.taoensso/timbre` を採用宣言している箇所は `scripts/check-deprecated-libs.sh`（F-3）が検知する。両方で二重に防御する。
+
+**新しい機械化候補を導入する際の判断手順**:
+
+1. 検査対象が Clojure コード内のパターンか、設定ファイル・ディレクトリ構造か
+2. コード内パターン → `.clj-kondo/hooks/` に custom hook を追加、`.clj-kondo/config.edn` で登録
+3. 設定・構造 → `scripts/check-<topic>.sh` を追加、`scripts/check-workspace-integrity.sh` の `run_step` で起動、`scripts/README.md` を更新
+4. 完了条件（`CLAUDE.md §5.5`）への組み込みは、shell script 側は `check-workspace-integrity.sh` が既に含まれるので個別追加不要。custom hook は `clj -M:lint` に含まれるので個別追加不要
+
+### 5.11 `lint-import-hooks.sh` 再実行のタイミング
+
+`scripts/lint-import-hooks.sh`（`_POSSIBLE_ISSUES.md` D-5）は依存ライブラリが提供する clj-kondo hook を `.clj-kondo/configs/` に取り込む。以下のタイミングで再実行する:
+
+- **ブートストラップ初回**: `BOOTSTRAP_GUIDE.md §2.9` で実行
+- **brick deps.edn への新ライブラリ追加時**: 本節 §5.2 の手順に組み込む
+- **STACK_GUIDE.md §4.2 推奨ライブラリ採用時**: §5.6.3（新規ライブラリ採用時の手順）に組み込む
+- **`clj -M:outdated` で最新化した後**: 本節 §5.1 の更新手順に組み込む
+
+再実行を忘れると、新ライブラリ固有の lint ルールが機能しないまま開発が進む。**このタイミングを文書化せずに依存追加だけ行うと、A-6（非推奨ライブラリ検知）や各ライブラリ提供の警告が無効化されるため、必ず上記タイミングで実行する**。
+
 ---
 
 ## 6. 避けるべきアンチパターン
