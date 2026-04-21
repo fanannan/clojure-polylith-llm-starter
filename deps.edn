@@ -114,11 +114,12 @@
   :lint
   {:replace-deps {clj-kondo/clj-kondo {:mvn/version "2024.11.14"}}
    :main-opts    ["-m" "clj-kondo.main"
+                  "--fail-level" "warning"
                   "--lint" "components" "bases" "development/src"]}
 
   ;; 初回セットアップで依存ライブラリの clj-kondo hook を取り込む場合、
   ;; tools.deps の :main-opts はシェル展開されないため、以下をシェルで実行する:
-  ;;   clj -M:lint --copy-configs --dependencies --lint "$(clojure -A:dev -Spath)"
+  ;;   clj -M:lint --copy-configs --dependencies --lint "$(clj -A:dev -Spath)"
   ;; BOOTSTRAP_GUIDE.md §2.9 参照。
 
   ;; ----------------------------------------------------------------

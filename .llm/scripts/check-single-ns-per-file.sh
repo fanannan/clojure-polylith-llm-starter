@@ -30,7 +30,7 @@ while IFS= read -r f; do
   [ -z "$f" ] && continue
   count="$(grep -cE '^\(ns[[:space:]]' "$f" || true)"
   if [ "$count" -gt 1 ]; then
-    echo "ERROR: $f に (ns ...) 宣言が $count 個あります（CODING_GUIDE.md §14.1
+    echo "ERROR: $f に (ns ...) 宣言が $count 個あります（CODING_GUIDE.md §14.1）"
     grep -nE '^\(ns[[:space:]]' "$f" | sed 's/^/  /'
     found=1
   fi

@@ -1,245 +1,245 @@
 ;; .clj-kondo/config.edn
 ;;
 ;; 配布形態:
-;; - LLM 挙動を機械化する核心 linter は有効（必須層）
-;; - 採用 stack に応じた discouraged-var（I/O ライブラリ等）、ドメイン NS グループは
-;; デフォルト無効、該当 stack 採用時に有効化
-;; - clj-kondo の --copy-configs --dependencies で各ライブラリ提供 hook を取り込む
+;;   - LLM 挙動を機械化する核心 linter は有効（必須層）
+;;   - 採用 stack に応じた discouraged-var（I/O ライブラリ等）、ドメイン NS グループは
+;;     デフォルト無効、該当 stack 採用時に有効化
+;;   - clj-kondo の --copy-configs --dependencies で各ライブラリ提供 hook を取り込む
 
 {:linters
  {;; --- 致命的: error 扱い（LLM の典型的な誤りを機械化） ---
- :unresolved-symbol {:level :error}
- :unresolved-namespace {:level :error}
- :unresolved-var {:level :error}
- :type-mismatch {:level :error}
- :invalid-arity {:level :error}
- :unused-binding {:level :error}
- :unused-private-var {:level :error}
- :unused-namespace {:level :error}
- :unused-import {:level :error}
- :unused-referred-var {:level :error}
- :duplicate-require {:level :error}
- :duplicate-map-key {:level :error}
- :duplicate-set-key {:level :error}
- :missing-clause-in-try {:level :error}
- :missing-body-in-when {:level :error}
- :missing-else-branch {:level :off} ; if without else は多用する
- :uninitialized-var {:level :error}
- :redundant-do {:level :error}
- :redundant-let {:level :error}
- :redundant-fn-wrapper {:level :error}
- :redefined-var {:level :error}
- :inline-def {:level :error}
- :cond-else {:level :error}
+  :unresolved-symbol            {:level :error}
+  :unresolved-namespace         {:level :error}
+  :unresolved-var               {:level :error}
+  :type-mismatch                {:level :error}
+  :invalid-arity                {:level :error}
+  :unused-binding               {:level :error}
+  :unused-private-var           {:level :error}
+  :unused-namespace             {:level :error}
+  :unused-import                {:level :error}
+  :unused-referred-var          {:level :error}
+  :duplicate-require            {:level :error}
+  :duplicate-map-key            {:level :error}
+  :duplicate-set-key            {:level :error}
+  :missing-clause-in-try        {:level :error}
+  :missing-body-in-when         {:level :error}
+  :missing-else-branch          {:level :off}      ; if without else は多用する
+  :uninitialized-var            {:level :error}
+  :redundant-do                 {:level :error}
+  :redundant-let                {:level :error}
+  :redundant-fn-wrapper         {:level :error}
+  :redefined-var                {:level :error}
+  :inline-def                   {:level :error}
+  :cond-else                    {:level :error}
 
- ;; --- 段階 1: 本テンプレート原則と直結する必須追加（error 昇格、2026-04 拡張） ---
- :destructured-or-binding-of-same-map {:level :error} ; 暗黙挙動依存
- :unused-value {:level :error} ; §1.1.2 副作用明示化
- :misplaced-docstring {:level :error} ; §15.1 docstring
- :aliased-namespace-var-usage {:level :error} ; :as-alias 誤用
- :missing-test-assertion {:level :error} ; 空 deftest 禁止
- :shadowed-fn-param {:level :error} ; バグ検知
- :unreachable-code {:level :error} ; バグ検知
- :unbound-destructuring-default {:level :error} ; バグ検知
- :single-logical-operand {:level :error} ; (and x) バグ検知
- :single-operand-comparison {:level :error} ; (< 1) バグ検知
- :deprecated-var {:level :error} ; ライブラリ更新対応
- :deprecated-namespace {:level :error} ; 同上
- :case-quoted-test {:level :error} ; case のクォート誤り
- :self-requiring-namespace {:level :error} ; ns 自己参照バグ
- :namespace-name-mismatch {:level :error} ; ns 名とファイル名不一致
- :clj-kondo-config {:level :error} ; 設定ファイル自体の誤り（自己適用）
- :deps.edn {:level :error} ; deps.edn 記法誤り
+  ;; --- 段階 1: 本テンプレート原則と直結する必須追加（error 昇格、2026-04 拡張） ---
+  :destructured-or-binding-of-same-map {:level :error}  ; 暗黙挙動依存
+  :unused-value                 {:level :error}  ; §1.1.2 副作用明示化
+  :misplaced-docstring          {:level :error}  ; §15.1 docstring
+  :aliased-namespace-var-usage  {:level :error}  ; :as-alias 誤用
+  :missing-test-assertion       {:level :error}  ; 空 deftest 禁止
+  :shadowed-fn-param            {:level :error}  ; バグ検知
+  :unreachable-code             {:level :error}  ; バグ検知
+  :unbound-destructuring-default {:level :error} ; バグ検知
+  :single-logical-operand       {:level :error}  ; (and x) バグ検知
+  :single-operand-comparison    {:level :error}  ; (< 1) バグ検知
+  :deprecated-var               {:level :error}  ; ライブラリ更新対応
+  :deprecated-namespace         {:level :error}  ; 同上
+  :case-quoted-test             {:level :error}  ; case のクォート誤り
+  :self-requiring-namespace     {:level :error}  ; ns 自己参照バグ
+  :namespace-name-mismatch      {:level :error}  ; ns 名とファイル名不一致
+  :clj-kondo-config             {:level :error}  ; 設定ファイル自体の誤り（自己適用）
+  :deps.edn                     {:level :error}  ; deps.edn 記法誤り
 
- ;; --- 段階 1: バグ温床系の warning 追加 ---
- :warn-on-reflection {:level :warning} ; §9.2 reflection 排除
- :equals-float {:level :warning} ; 浮動小数点 = 比較バグ
- :condition-always-true {:level :warning} ; 関数値を条件に渡す誤り
+  ;; --- 段階 1: バグ温床系の warning 追加 ---
+  :warn-on-reflection           {:level :warning}  ; §9.2 reflection 排除
+  :equals-float                 {:level :warning}  ; 浮動小数点 = 比較バグ
+  :condition-always-true        {:level :warning}  ; 関数値を条件に渡す誤り
 
- ;; --- 段階 2: コード品質向上 ---
- :equals-expected-position {:level :warning :position :first :only-in-test-assertion true}
- :equals-true {:level :warning}
- :equals-false {:level :warning}
- :def-fn {:level :warning} ; defn 推奨
- :docstring-blank {:level :error} ; 空 docstring 禁止
- :docstring-no-summary {:level :off} ; 英語句読点前提のため日本語 docstring と不整合。off で運用
- :docstring-leading-trailing-whitespace {:level :warning}
- :not-empty? {:level :error} ; (not (empty? x)) 慣用違反
- :underscore-in-namespace {:level :error} ; ns 名アンダースコア禁止
- :unsorted-imports {:level :error} ; :unsorted-required-namespaces と対称
- :keyword-binding {:level :error} ; :keys 誤用
- :aliased-namespace-symbol {:level :warning}
- :unused-alias {:level :warning}
- :used-underscored-binding {:level :warning}
- :redundant-ignore {:level :warning} ; 無効な :clj-kondo/ignore
- :dynamic-var-not-earmuffed {:level :warning} ; ^:dynamic var の earmuff 慣用
- :earmuffed-var-not-dynamic {:level :warning}
- :main-without-gen-class {:level :warning} ; uberjar ビルド対応
+  ;; --- 段階 2: コード品質向上 ---
+  :equals-expected-position     {:level :warning :position :first :only-in-test-assertion true}
+  :equals-true                  {:level :warning}
+  :equals-false                 {:level :warning}
+  :def-fn                       {:level :warning}  ; defn 推奨
+  :docstring-blank              {:level :error}    ; 空 docstring 禁止
+  :docstring-no-summary         {:level :off}      ; 英語句読点前提のため日本語 docstring と不整合。off で運用
+  :docstring-leading-trailing-whitespace {:level :warning}
+  :not-empty?                   {:level :error}    ; (not (empty? x)) 慣用違反
+  :underscore-in-namespace      {:level :error}    ; ns 名アンダースコア禁止
+  :unsorted-imports             {:level :error}    ; :unsorted-required-namespaces と対称
+  :keyword-binding              {:level :error}    ; :keys 誤用
+  :aliased-namespace-symbol     {:level :warning}
+  :unused-alias                 {:level :warning}
+  :used-underscored-binding     {:level :warning}
+  :redundant-ignore             {:level :warning}  ; 無効な :clj-kondo/ignore
+  :dynamic-var-not-earmuffed    {:level :warning}  ; ^:dynamic var の earmuff 慣用
+  :earmuffed-var-not-dynamic    {:level :warning}
+  :main-without-gen-class       {:level :warning}  ; uberjar ビルド対応
 
- ;; --- 警告 ---
- :missing-docstring {:level :warning}
- :shadowed-var {:level :warning}
- :reduce-without-init {:level :warning}
- :loop-without-recur {:level :warning}
- :line-length {:level :warning :max-line-length 120}
+  ;; --- 警告 ---
+  :missing-docstring            {:level :warning}
+  :shadowed-var                 {:level :warning}
+  :reduce-without-init          {:level :warning}
+  :loop-without-recur           {:level :warning}
+  :line-length                  {:level :warning :max-line-length 120}
 
- ;; --- 禁止構文 ---
- :refer-all {:level :error :exclude [clojure.test]}
- :use {:level :error}
- :unsorted-required-namespaces {:level :error} ;採用: CODING_GUIDE §14.4 の機械化
+  ;; --- 禁止構文 ---
+  :refer-all                    {:level :error :exclude [clojure.test]}
+  :use                          {:level :error}
+  :unsorted-required-namespaces {:level :error}
 
- ;; ---------------------------------------------------------------
- ;; discouraged-var — LLM の悪手を error で機械的に封じる
- ;;
- ;; 本節は `clj -M:lint` の対象（deps.edn :lint の --lint 引数: components, bases,
- ;; development/src）に対して適用される。projects/ 配下の build.clj 等はリント対象外
- ;; のため、build.clj での println 使用は CLAUDE.md §4.3 の例外条項により許容される。
- ;; ---------------------------------------------------------------
- :discouraged-var
- {;; --- 必須（全プロジェクト）---
- clojure.core/println {:message "println はアプリケーションコードで禁止。tap> または構造化ログ（mulog/log）を使う。build.clj 等は例外（CLAUDE.md §4.3）"}
- clojure.core/prn {:message "prn はアプリケーションコードで禁止。tap> または構造化ログ（mulog/log）を使う。build.clj 等は例外（CLAUDE.md §4.3）"}
- clojure.core/pr-str {:message "デバッグ目的なら tap> を使う"}
- clojure.core/with-redefs {:message "with-redefs は設計失敗サイン。依存注入を検討"}
+  ;; ---------------------------------------------------------------
+  ;; discouraged-var — LLM の悪手を error で機械的に封じる
+  ;;
+  ;; 本節は `clj -M:lint` の対象（deps.edn :lint の --lint 引数: components, bases,
+  ;; development/src）に対して適用される。projects/ 配下の build.clj 等はリント対象外
+  ;; のため、build.clj での println 使用は CLAUDE.md §4.3 の例外条項により許容される。
+  ;; ---------------------------------------------------------------
+  :discouraged-var
+  {;; --- 必須（全プロジェクト）---
+   clojure.core/println       {:message "println はアプリケーションコードで禁止。tap> または構造化ログ（mulog/log）を使う。build.clj 等は例外（CLAUDE.md §4.3）"}
+   clojure.core/prn           {:message "prn はアプリケーションコードで禁止。tap> または構造化ログ（mulog/log）を使う。build.clj 等は例外（CLAUDE.md §4.3）"}
+   clojure.core/pr-str        {:message "デバッグ目的なら tap> を使う"}
+   clojure.core/with-redefs   {:message "with-redefs は設計失敗サイン。依存注入を検討"}
 
- ;; --- 生の Exception コンストラクタ禁止（ex-info 義務化、CODING_GUIDE §7.1）---
- ;; Clojure 例外は必ず ex-info で投げる。catch 側で ex-data が nil になるのを防ぐ。
- java.lang.Exception. {:message "生の Exception コンストラクタ禁止。(ex-info msg data) を使う（CODING_GUIDE §7.1)"}
- java.lang.RuntimeException. {:message "生の RuntimeException コンストラクタ禁止。(ex-info msg data) を使う（CODING_GUIDE §7.1)"}
- java.lang.IllegalStateException. {:message "生の IllegalStateException コンストラクタ禁止。(ex-info msg data) を使う"}
- java.lang.IllegalArgumentException. {:message "生の IllegalArgumentException コンストラクタ禁止。(ex-info msg data) を使う"}
+   ;; --- A-4: 生の Exception コンストラクタ禁止（ex-info 義務化、CODING_GUIDE §7.1）---
+   ;; Clojure 例外は必ず ex-info で投げる。catch 側で ex-data が nil になるのを防ぐ。
+   java.lang.Exception.         {:message "生の Exception コンストラクタ禁止。(ex-info msg data) を使う（CODING_GUIDE §7.1）"}
+   java.lang.RuntimeException.  {:message "生の RuntimeException コンストラクタ禁止。(ex-info msg data) を使う（CODING_GUIDE §7.1）"}
+   java.lang.IllegalStateException. {:message "生の IllegalStateException コンストラクタ禁止。(ex-info msg data) を使う"}
+   java.lang.IllegalArgumentException. {:message "生の IllegalArgumentException コンストラクタ禁止。(ex-info msg data) を使う"}
 
- ;; --- production コードでの Thread/sleep 禁止（副作用隔離）---
- ;; development/src は clj-kondo の除外対象外だが、REPL 駆動開発中の一時的な使用は許容。
- ;; components/ / bases/ で検知された場合のみ問題化。
- java.lang.Thread/sleep {:message "production コードで Thread/sleep 禁止。スケジューリングは chime、非同期制御は core.async で表現"}
+   ;; --- A-18: production コードでの Thread/sleep 禁止（副作用隔離）---
+   ;; development/src は clj-kondo の除外対象外だが、REPL 駆動開発中の一時的な使用は許容。
+   ;; components/ / bases/ で検知された場合のみ問題化。
+   java.lang.Thread/sleep       {:message "production コードで Thread/sleep 禁止。スケジューリングは chime、非同期制御は core.async で表現"}
 
- ;; --- I/O 系ライブラリを採用したら、対応する行をコメント解除して有効化 ---
- ;; ドメイン層での I/O 呼び出しを error 化したい場合に使う。
- ;; より厳密にドメイン層（特定 component）のみ禁止したい場合は、下の :ns-groups + :config-in-ns を使う。
- ;; next.jdbc/get-datasource {:message "ドメイン層からの DB 操作禁止"}
- ;; hato.client/get {:message "ドメイン層からの HTTP 呼び出し禁止"}
- ;; hato.client/post {:message "ドメイン層からの HTTP 呼び出し禁止"}
+   ;; --- I/O 系ライブラリを採用したら、対応する行をコメント解除して有効化 ---
+   ;; ドメイン層での I/O 呼び出しを error 化したい場合に使う。
+   ;; より厳密にドメイン層（特定 component）のみ禁止したい場合は、下の :ns-groups + :config-in-ns を使う。
+   ;; next.jdbc/get-datasource   {:message "ドメイン層からの DB 操作禁止"}
+   ;; hato.client/get            {:message "ドメイン層からの HTTP 呼び出し禁止"}
+   ;; hato.client/post           {:message "ドメイン層からの HTTP 呼び出し禁止"}
 
- ;; --- STACK_GUIDE.md §8.2 非推奨ライブラリのコード内使用検知 ---
- ;; deps.edn 採用宣言の検知は scripts/check-deprecated-libs.shが担う。
- ;; 以下は代表シンボルで、コード内で参照されれば :discouraged-var が発火する。
- ;; ライブラリを deps.edn に追加して hook を取り込む（scripts/lint-import-hooks.sh）と
- ;; このルールが有効になる。
- taoensso.timbre/info {:message "timbre は非推奨。mulog を使う（STACK_GUIDE §8.2）"}
- taoensso.timbre/warn {:message "timbre は非推奨。mulog を使う（STACK_GUIDE §8.2）"}
- taoensso.timbre/error {:message "timbre は非推奨。mulog を使う（STACK_GUIDE §8.2）"}
- taoensso.timbre/debug {:message "timbre は非推奨。mulog を使う（STACK_GUIDE §8.2）"}
- compojure.core/GET {:message "Compojure は非推奨。reitit-ring を使う（STACK_GUIDE §8.2）"}
- compojure.core/POST {:message "Compojure は非推奨。reitit-ring を使う（STACK_GUIDE §8.2）"}
- compojure.core/defroutes {:message "Compojure は非推奨。reitit-ring を使う（STACK_GUIDE §8.2）"}
- clojure.data.json/read-str {:message "data.json は非推奨。jsonista を使う（STACK_GUIDE §8.2）"}
- clojure.data.json/write-str {:message "data.json は非推奨。jsonista を使う（STACK_GUIDE §8.2）"}
- cheshire.core/parse-string {:message "Cheshire は非推奨。jsonista を使う（STACK_GUIDE §8.2）"}
- cheshire.core/generate-string {:message "Cheshire は非推奨。jsonista を使う（STACK_GUIDE §8.2）"}
- clj-http.client/get {:message "clj-http は新規採用非推奨。hato を使う（STACK_GUIDE §8.2）"}
- clj-http.client/post {:message "clj-http は新規採用非推奨。hato を使う（STACK_GUIDE §8.2）"}
+   ;; --- A-6: STACK_GUIDE.md §8.2 非推奨ライブラリのコード内使用検知 ---
+   ;; deps.edn 採用宣言の検知は scripts/check-deprecated-libs.shが担う。
+   ;; 以下は代表シンボルで、コード内で参照されれば :discouraged-var が発火する。
+   ;; ライブラリを deps.edn に追加して hook を取り込む（scripts/lint-import-hooks.sh）と
+   ;; このルールが有効になる。
+   taoensso.timbre/info       {:message "timbre は非推奨。mulog を使う（STACK_GUIDE §8.2）"}
+   taoensso.timbre/warn       {:message "timbre は非推奨。mulog を使う（STACK_GUIDE §8.2）"}
+   taoensso.timbre/error      {:message "timbre は非推奨。mulog を使う（STACK_GUIDE §8.2）"}
+   taoensso.timbre/debug      {:message "timbre は非推奨。mulog を使う（STACK_GUIDE §8.2）"}
+   compojure.core/GET         {:message "Compojure は非推奨。reitit-ring を使う（STACK_GUIDE §8.2）"}
+   compojure.core/POST        {:message "Compojure は非推奨。reitit-ring を使う（STACK_GUIDE §8.2）"}
+   compojure.core/defroutes   {:message "Compojure は非推奨。reitit-ring を使う（STACK_GUIDE §8.2）"}
+   clojure.data.json/read-str {:message "data.json は非推奨。jsonista を使う（STACK_GUIDE §8.2）"}
+   clojure.data.json/write-str {:message "data.json は非推奨。jsonista を使う（STACK_GUIDE §8.2）"}
+   cheshire.core/parse-string {:message "Cheshire は非推奨。jsonista を使う（STACK_GUIDE §8.2）"}
+   cheshire.core/generate-string {:message "Cheshire は非推奨。jsonista を使う（STACK_GUIDE §8.2）"}
+   clj-http.client/get        {:message "clj-http は新規採用非推奨。hato を使う（STACK_GUIDE §8.2）"}
+   clj-http.client/post       {:message "clj-http は新規採用非推奨。hato を使う（STACK_GUIDE §8.2）"}
 
- ;; --- STACK_GUIDE §8.2 拡張分（saas/ml/llm-app/edge stack 導入に伴う追加） ---
- ;; namespace 全体の require 禁止は polyguard.forbidden-requires hook で検知する。
- ;; ここは頻用 entry point に限定（hook と重複する場合もあるが、両者発火で安全側）。
+   ;; --- STACK_GUIDE §8.2 拡張分（saas/ml/llm-app/edge stack 導入に伴う追加） ---
+   ;; namespace 全体の require 禁止は polyguard.forbidden-requires hook で検知する。
+   ;; ここは頻用 entry point に限定（hook と重複する場合もあるが、両者発火で安全側）。
 
- ;; HTTP サーバ（aleph / manifold / immutant）
- aleph.http/start-server {:message "aleph は非推奨。Jetty / http-kit を使う（STACK_GUIDE §8.2）"}
- manifold.deferred/success-deferred {:message "manifold は非推奨。core.async を使う（STACK_GUIDE §8.2）"}
- manifold.stream/stream {:message "manifold は非推奨。core.async channel を使う（STACK_GUIDE §8.2）"}
+   ;; HTTP サーバ（aleph / manifold / immutant）
+   aleph.http/start-server    {:message "aleph は非推奨。Jetty / http-kit を使う（STACK_GUIDE §8.2）"}
+   manifold.deferred/success-deferred {:message "manifold は非推奨。core.async を使う（STACK_GUIDE §8.2）"}
+   manifold.stream/stream     {:message "manifold は非推奨。core.async channel を使う（STACK_GUIDE §8.2）"}
 
- ;; ルーティング（bidi）
- bidi.ring/make-handler {:message "bidi は新規採用非推奨。reitit を使う（STACK_GUIDE §8.2）"}
+   ;; ルーティング（bidi）
+   bidi.ring/make-handler     {:message "bidi は新規採用非推奨。reitit を使う（STACK_GUIDE §8.2）"}
 
- ;; DB（clojure.java.jdbc / Korma）
- clojure.java.jdbc/query {:message "clojure.java.jdbc は非推奨。next.jdbc を使う（STACK_GUIDE §8.2）"}
- clojure.java.jdbc/execute! {:message "clojure.java.jdbc は非推奨。next.jdbc を使う（STACK_GUIDE §8.2）"}
- clojure.java.jdbc/insert! {:message "clojure.java.jdbc は非推奨。next.jdbc を使う（STACK_GUIDE §8.2）"}
- korma.core/select {:message "Korma は非推奨（ORM）。HoneySQL + next.jdbc を使う（STACK_GUIDE §8.2）"}
- korma.core/defentity {:message "Korma は非推奨（ORM）。HoneySQL + next.jdbc を使う（STACK_GUIDE §8.2）"}
+   ;; DB（clojure.java.jdbc / Korma）
+   clojure.java.jdbc/query    {:message "clojure.java.jdbc は非推奨。next.jdbc を使う（STACK_GUIDE §8.2）"}
+   clojure.java.jdbc/execute! {:message "clojure.java.jdbc は非推奨。next.jdbc を使う（STACK_GUIDE §8.2）"}
+   clojure.java.jdbc/insert!  {:message "clojure.java.jdbc は非推奨。next.jdbc を使う（STACK_GUIDE §8.2）"}
+   korma.core/select          {:message "Korma は非推奨（ORM）。HoneySQL + next.jdbc を使う（STACK_GUIDE §8.2）"}
+   korma.core/defentity       {:message "Korma は非推奨（ORM）。HoneySQL + next.jdbc を使う（STACK_GUIDE §8.2）"}
 
- ;; 設定管理（environ / immuconf）
- environ.core/env {:message "environ は非推奨。aero の #env を使う（STACK_GUIDE §8.2）"}
+   ;; 設定管理（environ / immuconf）
+   environ.core/env           {:message "environ は非推奨。aero の #env を使う（STACK_GUIDE §8.2）"}
 
- ;; 検証（clojure.spec.alpha）
- clojure.spec.alpha/fdef {:message "clojure.spec.alpha は非推奨。Malli m/=> を使う（STACK_GUIDE §8.2）"}
- clojure.spec.alpha/def {:message "clojure.spec.alpha は非推奨。Malli を使う（STACK_GUIDE §8.2）"}
- clojure.spec.alpha/valid? {:message "clojure.spec.alpha は非推奨。malli.core/validate を使う（STACK_GUIDE §8.2）"}
+   ;; 検証（clojure.spec.alpha）
+   clojure.spec.alpha/fdef    {:message "clojure.spec.alpha は非推奨。Malli m/=> を使う（STACK_GUIDE §8.2）"}
+   clojure.spec.alpha/def     {:message "clojure.spec.alpha は非推奨。Malli を使う（STACK_GUIDE §8.2）"}
+   clojure.spec.alpha/valid?  {:message "clojure.spec.alpha は非推奨。malli.core/validate を使う（STACK_GUIDE §8.2）"}
 
- ;; ライフサイクル（Component / mount）
- com.stuartsierra.component/system-map {:message "Component は非推奨（新規）。Integrant を使う（STACK_GUIDE §8.2）"}
- com.stuartsierra.component/start {:message "Component は非推奨（新規）。Integrant を使う（STACK_GUIDE §8.2）"}
- mount.core/defstate {:message "mount は非推奨。Integrant を使う（STACK_GUIDE §8.2）"}
- mount.core/start {:message "mount は非推奨。Integrant を使う（STACK_GUIDE §8.2）"}
+   ;; ライフサイクル（Component / mount）
+   com.stuartsierra.component/system-map {:message "Component は非推奨（新規）。Integrant を使う（STACK_GUIDE §8.2）"}
+   com.stuartsierra.component/start {:message "Component は非推奨（新規）。Integrant を使う（STACK_GUIDE §8.2）"}
+   mount.core/defstate        {:message "mount は非推奨。Integrant を使う（STACK_GUIDE §8.2）"}
+   mount.core/start           {:message "mount は非推奨。Integrant を使う（STACK_GUIDE §8.2）"}
 
- ;; 認証（friend）
- cemerick.friend/authenticate {:message "friend は非推奨（メンテ停止）。buddy-sign を使う（STACK_GUIDE §8.2）"}
+   ;; 認証（friend）
+   cemerick.friend/authenticate {:message "friend は非推奨（メンテ停止）。buddy-sign を使う（STACK_GUIDE §8.2）"}
 
- ;; 多言語（tower）
- taoensso.tower/t {:message "tower は非推奨。taoensso/tempura を使う（STACK_GUIDE §8.2）"}
+   ;; 多言語（tower）
+   taoensso.tower/t           {:message "tower は非推奨。taoensso/tempura を使う（STACK_GUIDE §8.2）"}
 
- ;; メトリクス（iapetos）
- iapetos.core/register {:message "metrics-clojure は非推奨。mulog で統一（STACK_GUIDE §8.2）"}
+   ;; メトリクス（iapetos）
+   iapetos.core/register      {:message "metrics-clojure は非推奨。mulog で統一（STACK_GUIDE §8.2）"}
 
- ;; スケジューリング（at-at / tea-time）
- overtone.at-at/mk-pool {:message "at-at は非推奨。chime を使う（STACK_GUIDE §8.2）"}
- overtone.at-at/every {:message "at-at は非推奨。chime を使う（STACK_GUIDE §8.2）"}
- tea-time.core/every {:message "tea-time は非推奨（メンテ停止）。chime を使う（STACK_GUIDE §8.2）"}
+   ;; スケジューリング（at-at / tea-time）
+   overtone.at-at/mk-pool     {:message "at-at は非推奨。chime を使う（STACK_GUIDE §8.2）"}
+   overtone.at-at/every       {:message "at-at は非推奨。chime を使う（STACK_GUIDE §8.2）"}
+   tea-time.core/every        {:message "tea-time は非推奨（メンテ停止）。chime を使う（STACK_GUIDE §8.2）"}
 
- ;; リトライ（robert.bruce）
- robert.bruce/try-try-again {:message "robert.bruce は非推奨（メンテ停止）。sunng87/diehard を使う（STACK_GUIDE §8.2）"}
+   ;; リトライ（robert.bruce）
+   robert.bruce/try-try-again {:message "robert.bruce は非推奨（メンテ停止）。sunng87/diehard を使う（STACK_GUIDE §8.2）"}
 
- ;; Markdown（endophile）
- endophile.core/mp {:message "endophile は非推奨（メンテ停止）。markdown-clj を使う（STACK_GUIDE §8.2）"}
+   ;; Markdown（endophile）
+   endophile.core/mp          {:message "endophile は非推奨（メンテ停止）。markdown-clj を使う（STACK_GUIDE §8.2）"}
 
- ;; 全文検索（elastisch）
- clojurewerkz.elastisch.rest/connect {:message "elastisch は非推奨（メンテ停止）。mpenet/spandex を使う（STACK_GUIDE §8.2）"}
+   ;; 全文検索（elastisch）
+   clojurewerkz.elastisch.rest/connect {:message "elastisch は非推奨（メンテ停止）。mpenet/spandex を使う（STACK_GUIDE §8.2）"}
 
- ;; E2E テスト（clj-webdriver）
- clj-webdriver.taxi/set-driver! {:message "clj-webdriver は非推奨（メンテ停止）。etaoin を使う（STACK_GUIDE §8.2）"}
- clj-webdriver.taxi/click {:message "clj-webdriver は非推奨（メンテ停止）。etaoin を使う（STACK_GUIDE §8.2）"}
+   ;; E2E テスト（clj-webdriver）
+   clj-webdriver.taxi/set-driver! {:message "clj-webdriver は非推奨（メンテ停止）。etaoin を使う（STACK_GUIDE §8.2）"}
+   clj-webdriver.taxi/click   {:message "clj-webdriver は非推奨（メンテ停止）。etaoin を使う（STACK_GUIDE §8.2）"}
 
- ;; AWS SDK（Amazonica）
- amazonica.aws.s3/list-buckets {:message "Amazonica は非推奨。cognitect aws-api を使う（STACK_GUIDE §8.2）"}
- amazonica.aws.s3/put-object {:message "Amazonica は非推奨。cognitect aws-api を使う（STACK_GUIDE §8.2）"}
+   ;; AWS SDK（Amazonica）
+   amazonica.aws.s3/list-buckets {:message "Amazonica は非推奨。cognitect aws-api を使う（STACK_GUIDE §8.2）"}
+   amazonica.aws.s3/put-object   {:message "Amazonica は非推奨。cognitect aws-api を使う（STACK_GUIDE §8.2）"}
 
- ;; 数値計算（incanter）
- incanter.core/dataset {:message "incanter は非推奨。scicloj/tablecloth を使う（STACK_GUIDE §8.2、§3.36）"}
- incanter.stats/mean {:message "incanter は非推奨。scicloj/scicloj.ml 等を使う（STACK_GUIDE §8.2）"}
+   ;; 数値計算（incanter）
+   incanter.core/dataset      {:message "incanter は非推奨。scicloj/tablecloth を使う（STACK_GUIDE §8.2、§3.36）"}
+   incanter.stats/mean        {:message "incanter は非推奨。scicloj/scicloj.ml 等を使う（STACK_GUIDE §8.2）"}
 
- ;; MQTT（machine-head）
- clojurewerkz.machine-head.client/connect {:message "machine-head は非推奨。paho.mqtt.java 直接利用（STACK_GUIDE §8.2、§3.39）"}
+   ;; MQTT（machine-head）
+   clojurewerkz.machine-head.client/connect {:message "machine-head は非推奨。paho.mqtt.java 直接利用（STACK_GUIDE §8.2、§3.39）"}
 
- ;; GUI（seesaw）
- seesaw.core/frame {:message "seesaw は新規採用非推奨。humbleui / cljfx を使う（STACK_GUIDE §8.2）"}
+   ;; GUI（seesaw）
+   seesaw.core/frame          {:message "seesaw は新規採用非推奨。humbleui / cljfx を使う（STACK_GUIDE §8.2）"}
 
- ;; 生音声（overtone）— 条件付き
- overtone.core/definst {:message "overtone はプロダクション禁止（創作用途のみ、STACK_GUIDE §8.2）"}
- }
+   ;; 生音声（overtone）— 条件付き
+   overtone.core/definst      {:message "overtone はプロダクション禁止（創作用途のみ、STACK_GUIDE §8.2）"}
+   }
 
- ;; ---------------------------------------------------------------
- ;; consistent-alias — 本テンプレート推奨 alias カタログ
- ;; 一貫性の機械化。CODING_GUIDE.md §14.4 / §14.5 に準拠。
- ;; stack 採用で追加ライブラリを使う場合、ここに追記して統一する。
- ;; ---------------------------------------------------------------
- :consistent-alias
- {:aliases
- {clojure.string str
- clojure.set set
- clojure.edn edn
- clojure.walk walk
- clojure.pprint pprint
- clojure.core.async async
- malli.core m
- malli.generator mg
- malli.util mu
- malli.dev mdev
- malli.dev.pretty mpretty
- integrant.core ig
- integrant.repl ig-repl
- integrant.repl.state ig-state
- clojure.tools.namespace.repl tn}}}
+  ;; ---------------------------------------------------------------
+  ;; consistent-alias — 本テンプレート推奨 alias カタログ
+  ;; 一貫性の機械化。CODING_GUIDE.md §14.4 / §14.5 に準拠。
+  ;; stack 採用で追加ライブラリを使う場合、ここに追記して統一する。
+  ;; ---------------------------------------------------------------
+  :consistent-alias
+  {:aliases
+   {clojure.string        str
+    clojure.set           set
+    clojure.edn           edn
+    clojure.walk          walk
+    clojure.pprint        pprint
+    clojure.core.async    async
+    malli.core            m
+    malli.generator       mg
+    malli.util            mu
+    malli.dev             mdev
+    malli.dev.pretty      mpretty
+    integrant.core        ig
+    integrant.repl        ig-repl
+    integrant.repl.state  ig-state
+    clojure.tools.namespace.repl tn}}}
 
  ;; ----------------------------------------------------------------
  ;; Malli の =>: lint-as により typed 関数として扱う
@@ -258,23 +258,28 @@
  ;; ----------------------------------------------------------------
  :hooks
  {:analyze-call
- {clojure.core/defn polyguard.hooks/analyze-defn ; clojure.core/defn- polyguard.hooks/analyze-defn
- clojure.core/def polyguard.hooks/analyze-def ; clojure.core/try polyguard.hooks/analyze-try ; clojure.core.async/go polyguard.hooks/analyze-go ; malli.core/=> polyguard.hooks/analyze-m=> ;（近似）
- malli.core/validate polyguard.hooks/analyze-m-validate ;（近似）
+  {clojure.core/defn     polyguard.hooks/analyze-defn
+   clojure.core/defn-    polyguard.hooks/analyze-defn
+   clojure.core/def      polyguard.hooks/analyze-def
+   clojure.core/try      polyguard.hooks/analyze-try
+   clojure.core.async/go polyguard.hooks/analyze-go
+   malli.core/=>         polyguard.hooks/analyze-m=>
+   malli.core/validate   polyguard.hooks/analyze-m-validate}}
 
- ;; forbidden-requires: STACK_GUIDE §8.1/§8.2 ライブラリの namespace 単位 require 検知
- ;; :discouraged-var は特定シンボル、本 hook は require 段階で検知する（両者併用）
- clojure.core/ns polyguard.forbidden-requires/analyze-ns
- clojure.core/require polyguard.forbidden-requires/analyze-require}}
+ ;; forbidden-requires: STACK_GUIDE §8.1/§8.2 ライブラリの namespace 単位 require 検知は
+ ;; `.llm/scripts/check-forbidden-requires.sh` が担う。
+ ;; 当初 custom hook で実装していたが、clj-kondo の `:analyze-call` hook は
+ ;; `clojure.core/ns` special form を対象に取らないため発火せず dead code 化していた。
+ ;; shell script 側（file-level 解析が得意）に移管した。
 
  ;; ----------------------------------------------------------------
  ;; ns-groups + config-in-ns — brick 単位でのルール適用
  ;; ----------------------------------------------------------------
  ;; 有効化手順（最初のドメイン component と I/O component が揃ったら）:
- ;; 1. 下の :ns-groups のコメントを外し、<domain-component-name> と
- ;; <io-component-name> を実際の brick 名に置き換える（複数ある場合は追加）
- ;; 2. 下の :config-in-ns のコメントを外し、ドメイン層で禁止したい I/O 関数を列挙
- ;; 3. clj -M:lint が、ドメイン層 component のみ対象に I/O 呼び出しを error 化する
+ ;;   1. 下の :ns-groups のコメントを外し、<domain-component-name> と
+ ;;      <io-component-name> を実際の brick 名に置き換える（複数ある場合は追加）
+ ;;   2. 下の :config-in-ns のコメントを外し、ドメイン層で禁止したい I/O 関数を列挙
+ ;;   3. clj -M:lint が、ドメイン層 component のみ対象に I/O 呼び出しを error 化する
  ;;
  ;; :ns-groups は名前空間パターン → グループ名の対応表。
  ;; :config-in-ns は「グループ名 → そのグループに適用する追加ルール」の対応表。
@@ -282,22 +287,22 @@
  ;;
  ;; :ns-groups
  ;; [;; ドメイン系 component（I/O 禁止）
- ;; {:pattern "^myorg\\.myapp\\.<domain-component-name>\\..*" :name brick.domain}
- ;; ;; I/O 系 component / base
- ;; {:pattern "^myorg\\.myapp\\.<io-component-name>\\..*" :name brick.io}]
+ ;;  {:pattern "^myorg\\.myapp\\.<domain-component-name>\\..*" :name brick.domain}
+ ;;  ;; I/O 系 component / base
+ ;;  {:pattern "^myorg\\.myapp\\.<io-component-name>\\..*"     :name brick.io}]
 
  ;; :config-in-ns
  ;; {brick.domain
- ;; ;; ドメイン層からの I/O 操作を error 化
- ;; {:linters
- ;; {:discouraged-var
- ;; {next.jdbc/get-datasource {:message "ドメイン層 I/O 禁止"}
- ;; hato.client/get {:message "ドメイン層 I/O 禁止"}
- ;; hato.client/post {:message "ドメイン層 I/O 禁止"}}}}}
+ ;;  ;; ドメイン層からの I/O 操作を error 化
+ ;;  {:linters
+ ;;   {:discouraged-var
+ ;;    {next.jdbc/get-datasource {:message "ドメイン層 I/O 禁止"}
+ ;;     hato.client/get          {:message "ドメイン層 I/O 禁止"}
+ ;;     hato.client/post         {:message "ドメイン層 I/O 禁止"}}}}}
 
  :output
  {:format :text
- :show-rule-name-in-message true
- :exclude-files ["target" "node_modules" ".cpcache" "classes"]}
+  :show-rule-name-in-message true
+  :exclude-files ["target" "node_modules" ".cpcache" "classes"]}
 
  :skip-comments true}

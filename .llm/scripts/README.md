@@ -11,7 +11,7 @@ hook（`.clj-kondo/polyguard/`）と script（本ディレクトリ）の役割�
 | **L1** 構文・型・未使用 | clj-kondo 組み込み linter | AST 解析、命名空間解決、アリティ検査（段階 1/2 で 38 linter を有効化） |
 | **L2** 本テンプレート固有パターン | `.clj-kondo/polyguard/hooks.clj` (custom hook) | form 単体の AST 解析 |
 | **L3** スタイル・イディオム | Splint (`clj -M:lint-splint`) | `(= 0 x)` → `(zero? x)` 等のイディオム違反 |
-| **L4** 設定・ディレクトリ構造 | 本ディレクトリの `.llm/scripts/*.sh` | EDN 構造、ファイル実在、file-level 照合（・・・・） |
+| **L4** 設定・ディレクトリ構造 | 本ディレクトリの `.llm/scripts/*.sh` | EDN 構造、ファイル実在、file-level 照合（interface 契約・1 ファイル 1 ns・brick 登録漏れ・プレースホルダ残存・非推奨ライブラリ採用） |
 | **L5** 依存脆弱性（時間軸） | clj-watson (`./.llm/scripts/check-vulnerabilities.sh`) | NIST NVD + GitHub Advisory Database |
 
 **補完関係の例**:
@@ -24,17 +24,17 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 
 ## スクリプト一覧
 
-| スクリプト | 目的 | 対応項目 |
-|---|---|---|
-| `check-workspace-integrity.sh` | 下記 5 種を束ねる総合検査（完了条件から呼ぶ） | |
-| `check-placeholders.sh` | `workspace.edn` / `deps.edn` のプレースホルダ `myorg.myapp` 残存検査 | |
-| `check-brick-registration.sh` | `components/` / `bases/` の brick が `deps.edn` に登録されているか検査 | |
-| `check-deprecated-libs.sh` | `STACK_GUIDE.md §8.2` 非推奨ライブラリの `deps.edn` 採用宣言検査 | |
-| `check-interface-contracts.sh` | `interface.clj` の全公開 `defn` に対応する `m/=>` 契約があるか検査 | |
-| `check-single-ns-per-file.sh` | 1 つの `.clj` / `.cljc` / `.cljs` ファイルに `(ns ...)` が複数ないか検査 | |
-| `check-vulnerabilities.sh` | `clj-watson` による依存脆弱性スキャン（release 前必須、完了条件外） | |
-| `lint-import-hooks.sh` | 依存ライブラリ提供の `clj-kondo` hook を `.clj-kondo/configs/` に取り込む | |
-| `session-briefing.sh` | セッション起動時の状態ブリーフィング（フェーズ判定・open Q・最新 ADR・直近コミット）を stdout 出力 | `§8.0` 実装着手前の確認の機械化バックアップ（状態提示、pass/fail 検査ではない） |
+| スクリプト | 目的 |
+|---|---|
+| `check-workspace-integrity.sh` | 下記 5 種を束ねる総合検査（完了条件から呼ぶ） |
+| `check-placeholders.sh` | `workspace.edn` / `deps.edn` のプレースホルダ `myorg.myapp` 残存検査 |
+| `check-brick-registration.sh` | `components/` / `bases/` の brick が `deps.edn` に登録されているか検査 |
+| `check-deprecated-libs.sh` | `STACK_GUIDE.md §8.2` 非推奨ライブラリの `deps.edn` 採用宣言検査 |
+| `check-interface-contracts.sh` | `interface.clj` の全公開 `defn` に対応する `m/=>` 契約があるか検査 |
+| `check-single-ns-per-file.sh` | 1 つの `.clj` / `.cljc` / `.cljs` ファイルに `(ns ...)` が複数ないか検査 |
+| `check-vulnerabilities.sh` | `clj-watson` による依存脆弱性スキャン（release 前必須、完了条件外） |
+| `lint-import-hooks.sh` | 依存ライブラリ提供の `clj-kondo` hook を `.clj-kondo/configs/` に取り込む |
+| `session-briefing.sh` | セッション起動時の状態ブリーフィング（フェーズ判定・open Q・最新 ADR・直近コミット）を stdout 出力。CLAUDE.md §8.0 実装着手前の確認の機械化バックアップ（状態提示、pass/fail 検査ではない） |
 
 ## 運用タイミング
 
@@ -46,7 +46,7 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 ./.llm/scripts/check-workspace-integrity.sh
 ```
 
-これで / / / / の5 検査 + 併存検査 + `:local/root` / `:projects` 実在検査が一括で走る。個別スクリプトを手動で呼ぶ必要はない。
+これで brick 登録 / プレースホルダ / 非推奨ライブラリ / interface 契約 / 1 ファイル 1 ns の 5 検査 + 併存検査 + `:local/root` / `:projects` 実在検査が一括で走る。個別スクリプトを手動で呼ぶ必要はない。
 
 ### release 前の追加検査（週次 CI / release 時）
 
@@ -86,7 +86,7 @@ NVD API key 推奨（`https://nvd.nist.gov/developers/request-an-api-key`）。�
 ## 実装規律
 
 - すべて `#!/usr/bin/env bash` + `set -euo pipefail`（Bash、厳格モード）
-- ワークスペースルートへの `cd` は `SCRIPT_DIR/..` で解決（どこから呼んでも動く）
+- ワークスペースルートへの `cd` は `SCRIPT_DIR/../..` で解決（`.llm/scripts/` の親の親がリポジトリルート）
 - 依存なし（Babashka / Clojure ランタイム不要、`grep` / `awk` / `sed` / `clojure` CLI のみ）
 - プラットフォーム依存: Unix 前提（macOS / Linux）。Windows サポートは将来検討
 
@@ -94,7 +94,7 @@ NVD API key 推奨（`https://nvd.nist.gov/developers/request-an-api-key`）。�
 
 1. `.llm/scripts/check-<topic>.sh` を作成（終了コード 0 / 1 で成否表現、エラー時は人間に読めるメッセージ）
 2. `check-workspace-integrity.sh` の `run_step` に 1 行追加
-3. 本 README の「スクリプト一覧」表と「対応項目」欄を更新
+3. 本 README の「スクリプト一覧」表を更新
 4. 新しい観点・判断根拠は `MAINTAINERS_GUIDE.md §5.12`（linter 継続点検規律）または ADR として記録
 
 ## 非採用事項

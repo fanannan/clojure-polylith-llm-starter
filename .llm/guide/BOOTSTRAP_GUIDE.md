@@ -258,7 +258,7 @@ Integrant を使うプロジェクトでのみ実施する。ライブラリ配�
 
 **workspace 整合性の総合検査**:
 
-- [ ] プレースホルダ残存・brick 登録漏れ・非推奨ライブラリ採用の一括検査:
+- [ ] プレースホルダ残存・brick 登録漏れ・非推奨ライブラリ採用の一括検査（/  /  の統合）:
   ```bash
   ./.llm/scripts/check-workspace-integrity.sh
   ```

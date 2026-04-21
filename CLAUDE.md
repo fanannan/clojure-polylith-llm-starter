@@ -92,7 +92,7 @@
 
 | 戦略 | 意味 | 具体実装 |
 |---|---|---|
-| **機械化** | 規約を人間（LLM）の注意力ではなく、ツールで強制する | clj-kondo 厳格設定、cljfmt、Polylith の `poly check`、Malli instrumentation、`.llm/scripts/check-workspace-integrity.sh`（`.clj-kondo/hooks/` と `.llm/scripts/` の役割分担は `MAINTAINERS_GUIDE.md §5.10`） |
+| **機械化** | 規約を人間（LLM）の注意力ではなく、ツールで強制する | clj-kondo 厳格設定、cljfmt、Polylith の `poly check`、Malli instrumentation、`.llm/scripts/check-workspace-integrity.sh`（`.clj-kondo/polyguard/` と `.llm/scripts/` の役割分担は `MAINTAINERS_GUIDE.md §5.10`） |
 | **ループ短縮** | LLM の編集から検証までを秒単位に縮める | REPL 常駐、Malli instrumentation、**ターン内検証**（編集 → `poly test` → 結果読解を同ターンで閉じる、§8） |
 | **小単位分解** | 大きな塊を一気に生成させない。生成→検証→次を繰り返す | 1 関数 20 行以内、コミット細分化、タスク分解判断（§7.4） |
 | **早期破棄** | 詰まったらアプローチごと捨てる。完遂にこだわらない | 自己停止プロトコル（§7）、ブランチ破棄を悪としない |
@@ -151,7 +151,7 @@
 - **Malli**（§1.1.1 全域性の実装。`m/=>` 契約と instrumentation）
 - **clj-kondo**（機械化された静的解析。`.clj-kondo/config.edn` + `.clj-kondo/polyguard/hooks.clj` は配布時点で同梱され、設定自体も必須層の一部として無効化・削除不可）
 - **cljfmt**（機械化されたフォーマッタ。`cljfmt.edn` は配布時点で同梱され、設定自体も必須層の一部として無効化・削除不可）
-- **Splint**（スタイル・イディオムレベル linter、clj-kondo の補完。`clj -M:lint-splint` で起動、完了条件で実行。により必須層化）
+- **Splint**（スタイル・イディオムレベル linter、clj-kondo の補完。`clj -M:lint-splint` で起動、完了条件で実行）
 - **clj-watson**（依存脆弱性スキャン、時間軸を跨いだ機械化。`./.llm/scripts/check-vulnerabilities.sh` で起動、release 前必須。NVD API key 推奨）
 - **`.llm/scripts/` ディレクトリ**（`check-workspace-integrity.sh` / `check-*.sh` / `lint-import-hooks.sh`、設定ファイル・ディレクトリ構造の機械的検査を担う）
 
@@ -339,7 +339,7 @@ stack 表の網羅追求は疲労最小化原則と自己矛盾する(網羅は�
 
 ### 7.2 詰まり状況下の進捗メモ（必要時のみ）
 
-以下のいずれかが発動条件になったら、各ターン冒頭に進捗メモを出す（全ターン必須ではなく、詰まり状況下のみ必須）:
+以下のいずれかが発動条件になったら、各ターン冒頭に進捗メモを出す（の反映、全ターン必須から緩和）:
 
 - §7.1 自己停止条件の**閾値に近づいた時**（同一試行 2 回目、同一ファイル編集 3 回目以降）
 - **仮説→検証のループに入った時**（2 回以上の仮説立案）

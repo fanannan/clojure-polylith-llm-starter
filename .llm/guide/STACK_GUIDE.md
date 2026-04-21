@@ -79,7 +79,7 @@ stack は時間とともに増え、選定根拠は詳細化し、機能領域�
 
 ## 2. 技術スタックの階層
 
-**本節は必須層・stack 層・横断層の正本**。`CLAUDE.md §3` と `BOOTSTRAP_GUIDE.md §1` は LLM 日常参照と初期化導線のための概念的抜粋であり、**version 情報は本節のみに記載**する。version drift 防止の保守規律は `MAINTAINERS_GUIDE.md §5.1` を参照。
+**本節は必須層・stack 層・横断層の正本**（による正本化）。`CLAUDE.md §3` と `BOOTSTRAP_GUIDE.md §1` は LLM 日常参照と初期化導線のための概念的抜粋であり、**version 情報は本節のみに記載**する。version drift 防止の保守規律は `MAINTAINERS_GUIDE.md §5.1` を参照。
 
 ### 2.1 必須層（常に採用、stack 非依存）
 
@@ -1774,14 +1774,14 @@ stack は排他的ではなく**タグ的な概念**。複数を組み合わせ�
 
 プロジェクト進行中に stack を追加・変更する場合：
 
-1. 追加・変更の理由を **ADR として発行**（`adr/NNNN-add-stack-<n>.md` または `adr/NNNN-modify-stack-<n>.md`）
+1. 追加・変更の理由を **ADR として発行**（`adr/NNNN-add-stack-<name>.md` または `adr/NNNN-modify-stack-<name>.md`）
 2. §4.2 の該当推奨に従って、影響する brick の deps.edn を更新
 3. §6 整合性チェック
 4. DESIGN.md §8.3 の採用 stack 欄を更新
 
 stack から離脱する場合：
 
-1. 離脱理由を **ADR として発行**（`adr/NNNN-remove-stack-<n>.md`）
+1. 離脱理由を **ADR として発行**（`adr/NNNN-remove-stack-<name>.md`）
 2. 該当 brick の deps.edn から不要依存を削除（tools.namespace / antq / `poly check` で参照不整合を検出）
 3. 関連する brick コード（Integrant key 定義等）を削除または修正
 4. §6 整合性チェック

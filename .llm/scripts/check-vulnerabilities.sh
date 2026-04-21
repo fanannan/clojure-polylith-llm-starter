@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # scripts/check-vulnerabilities.sh
 #
+# （サードパーティ追加）の実装。
 # 本テンプレートの §2 依存承認規律を時間軸に拡張する機械化:
 # 承認済み依存が後から脆弱性を抱えた場合の自動検知。
 #
