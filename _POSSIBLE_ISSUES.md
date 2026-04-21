@@ -293,17 +293,6 @@ A-3 と同一問題。A-3 で処理される
   - 検査対象は**設定ファイルのみ**（`workspace.edn` / `deps.edn`）に限定。コード例（`POLYLITH_GUIDE.md` / `KNOWLEDGE.md` のサンプル中）は対象外
   - 完了条件（CLAUDE.md §5.5）に F-1 経由で組み込み
 
-### E. 本プラン（前セッション）由来の未回収
-
-#### E-1. 本プラン改訂の ADR 未発行
-
-- COLLABORATION_GUIDE.md §2.2 / §2.3 / §2.3.1 / §3.1 改訂、CLAUDE.md §1.2.5 新設は L1 相当
-- **対処**: ADR を発行する。本プランで新設した §1.2.5 原則の決定経緯を保全しないと、同じ議論が再燃したとき根拠が git log だけに留まる
-
-#### E-2. 実装後の `clj -M:lint` / `clj -M:format check` / `clj -M:poly check` 未実行
-
-- 本セッションで実装した変更に対して完了条件（CLAUDE.md §5.5）を満たしていない
-- **対処**: 各種チェックを実行して結果を記録する
 
 ### F. 機械化候補（`scripts/` と custom hook の新規追加）
 
