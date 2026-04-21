@@ -63,12 +63,11 @@
 ;; ---------------------------------------------------------------------------
 
 (defn malli-on!
-  "Malli instrumentation を起動。全 m/=> 契約が REPL 評価時にチェックされる。"
+  "Malli instrumentation を起動。全 m/=> 契約が REPL 評価時にチェックされる。
+   停止する必要が生じた場合は `(malli.dev/stop!)` を直接呼ぶ
+   （_POSSIBLE_ISSUES.md B-4 の B-1 に伴う `malli-off!` 削除）。"
   []
   (mdev/start! {:report (mpretty/reporter)}))
-
-(defn malli-off! []
-  (mdev/stop!))
 
 ;; ---------------------------------------------------------------------------
 ;; Integrant ライフサイクル — §1.1.3 副作用の隔離

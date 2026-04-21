@@ -105,6 +105,25 @@
  {malli.core/=> clj-kondo.lint-as/def-catch-all}
 
  ;; ----------------------------------------------------------------
+ ;; custom hook 登録（_POSSIBLE_ISSUES.md A 系の AST 解析実装）
+ ;; hook 本体は .clj-kondo/polyguard/hooks.clj（clj-kondo の classpath
+ ;; root は .clj-kondo/ 直下）。
+ ;; file-level 解析は scripts/check-*.sh（hook と script の役割分担は
+ ;; MAINTAINERS_GUIDE.md §5.10 を参照）。
+ ;; 各 finding の level は hook 側の reg-finding! で直接指定する（本 config
+ ;; では :linters マップで上書きしない = hook 側の level が最終）。
+ ;; ----------------------------------------------------------------
+ :hooks
+ {:analyze-call
+  {clojure.core/defn     polyguard.hooks/analyze-defn   ; A-7 / A-15 / A-17
+   clojure.core/defn-    polyguard.hooks/analyze-defn
+   clojure.core/def      polyguard.hooks/analyze-def    ; A-9
+   clojure.core/try      polyguard.hooks/analyze-try    ; A-10 / A-11
+   clojure.core.async/go polyguard.hooks/analyze-go     ; A-16
+   malli.core/=>         polyguard.hooks/analyze-m=>    ; A-8（近似）
+   malli.core/validate   polyguard.hooks/analyze-m-validate}}  ; A-13（近似）
+
+ ;; ----------------------------------------------------------------
  ;; ns-groups + config-in-ns — brick 単位でのルール適用
  ;; ----------------------------------------------------------------
  ;; 有効化手順（最初のドメイン component と I/O component が揃ったら）:

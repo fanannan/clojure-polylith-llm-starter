@@ -48,6 +48,14 @@ run_step "brick 登録整合検査 (D-4)" \
 run_step "非推奨ライブラリ検査 (F-3)" \
   "$SCRIPT_DIR/check-deprecated-libs.sh"
 
+# --- A-1 interface.clj の m/=> 契約付与 ---
+run_step "interface 契約検査 (A-1)" \
+  "$SCRIPT_DIR/check-interface-contracts.sh"
+
+# --- A-14 1 ファイル 1 ns ---
+run_step "1 ファイル 1 ns 検査 (A-14)" \
+  "$SCRIPT_DIR/check-single-ns-per-file.sh"
+
 # --- 追加: .gitkeep と brick 併存検査 ---
 echo ""
 echo "=== .gitkeep と brick 併存検査 ==="

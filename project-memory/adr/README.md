@@ -46,7 +46,9 @@ ADR はこれらを**軽量な記述形式**で解決する。1 件あたり 1�
 
 ## 目的
 
-> **初期状態**: 本ディレクトリは `README.md`（本文書）と `template.md` のみ、実 ADR は 0 件（テンプレート配布時）。**`CLAUDE.md` §8.0 の「過去の決定の確認」は該当 ADR なしで完了とみなし、LLM は次のステップに進む**（空スキャン後スキップ可）。ADR は以降のプロジェクト運営で「ADR を発行すべき基準」（後述）に該当した時に発行される。
+> **呼び出し元**: 本ディレクトリの ADR 群は `CLAUDE.md §8.0`（実装着手前の確認）の「過去の決定の確認」ステップから参照される決定履歴。空の場合の扱い（空スキャンで完了）は呼び出し元 §8.0 で一括規定（`_POSSIBLE_ISSUES.md` C-3 による相互参照構築）。
+>
+> **初期状態**: 本ディレクトリは `README.md`（本文書）と `template.md` のみ、実 ADR は 0 件（テンプレート配布時）。ADR は以降のプロジェクト運営で「ADR を発行すべき基準」（後述）に該当した時に発行される。
 
 - **なぜそう決めたか**を、判断時点の文脈と共に残す
 - 将来同じ議論の再発を防ぐ（却下案の記録）
@@ -97,7 +99,7 @@ ADR はこれらを**軽量な記述形式**で解決する。1 件あたり 1�
 ### してよいこと
 
 - 初回発行時の記述
-- **status フィールドの更新のみ**（proposed → accepted、accepted → superseded-by-NNNN、accepted → deprecated）
+- **status フィールドの更新のみ**（proposed → accepted、accepted → deprecated）。`accepted → superseded-by-NNNN` は `_POSSIBLE_ISSUES.md` B-2 により廃止（新 ADR 側の Related だけで supersede 関係を表現）
 
 ### してはいけないこと
 
@@ -131,13 +133,16 @@ ADR はこれらを**軽量な記述形式**で解決する。1 件あたり 1�
 
 ### 既存 ADR の改訂が必要になった時
 
-**ADR 本文を直接編集しない**。以下の手順で：
+**ADR 本文を直接編集しない**。以下の手順で（`_POSSIBLE_ISSUES.md` B-2 により片方向更新に簡素化）：
 
 1. 新しい ADR を発行（次の番号で）
 2. 新 ADR の Context で「`NNNN-old-topic.md` の判断を改訂する必要がある理由」を述べる
 3. 新 ADR の Decision で新しい判断を述べる
-4. 旧 ADR の Status のみ `superseded-by-NNNN-new-topic` に更新
-5. 新 ADR の Related に `Supersedes: NNNN-old-topic.md` を記載
+4. 新 ADR の Related に `Supersedes: NNNN-old-topic.md` を記載
+
+**旧 ADR の Status は触らない**（`accepted` のまま）。遡読者は新 ADR の Related をたどって supersede 関係を知る。従来の「旧 ADR の Status を superseded-by-NNNN に更新する」双方向更新は、チェイン整合を維持する儀式コストに対して遡読者が実質不在のため廃止した（B-2）。
+
+**最新の accepted ADR のみが生きた判断**。旧 ADR は「その時点でそう判断した」歴史的記録として残る。
 
 ### LLM による ADR 発行
 

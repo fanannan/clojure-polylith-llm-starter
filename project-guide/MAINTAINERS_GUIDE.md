@@ -273,6 +273,10 @@
    - STACK_GUIDE.md §3 選定根拠・§4.2 推奨ライブラリ表を更新
    - 変更影響を CODING_GUIDE.md / POLYLITH_GUIDE.md に反映
    - 必要なら CLAUDE.md の記述も修正
+4. **version 更新の記載先規律**（`_POSSIBLE_ISSUES.md` C-2 の反映）:
+   - **version は `STACK_GUIDE.md §2` のみに記載**（必須層・横断層の正本）
+   - `CLAUDE.md §3` と `BOOTSTRAP_GUIDE.md §1` は概念的な必須層列挙のみを保持し、version は書かない。version 更新時に同期する必要がない運用に倒す（drift 防止）
+   - 更新後は必ず `./scripts/lint-import-hooks.sh` を実行し、依存ライブラリ提供の clj-kondo hook を再取り込む（§5.11）
 
 ### 5.2 新しいライブラリを採用する場合
 

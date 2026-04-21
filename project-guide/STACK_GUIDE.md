@@ -79,6 +79,8 @@ stack は時間とともに増え、選定根拠は詳細化し、機能領域�
 
 ## 2. 技術スタックの階層
 
+**本節は必須層・stack 層・横断層の正本**（`_POSSIBLE_ISSUES.md` C-2 による正本化）。`CLAUDE.md §3` と `BOOTSTRAP_GUIDE.md §1` は LLM 日常参照と初期化導線のための概念的抜粋であり、**version 情報は本節のみに記載**する。version drift 防止の保守規律は `MAINTAINERS_GUIDE.md §5.1` を参照。
+
 ### 2.1 必須層（常に採用、stack 非依存）
 
 | 機能 | 採用技術 | バージョン | 採用理由 |
