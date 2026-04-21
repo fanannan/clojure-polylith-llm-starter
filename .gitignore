@@ -32,7 +32,7 @@ logs/
 .DS_Store
 .envrc
 .codex
-.claude/*
+.claude/settings.local.json
 *~
 .*~
 

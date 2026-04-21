@@ -43,34 +43,35 @@
   ;; --- 禁止構文 ---
   :refer-all                    {:level :error :exclude [clojure.test]}
   :use                          {:level :error}
-  :unsorted-required-namespaces {:level :warning}}
+  :unsorted-required-namespaces {:level :warning}
+
+  ;; ---------------------------------------------------------------
+  ;; discouraged-var — LLM の悪手を error で機械的に封じる
+  ;;
+  ;; 本節は `clj -M:lint` の対象（deps.edn :lint の --lint 引数: components, bases,
+  ;; development/src）に対して適用される。projects/ 配下の build.clj 等はリント対象外
+  ;; のため、build.clj での println 使用は CLAUDE.md §4.3 の例外条項により許容される。
+  ;; ---------------------------------------------------------------
+  :discouraged-var
+  {;; --- 必須（全プロジェクト）---
+   clojure.core/println       {:message "println はアプリケーションコードで禁止。tap> または構造化ログ（mulog/log）を使う。build.clj 等は例外（CLAUDE.md §4.3）"}
+   clojure.core/prn           {:message "prn はアプリケーションコードで禁止。tap> または構造化ログ（mulog/log）を使う。build.clj 等は例外（CLAUDE.md §4.3）"}
+   clojure.core/pr-str        {:message "デバッグ目的なら tap> を使う"}
+   clojure.core/with-redefs   {:message "with-redefs は設計失敗サイン。依存注入を検討"}
+
+   ;; --- I/O 系ライブラリを採用したら、対応する行をコメント解除して有効化 ---
+   ;; ドメイン層での I/O 呼び出しを error 化したい場合に使う。
+   ;; より厳密にドメイン層（特定 component）のみ禁止したい場合は、下の :ns-groups + :config-in-ns を使う。
+   ;; next.jdbc/get-datasource   {:message "ドメイン層からの DB 操作禁止"}
+   ;; hato.client/get            {:message "ドメイン層からの HTTP 呼び出し禁止"}
+   ;; hato.client/post           {:message "ドメイン層からの HTTP 呼び出し禁止"}
+   }}
 
  ;; ----------------------------------------------------------------
  ;; Malli の =>: lint-as により typed 関数として扱う
  ;; ----------------------------------------------------------------
  :lint-as
  {malli.core/=> clj-kondo.lint-as/def-catch-all}
-
- ;; ----------------------------------------------------------------
- ;; discouraged-var — LLM の悪手を error で機械的に封じる
- ;; ----------------------------------------------------------------
- ;; 本節は `clj -M:lint` の対象（deps.edn :lint の --lint 引数: components, bases, development/src）
- ;; に対して適用される。projects/ 配下の build.clj 等はリント対象外のため、
- ;; build.clj での println 使用は CLAUDE.md §4.3 の例外条項により許容される。
- :linters/discouraged-var
- {;; --- 必須（全プロジェクト）---
-  clojure.core/println       {:message "println はアプリケーションコードで禁止。tap> または構造化ログ（mulog/log）を使う。build.clj 等は例外（CLAUDE.md §4.3）"}
-  clojure.core/prn           {:message "prn はアプリケーションコードで禁止。tap> または構造化ログ（mulog/log）を使う。build.clj 等は例外（CLAUDE.md §4.3）"}
-  clojure.core/pr-str        {:message "デバッグ目的なら tap> を使う"}
-  clojure.core/with-redefs   {:message "with-redefs は設計失敗サイン。依存注入を検討"}
-
-  ;; --- I/O 系ライブラリを採用したら、対応する行をコメント解除して有効化 ---
-  ;; ドメイン層での I/O 呼び出しを error 化したい場合に使う。
-  ;; より厳密にドメイン層（特定 component）のみ禁止したい場合は、下の :ns-groups + :config-in-ns を使う。
-  ;; next.jdbc/get-datasource   {:message "ドメイン層からの DB 操作禁止"}
-  ;; hato.client/get            {:message "ドメイン層からの HTTP 呼び出し禁止"}
-  ;; hato.client/post           {:message "ドメイン層からの HTTP 呼び出し禁止"}
-  }
 
  ;; ----------------------------------------------------------------
  ;; ns-groups + config-in-ns — brick 単位でのルール適用
@@ -94,10 +95,11 @@
  ;; :config-in-ns
  ;; {brick.domain
  ;;  ;; ドメイン層からの I/O 操作を error 化
- ;;  {:linters/discouraged-var
- ;;   {next.jdbc/get-datasource {:message "ドメイン層 I/O 禁止"}
- ;;    hato.client/get          {:message "ドメイン層 I/O 禁止"}
- ;;    hato.client/post         {:message "ドメイン層 I/O 禁止"}}}}
+ ;;  {:linters
+ ;;   {:discouraged-var
+ ;;    {next.jdbc/get-datasource {:message "ドメイン層 I/O 禁止"}
+ ;;     hato.client/get          {:message "ドメイン層 I/O 禁止"}
+ ;;     hato.client/post         {:message "ドメイン層 I/O 禁止"}}}}}
 
  :output
  {:format :text
