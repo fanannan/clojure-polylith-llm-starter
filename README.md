@@ -2,7 +2,7 @@
 
 **Clojure + Polylith プロジェクト**（LLM と人間の仕様共同開発フレームワーク）
 
-- 必須技術: Clojure 1.12 + Polylith + Malli 契約 + tools.deps + JVM 21 LTS
+- 必須技術: Clojure 1.12 + tools.deps + Polylith + Malli 契約 + clj-kondo + cljfmt（JVM 21 LTS）
 - 目的別の追加ライブラリは **stack**（web-api stack / batch stack / cli stack / library stack / worker stack / data-pipeline stack / dev-tools stack）として構成
 - stack 選定論理と実装マッピングの一次情報源は `project-guide/STACK_GUIDE.md`
 
@@ -15,7 +15,7 @@
 
 ## このテンプレートは何か
 
-**Clojure 1.12 + Polylith + Malli** を必須層とし、プロジェクトの性格に応じた **stack 層**（Web API、バッチ、CLI、ライブラリ配布等の目的別推奨構成）を選択できる、**LLM 駆動開発向け**のプロジェクトテンプレート。Integrant・Ring・DB ドライバ等は採用する stack に応じて brick の deps.edn に追加する（必須層ではない）。
+**Clojure 1.12 + tools.deps + Polylith + Malli + clj-kondo + cljfmt** を必須層とし、プロジェクトの性格に応じた **stack 層**（Web API、バッチ、CLI、ライブラリ配布等の目的別推奨構成）を選択できる、**LLM 駆動開発向け**のプロジェクトテンプレート。Integrant・Ring・DB ドライバ等は採用する stack に応じて brick の deps.edn に追加する（必須層ではない）。
 
 疲労最小化原則（LLM と人間の共同開発における修復コスト最小化）に基づき設計されている。
 詳細思想は `CLAUDE.md` §1、設計原則は `project-guide/MAINTAINERS_GUIDE.md`、stack 選定は `project-guide/STACK_GUIDE.md`。
@@ -405,8 +405,8 @@ ADR 発行候補も先に一覧で提示して、どれを発行するかの指�
 ## 設計の基底思想（要約）
 
 - **疲労最小化**: LLM の誤りを構造的に封じる（全域性・不変性・副作用の隔離）
-- **機械化**: 規約を人間の注意力ではなくツール（clj-kondo、poly check、Malli instrumentation）で強制
-- **stack 方式の技術スタック**: 必須層（Clojure、Malli）はワークスペースルートで常に採用、目的別の stack 層は各 brick の deps.edn に配置。推奨カタログは `project-guide/STACK_GUIDE.md`（真実の一箇所化）
+- **機械化**: 規約を人間の注意力ではなくツール（clj-kondo、cljfmt、Polylith の `poly check`、Malli instrumentation）で強制
+- **stack 方式の技術スタック**: 必須層（Clojure、tools.deps、Polylith、Malli、clj-kondo、cljfmt）はワークスペースルートで常に採用、目的別の stack 層は各 brick の deps.edn に配置。推奨カタログは `project-guide/STACK_GUIDE.md`（真実の一箇所化）
 - **4 種の文書分離**: 仕様（DESIGN）/ 知識（KNOWLEDGE）/ 決定履歴（ADR）/ 判断保留（QUESTIONS）
 - **自己停止プロトコル**: LLM が時間感覚なく詰まった時、ターン数閾値で停止し Q を立てる
 

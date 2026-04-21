@@ -7,6 +7,10 @@
 {:top-namespace "myorg.myapp"          ; TODO: 実プロジェクトの名前空間プレフィックスに変更（例: "acme.billing"）
  :interface-ns  "interface"
 
+ :dialects      ["clj"]                ; poly ツールが読み取るソース方言（"clj"/"cljs"、.cljc は常に対象）
+
+ :default-profile-name "default"       ; poly がデフォルトで development に merge する profile
+
  :projects
  {"development" {:alias "dev"}
   ;; 最初の project を作ったら追加（<deploy> は DESIGN.md §8.2 で定めた project 名）:
@@ -21,11 +25,7 @@
   :auto-add false}
 
  :tag-patterns
- {:stable  "stable-*"    ; CI 通過時に打つ安定タグ（poly test の影響範囲判定に使われる）
-  :release "v[0-9]*"}    ; 本番リリースタグ
+ {:stable  "^stable-.*"    ; CI 通過時に打つ安定タグ（poly test の影響範囲判定に使われる）
+  :release "^v[0-9].*"}    ; 本番リリースタグ
 
- :compact-views #{}
-
- :release {:auto-tag? false}
-
- :sensitive-data-cleanup {:enabled? true}}
+ :compact-views #{}}

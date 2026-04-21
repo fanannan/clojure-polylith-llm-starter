@@ -19,7 +19,7 @@
 ### 1.1 目的：LLM と人間の共同開発における修復コストの最小化
 
 本テンプレートは**疲労最小化原則**（CLAUDE.md §1）を配布物のレベルで実装する試みである。
-具体的には、**Clojure 1.12 + Polylith + Malli** を必須層とし、プロジェクトの性格に応じた stack 層（`STACK_GUIDE.md` §4.2）を採用する構成のプロジェクトを、**LLM が最も誤りにくい形で立ち上げる**ための初期配布物である。Integrant は Web API・バッチ・ワーカ等の I/O を扱う stack で採用されるが、必須層ではない（library stack のみの場合は採用しない）。
+具体的には、**Clojure 1.12 + tools.deps + Polylith + Malli + clj-kondo + cljfmt** を必須層とし、プロジェクトの性格に応じた stack 層（`STACK_GUIDE.md` §4.2）を採用する構成のプロジェクトを、**LLM が最も誤りにくい形で立ち上げる**ための初期配布物である。Integrant は Web API・バッチ・ワーカ等の I/O を扱う stack で採用されるが、必須層ではない（library stack のみの場合は採用しない）。
 
 ### 1.2 適用範囲
 
@@ -114,7 +114,7 @@
 
 | ファイル | 区分 | 備考 |
 |---|---|---|
-| deps.edn | D | 必須層（Clojure、Malli）のみ。stack 層のライブラリ依存は brick の deps.edn に配置（選択肢 H、§2.2 参照）。`:dev :extra-deps` には dev-tools stack の開発支援ライブラリを配置 |
+| deps.edn | D | 必須層（Clojure、tools.deps、Polylith、Malli、clj-kondo、cljfmt）のみ。stack 層のライブラリ依存は brick の deps.edn に配置（選択肢 H、§2.2 参照）。`:dev :extra-deps` には dev-tools stack の開発支援ライブラリを配置 |
 | workspace.edn | D | `:projects` は `development` のみ有効、`:top-namespace` は placeholder |
 | development/src/dev/user.clj | D | tn/set-refresh-dirs は有効、Integrant/Malli-dev/Portal のセクションは採用 stack に応じて有効化 |
 
@@ -1385,6 +1385,71 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
   - **振り分け判断軸の集約の価値**: 「検出された問題をどこに書くか」を毎回判断する疲労を、一度の明示で LLM の参照先に変える。これは §5 機械化原則の文書版。判断が機械化されれば疲労が減る
   - **既存概念の使いこなしが新規概念の追加より優れる**: 「タスク管理」という汎用層を追加するのではなく、既存の 4 種文書分離と §7 自己停止プロトコルを使い分ける判断軸を明示することで、新規概念の追加なしに問題を解決した。これは §9.4 自己適用性の実地適用
   - **『宣言と実装の乖離』の累積パターン**: 今回の kaocha の件は、Malli 必須層化の時と同じ構造の失敗（docstring は宣言、実体はコメントアウト）。ただし今回はより深刻で、**存在しないコマンド**（`poly test --watch`）まで記述されていた。**設計変更時に動作検証を含めた全面点検が必要**という教訓の再確認
+
+#### cljfmt / clj-kondo 必須層昇格の全文書徹底（設計変更の波及の系統的実施）
+- **背景**: ユーザの問い「cljfmt や clj-kondo に関しての言及は一貫していますか。必須ツールとなったことを前提に考えてください」を受けて、必須層として昇格した 2 ツールが全文書で**対等に必須層として扱われているか**を系統的に点検。結果、複数の不一貫が発見された
+- **発見された不一貫**:
+  1. **CLAUDE.md line 4（冒頭）**: 必須技術列挙「Clojure 1.12 + Polylith + Malli 契約 + tools.deps + JVM 21 LTS」に clj-kondo・cljfmt が抜けていた。**最も重要な導入部分での抜け**
+  2. **README.md line 5・18・408-409**: 同様に必須層・機械化列挙で抜け
+  3. **MAINTAINERS_GUIDE.md line 22・117**: 必須層記述に抜け
+  4. **STACK_GUIDE.md §1.1 line 34**: 「必須層（Clojure、Malli、Polylith、JVM）」と、6 項目中 3 項目が抜け
+  5. **BOOTSTRAP_GUIDE.md §1 line 33**: 「必須層: Clojure + Malli」で 4 項目が抜け
+  6. **STACK_GUIDE.md §2.1 表の採用理由**: clj-kondo・cljfmt について「Clojure 標準」「Clojure 標準、hook 機構」という、他の必須層（Malli の「関数契約」、Polylith の「brick ベース」）と比べて**本テンプレートでの役割を語らない弱い表現**
+  7. **CLAUDE.md §2 禁止事項**: 必須層の入れ替え禁止が「フォーマッタ / リンタ / Polylith / Malli 設定の変更」と曖昧に書かれており、必須層そのものの入れ替えか設定変更かの区別が弱い
+  8. **CLAUDE.md §3 の設定ファイル記述**: 「配布時点で同梱される」と書かれていたが、**設定ファイル自体が必須層の一部であり無効化不可**という扱いが明示されていなかった
+  9. **機械化列挙の表記不揃い**: CLAUDE.md §1.2 表の「clj-kondo 厳格設定、`poly check`、`malli.dev/start!`、cljfmt」、CODING_GUIDE.md §17 付録の「clj-kondo、poly check、cljfmt、malli instrumentation」等、文書間で表記揺れ
+- **判断・対処**:
+  - **全文書の必須層列挙を 6 項目で統一**: Clojure + tools.deps + Polylith + Malli + clj-kondo + cljfmt（JVM 21 LTS を補足）を正本として、CLAUDE.md、README.md、MAINTAINERS_GUIDE.md、STACK_GUIDE.md、BOOTSTRAP_GUIDE.md の全必須層列挙を更新
+  - **設定ファイルの必須性明示**: CLAUDE.md §3 で「`.clj-kondo/config.edn` は配布時点で同梱され、設定自体も必須層の一部として無効化・削除不可」「`cljfmt.edn` は配布時点で同梱され、設定自体も必須層の一部として無効化・削除不可」と明示
+  - **CLAUDE.md §2 禁止事項の強化**: 「フォーマッタ / リンタ / Polylith / Malli 設定の変更」を「**必須層の入れ替え・削除**（Clojure / tools.deps / Polylith / Malli / clj-kondo / cljfmt、およびそれぞれの設定ファイル）。設定の変更も含む」に書き直し
+  - **STACK_GUIDE.md §2.1 表の採用理由書き直し**: 「Clojure 標準、hook 機構」→「§1.2.1 機械化の実装の柱。`.clj-kondo/config.edn` が配布時点で同梱され、LLM の悪手を error で機械的に封じる」。本テンプレートでの役割を明示
+  - **機械化列挙の表記統一**: CLAUDE.md §1.2 と CODING_GUIDE.md §17 付録を「clj-kondo、cljfmt、Polylith の `poly check`、Malli instrumentation」で統一。必須層 4 ツールが対等に並ぶ形に
+- **根拠**:
+  - **設計変更の波及の系統的実施**: 「必須層として昇格」という設計変更は、単に §3 の表を書き換えるだけでは完結しない。**全文書の必須層列挙・禁止事項・役割記述が波及点検の対象**。これは過去の議論で繰り返し確認された教訓（「設計変更の波及は配布コードだけでは不十分」「原則記述の根本まで波及点検が必要」）の実地適用
+  - **列挙の正本を 1 つに固定する必要性**: 必須層は 6 項目であるという事実は、テンプレート全体で**一度**書かれるべきで、文書ごとに違う列挙が存在するのは原則 7（文書の自己整合性）違反。今回は CLAUDE.md §3 を正本として、他文書をこれに揃える
+  - **「設定ファイル自体が必須」の明示が必要な理由**: clj-kondo と cljfmt は設定ファイルを空にすれば実質無効化できる。必須層の位置づけを実体化するには、設定ファイル自体を必須層の一部として扱う必要がある。これは Malli と異なる性質（Malli は `m/=>` 契約という形で使用コードに埋め込まれるため、無効化が自明）への対処
+  - **採用理由記述の本テンプレート固有性**: 必須層の「採用理由」は Clojure エコシステム一般の評価（「Clojure 標準」等）ではなく、**本テンプレートの設計原則の中での役割**を語るべき。これは STACK_GUIDE.md の性格（判断結果のメモリー）とも整合する
+- **副次的発見**:
+  - **『一箇所だけ直す』の罠**: 「CLAUDE.md §3 を必須層 6 項目にした」という当初の修正は、§3 という 1 箇所への介入だった。この修正が他文書に波及していないことに、ユーザに指摘されるまで気づかなかった。**1 箇所の修正は他所への波及点検とセットで行う規律**が必要
+  - **導入部分の重要性**: CLAUDE.md line 4（冒頭）は LLM が毎セッション最初に読む最重要箇所。そこでの必須層列挙が不正確だと、本テンプレート全体の基礎認識がずれる。**導入部分の整合性は他のどこより優先度が高い**
+  - **9 箇所の不一貫の同時発見**: ユーザの 1 つの問い（「一貫していますか」）から、CLAUDE.md・README.md・MAINTAINERS_GUIDE.md・STACK_GUIDE.md・BOOTSTRAP_GUIDE.md・CODING_GUIDE.md の 6 文書にわたる 9 箇所の不一貫が同時発見された。これは系統的点検の威力。個別のレビューでは見つけにくい
+  - **「必須層として扱う」の多層性**: 必須層の扱いは単に「列挙に含める」だけではなく、(a) 入れ替え禁止の明示、(b) 設定ファイルの必須性、(c) 本テンプレートでの役割記述、(d) 表記の統一、という 4 つの層で一貫させる必要がある。各層での対処を怠ると「名目上は必須、実質はオプション」という状態が生まれる
+
+#### Polylith 公式ドキュメント照合による設定ファイル仕様の修正
+- **背景**: ユーザの指示「Polylith の documents を参照し、勘違い、思い込み、不整合、コマンド仕様等でおかしなところがないか再確認」を受けて、Polylith 公式 cljdoc 0.3.32 の Commands・Workspace structure・Configuration・Workspace ページを系統的に照合
+- **発見された問題**:
+  1. **深刻: tag-patterns の正規表現が古い版の記法** (`workspace.edn` / `POLYLITH_GUIDE.md`)
+     - 本テンプレート: `{:stable "stable-*" :release "v[0-9]*"}`
+     - 公式 0.3.32: `{:stable "^stable-.*" :release "^v[0-9].*"}`
+     - Polylith 0.2.22 以降で公式が正規表現を変更している。`stable-*` は正規表現として「stable + ハイフン 0 回以上」を意味し、`^stable-.*`（先頭が stable- で始まり、その後に任意の文字）と意味が異なる
+  2. **中程度: Polylith 公式仕様にない `:release {:auto-tag? false}` と `:sensitive-data-cleanup {:enabled? true}` が workspace.edn に存在**
+     - Polylith の公式 workspace.edn 仕様にこれらのキーは存在しない
+     - コードからもどこからも参照されていない死んだ設定（宣言のみ）
+     - Polylith 公式は「カスタムデータは `:custom` キー配下に置くべき」と案内している
+  3. **中程度: 公式推奨キー `:dialects` と `:default-profile-name` が欠落**
+     - デフォルト値（`#{"clj"}` / `"default"`）で動くため動作には問題ない
+     - ただし公式例・最新版 0.3.32 では明示する標準
+- **判断・対処**:
+  - **tag-patterns 修正**: `workspace.edn` と `POLYLITH_GUIDE.md` §6.1・§8 の 3 箇所を `"^stable-.*"` / `"^v[0-9].*"` に統一修正
+  - **非公式キー削除**: `:release` と `:sensitive-data-cleanup` を workspace.edn から削除（実機能していない死んだ設定）
+  - **公式推奨キー追加**: `:dialects ["clj"]` と `:default-profile-name "default"` を workspace.edn に追加
+- **根拠**:
+  - **公式仕様との整合は実行時挙動に関わる**: `tag-patterns` の正規表現が古い版の記法だと、`poly test` が影響範囲判定に使う stable タグ検出が意図通り動かない可能性がある（0.3.32 以降で正規表現の解釈が厳密化された可能性）
+  - **公式にないキーの削除は YAGNI の適用**: 実機能していない設定を「念のため」残しておくことは疲労増。配布物は公式仕様に厳密に準拠し、独自拡張が必要なら `:custom` キーを使うべき
+  - **公式推奨キーの明示は将来耐性**: デフォルトで動いていても、明示的に宣言する方が公式のアップデート・バージョン変更時に耐性がある
+- **問題なしと確認された箇所**（公式照合の結果、本テンプレートの記述が正しかったもの）:
+  - `polyfy/polylith` group id（git 取得時は正しい、Maven 取得なら `polylith/clj-poly` になる）
+  - `poly create tag` が存在しない旨の記述（前回修正済み、正しい）
+  - `poly test --watch` が存在しない旨の記述（前回修正済み、正しい）
+  - `poly test project:<n>` の記法（公式例と一致、正しい）
+  - `poly check` / `poly info` / `poly libs` / `poly deps` の記法（公式例と一致、正しい）
+  - `poly create component name:<n>` / `poly create base name:<n>` / `poly create project name:<n>` の引数形式（公式例と一致、正しい）
+- **副次的発見**:
+  - **公式ドキュメントは版ごとに変化する**: tag-patterns の正規表現は 0.2.21 以前と 0.2.22 以降で異なる。「公式に準拠」と思い込んでいても、**どの版の公式か**を常に意識する必要がある
+  - **Configuration ページと実例のブレ**: 公式 Configuration ページの表では `:compact-view`（単数）と記載されていたが、実際の例・他ページ・公式 workspace.edn 例はすべて `:compact-views`（複数形）だった。公式ドキュメント内にも typo や表記ブレがあり、**表記だけでなく実例と照合することが重要**
+  - **LLM は「公式に準拠した」と主張しがち**: 今回の点検で、本テンプレートは設計思想は公式に合わせていたが、**具体的な設定ファイルの細部**で古い版・実機能しない独自キー・欠落が積み重なっていた。「公式準拠」という主張は**実証可能な形で検証されない限り信頼してはいけない**
+  - **設定ファイルの『死んだキー』は検出しにくい**: `:release {:auto-tag? false}` のような Polylith が無視するキーは、動作には影響しないため通常の lint・test では検出されない。**公式仕様との網羅的照合**が唯一の検出手段。これは自動化が難しい領域で、定期的な人的点検が必要
+  - **ユーザの明示指示が公式照合を駆動した**: LLM は内部的には「公式に準拠している」という信念を持ちがちだが、その信念自体を疑う契機はユーザの明示指示でしか生まれない。「勘違い、思い込み、不整合、コマンド仕様等でおかしなところがないか再確認」という問いの力は、**LLM の内的信念と外的実態を照合する作業を起動する点**にある
 
 ---
 

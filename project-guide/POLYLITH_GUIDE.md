@@ -481,8 +481,8 @@ Polylith の例題は教育目的で粒度が細かい傾向がある。それ�
  :projects      {"development" {:alias "dev"}
                  "<deploy>"    {:alias "<deploy>"}}  ; DESIGN.md §8.2 で定めた project 名
  :vcs           {:name "git" :auto-add false}
- :tag-patterns  {:stable  "stable-*"     ; CI 通過時に打つ安定タグ
-                 :release "v[0-9]*"}}    ; 本番リリースタグ
+ :tag-patterns  {:stable  "^stable-.*"     ; CI 通過時に打つ安定タグ
+                 :release "^v[0-9].*"}}    ; 本番リリースタグ
 ```
 
 ### 6.2 tag-patterns の役割
@@ -561,7 +561,7 @@ cd projects/<deploy> && clj -T:build uber            # ビルド（<deploy> は 
 
 通過したら `stable-<timestamp>` タグを打つ（§6.2）。
 
-CI 通過時以外にも、人間が `git tag stable-$(date +%Y%m%d-%H%M%S)` を手動で打つのは問題ない。ただし CI が通らない状態でタグを打つと、以降の `poly test` が誤った安定点を参照する。Polylith 公式では `poly create tag` のような専用コマンドは存在せず、安定タグの付与は git tag で行う（`workspace.edn` の `:tag-patterns {:stable "stable-*"}` にマッチするタグ名にする）。
+CI 通過時以外にも、人間が `git tag stable-$(date +%Y%m%d-%H%M%S)` を手動で打つのは問題ない。ただし CI が通らない状態でタグを打つと、以降の `poly test` が誤った安定点を参照する。Polylith 公式では `poly create tag` のような専用コマンドは存在せず、安定タグの付与は git tag で行う（`workspace.edn` の `:tag-patterns {:stable "^stable-.*"}` にマッチするタグ名にする）。
 
 ---
 

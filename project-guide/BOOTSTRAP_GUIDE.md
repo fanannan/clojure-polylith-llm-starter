@@ -30,7 +30,7 @@ README.md が「**誰が何をするか**」を示すのに対し、本文書は
 
 本テンプレートは技術スタックを**必須層 + stack 層**として配布する：
 
-- **必須層**（ワークスペースルートの `deps.edn` の `:deps`）: Clojure + Malli。全プロジェクトで常に採用
+- **必須層**（ワークスペースルートの `deps.edn` の `:deps` および必須エイリアス）: Clojure + tools.deps + Polylith + Malli + clj-kondo + cljfmt。全プロジェクトで常に採用、入れ替え不可
 - **stack 層**: 目的別の推奨構成（web-api stack / batch stack / cli stack / library stack 等）。**STACK_GUIDE.md §4.2 は推奨カタログであり、実ライブラリ依存は各 brick の `deps.edn` に書かれる**（Polylith の本番ビルドはそこから依存解決する）
 - **横断層**（dev-tools stack）: 開発支援。ワークスペースルートの `deps.edn` の `:dev :extra-deps` に配置（本番ビルドに混入させない）
 

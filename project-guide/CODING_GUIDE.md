@@ -643,7 +643,7 @@ CLAUDE.md が「日々の作業フロー」を規定するのに対し、本文�
 
 ## 付録: コミット前チェックリスト
 
-§1.2.1 機械化で自動検出されるもの（clj-kondo、poly check、cljfmt、malli instrumentation）に加えて、LLM が手動で確認する項目：
+§1.2.1 機械化で自動検出されるもの（clj-kondo、cljfmt、Polylith の `poly check`、Malli instrumentation）に加えて、LLM が手動で確認する項目：
 
 - [ ] 公開関数すべてに Malli `m/=>` 契約あり（§2.1.1）
 - [ ] 副作用が最外層に隔離されている（§2.3）

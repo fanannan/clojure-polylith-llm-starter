@@ -1,7 +1,8 @@
 ;; deps.edn (workspace ルート = development project)
 ;;
 ;; 技術スタックの構成:
-;;   - 必須層（本ファイルの :deps）: Clojure、Malli など、全プロジェクトで常に採用
+;;   - 必須層（本ファイルの :deps および必須エイリアス）: Clojure + tools.deps + Polylith + Malli + clj-kondo + cljfmt。
+;;     全プロジェクトで常に採用、入れ替え不可
 ;;   - stack 層のライブラリ: 各 brick (base / component) の deps.edn に書く
 ;;     （Polylith の構造: 本番ビルドは brick の deps.edn から依存解決される）
 ;;

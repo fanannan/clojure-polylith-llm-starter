@@ -1,7 +1,7 @@
 # CLAUDE.md — LLM 作業ガイド
 
 **このプロジェクトは Clojure + Polylith ワークスペースです**。
-必須技術は **Clojure 1.12 + Polylith + Malli 契約 + tools.deps + JVM 21 LTS**。
+必須技術は **Clojure 1.12 + tools.deps + Polylith + Malli + clj-kondo + cljfmt**（JVM 21 LTS）。
 目的別の追加ライブラリ（HTTP、DB、ライフサイクル管理等）は **stack** として構成され、詳細は `project-guide/STACK_GUIDE.md` を参照。
 本ファイルは、本リポジトリで作業する LLM エージェント（Claude Code を主想定）への指示書である。
 人間向けの説明ではない。**LLM はこのファイルを毎セッション必ず最初に読み、ここに書かれた規約から外れない**。
@@ -89,7 +89,7 @@
 
 | 戦略 | 意味 | 具体実装 |
 |---|---|---|
-| **機械化** | 規約を人間（LLM）の注意力ではなく、ツールで強制する | clj-kondo 厳格設定、`poly check`、`malli.dev/start!`、cljfmt |
+| **機械化** | 規約を人間（LLM）の注意力ではなく、ツールで強制する | clj-kondo 厳格設定、cljfmt、Polylith の `poly check`、Malli instrumentation |
 | **ループ短縮** | LLM の編集から検証までを秒単位に縮める | REPL 常駐、Malli instrumentation、**ターン内検証**（編集 → `poly test` → 結果読解を同ターンで閉じる、§8） |
 | **小単位分解** | 大きな塊を一気に生成させない。生成→検証→次を繰り返す | 1 関数 20 行以内、コミット細分化、タスク分解判断（§7.4） |
 | **早期破棄** | 詰まったらアプローチごと捨てる。完遂にこだわらない | 自己停止プロトコル（§7）、ブランチ破棄を悪としない |
@@ -112,7 +112,7 @@
 - 既存 API（`interface.clj` の公開関数、Malli スキーマ、DB スキーマ）の破壊的変更
 - 新規 base / project の追加（`poly create base` / `poly create project`）
 - DB マイグレーションの実行（生成は可、実行は人間)
-- フォーマッタ / リンタ / Polylith / Malli 設定の変更
+- **必須層の入れ替え・削除**（§3 記載の Clojure / tools.deps / Polylith / Malli / clj-kondo / cljfmt、およびそれぞれの設定ファイル `.clj-kondo/config.edn` / `cljfmt.edn` / `workspace.edn` / `deps.edn` 必須部分）。設定の変更（例: lint 規則の追加・緩和、cljfmt 設定変更）も含む
 - CLAUDE.md / project-guide/ 配下の各種ガイドの自動編集（**提案のみ可**。ユーザからの明示的な改修依頼がある場合も、変更内容を提示して承認を得てから編集する。テンプレート保守タスクも同じ規律に従う。詳細な編集権限マトリクスは `project-guide/COLLABORATION_GUIDE.md` §2.2）
 - **コンポーネントの統合・分割**（境界変更は影響甚大）
 - `components/`、`bases/`、`projects/` 配下のファイル/ディレクトリを手作業で作成（必ず `poly create`）
@@ -128,8 +128,8 @@
 - **tools.deps**（`deps.edn` による依存管理。Polylith の前提）
 - **Polylith**（ワークスペース構造。§1.2.1 機械化は `poly check` による強制が核）
 - **Malli**（§1.1.1 全域性の実装。`m/=>` 契約と instrumentation）
-- **clj-kondo**（機械化された静的解析。`.clj-kondo/config.edn` が配布時点で同梱される）
-- **cljfmt**（機械化されたフォーマッタ。`cljfmt.edn` が配布時点で同梱される）
+- **clj-kondo**（機械化された静的解析。`.clj-kondo/config.edn` は配布時点で同梱され、設定自体も必須層の一部として無効化・削除不可）
+- **cljfmt**（機械化されたフォーマッタ。`cljfmt.edn` は配布時点で同梱され、設定自体も必須層の一部として無効化・削除不可）
 
 必須層以外の技術選定（テストランナー、HTTP サーバ、DB 接続、ロギング、コンポーネント管理、JSON 変換など）は、プロジェクトの性格に応じて選ぶ **stack 層**に属する。選定の論理と推奨カタログは `project-guide/STACK_GUIDE.md` に一元化されている。採用した stack は `DESIGN.md` §8.3 に記録する。
 

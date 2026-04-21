@@ -31,7 +31,7 @@
 
 **stack** は、**特定の目的に対応する技術構成の一まとまり**を指す。本テンプレートでは**文書上の分類概念**として定義され、実ライブラリ依存は各 brick の deps.edn に書かれる（§1.2 参照）。
 
-- **必須層**: プロジェクト目的に関わらず常に採用されるもの（Clojure、Malli、Polylith、JVM）。**ワークスペースルートの `deps.edn` の `:deps`** で宣言
+- **必須層**: プロジェクト目的に関わらず常に採用されるもの（Clojure、tools.deps、Polylith、Malli、clj-kondo、cljfmt、JVM）。**ワークスペースルートの `deps.edn` の `:deps`** および必須エイリアスで宣言
 - **stack 層**: 目的別の推奨構成（Web API stack、batch stack など）。**各 brick (base / component) の `deps.edn`** で宣言
 - **横断層**: 任意の stack と組み合わせて使う補助的構成（dev-tools stack など）
 
@@ -88,8 +88,8 @@ stack は時間とともに増え、選定根拠は詳細化し、機能領域�
 | ビルド・依存管理 | tools.deps | deps.edn | Clojure 標準、宣言的 |
 | 構造化アーキテクチャ | Polylith | ec92b9b | brick ベースの再利用性 |
 | 契約・検証 | Malli | 0.16.4 | 関数契約 `m/=>`、instrumentation |
-| Lint | clj-kondo | 2024.11.14 | Clojure 標準、hook 機構 |
-| Format | cljfmt | 0.13.0 | Clojure 標準 |
+| Lint | clj-kondo | 2024.11.14 | §1.2.1 機械化の実装の柱。`.clj-kondo/config.edn` が配布時点で同梱され、LLM の悪手を error で機械的に封じる |
+| Format | cljfmt | 0.13.0 | §1.2.1 機械化の実装。`cljfmt.edn` が配布時点で同梱され、フォーマット議論を排除する |
 | 依存更新確認 | antq | 2.11.1264 | ライブラリ更新検知 |
 | REPL リロード | tools.namespace | 1.5.0 | `(reset)` の基盤 |
 | nREPL | nrepl + cider-nrepl + refactor-nrepl | — | エディタ接続 |
