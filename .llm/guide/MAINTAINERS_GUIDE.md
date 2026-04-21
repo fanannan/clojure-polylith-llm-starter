@@ -525,7 +525,7 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
 
 #### 5.9.8 lib-catalog EDN block の schema と生成フロー
 
-**単一情報源**: STACK_GUIDE.md §8（禁止・非推奨）と §4.2.15（機能別推奨カタログ）の `;; lib-catalog` fenced EDN block が lib catalog 情報の source of truth。下記 2 つの shell script と EDN artifact は `clj -X:gen-lib-catalog` が生成する派生物で、手編集禁止（ヘッダに `GENERATED` コメント付き）。
+**単一情報源**: STACK_GUIDE.md §4.2 各 stack の `;; lib-catalog` block（stack ごとに必要な推奨・許容エントリ）と §8 の block（禁止・非推奨・条件付き・射程外）が lib catalog 情報の source of truth。cross-cutting lib（mulog / integrant / aero 等）は複数の stack block に現れることがあるが、generator は**構造完全一致のエントリのみ dedup** を許容し、矛盾（同じ coord + purpose で異なる judgment/reason）は error。下記 2 つの shell script と EDN artifact は `clj -X:gen-lib-catalog` が生成する派生物で、手編集禁止（ヘッダに `GENERATED` コメント付き）。
 
 - `.llm/data/libs.edn` — 全エントリ（人間可読形式、pretty-print）
 - `.llm/data/deprecated-libs.patterns` — `check-deprecated-libs.sh` が読む `<regex>|<reason>` 行
