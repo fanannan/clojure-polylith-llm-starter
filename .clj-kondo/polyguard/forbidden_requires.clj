@@ -160,7 +160,35 @@
 
    ;; マイグレーション
    "joplin.core"                {:level :error
-                                 :message "joplin は条件付き非推奨。migratus を使う"}})
+                                 :message "joplin は条件付き非推奨。migratus を使う"}
+
+   ;; === 2026-04 拡張分 ===
+
+   ;; シリアライゼーション（§3.41 / §8.2）
+   "clojure.data.fressian"      {:level :error
+                                 :message "Fressian は §8.2 条件付き非推奨。com.taoensso/nippy を使う（§3.41）"}
+
+   ;; 統合プラットフォーム（§8.2 商用ライセンス）
+   "com.rpl.rama"               {:level :error
+                                 :message "Rama は §8.2 条件付き非推奨（商用ライセンス、framework 重量）。XTDB + worker + batch の組合せで代替検討"}
+
+   ;; 機械学習（§8.2 ライセンス GPL）
+   "smile.classification"       {:level :error
+                                 :message "SMILE は §8.2 条件付き非推奨（GPL 3.0、SaaS/商用配布と衝突）。scicloj/tablecloth、libpython-clj を検討"}
+   "smile.clustering"           {:level :error
+                                 :message "SMILE は §8.2 条件付き非推奨（GPL 3.0）。scicloj/tablecloth 等を検討"}
+   "smile.regression"           {:level :error
+                                 :message "SMILE は §8.2 条件付き非推奨（GPL 3.0）。scicloj/scicloj.ml を検討"}
+
+   ;; フルスタック DAG（§3.40.1 射程外）
+   "hyperfiddle.electric"       {:level :error
+                                 :message "Electric Clojure は §3.40.1 射程外（cljs 前提、macro 重依存、API 変動激しい）"}
+   "hyperfiddle.electric-dom2"  {:level :error
+                                 :message "Electric Clojure は §3.40.1 射程外"}
+
+   ;; Java Serialization（§8.2 セキュリティ）
+   "java.io.Serializable"       {:level :error
+                                 :message "Java Serialization は §8.2 非推奨（RCE 脆弱性）。com.taoensso/nippy を使う（§3.41）"}})
 
 (def ^:private banned-prefixes
   "banned map の key（namespace 文字列）のベクトル。prefix 一致判定に使う。

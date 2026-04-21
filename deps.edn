@@ -104,7 +104,7 @@
   {:replace-deps
    {polyfy/polylith
     {:git/url   "https://github.com/polyfy/polylith"
-     :git/sha   "ec92b9b50ec1a4083bb5cf57f9f57b8b8eb98603"
+     :git/sha   "c804c2c962e5e81c307dcd878f88f8b10ee43403"
      :deps/root "projects/poly"}}
    :main-opts ["-m" "polylith.clj.core.poly-cli.core"]}
 
@@ -135,6 +135,15 @@
   :outdated
   {:replace-deps {com.github.liquidz/antq {:mvn/version "2.11.1264"}}
    :main-opts    ["-m" "antq.core"]}
+
+  ;; ----------------------------------------------------------------
+  ;; :test — Polylith 新版（master）が deps.edn に要求する alias
+  ;;   実際のテスト実行は `clj -M:poly test` / `clj -M:poly test :all` で行う。
+  ;;   本 alias は Polylith の deps.edn 検証を通すためのプレースホルダで、
+  ;;   :extra-paths は各 brick 作成後に追加（BOOTSTRAP_GUIDE.md §2.5）。
+  ;; ----------------------------------------------------------------
+  :test
+  {:extra-paths []}
 
   ;; ----------------------------------------------------------------
   ;; :lint-splint — Splint（必須層、clj-kondo の補完）

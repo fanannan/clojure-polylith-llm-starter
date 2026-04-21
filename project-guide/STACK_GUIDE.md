@@ -88,7 +88,7 @@ stack は時間とともに増え、選定根拠は詳細化し、機能領域�
 | 言語 | Clojure | 1.12.0 | 本テンプレートの基盤 |
 | ランタイム | JVM | 21 LTS | 長期サポート、パフォーマンス |
 | ビルド・依存管理 | tools.deps | deps.edn | Clojure 標準、宣言的 |
-| 構造化アーキテクチャ | Polylith | ec92b9b | brick ベースの再利用性 |
+| 構造化アーキテクチャ | Polylith | c804c2c | brick ベースの再利用性（master 最新、2026-04 時点） |
 | 契約・検証 | Malli | 0.16.4 | 関数契約 `m/=>`、instrumentation |
 | Lint（構文・型） | clj-kondo | 2024.11.14 | §1.2.1 機械化の実装の柱。`.clj-kondo/config.edn` + custom hook が配布時点で同梱され、LLM の悪手を error で機械的に封じる |
 | Lint（スタイル・イディオム） | Splint | 1.19.0 | clj-kondo 補完。`(= 0 x)` → `(zero? x)` のようなイディオム違反を検知（`_POSSIBLE_ISSUES.md` F 拡張で必須層化） |
@@ -902,8 +902,17 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 - `scicloj/clay`（ノートブック生成、Portal と共存可）
 - `scicloj/noj`（統合パッケージ、複数採用時）
 
+**数値最適化・線形代数（必要時）**:
+- `uncomplicate/neanderthal`（EPL 1.0、Dragan Djuric、高性能 BLAS wrapper、GPU/CPU 両対応、Clojure-native data 駆動 API）
+- 用途: 行列演算、線形代数、科学技術計算で BLAS 呼出が必要な時。tablecloth では足りない場面
+
 **深層学習（必要時）**:
 - **Python 側に委譲**を第一選択。`clj-python/libpython-clj` で PyTorch / TensorFlow を呼び出し、モデル学習は Python、推論境界を Clojure で包む
+
+**遺伝的プログラミング / 自動プログラム合成（研究・特殊用途、opt-in）**:
+- `lspector/Clojush`（EPL 1.0、Lee Spector 維持、Push 言語 GP）
+- 用途: 進化計算、プログラム自動生成、探索型最適化
+- **明示的 opt-in**、§8.2 禁止扱いにしない。通常プロジェクトでは採用しない
 
 **検討した代替**:
 
@@ -913,6 +922,7 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 | deeplearning4j Clojure wrapper | OOP 重い、mutation 多用（G1/G2） |
 | cortex | 開発停止（G4） |
 | PyTorch 直接 JNI | libpython-clj で包める範囲（G6） |
+| **SMILE** (Haifeng Li の ML エンジン) | 機能は広範（分類・クラスタリング・NLP 他）だが **ライセンスが GPL 3.0** で SaaS/商用配布と衝突（G5）。研究・社内閉じ利用のみ ADR 発行の上で条件付き採用可（§8.2 参照） |
 
 **採用理由**:
 - scicloj 系は data 駆動が徹底、dataset は map/vector の集合として扱える
@@ -1023,6 +1033,108 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 - ゲーム開発は別テンプレートを検討
 
 **stack 追加なし**。ゲーム要件プロジェクトは ADR 発行 + 本テンプレート以外の枠組み選択。
+
+#### 3.40.1 Electric Clojure（射程外）
+
+**採用方針**: **射程外**。本テンプレートの哲学と部分整合するが、以下 3 点で採用不可:
+
+1. **ClojureScript 前提**: `hyperfiddle/electric` は full-stack DAG reactive 設計で、ブラウザ側で cljs ランタイムが動く。本テンプレートは JVM 単独
+2. **macro 重依存**: Electric DSL は macro で DAG を合成する設計、`CODING_GUIDE §1.2 過剰な defprotocol` / `§11 マクロ 3 条件` の境界を超える
+3. **API 変動が激しい**: 2024-2026 時点で v2→v3 など大幅改訂が続き、長期安定性が未確保（G4 寄り）
+
+**採用時の扱い**: Electric を使う要件が出たら、本テンプレート外の別フレームワークとして扱い、ADR で明示的に射程外と記録。
+
+### 3.41 シリアライゼーション
+
+**採用**:
+- **EDN（既定）**: Clojure 標準、設定・永続化・IPC 全般で第一選択
+- **Nippy**: `com.taoensso/nippy`（EPL、Taoensso 安定メンテ、高速 binary、Clojure data 構造をそのまま serialize）
+
+**検討した代替**:
+
+| 候補 | 却下理由 |
+|---|---|
+| Fressian | 使えるが Nippy の方が速度・対応型で優位（G6） |
+| ProtoBuf | IDL 駆動で data 駆動でない、§3.30 gRPC で言及済（G1） |
+| Kryo 直接 | OOP 寄り、Nippy が Clojure 向けに最適化済（G6） |
+| Java Serialization | セキュリティリスク（RCE 脆弱性）、設計思想不整合（G1/G5） |
+
+**採用理由**:
+- EDN は Clojure data の自然な serialize 形式、human-readable で debug 容易
+- Nippy は Redis payload / ファイルスナップショット / IPC で EDN より高速（binary）、Clojure の record / regex / date 等も透過的に扱える
+- Taoensso ライブラリは Clojure エコシステムで信頼性が高い
+
+**採用 stack**: web-api / worker / batch / saas / llm-app（必要性に応じ）
+
+**適用条件**:
+- 設定ファイル、小〜中規模データ → EDN（aero / pr-str / read-string）
+- Redis payload、キャッシュスナップショット、IPC → Nippy
+- 外部公開 API → JSON（jsonista）、内部利用は EDN/Nippy
+- 暗号化・認証付きシリアライズ → Nippy の `:password` オプション
+
+### 3.42 パフォーマンス最適化補助
+
+**採用**:
+- **ベンチマーク**: `criterium/criterium`（§9.1 で既言及、JIT warm-up 込み統計計測）
+- **JVM ヒープ計測**: `clj-memory-meter/clj-memory-meter`（オブジェクトサイズ実測）
+- **順序保持 map/set**: `org.flatland/ordered`（insertion-order を保つ map/set、Clojure 標準 map は順序保証なし）
+- **Transducer**（既に標準）: 中間 seq 削減、§9.3 で既言及
+- **VisualVM / JFR**（JDK 付属）: プロファイリング
+
+**検討した代替**:
+
+| 候補 | 却下理由 |
+|---|---|
+| メモリ計測の自作 JVM reflection | clj-memory-meter が薄いラッパで十分（G6） |
+| LinkedHashMap interop 自作 | ordered が Clojure 慣用ラッパ（G6） |
+| YourKit / JProfiler（商用プロファイラ） | 有償、JFR + VisualVM で足りる範囲では不要（G5） |
+
+**採用理由**:
+- 「測ってから最適化」（CODING_GUIDE §9.1）を機械化するための最小セット
+- `org.flatland/ordered` は順序保証が必要な場面（`insertion-order` キーが意味を持つシリアライズ等）で有用
+- clj-memory-meter は heap profiling の計測を 1 行で、性能ボトルネック特定に必須
+
+**採用 stack**: dev-tools stack 拡張（常時併用推奨）
+
+**適用条件**:
+- 性能問題発生時 → criterium で計測、JFR で全体プロファイル
+- 大量データで GC 過剰 → clj-memory-meter で object size 計測
+- 設定ファイルで key 順序が意味を持つ（文書生成等）→ `org.flatland/ordered`
+- **鉄則**: 推測で最適化しない。criterium / JFR で証跡を取ってから変更（§1.2.5 失敗早期検知）
+
+### 3.43 代替アーキテクチャプラットフォーム（条件付き採用）
+
+**採用方針**: 本テンプレートは **Integrant + Reitit + next.jdbc + mulog** の組合せを標準とするが、以下の代替フレームワークを**条件付きで採用可**とする。いずれも ADR 必須。
+
+**条件付き採用候補**:
+
+| フレームワーク | ライセンス | 採用条件 | 扱い |
+|---|---|---|---|
+| **Duct** (`duct-framework/duct`) | MIT | convention-over-configuration を好むチーム、Integrant のモジュール系統を拡張したい場合 | web-api stack の代替として ADR で採用可。本テンプレートの直接 Integrant 運用より抽象が厚いため、新規チームには直接 Integrant 推奨 |
+| **Biff** (`com.biffweb/biff`) | MIT | SaaS / マルチテナント完結 | §4.2.11 saas stack として正式採用済 |
+| **Rama** (Red Planet Labs) | **商用（community edition は小規模無料）** | 特殊要件：DB + streaming + queue + ML を単一 platform で統合したい超大規模要件。**§8.2 条件付き非推奨として扱う**（下記参照） | **本テンプレート標準では採用しない**。XTDB + worker + batch で代替可能なら代替優先 |
+
+**検討した代替（採用しない）**:
+
+| 候補 | 却下理由 |
+|---|---|
+| Electric Clojure | §3.40.1 で射程外宣言 |
+| Fulcro | cljs 前提、本テンプレート射程外 |
+| re-frame | cljs 前提、本テンプレート射程外 |
+| Kit (`io.github.kit-clj/kit`) | 類似位置づけだが、本テンプレートの brick 構造との流儀差が大きい（G7）|
+
+**Duct の扱い詳細**:
+- Integrant ベースで本テンプレート哲学と部分整合（data 駆動、副作用隔離）
+- ただし `duct.core/module` 機構は本テンプレートが採用する直接 Integrant より抽象が厚く、Polylith brick 構造との統合でレイヤが過剰になりやすい
+- 採用時は ADR で「直接 Integrant ではなく Duct を採用する理由」を明記、brick 内部で Duct モジュールを component 化して包む
+
+**Rama の扱い詳細**:
+- 設計は data 駆動で本テンプレート哲学と部分整合（EDN-like、Nathan Marz の一貫性）
+- ただし: (1) 商用ライセンス（本番大規模では有償）、(2) framework 重量、(3) ベンダーロックイン、(4) 学習コスト、(5) Polylith brick 構造との統合例が少ない
+- **§8.2 条件付き非推奨**として扱い、採用する場合は ADR + `DESIGN.md §8.3` に「Rama 採用の不可避性」を明記
+- 代替可能性: XTDB（DB + bitemporal） + worker stack（queue） + batch stack（streaming 的）の組合せで多くのケースを代替可
+
+**採用 stack**: 代替として採用した場合、既存 stack（web-api 等）を置き換える形。複数 stack 併用はしない（framework の全体性と衝突）。
 
 ---
 
@@ -1860,6 +1972,11 @@ brick deps.edn が採用 stack の §4.2.X 採用時の確認事項を満たし�
 | JSON | Cheshire（新規採用） | 条件付き | `metosin/jsonista` へ。既存コードは段階移行 | — |
 | スクリプト言語 | Babashka を本番コード基盤として利用 | 設計思想不整合 | 必要な CLI は uberjar + GraalVM Native Image。Babashka は shell script 代替としての本番外利用のみ可 | — |
 | XML パーサ | xerces / xalan（bundled 版） | 既に §8.1 禁止 | `org.clojure/data.xml` へ | — |
+| 統合プラットフォーム | Rama（Red Planet Labs） | 条件付き + 設計思想不整合 + ライセンス | 商用ライセンス（community edition は小規模無料、本番大規模は有償）、framework 重量、ベンダーロックイン。XTDB + worker stack + batch stack の組合せで多くの要件を代替可。採用時は ADR + DESIGN.md §8.3 に採用不可避性を明記 | — |
+| 機械学習 | SMILE (Statistical Machine Intelligence and Learning Engine) | ライセンス + 条件付き | **GPL 3.0 ライセンス**で SaaS/商用配布と衝突。機能は広範だが scicloj/tablecloth + scicloj.ml または libpython-clj で代替可。研究・社内閉じ利用のみ ADR 発行で条件付き採用可 | — |
+| フルスタック DAG | Electric Clojure (`hyperfiddle/electric`) | 設計思想不整合 + 条件付き | ClojureScript 前提（本テンプレート JVM 単独）、macro 重依存、API 変動が激しい（§3.40.1 射程外、採用しない）| — |
+| Fressian（新規採用） | `org.clojure/data.fressian` | 推奨代替あり + 条件付き | `com.taoensso/nippy` へ（速度・型対応で優位、§3.41）。既存採用プロジェクトは継続可 | — |
+| Java Serialization 直接 | `java.io.Serializable` 経由 | セキュリティ + 設計思想不整合 | RCE 脆弱性の歴史、`com.taoensso/nippy` へ（§3.41） | — |
 
 **追加する場合の基準**: 推奨代替が明確で、本テンプレートの設計思想と衝突し、採用するより避けたほうが**明白に良い**もの。曖昧な「好みの問題」では追加しない（§9.3 整理優先の姿勢）。
 
