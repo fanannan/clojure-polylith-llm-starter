@@ -19,17 +19,26 @@
 ;; ---------------------------------------------------------------------------
 
 (defn- reg!
-  "finding を登録する共通 helper。node の row/col を引き継ぐ。"
-  [node type level message]
+  "finding を登録する共通 helper。node の row/col を引き継ぐ。
+   opts = {:type <keyword> :level <:warning|:error> :message <string>}
+   位置引数 3 個（node + opts マップ）で A-15（上限 3 引数）と整合。"
+  [node opts]
   (api/reg-finding!
    (merge
     (select-keys (meta node) [:row :col :end-row :end-col])
-    {:type type :level level :message message})))
+    (select-keys opts [:type :level :message]))))
+
+(def ^:private ws-tags
+  "rewrite-clj の空白・コンマ・改行・コメントタグ。destructuring 時に除外する。"
+  #{:whitespace :comma :newline :comment :uneval})
 
 (defn- children
-  "node の直接の子 node 列を返す（list-node 等の共通アクセッサ）。"
+  "node の直接の子 node 列を返す（list-node 等の共通アクセッサ）。
+   whitespace / comma / newline / comment / uneval は除外する。
+   rewrite-clj は :children に whitespace を含むため、位置ベース destructuring で
+   whitespace が紛れ込むバグを防ぐには本関数を必ず経由する。"
   [node]
-  (:children node))
+  (remove #(contains? ws-tags (:tag %)) (:children node)))
 
 (defn- count-lines
   "node の行数を概算する（meta の :row / :end-row の差分 + 1）。
@@ -51,49 +60,50 @@
               :else (some walk (children n))))]
     (walk node)))
 
+(def ^:private keys-like-names
+  "map destructuring で「名前リスト」として使われるキーワード。
+   これらの右辺ベクタは destructuring ネストとして加算しない。"
+  #{"keys" "strs" "syms" "or" "as"})
+
+(defn- keyword-value
+  "node が keyword 値を持つなら抽出する（型駆動、A-10/A-11 違反を避ける実装）。
+   rewrite-clj の版差異（:token vs :keyword tag）を吸収。"
+  [n]
+  (when (some? n)
+    (cond
+      (= :token (:tag n)) (let [v (:value n)] (when (keyword? v) v))
+      :else               (let [kw (or (:k n) (:value n))]
+                            (when (keyword? kw) kw)))))
+
+(defn- keys-like?
+  "node が :keys / :strs / :syms / :or / :as のいずれかを表すか。"
+  [n]
+  (when-let [kw (keyword-value n)]
+    (contains? keys-like-names (name kw))))
+
+(defn- walk-depth
+  "vector / map ノードを再帰的に歩き、最大ネスト深度を返す。
+   `:keys` 等の名前リストは加算しない。"
+  [n depth]
+  (cond
+    (api/vector-node? n)
+    (apply max depth (map #(walk-depth % (inc depth)) (children n)))
+
+    (api/map-node? n)
+    (let [pairs (partition-all 2 (children n))]
+      (apply max depth
+             (for [[k v] pairs :when v]
+               (if (keys-like? k)
+                 depth
+                 (walk-depth v (inc depth))))))
+
+    :else depth))
+
 (defn- destructuring-depth
-  "ベクタ / マップの destructuring 深さを返す（最大ネストレベル）。
-
-   修正履歴: 当初の実装は `{:keys [a b]}` のような一般的な destructuring を
-   depth 3 と判定し、閾値 > 2 で false positive を多発させていた。
-   `:keys`・`:strs`・`:syms` のような「名前リスト」としてのベクタは
-   destructuring ネストと見なさないよう、`:keys` 系の直下ベクタを
-   カウントから除外する簡易ルールにした。完全な destructuring 解析ではないが、
-   実運用での false positive を抑える。"
+  "引数ベクタの destructuring 深さを返す。
+   実装履歴: 閾値 > 3 で運用。`{:keys [a b]}` は深さ 3 で閾値内。"
   [node]
-  (letfn [(keys-like? [n]
-            ;; :keys / :strs / :syms / :or / :as など「名前リスト」系キーワード
-            (and (some? n)
-                 (try
-                   (let [sv (api/sexpr n)]
-                     (and (keyword? sv)
-                          (contains? #{"keys" "strs" "syms" "or" "as"} (name sv))))
-                   (catch Exception _ false))))
-          (non-trivial-children [n]
-            ;; whitespace / comment など token/vec/map 以外を排除
-            (filter #(or (api/token-node? %)
-                         (api/vector-node? %)
-                         (api/map-node? %))
-                    (children n)))
-          (walk [n depth]
-            (cond
-              (api/vector-node? n)
-              (apply max depth (map #(walk % (inc depth)) (non-trivial-children n)))
-
-              (api/map-node? n)
-              ;; map-node の子は key-value ペア列（whitespace 除外済）。
-              ;; :keys / :strs / :syms の直下ベクタは「名前リスト」で
-              ;; destructuring ネストではないので加算しない。
-              (let [pairs (partition-all 2 (non-trivial-children n))]
-                (apply max depth
-                       (for [[k v] pairs
-                             :when v]
-                         (if (keys-like? k)
-                           depth
-                           (walk v (inc depth))))))
-
-              :else depth))]
-    (walk node 0)))
+  (walk-depth node 0))
 
 ;; ---------------------------------------------------------------------------
 ;; A-7: 関数行数上限（ロジック関数 20 行 / インターフェース関数 50 行）
@@ -122,10 +132,12 @@
                        (re-find #"interface\.cljc$" filename))
         limit (if interface? 50 20)]
     (when (> lines limit)
-      (reg! node :polyguard/function-too-long :warning
-            (str "関数が " lines " 行あります（上限 " limit " 行、"
-                 (if interface? "interface 関数" "ロジック関数")
-                 "）。機能分解してください（CODING_GUIDE.md §4.4、_POSSIBLE_ISSUES.md A-7）")))))
+      (reg! node
+            {:type :polyguard/function-too-long
+             :level :warning
+             :message (str "関数が " lines " 行あります（上限 " limit " 行、"
+                           (if interface? "interface 関数" "ロジック関数")
+                           "）。機能分解してください（CODING_GUIDE.md §4.4、_POSSIBLE_ISSUES.md A-7）")}))))
 
 ;; ---------------------------------------------------------------------------
 ;; A-15: 位置引数 4 個以上の禁止
@@ -146,7 +158,7 @@
   ;; rewrite-clj は whitespace / comma を子ノードに含むため、まず token-node のみ残す。
   (let [tokens (filter api/token-node? (children arg-vec))
         ;; & args 以降は数えない（take-while）
-        before-amp (take-while #(not (= '& (api/sexpr %))) tokens)]
+        before-amp (take-while #(not= '& (api/sexpr %)) tokens)]
     ;; destructuring は token-node ではなく vector/map-node なので自然に除外される。
     (count (filter #(symbol? (api/sexpr %)) before-amp))))
 
@@ -164,10 +176,12 @@
         (api/vector-node? first-body)
         (let [n (count-positional-args first-body)]
           (when (>= n 4)
-            (reg! first-body :polyguard/too-many-positional-args :warning
-                  (str (api/sexpr fn-name) " の位置引数が " n
-                       " 個あります（上限 3 個、4 個以上はマップで受ける）。"
-                       "CODING_GUIDE.md §4.2、_POSSIBLE_ISSUES.md A-15"))))
+            (reg! first-body
+                  {:type :polyguard/too-many-positional-args
+                   :level :warning
+                   :message (str (api/sexpr fn-name) " の位置引数が " n
+                                 " 個あります（上限 3 個、4 個以上はマップで受ける）。"
+                                 "CODING_GUIDE.md §4.2、_POSSIBLE_ISSUES.md A-15")})))
 
         ;; マルチアリティ: (defn f ([a] ...) ([a b] ...)) は検査スキップ（複雑度回避）
         :else nil))))
@@ -194,10 +208,12 @@
     (when (and first-body (api/vector-node? first-body))
       (let [depth (destructuring-depth first-body)]
         (when (> depth 3)
-          (reg! first-body :polyguard/destructuring-too-deep :warning
-                (str "引数の destructuring が深くネストしています（深さ " depth
-                     "）。中間キーを let で切り出してください。"
-                     "CODING_GUIDE.md §1.12、_POSSIBLE_ISSUES.md A-17")))))))
+          (reg! first-body
+                {:type :polyguard/destructuring-too-deep
+                 :level :warning
+                 :message (str "引数の destructuring が深くネストしています（深さ " depth
+                               "）。中間キーを let で切り出してください。"
+                               "CODING_GUIDE.md §1.12、_POSSIBLE_ISSUES.md A-17")}))))))
 
 ;; ---------------------------------------------------------------------------
 ;; 統合した defn hook（A-7 / A-15 / A-17 をまとめて適用）
@@ -240,10 +256,12 @@
                (not (re-find #"development/src/" filename)))
       (let [[_def-sym _name value] (children node)]
         (when (and value (mutable-constructor-call? value))
-          (reg! node :polyguard/top-level-mutable :warning
-                (str "components/ または bases/ の top-level で (atom/ref/agent ...) を def しています。"
-                     "可変状態は最上位層（Integrant / 起動エントリ）に限定してください。"
-                     "CLAUDE.md §4.2、_POSSIBLE_ISSUES.md A-9")))))))
+          (reg! node
+                {:type :polyguard/top-level-mutable
+                 :level :warning
+                 :message (str "components/ または bases/ の top-level で (atom/ref/agent ...) を def しています。"
+                               "可変状態は最上位層（Integrant / 起動エントリ）に限定してください。"
+                               "CLAUDE.md §4.2、_POSSIBLE_ISSUES.md A-9")}))))))
 
 ;; ---------------------------------------------------------------------------
 ;; A-10 / A-11: catch の検査（広範囲 catch / 空 catch）
@@ -266,28 +284,44 @@
       (and (api/token-node? head)
            (= 'catch (api/sexpr head))))))
 
+(defn- check-broad-catch
+  "catch 節のクラス名が広範囲 catch か検査（A-10）。"
+  [catch-node class-node]
+  (when (and class-node (api/token-node? class-node))
+    (let [class-sym (api/sexpr class-node)]
+      (when (contains? broad-catch-classes class-sym)
+        (reg! catch-node
+              {:type :polyguard/broad-catch
+               :level :warning
+               :message (str "(catch " class-sym " ...) は広すぎます。"
+                             "ex-info の具体クラス、または Java の具体例外を catch してください。"
+                             "CODING_GUIDE.md §7.2、_POSSIBLE_ISSUES.md A-10")})))))
+
+(defn- nil-or-false-token?
+  "node が nil / false を表す token-node か。"
+  [n]
+  (and (api/token-node? n)
+       (contains? #{nil false} (api/sexpr n))))
+
+(defn- check-empty-catch
+  "catch 本体が空 or nil / false のみか検査（A-11）。"
+  [catch-node body]
+  (let [effective-body (remove #(and (api/token-node? %) (nil? (api/sexpr %))) body)]
+    (when (or (empty? effective-body)
+              (every? nil-or-false-token? body))
+      (reg! catch-node
+            {:type :polyguard/empty-catch
+             :level :error
+             :message (str "catch 本体が空または nil / false のみです。例外の握り潰しは禁止。"
+                           "少なくとも構造化ログ（mulog/log）または ex-info で再 throw する。"
+                           "CODING_GUIDE.md §7.2、_POSSIBLE_ISSUES.md A-11")}))))
+
 (defn- check-catch
-  "1 つの catch form を検査（A-10 / A-11）。"
+  "1 つの catch form を検査（A-10 / A-11 をまとめて適用）。"
   [catch-node]
   (let [[_catch class-node _binding & body] (children catch-node)]
-    ;; A-10: 広範囲 catch
-    (when (and class-node (api/token-node? class-node))
-      (let [class-sym (api/sexpr class-node)]
-        (when (contains? broad-catch-classes class-sym)
-          (reg! catch-node :polyguard/broad-catch :warning
-                (str "(catch " class-sym " ...) は広すぎます。"
-                     "ex-info の具体クラス、または Java の具体例外を catch してください。"
-                     "CODING_GUIDE.md §7.2、_POSSIBLE_ISSUES.md A-10")))))
-    ;; A-11: 空 catch
-    (let [effective-body (remove #(and (api/token-node? %) (nil? (api/sexpr %))) body)]
-      (when (or (empty? effective-body)
-                (every? #(and (api/token-node? %)
-                              (contains? #{nil false} (api/sexpr %)))
-                        body))
-        (reg! catch-node :polyguard/empty-catch :error
-              (str "catch 本体が空または nil / false のみです。例外の握り潰しは禁止。"
-                   "少なくとも構造化ログ（mulog/log）または ex-info で再 throw する。"
-                   "CODING_GUIDE.md §7.2、_POSSIBLE_ISSUES.md A-11"))))))
+    (check-broad-catch catch-node class-node)
+    (check-empty-catch catch-node body)))
 
 (defn analyze-try
   "try form の中の catch 節を検査（A-10 / A-11）。"
@@ -303,27 +337,35 @@
 ;;       slurp や Thread/sleep 等の blocking 呼び出しは対象外（A-18 / 別途）。
 ;; ---------------------------------------------------------------------------
 
-(def ^:private ^:const blocking-async-ops
-  #{'<!! '>!!
-    'clojure.core.async/<!!
-    'clojure.core.async/>!!})
+(def ^:private ^:const blocking-op-names
+  "blocking async 呼び出しのシンボル名（namespace / alias 非依存）。
+   `<!!` / `>!!` は alias 名に関わらず同じ意味を持つため、name 比較で判定する
+   （バグ修正: 初期実装は `clojure.core.async/<!!` 完全修飾のみ検知し、
+   よくある `async/<!!` 等のエイリアス形式を見逃していた）。"
+  #{"<!!" ">!!"})
 
 (defn- blocking-call?
-  "list-node が blocking async 呼び出しかを判定。"
+  "list-node が blocking async 呼び出しかを判定（alias 非依存）。"
   [n]
   (when (api/list-node? n)
-    (let [[head & _] (children n)]
-      (and (api/token-node? head)
-           (contains? blocking-async-ops (api/sexpr head))))))
+    (let [cs (children n)
+          head (first cs)]
+      (and head
+           (api/token-node? head)
+           (let [s (api/sexpr head)]
+             (and (symbol? s)
+                  (contains? blocking-op-names (name s))))))))
 
 (defn analyze-go
   "(go ...) 内部の <!! / >!! を検出（A-16）。"
   [{:keys [node]}]
   (when-let [offender (find-recursive node blocking-call?)]
-    (reg! offender :polyguard/blocking-in-go :error
-          (str "go ブロック内で <!! / >!! を呼び出しています。"
-               "go 内では <! / >! を使ってください（blocking 版は OS スレッドを占有してデッドロックの原因）。"
-               "CODING_GUIDE.md §10.2、_POSSIBLE_ISSUES.md A-16"))))
+    (reg! offender
+          {:type :polyguard/blocking-in-go
+           :level :error
+           :message (str "go ブロック内で <!! / >!! を呼び出しています。"
+                         "go 内では <! / >! を使ってください（blocking 版は OS スレッドを占有してデッドロックの原因）。"
+                         "CODING_GUIDE.md §10.2、_POSSIBLE_ISSUES.md A-16")})))
 
 ;; ---------------------------------------------------------------------------
 ;; A-8: m/=> と defn のアリティ整合
@@ -346,8 +388,10 @@
   ;; scripts/check-interface-contracts.sh の役割拡張に委ねる。
   (let [c (children node)]
     (when (< (count c) 3)
-      (reg! node :polyguard/malformed-m=> :warning
-            "m/=> の形式が不十分です。(m/=> fn-name [:=> [:cat ...] ret]) を期待"))))
+      (reg! node
+            {:type :polyguard/malformed-m=>
+             :level :warning
+             :message "m/=> の形式が不十分です。(m/=> fn-name [:=> [:cat ...] ret]) を期待"}))))
 
 ;; ---------------------------------------------------------------------------
 ;; A-13: m/validate の戻り値捨て検知

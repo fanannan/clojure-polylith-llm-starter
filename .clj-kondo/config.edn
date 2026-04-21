@@ -141,6 +141,83 @@
    cheshire.core/generate-string {:message "Cheshire は非推奨。jsonista を使う（STACK_GUIDE §8.2）"}
    clj-http.client/get        {:message "clj-http は新規採用非推奨。hato を使う（STACK_GUIDE §8.2）"}
    clj-http.client/post       {:message "clj-http は新規採用非推奨。hato を使う（STACK_GUIDE §8.2）"}
+
+   ;; --- STACK_GUIDE §8.2 拡張分（saas/ml/llm-app/edge stack 導入に伴う追加） ---
+   ;; namespace 全体の require 禁止は polyguard.forbidden-requires hook で検知する。
+   ;; ここは頻用 entry point に限定（hook と重複する場合もあるが、両者発火で安全側）。
+
+   ;; HTTP サーバ（aleph / manifold / immutant）
+   aleph.http/start-server    {:message "aleph は非推奨。Jetty / http-kit を使う（STACK_GUIDE §8.2）"}
+   manifold.deferred/success-deferred {:message "manifold は非推奨。core.async を使う（STACK_GUIDE §8.2）"}
+   manifold.stream/stream     {:message "manifold は非推奨。core.async channel を使う（STACK_GUIDE §8.2）"}
+
+   ;; ルーティング（bidi）
+   bidi.ring/make-handler     {:message "bidi は新規採用非推奨。reitit を使う（STACK_GUIDE §8.2）"}
+
+   ;; DB（clojure.java.jdbc / Korma）
+   clojure.java.jdbc/query    {:message "clojure.java.jdbc は非推奨。next.jdbc を使う（STACK_GUIDE §8.2）"}
+   clojure.java.jdbc/execute! {:message "clojure.java.jdbc は非推奨。next.jdbc を使う（STACK_GUIDE §8.2）"}
+   clojure.java.jdbc/insert!  {:message "clojure.java.jdbc は非推奨。next.jdbc を使う（STACK_GUIDE §8.2）"}
+   korma.core/select          {:message "Korma は非推奨（ORM）。HoneySQL + next.jdbc を使う（STACK_GUIDE §8.2）"}
+   korma.core/defentity       {:message "Korma は非推奨（ORM）。HoneySQL + next.jdbc を使う（STACK_GUIDE §8.2）"}
+
+   ;; 設定管理（environ / immuconf）
+   environ.core/env           {:message "environ は非推奨。aero の #env を使う（STACK_GUIDE §8.2）"}
+
+   ;; 検証（clojure.spec.alpha）
+   clojure.spec.alpha/fdef    {:message "clojure.spec.alpha は非推奨。Malli m/=> を使う（STACK_GUIDE §8.2）"}
+   clojure.spec.alpha/def     {:message "clojure.spec.alpha は非推奨。Malli を使う（STACK_GUIDE §8.2）"}
+   clojure.spec.alpha/valid?  {:message "clojure.spec.alpha は非推奨。malli.core/validate を使う（STACK_GUIDE §8.2）"}
+
+   ;; ライフサイクル（Component / mount）
+   com.stuartsierra.component/system-map {:message "Component は非推奨（新規）。Integrant を使う（STACK_GUIDE §8.2）"}
+   com.stuartsierra.component/start {:message "Component は非推奨（新規）。Integrant を使う（STACK_GUIDE §8.2）"}
+   mount.core/defstate        {:message "mount は非推奨。Integrant を使う（STACK_GUIDE §8.2）"}
+   mount.core/start           {:message "mount は非推奨。Integrant を使う（STACK_GUIDE §8.2）"}
+
+   ;; 認証（friend）
+   cemerick.friend/authenticate {:message "friend は非推奨（メンテ停止）。buddy-sign を使う（STACK_GUIDE §8.2）"}
+
+   ;; 多言語（tower）
+   taoensso.tower/t           {:message "tower は非推奨。taoensso/tempura を使う（STACK_GUIDE §8.2）"}
+
+   ;; メトリクス（iapetos）
+   iapetos.core/register      {:message "metrics-clojure は非推奨。mulog で統一（STACK_GUIDE §8.2）"}
+
+   ;; スケジューリング（at-at / tea-time）
+   overtone.at-at/mk-pool     {:message "at-at は非推奨。chime を使う（STACK_GUIDE §8.2）"}
+   overtone.at-at/every       {:message "at-at は非推奨。chime を使う（STACK_GUIDE §8.2）"}
+   tea-time.core/every        {:message "tea-time は非推奨（メンテ停止）。chime を使う（STACK_GUIDE §8.2）"}
+
+   ;; リトライ（robert.bruce）
+   robert.bruce/try-try-again {:message "robert.bruce は非推奨（メンテ停止）。sunng87/diehard を使う（STACK_GUIDE §8.2）"}
+
+   ;; Markdown（endophile）
+   endophile.core/mp          {:message "endophile は非推奨（メンテ停止）。markdown-clj を使う（STACK_GUIDE §8.2）"}
+
+   ;; 全文検索（elastisch）
+   clojurewerkz.elastisch.rest/connect {:message "elastisch は非推奨（メンテ停止）。mpenet/spandex を使う（STACK_GUIDE §8.2）"}
+
+   ;; E2E テスト（clj-webdriver）
+   clj-webdriver.taxi/set-driver! {:message "clj-webdriver は非推奨（メンテ停止）。etaoin を使う（STACK_GUIDE §8.2）"}
+   clj-webdriver.taxi/click   {:message "clj-webdriver は非推奨（メンテ停止）。etaoin を使う（STACK_GUIDE §8.2）"}
+
+   ;; AWS SDK（Amazonica）
+   amazonica.aws.s3/list-buckets {:message "Amazonica は非推奨。cognitect aws-api を使う（STACK_GUIDE §8.2）"}
+   amazonica.aws.s3/put-object   {:message "Amazonica は非推奨。cognitect aws-api を使う（STACK_GUIDE §8.2）"}
+
+   ;; 数値計算（incanter）
+   incanter.core/dataset      {:message "incanter は非推奨。scicloj/tablecloth を使う（STACK_GUIDE §8.2、§3.36）"}
+   incanter.stats/mean        {:message "incanter は非推奨。scicloj/scicloj.ml 等を使う（STACK_GUIDE §8.2）"}
+
+   ;; MQTT（machine-head）
+   clojurewerkz.machine-head.client/connect {:message "machine-head は非推奨。paho.mqtt.java 直接利用（STACK_GUIDE §8.2、§3.39）"}
+
+   ;; GUI（seesaw）
+   seesaw.core/frame          {:message "seesaw は新規採用非推奨。humbleui / cljfx を使う（STACK_GUIDE §8.2）"}
+
+   ;; 生音声（overtone）— 条件付き
+   overtone.core/definst      {:message "overtone はプロダクション禁止（創作用途のみ、STACK_GUIDE §8.2）"}
    }
 
   ;; ---------------------------------------------------------------
@@ -189,7 +266,12 @@
    clojure.core/try      polyguard.hooks/analyze-try    ; A-10 / A-11
    clojure.core.async/go polyguard.hooks/analyze-go     ; A-16
    malli.core/=>         polyguard.hooks/analyze-m=>    ; A-8（近似）
-   malli.core/validate   polyguard.hooks/analyze-m-validate}}  ; A-13（近似）
+   malli.core/validate   polyguard.hooks/analyze-m-validate  ; A-13（近似）
+
+   ;; forbidden-requires: STACK_GUIDE §8.1/§8.2 ライブラリの namespace 単位 require 検知
+   ;; :discouraged-var は特定シンボル、本 hook は require 段階で検知する（両者併用）
+   clojure.core/ns       polyguard.forbidden-requires/analyze-ns
+   clojure.core/require  polyguard.forbidden-requires/analyze-require}}
 
  ;; ----------------------------------------------------------------
  ;; ns-groups + config-in-ns — brick 単位でのルール適用
