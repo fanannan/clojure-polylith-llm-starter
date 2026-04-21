@@ -1,7 +1,7 @@
 # CLAUDE.md — LLM 作業ガイド
 
 **このプロジェクトは Clojure + Polylith ワークスペースです**。
-必須技術は **Clojure 1.12 + tools.deps + Polylith + Malli + clj-kondo + cljfmt + Splint + clj-watson**（JVM 21 LTS）。
+必須技術は **Clojure + tools.deps + Polylith + Malli + clj-kondo + cljfmt + Splint + clj-watson**（バージョン・JVM LTS は `.llm/guide/STACK_GUIDE.md` §2.1 を参照）。
 目的別の追加ライブラリ（HTTP、DB、ライフサイクル管理等）は **stack** として構成され、詳細は `.llm/guide/STACK_GUIDE.md` を参照。
 本ファイルは、本リポジトリで作業する LLM エージェント（Claude Code を主想定）への指示書である。
 人間向けの説明ではない。**LLM はこのファイルを毎セッション必ず最初に読み、ここに書かれた規約から外れない**。
@@ -143,9 +143,9 @@
 
 ## 3. 技術スタック
 
-本テンプレートの**必須層**は以下。入れ替え不可：
+本テンプレートの**必須層**は以下。入れ替え不可（バージョンは `STACK_GUIDE.md §2.1` を一次情報源とする）：
 
-- **Clojure 1.12**（言語）
+- **Clojure**（言語）
 - **tools.deps**（`deps.edn` による依存管理。Polylith の前提）
 - **Polylith**（ワークスペース構造。§1.2.1 機械化は `poly check` による強制が核）
 - **Malli**（§1.1.1 全域性の実装。`m/=>` 契約と instrumentation）
@@ -554,7 +554,7 @@ REPL で確認した挙動は**その場でテストに昇格**する。`comment
 |---|---|---|---|
 | **仕様（DESIGN）** | `DESIGN.md` | 何を作るか | `DESIGN.md` §0 本ファイルの埋め方 |
 | **生きた知識（KNOWLEDGE）** | `.llm/memory/KNOWLEDGE.md` | 現時点の契約・不変条件・暗黙知（上書き更新） | `KNOWLEDGE.md` §0 運用プロセス |
-| **決定履歴（ADR）** | `.llm/memory/adr/NNNN-topic.md` | なぜそう決めたか（発行後不変、誤記は新 ADR で supersede）。発行権限は L2（`COLLABORATION_GUIDE.md` §2.2） | `.llm/memory/adr/README.md` |
+| **決定履歴（ADR）** | `.llm/memory/adr/NNNN-topic.md` | なぜそう決めたか（発行後不変、supersede で改訂）。発行・改訂手順の一次情報源は `.llm/memory/adr/README.md`、権限階層は `COLLABORATION_GUIDE.md §2.2` | `.llm/memory/adr/README.md` |
 | **判断保留（QUESTIONS）** | `.llm/memory/QUESTIONS.md` | 未決の判断（open → resolved） | `QUESTIONS.md` §0 運用プロセス |
 
 編集権限・協働プロトコルは **`.llm/guide/COLLABORATION_GUIDE.md`** に一元化されている。**Q を立てるべき場面の一覧は `QUESTIONS.md` §1**、LLM の仕様書開発者としての複数役割は §11.3。

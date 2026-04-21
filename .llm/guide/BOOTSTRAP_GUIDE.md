@@ -159,6 +159,7 @@ clj -M:poly create project name:<deploy>
 
 ```clojure
 ;; bases/<entry>/deps.edn
+;; ※ バージョンは参考値。正本は STACK_GUIDE.md §2.1 / §4.2（コピペ時に要確認）
 {:paths ["src" "resources"]
  :deps  {org.clojure/clojure          {:mvn/version "1.12.0"}
          metosin/malli                {:mvn/version "0.16.4"}
@@ -265,21 +266,17 @@ Integrant を使うプロジェクトでのみ実施する。ライブラリ配�
 
 **workspace 全体の品質確認**:
 
-- [ ] `clj -M:lint` がゼロ警告（clj-kondo + polyguard custom hook）
-- [ ] `clj -M:lint-splint` がゼロ警告（Splint、スタイル・イディオムにより必須層化）
-- [ ] `clj -M:format check` が通る
-- [ ] `clj -M:poly check` が通る
+- [ ] `CLAUDE.md §5.5` 完了条件の全コマンドが通過する（lint / lint-splint / format check / poly check / workspace-integrity / poly test :all / uber ビルド）
 - [ ] `clj -M:dev:nrepl` で REPL 起動、`(go)` が例外なく完走（Integrant を含む stack の場合）
 - [ ] `(reset)` が動作（Integrant を含む stack の場合）
 - [ ] 実装した brick の関数を REPL から呼び出して動作確認
-- [ ] `clj -M:poly test :all` がすべて成功
-- [ ] `cd projects/<deploy> && clj -T:build uber` がビルド成功
+
+> `CLAUDE.md §5.5` がコマンド列の一次情報源。本節では再掲しない（SSOT）。REPL 起動と brick 動作確認はブートストラップ特有の初回確認事項のため、ここに残す。
 
 **依存脆弱性スキャン**（release 前必須、ブートストラップ時は任意）:
 
-- [ ] `./.llm/scripts/check-vulnerabilities.sh` が通る（clj-watson、NIST NVD + GitHub Advisory Database）
+- [ ] `./.llm/scripts/check-vulnerabilities.sh` が通る（clj-watson、詳細は `CLAUDE.md §5.5` release 前追加節を参照）
   - **NVD API key 推奨**: 無料で `https://nvd.nist.gov/developers/request-an-api-key` から取得し、環境変数 `NVD_API_KEY` に設定するとスキャンが高速化される
-  - 完了条件（`CLAUDE.md §5.5`）には含めない（実行時間が長いため）。週次 CI / release 前で実行
 
 **採用 stack ごとの確認事項（STACK_GUIDE.md §4.2.X）**:
 

@@ -44,6 +44,7 @@ Polylith は **../CLAUDE.md §1.1.3 副作用の隔離 + §1.2.1 機械化** の
 ```clojure
 ;; ドメイン系 component の deps.edn
 ;; ★ I/O 系ライブラリ（next.jdbc, ring, hato 等）を絶対に追加しない
+;; ※ バージョンは参考値。正本は STACK_GUIDE.md §2.1 / §4.2（コピペ時に要確認）
 {:paths ["src" "resources"]
  :deps  {org.clojure/clojure {:mvn/version "1.12.0"}
          metosin/malli       {:mvn/version "0.16.4"}}
@@ -154,6 +155,7 @@ Polylith は **../CLAUDE.md §1.1.3 副作用の隔離 + §1.2.1 機械化** の
 ```clojure
 ;; HTTP エントリ base の deps.edn
 ;; web-api stack 採用時の構成（Ring + Reitit + Integrant + Malli + mulog を束ねる）
+;; ※ バージョンは参考値。正本は STACK_GUIDE.md §2.1 / §4.2.3（コピペ時に要確認）
 {:paths ["src" "resources"]
  :deps  {org.clojure/clojure         {:mvn/version "1.12.0"}
          metosin/malli               {:mvn/version "0.16.4"}

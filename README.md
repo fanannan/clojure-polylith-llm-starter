@@ -2,7 +2,7 @@
 
 **Clojure + Polylith プロジェクト**（LLM と人間の仕様共同開発フレームワーク）
 
-- 必須技術: Clojure 1.12 + tools.deps + Polylith + Malli 契約 + clj-kondo + cljfmt（JVM 21 LTS）
+- 必須技術: Clojure + tools.deps + Polylith + Malli 契約 + clj-kondo + cljfmt（バージョン・JVM LTS は `.llm/guide/STACK_GUIDE.md` §2.1 参照）
 - 目的別の追加ライブラリは **stack**（web-api stack / batch stack / cli stack / library stack / worker stack / data-pipeline stack / dev-tools stack）として構成
 - stack 選定論理と実装マッピングの一次情報源は `.llm/guide/STACK_GUIDE.md`
 
@@ -15,14 +15,14 @@
 
 ## このテンプレートは何か
 
-**Clojure 1.12 + tools.deps + Polylith + Malli + clj-kondo + cljfmt** を必須層とし、プロジェクトの性格に応じた **stack 層**（Web API、バッチ、CLI、ライブラリ配布等の目的別推奨構成）を選択できる、**LLM 駆動開発向け**のプロジェクトテンプレート。Integrant・Ring・DB ドライバ等は採用する stack に応じて brick の deps.edn に追加する（必須層ではない）。
+**Clojure + tools.deps + Polylith + Malli + clj-kondo + cljfmt** を必須層とし、プロジェクトの性格に応じた **stack 層**（Web API、バッチ、CLI、ライブラリ配布等の目的別推奨構成）を選択できる、**LLM 駆動開発向け**のプロジェクトテンプレート（必須層のバージョンは `STACK_GUIDE.md §2.1` を参照）。Integrant・Ring・DB ドライバ等は採用する stack に応じて brick の deps.edn に追加する（必須層ではない）。
 
 疲労最小化原則（LLM と人間の共同開発における修復コスト最小化）に基づき設計されている。
 詳細思想は `CLAUDE.md` §1、設計原則は `.llm/guide/MAINTAINERS_GUIDE.md`、stack 選定は `.llm/guide/STACK_GUIDE.md`。
 
 ## 前提ツール
 
-- **JVM 21 LTS**（または最新 LTS）
+- **JVM LTS**（推奨バージョンは `.llm/guide/STACK_GUIDE.md` §2.1 参照）
 - **Clojure CLI**（`clj` コマンド、tools.deps ベース）
 - **Git**
 - **LLM コーディングエージェント**（Claude Code 等、`CLAUDE.md` を読める LLM）
