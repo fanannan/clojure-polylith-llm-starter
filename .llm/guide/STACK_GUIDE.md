@@ -50,7 +50,8 @@
 - プロジェクトのゴールが stack の特性と矛盾しないなら、stack 表を信頼して利用してよい（毎回原則から導出し直す必要はない）
 - stack 表に未記載の領域（特定 stack に該当しない技術分野）に遭遇した場合、第一原理から最も妥当なライブラリを自律的に導出する。それはテンプレートの欠陥ではなく、**メモリーがまだその領域をカバーしていない**だけのこと。原則からの導出で決まらない固有要件（組織方針、要件優先度等）のみユーザに質疑する
 - stack 表の推奨がプロジェクトのゴールと矛盾する場合、原則に照らして判断し、必要なら逸脱（§5.4 ADR 発行）が許される
-- stack 表は完全である必要はない（網羅は永久に達成できない性質のもの）。重要なのは記載されている判断が**原則に基づき正しく導出されている**こと
+- stack 表は完全である必要はない（網羅は永久に達成できない性質のもの）。重要なのは記載されている判断が**原則に基づき正しく導出されている**ことである。
+- 本文書においては、自動生成させた判断も人間が判断したものもある。不正確な判断の是正や、時間の経過による情報の劣化に対処するため、適宜更新することが望ましい。開発者は、独自の判断で随時 stack 表を変更することができるが、LLMは将来の変更の可能性に惑わされず、一義的にこの文書を信頼しなくてはならない。
 
 **推奨カタログとしての機能**  
 本文書は各 stack（目的別の推奨構成）について「**何の機能をどのライブラリで実現するか**」の推奨を集約する。**実際のライブラリ依存は各 brick の `deps.edn`（Polylith 構造）に書かれ、本文書はそれを決める際の判断基準と推奨リストを提供する**。本文書自体が `deps.edn` を生成するわけではない。
@@ -83,20 +84,87 @@ stack は時間とともに増え、選定根拠は詳細化し、機能領域�
 
 ### 2.1 必須層（常に採用、stack 非依存）
 
-| 機能 | 採用技術 | バージョン | 採用理由 |
-|---|---|---|---|
-| 言語 | Clojure | 1.12.0 | 本テンプレートの基盤 |
-| ランタイム | JVM | 21 LTS | 長期サポート、パフォーマンス |
-| ビルド・依存管理 | tools.deps | deps.edn | Clojure 標準、宣言的 |
-| 構造化アーキテクチャ | Polylith | c804c2c | brick ベースの再利用性（master 最新、2026-04 時点） |
-| 契約・検証 | Malli | 0.16.4 | 関数契約 `m/=>`、instrumentation |
-| Lint（構文・型） | clj-kondo | 2024.11.14 | §1.2.1 機械化の実装の柱。`.clj-kondo/config.edn` + custom hook が配布時点で同梱され、LLM の悪手を error で機械的に封じる |
-| Lint（スタイル・イディオム） | Splint | 1.19.0 | clj-kondo 補完。`(= 0 x)` → `(zero? x)` のようなイディオム違反を検知（で必須層化） |
-| Format | cljfmt | 0.13.0 | §1.2.1 機械化の実装。`cljfmt.edn` が配布時点で同梱され、フォーマット議論を排除する |
-| 依存脆弱性スキャン | clj-watson | v6.0.1 | NIST NVD + GitHub Advisory Database を照合。時間軸を跨いだ機械化（承認済み依存の脆弱化検知）。release 前必須（で必須層化） |
-| 依存更新確認 | antq | 2.11.1264 | ライブラリ更新検知 |
-| REPL リロード | tools.namespace | 1.5.0 | `(reset)` の基盤 |
-| nREPL | nrepl + cider-nrepl + refactor-nrepl | — | エディタ接続 |
+**version 情報の SSOT は下記 `;; lib-catalog` EDN block**（deps.edn の実体はこれを参照して記述される）。version 値が複数箇所に分散すると drift するため、本 block の値が一次情報源。
+
+**ランタイム（非 lib）**:
+- **JVM 21 LTS**（長期サポート、パフォーマンス）
+- **tools.deps**（Clojure CLI 組込、`deps.edn` による宣言的依存管理）
+
+```edn
+;; lib-catalog
+[;; === 言語・ランタイム ===
+ {:purpose  [:language]
+  :ids      {:coord org.clojure/clojure}
+  :judgment {:status :recommended :version "1.12.0"}
+  :reasons  {:text "本テンプレートの基盤"}}
+
+ ;; === 構造化アーキテクチャ ===
+ ;; Polylith は git 参照（master 最新、2026-04 時点の sha）。deps.edn の
+ ;; :poly alias で :git/url + :git/sha により取り込む。
+ {:purpose  [:workspace]
+  :ids      {:coord polyfy/polylith}
+  :judgment {:status :recommended :version "c804c2c"}
+  :reasons  {:text "brick ベースの再利用性、poly check が構造違反を検知"}}
+
+ ;; === 契約・検証 ===
+ {:purpose  [:validation]
+  :ids      {:coord metosin/malli :ns "malli.core"}
+  :judgment {:status :recommended :version "0.16.4"}
+  :reasons  {:text "関数契約 m/=>、instrumentation。§1.1.1 全域性の実装"}}
+
+ ;; === Lint / Format（§1.2.1 機械化） ===
+ ;; clj-kondo は .clj-kondo/config.edn + custom hook が配布時点で同梱され、
+ ;; LLM の悪手を error で機械的に封じる（§1.2.1 機械化の実装の柱）。
+ {:purpose  [:lint :ast]
+  :ids      {:coord clj-kondo/clj-kondo}
+  :judgment {:status :recommended :version "2024.11.14"}
+  :reasons  {:text "構文・型・未使用の検知、LLM の悪手を error で封じる"}}
+
+ ;; Splint は clj-kondo の補完（スタイル・イディオム）。
+ {:purpose  [:lint :style]
+  :ids      {:coord io.github.noahtheduke/splint}
+  :judgment {:status :recommended :version "1.19.0"}
+  :reasons  {:text "(= 0 x) → (zero? x) 等のイディオム違反検知、clj-kondo 補完"}}
+
+ {:purpose  [:format]
+  :ids      {:coord dev.weavejester/cljfmt}
+  :judgment {:status :recommended :version "0.13.0"}
+  :reasons  {:text "cljfmt.edn 同梱でフォーマット議論を排除"}}
+
+ ;; === セキュリティ（時間軸を跨いだ機械化） ===
+ ;; clj-watson は git 参照。:version には git/tag を記載。
+ {:purpose  [:security :deps-scan]
+  :ids      {:coord io.github.clj-holmes/clj-watson}
+  :judgment {:status :recommended :version "v6.0.1"}
+  :reasons  {:text "NIST NVD + GitHub Advisory 照合、承認済み依存の脆弱化を検知。release 前必須"}}
+
+ ;; === 依存管理・リロード ===
+ {:purpose  [:tooling :deps-update]
+  :ids      {:coord com.github.liquidz/antq}
+  :judgment {:status :recommended :version "2.11.1264"}
+  :reasons  {:text "ライブラリ更新検知、定期実行"}}
+
+ {:purpose  [:dev :reload]
+  :ids      {:coord org.clojure/tools.namespace :ns "clojure.tools.namespace.repl"}
+  :judgment {:status :recommended :version "1.5.0"}
+  :reasons  {:text "(reset) の基盤、REPL 駆動開発の前提"}}
+
+ ;; === nREPL（エディタ接続） ===
+ {:purpose  [:dev :nrepl :server]
+  :ids      {:coord nrepl/nrepl :ns "nrepl.server"}
+  :judgment {:status :recommended :version "1.3.0"}
+  :reasons  {:text "nREPL サーバ、エディタ接続の基盤"}}
+
+ {:purpose  [:dev :nrepl :cider]
+  :ids      {:coord cider/cider-nrepl}
+  :judgment {:status :recommended :version "0.50.2"}
+  :reasons  {:text "Cider 統合 middleware"}}
+
+ {:purpose  [:dev :nrepl :refactor]
+  :ids      {:coord refactor-nrepl/refactor-nrepl}
+  :judgment {:status :recommended :version "3.10.0"}
+  :reasons  {:text "リファクタリング middleware"}}]
+```
 
 配布物として `.clj-kondo/polyguard/hooks.clj`（AST 解析型の custom hook）と `.llm/scripts/*.sh`（設定ファイル・ディレクトリ構造の機械的検査）も必須層の一部。役割分担は `MAINTAINERS_GUIDE.md §5.10`。
 
@@ -126,11 +194,11 @@ stack は時間とともに増え、選定根拠は詳細化し、機能領域�
 
 ### 2.3 横断層（任意併用、brick deps.edn に反映）
 
-| stack 名 | 目的 | 内容 |
+| stack 名 | 目的 | 参照先 |
 |---|---|---|
-| **dev-tools stack** | 開発支援 | Portal、test.check、matcher-combinators（Integrant を含む stack 採用時は integrant/repl も） |
+| **dev-tools stack** | 開発支援 | §3.8 テスト・検証支援（test.check / matcher-combinators）、§3.9 データインスペクション / REPL デバッガ（Portal / flow-storm）。Integrant を含む stack 採用時は §3.1 の `integrant/repl` も |
 
-stack 層と組み合わせて使う。開発支援ライブラリは通常 **development project のルート `deps.edn` の `:dev` エイリアスの `:extra-deps`** に追加される（本番ビルドに混入させない）。
+stack 層と組み合わせて使う。開発支援ライブラリは通常 **development project のルート `deps.edn` の `:dev` エイリアスの `:extra-deps`** に追加される（本番ビルドに混入させない）。具体 lib と version は §3.1 / §3.8 / §3.9 の `;; lib-catalog` を SSOT として参照する。
 
 ---
 
@@ -278,9 +346,9 @@ stack 層と組み合わせて使う。開発支援ライブラリは通常 **de
 
 ```edn
 ;; lib-catalog
-[;; === 採用 ===
- ;; Malli は必須層なのでルート deps.edn で管理、本 block ではエントリ化しない
- ;; （全 brick が透過的に利用する前提）
+[;; === 採用（Malli は必須層、§2.1 で登録済） ===
+ ;; 本節では :validation :recommended の採用エントリは §2.1 Malli を参照。
+ ;; ここでは :validation の代替と却下のみを記録。
 
  ;; === 代替と却下 ===
  ;; clojure.spec.alpha: `defn` 外での定義、generator が生 Clojure で冗長。
