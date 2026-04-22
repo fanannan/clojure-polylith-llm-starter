@@ -263,13 +263,17 @@ stack 層と組み合わせて使う。開発支援ライブラリは通常 **de
   :judgment  {:status :recommended :version "0.13.1"}
   :reasons   {:text "data 駆動 DI、本テンプレート採用"}
   :relations {:conflicts-with [[com.stuartsierra/component "lifecycle 管理は片方に統一、component は defrecord 依存で :deprecated"]
-                               [mount/mount "lifecycle 管理は片方に統一、mount はグローバル状態で :deprecated"]]}}
+                               [mount/mount "lifecycle 管理は片方に統一、mount はグローバル状態で :deprecated"]]
+              :pairs-with     {:repl    integrant/repl
+                               :config  aero/aero
+                               :logging com.brunobonacci/mulog}}}
 
  ;; REPL 駆動開発用。dev エイリアスへ配置し、本番 uberjar には混入させない
- {:purpose  [:lifecycle :repl]
-  :ids      {:coord integrant/repl :ns "integrant.repl"}
-  :judgment {:status :recommended :version "0.4.0"}
-  :reasons  {:text "REPL での go/reset/halt サイクル"}}
+ {:purpose   [:lifecycle :repl]
+  :ids       {:coord integrant/repl :ns "integrant.repl"}
+  :judgment  {:status :recommended :version "0.4.0"}
+  :reasons   {:text "REPL での go/reset/halt サイクル"}
+  :relations {:pairs-with {:core integrant/integrant}}}
 
  ;; === 代替と却下 ===
  ;; Component (stuartsierra/component): Integrant より古い世代の lifecycle 管理。
@@ -313,7 +317,8 @@ stack 層と組み合わせて使う。開発支援ライブラリは通常 **de
   :judgment  {:status :recommended :version "1.1.6"}
   :reasons   {:text "tagged literal (#env #profile) で環境別設定"}
   :relations {:conflicts-with [[environ/environ "設定ライブラリは片方に統一、environ は構造化設定に弱く :deprecated"]
-                               [immuconf/immuconf "設定ライブラリは片方に統一、immuconf は aero より普及度劣り :deprecated"]]}}
+                               [immuconf/immuconf "設定ライブラリは片方に統一、immuconf は aero より普及度劣り :deprecated"]]
+              :pairs-with     {:lifecycle integrant/integrant}}}
 
  ;; === 代替と却下 ===
  ;; environ: 環境変数のフラット参照中心。構造化設定（profile 切替、ネスト、
@@ -396,10 +401,12 @@ stack 層と組み合わせて使う。開発支援ライブラリは通常 **de
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
- {:purpose  [:web :http-core]
-  :ids      {:coord ring/ring-core :ns "ring.core"}
-  :judgment {:status :recommended :version "1.13.0"}
-  :reasons  {:text "Ring 仕様の標準実装"}}
+ {:purpose   [:web :http-core]
+  :ids       {:coord ring/ring-core :ns "ring.core"}
+  :judgment  {:status :recommended :version "1.13.0"}
+  :reasons   {:text "Ring 仕様の標準実装"}
+  :relations {:pairs-with {:server  ring/ring-jetty-adapter
+                           :routing metosin/reitit-ring}}}
 
  {:purpose   [:web :http-server]
   :ids       {:coord ring/ring-jetty-adapter :ns "ring.adapter.jetty"}
@@ -407,7 +414,9 @@ stack 層と組み合わせて使う。開発支援ライブラリは通常 **de
   :reasons   {:text "Jetty ベース、初期推奨。成熟・枯れている"}
   :relations {:conflicts-with [[http-kit/http-kit "HTTP サーバは片方に統一、http-kit は :acceptable（高同時接続時のみ）"]
                                [aleph/aleph "HTTP サーバは片方に統一、aleph は Netty 依存重く :deprecated"]
-                               [org.immutant/web "HTTP サーバは片方に統一、immutant はメンテ停止 :deprecated"]]}}
+                               [org.immutant/web "HTTP サーバは片方に統一、immutant はメンテ停止 :deprecated"]]
+              :pairs-with     {:core    ring/ring-core
+                               :routing metosin/reitit-ring}}}
 
  ;; http-kit: NIO ベースの軽量 HTTP サーバ。高同時接続性能が重要なプロジェクト向け。
  ;; ring-jetty-adapter と代替関係、どちらかを選択する。
@@ -417,7 +426,8 @@ stack 層と組み合わせて使う。開発支援ライブラリは通常 **de
   :reasons   {:text "NIO 軽量、高同時接続性能が要るなら検討"}
   :relations {:conflicts-with [[ring/ring-jetty-adapter "HTTP サーバは片方に統一、jetty が :recommended（初期推奨）"]
                                [aleph/aleph "HTTP サーバは片方に統一、aleph は :deprecated"]
-                               [org.immutant/web "HTTP サーバは片方に統一、immutant は :deprecated"]]}}
+                               [org.immutant/web "HTTP サーバは片方に統一、immutant は :deprecated"]]
+              :pairs-with     {:routing metosin/reitit-ring}}}
 
  {:purpose   [:web :routing]
   :ids       {:coord metosin/reitit :ns "reitit.core"}
@@ -426,27 +436,38 @@ stack 層と組み合わせて使う。開発支援ライブラリは通常 **de
   :relations {:conflicts-with [[compojure/compojure "ルーティングは片方に統一、compojure は data 駆動でなく :deprecated"]
                                [io.pedestal/pedestal "ルーティングは片方に統一、pedestal は :conditional（大規模 interceptor 機構時のみ）"]
                                [bidi/bidi "ルーティングは片方に統一、bidi は :conditional（Malli 統合不要な保守時のみ）"]
-                               [metosin/compojure-api "ルーティングは片方に統一、compojure-api は :conditional（Swagger 既存保守時のみ）"]]}}
+                               [metosin/compojure-api "ルーティングは片方に統一、compojure-api は :conditional（Swagger 既存保守時のみ）"]]
+              :pairs-with     {:ring     metosin/reitit-ring
+                               :coercion metosin/reitit-malli}}}
 
- {:purpose  [:web :routing :ring]
-  :ids      {:coord metosin/reitit-ring :ns "reitit.ring"}
-  :judgment {:status :recommended :version "0.7.2"}
-  :reasons  {:text "Ring handler integration、CORS middleware も同梱"}}
+ {:purpose   [:web :routing :ring]
+  :ids       {:coord metosin/reitit-ring :ns "reitit.ring"}
+  :judgment  {:status :recommended :version "0.7.2"}
+  :reasons   {:text "Ring handler integration、CORS middleware も同梱"}
+  :relations {:pairs-with {:core                metosin/reitit
+                           :coercion            metosin/reitit-malli
+                           :content-negotiation metosin/muuntaja
+                           :csrf                ring/ring-anti-forgery}}}
 
- {:purpose  [:web :routing :malli]
-  :ids      {:coord metosin/reitit-malli :ns "reitit.coercion.malli"}
-  :judgment {:status :recommended :version "0.7.2"}
-  :reasons  {:text "Malli coercion for reitit"}}
+ {:purpose   [:web :routing :malli]
+  :ids       {:coord metosin/reitit-malli :ns "reitit.coercion.malli"}
+  :judgment  {:status :recommended :version "0.7.2"}
+  :reasons   {:text "Malli coercion for reitit"}
+  :relations {:pairs-with {:core       metosin/reitit
+                           :validation metosin/malli}}}
 
- {:purpose  [:web :content-negotiation]
-  :ids      {:coord metosin/muuntaja :ns "muuntaja.core"}
-  :judgment {:status :recommended :version "0.6.10"}
-  :reasons  {:text "Accept/Content-Type に基づく自動変換"}}
+ {:purpose   [:web :content-negotiation]
+  :ids       {:coord metosin/muuntaja :ns "muuntaja.core"}
+  :judgment  {:status :recommended :version "0.6.10"}
+  :reasons   {:text "Accept/Content-Type に基づく自動変換"}
+  :relations {:pairs-with {:json    metosin/jsonista
+                           :routing metosin/reitit-ring}}}
 
- {:purpose  [:web :csrf]
-  :ids      {:coord ring/ring-anti-forgery :ns "ring.middleware.anti-forgery"}
-  :judgment {:status :recommended :version "1.3.0"}
-  :reasons  {:text "公開 Web API 必須の CSRF 対策"}}
+ {:purpose   [:web :csrf]
+  :ids       {:coord ring/ring-anti-forgery :ns "ring.middleware.anti-forgery"}
+  :judgment  {:status :recommended :version "1.3.0"}
+  :reasons   {:text "公開 Web API 必須の CSRF 対策"}
+  :relations {:pairs-with {:routing metosin/reitit-ring}}}
 
  ;; === 代替と却下 ===
  ;; Compojure: ルーティングを関数として表現。data 駆動ルーティングではなく、
@@ -538,7 +559,8 @@ stack 層と組み合わせて使う。開発支援ライブラリは通常 **de
   :reasons   {:text "Jackson 直叩きで高速、cheshire の代替"}
   :relations {:conflicts-with [[cheshire/cheshire "JSON ライブラリは片方に統一、cheshire は :conditional（既存段階移行のみ）"]
                                [org.clojure/data.json "JSON ライブラリは片方に統一、data.json はパフォーマンス劣位で :deprecated"]
-                               [org.json/json "JSON ライブラリは片方に統一、org.json は脆弱性歴で :forbidden"]]}}
+                               [org.json/json "JSON ライブラリは片方に統一、org.json は脆弱性歴で :forbidden"]]
+              :pairs-with     {:content-negotiation metosin/muuntaja}}}
 
  ;; === 代替と却下 ===
  ;; Cheshire: 高速で広く使われているが、jsonista のほうが Jackson の活用が緻密で
@@ -588,17 +610,22 @@ stack 層と組み合わせて使う。開発支援ライブラリは通常 **de
   :ids       {:coord com.github.seancorfield/next.jdbc :ns "next.jdbc"}
   :judgment  {:status :recommended :version "1.3.967"}
   :reasons   {:text "モダン JDBC ラッパ、transducer 対応"}
-  :relations {:conflicts-with [[org.clojure/java.jdbc "JDBC ラッパは片方に統一、java.jdbc はメンテ停止 :deprecated"]]}}
+  :relations {:conflicts-with [[org.clojure/java.jdbc "JDBC ラッパは片方に統一、java.jdbc はメンテ停止 :deprecated"]]
+              :pairs-with     {:sql-builder com.github.seancorfield/honeysql
+                               :pool        com.zaxxer/HikariCP
+                               :migration   migratus/migratus}}}
 
- {:purpose  [:db :sql-builder]
-  :ids      {:coord com.github.seancorfield/honeysql :ns "honey.sql"}
-  :judgment {:status :recommended :version "2.6.1230"}
-  :reasons  {:text "data 駆動 SQL DSL、next.jdbc と組み合わせる"}}
+ {:purpose   [:db :sql-builder]
+  :ids       {:coord com.github.seancorfield/honeysql :ns "honey.sql"}
+  :judgment  {:status :recommended :version "2.6.1230"}
+  :reasons   {:text "data 駆動 SQL DSL、next.jdbc と組み合わせる"}
+  :relations {:pairs-with {:jdbc com.github.seancorfield/next.jdbc}}}
 
- {:purpose  [:db :connection-pool]
-  :ids      {:coord com.zaxxer/HikariCP}
-  :judgment {:status :recommended :version "6.2.1"}
-  :reasons  {:text "最速の JDBC コネクションプール"}}
+ {:purpose   [:db :connection-pool]
+  :ids       {:coord com.zaxxer/HikariCP}
+  :judgment  {:status :recommended :version "6.2.1"}
+  :reasons   {:text "最速の JDBC コネクションプール"}
+  :relations {:pairs-with {:jdbc com.github.seancorfield/next.jdbc}}}
 
  ;; === 代替と却下 ===
  ;; clojure.java.jdbc: next.jdbc の前身。メンテ停止、next.jdbc へ移行。
@@ -644,12 +671,15 @@ stack 層と組み合わせて使う。開発支援ライブラリは通常 **de
   :judgment  {:status :recommended :version "0.9.0"}
   :reasons   {:text "イベント駆動の構造化ログ、publisher 切替可能"}
   :relations {:conflicts-with [[com.taoensso/timbre "ロギングは片方に統一、timbre は構造化表現力劣り :deprecated"]
-                               [org.apache.logging.log4j/log4j-1.2-api "ロギングは片方に統一、log4j 1.x は CVE 未修正で :forbidden"]]}}
+                               [org.apache.logging.log4j/log4j-1.2-api "ロギングは片方に統一、log4j 1.x は CVE 未修正で :forbidden"]]
+              :pairs-with     {:json-output com.brunobonacci/mulog-json
+                               :lifecycle   integrant/integrant}}}
 
- {:purpose  [:logging :json-output]
-  :ids      {:coord com.brunobonacci/mulog-json}
-  :judgment {:status :recommended :version "0.9.0"}
-  :reasons  {:text "mulog の JSON publisher"}}
+ {:purpose   [:logging :json-output]
+  :ids       {:coord com.brunobonacci/mulog-json}
+  :judgment  {:status :recommended :version "0.9.0"}
+  :reasons   {:text "mulog の JSON publisher"}
+  :relations {:pairs-with {:core com.brunobonacci/mulog}}}
 
  ;; === 代替と却下 ===
  ;; timbre: 構造化ログの表現力が mulog より弱い。イベント駆動（μ/log）的な発想がなく、
@@ -731,18 +761,20 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
- {:purpose  [:dev :inspect]
-  :ids      {:coord djblue/portal :ns "portal.api"}
-  :judgment {:status :recommended :version "0.58.5"}
-  :reasons  {:text "tap> 出力先、data インスペクション。人間向け UI、ワークスペースルート :dev エイリアス専用"}}
+ {:purpose   [:dev :inspect]
+  :ids       {:coord djblue/portal :ns "portal.api"}
+  :judgment  {:status :recommended :version "0.58.5"}
+  :reasons   {:text "tap> 出力先、data インスペクション。人間向け UI、ワークスペースルート :dev エイリアス専用"}
+  :relations {:pairs-with {:repl-debugger com.github.flow-storm/flow-storm-dbg}}}
 
  ;; flow-storm: trace / step / REPL-native explore を提供。LLM 協働時に
  ;; evaluation 履歴を text / EDN で取り出せるため、LLM が画面を見られない
  ;; 本テンプレートの使用文脈で Portal の盲点を補う。
- {:purpose  [:dev :repl-debugger]
-  :ids      {:coord com.github.flow-storm/flow-storm-dbg :ns "flow-storm.api"}
-  :judgment {:status :recommended :version "4.5.9"}
-  :reasons  {:text "REPL-native trace / step、LLM 協働で evaluation 履歴を追える"}}
+ {:purpose   [:dev :repl-debugger]
+  :ids       {:coord com.github.flow-storm/flow-storm-dbg :ns "flow-storm.api"}
+  :judgment  {:status :recommended :version "4.5.9"}
+  :reasons   {:text "REPL-native trace / step、LLM 協働で evaluation 履歴を追える"}
+  :relations {:pairs-with {:inspect djblue/portal}}}
 
  ;; === 代替と却下 ===
  ;; Reveal / 他の dev UI inspector 複数同時導入: Portal に一本化、複数ビューア
@@ -793,7 +825,9 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
   :ids       {:coord hato/hato :ns "hato.client"}
   :judgment  {:status :recommended :version "1.0.0"}
   :reasons   {:text "Java 11+ HttpClient ベース、HTTP/2 対応"}
-  :relations {:conflicts-with [[clj-http/clj-http "HTTP クライアントは片方に統一、clj-http は :conditional（既存段階移行のみ）"]]}}
+  :relations {:conflicts-with [[clj-http/clj-http "HTTP クライアントは片方に統一、clj-http は :conditional（既存段階移行のみ）"]]
+              :pairs-with     {:retry sunng87/diehard
+                               :json  metosin/jsonista}}}
 
  ;; === 代替と却下 ===
  ;; clj-http: 古くから広く使われているが、hato が Java 11+ HttpClient ベースで第一選択。
@@ -821,15 +855,17 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
- {:purpose  [:auth :jwt]
-  :ids      {:coord buddy/buddy-sign :ns "buddy.sign.jwt"}
-  :judgment {:status :recommended}
-  :reasons  {:text "JWT / JWS / JWE"}}
+ {:purpose   [:auth :jwt]
+  :ids       {:coord buddy/buddy-sign :ns "buddy.sign.jwt"}
+  :judgment  {:status :recommended}
+  :reasons   {:text "JWT / JWS / JWE"}
+  :relations {:pairs-with {:password-hashing buddy/buddy-hashers}}}
 
- {:purpose  [:auth :password-hashing]
-  :ids      {:coord buddy/buddy-hashers :ns "buddy.hashers"}
-  :judgment {:status :recommended}
-  :reasons  {:text "パスワードハッシュ bcrypt/argon2"}}
+ {:purpose   [:auth :password-hashing]
+  :ids       {:coord buddy/buddy-hashers :ns "buddy.hashers"}
+  :judgment  {:status :recommended}
+  :reasons   {:text "パスワードハッシュ bcrypt/argon2"}
+  :relations {:pairs-with {:jwt buddy/buddy-sign}}}
 
  ;; === 代替と却下 ===
  ;; friend: メンテナンス停滞、Ring 1.11 以降との整合性に懸念。buddy 系へ移行。
@@ -948,7 +984,9 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
   :reasons   {:text "core.async ベース、Integrant 統合容易"}
   :relations {:conflicts-with [[overtone/at-at "スケジューラは片方に統一、at-at は停止制御弱く :deprecated"]
                                [clojurewerkz/quartzite "スケジューラは片方に統一、quartzite は :conditional（cron/永続化時のみ）"]
-                               [tea-time/tea-time "スケジューラは片方に統一、tea-time はメンテ停止 :deprecated"]]}}
+                               [tea-time/tea-time "スケジューラは片方に統一、tea-time はメンテ停止 :deprecated"]]
+              :pairs-with     {:lifecycle integrant/integrant
+                               :async     org.clojure/core.async}}}
 
  ;; === 代替と却下 ===
  ;; at-at: シンプルだが停止制御が弱く、Integrant 統合しにくい。chime へ。
@@ -1032,7 +1070,8 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
   :ids       {:coord sunng87/diehard :ns "diehard.core"}
   :judgment  {:status :recommended}
   :reasons   {:text "Retry / Circuit Breaker、外部 API 呼出時に必須化"}
-  :relations {:conflicts-with [[robert/robert.bruce "リトライは片方に統一、robert.bruce はメンテ停止 :deprecated"]]}}
+  :relations {:conflicts-with [[robert/robert.bruce "リトライは片方に統一、robert.bruce はメンテ停止 :deprecated"]]
+              :pairs-with     {:http-client hato/hato}}}
 
  ;; === 代替と却下 ===
  ;; robert.bruce: メンテ停止、diehard が後継。
@@ -1119,7 +1158,8 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
   :ids       {:coord com.taoensso/tempura :ns "taoensso.tempura"}
   :judgment  {:status :recommended}
   :reasons   {:text "tower の後継、同作者"}
-  :relations {:conflicts-with [[com.taoensso/tower "i18n は片方に統一、tower はメンテ停止 :deprecated"]]}}
+  :relations {:conflicts-with [[com.taoensso/tower "i18n は片方に統一、tower はメンテ停止 :deprecated"]]
+              :pairs-with     {:lifecycle integrant/integrant}}}
 
  ;; === 代替と却下 ===
  ;; tower: 開発停止、tempura が後継。
@@ -1310,7 +1350,8 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
   :reasons   {:text "SQL ベース、純 Clojure、新規 Clojure プロジェクトの第一選択"}
   :relations {:conflicts-with [[org.flywaydb/flyway-core "マイグレーションは片方に統一、flyway は :conditional（Java 資産保守のみ）"]
                                [org.liquibase/liquibase-core "マイグレーションは片方に統一、liquibase は :conditional（Java 資産保守のみ）"]
-                               [joplin/joplin "マイグレーションは片方に統一、joplin はメンテ低迷 :deprecated"]]}}
+                               [joplin/joplin "マイグレーションは片方に統一、joplin はメンテ低迷 :deprecated"]]
+              :pairs-with     {:jdbc com.github.seancorfield/next.jdbc}}}
 
  ;; === 代替と却下 ===
  ;; Flyway (Java): XML/Java 設定が冗長、data 駆動ではない。既存 Java 資産の
@@ -1683,7 +1724,8 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
   :ids       {:coord mpenet/spandex :ns "qbits.spandex"}
   :judgment  {:status :recommended}
   :reasons   {:text "Elasticsearch クライアント、elastisch の代替"}
-  :relations {:conflicts-with [[clojurewerkz/elastisch "Elasticsearch クライアントは片方に統一、elastisch はメンテ停止 :deprecated"]]}}
+  :relations {:conflicts-with [[clojurewerkz/elastisch "Elasticsearch クライアントは片方に統一、elastisch はメンテ停止 :deprecated"]]
+              :pairs-with     {:json metosin/jsonista}}}
 
  ;; === 代替と却下 ===
  ;; elastisch: メンテナンス停止、spandex が現役。
@@ -1915,22 +1957,26 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
- {:purpose  [:edge :gpio]
-  :ids      {:coord com.pi4j/pi4j-core}
-  :judgment {:status :recommended :version "2.x"}
-  :reasons  {:text "Raspberry Pi GPIO の標準、Pi4J v2"}}
+ {:purpose   [:edge :gpio]
+  :ids       {:coord com.pi4j/pi4j-core}
+  :judgment  {:status :recommended :version "2.x"}
+  :reasons   {:text "Raspberry Pi GPIO の標準、Pi4J v2"}
+  :relations {:pairs-with {:backend com.pi4j/pi4j-plugin-pigpio
+                           :mqtt    org.eclipse.paho/org.eclipse.paho.client.mqttv3}}}
 
- {:purpose  [:edge :gpio :pigpio]
-  :ids      {:coord com.pi4j/pi4j-plugin-pigpio}
-  :judgment {:status :recommended :version "2.x"}
-  :reasons  {:text "pigpio バックエンド、Pi4J v2 のネイティブ実装"}}
+ {:purpose   [:edge :gpio :pigpio]
+  :ids       {:coord com.pi4j/pi4j-plugin-pigpio}
+  :judgment  {:status :recommended :version "2.x"}
+  :reasons   {:text "pigpio バックエンド、Pi4J v2 のネイティブ実装"}
+  :relations {:pairs-with {:core com.pi4j/pi4j-core}}}
 
  {:purpose   [:messaging :mqtt]
   :ids       {:coord org.eclipse.paho/org.eclipse.paho.client.mqttv3
               :ns    "org.eclipse.paho.client.mqttv3"}
   :judgment  {:status :recommended :version "1.2.5"}
   :reasons   {:text "Paho MQTT Java 公式、machine-head の代替"}
-  :relations {:conflicts-with [[clojurewerkz/machine_head "MQTT クライアントは片方に統一、machine-head は :deprecated"]]}}
+  :relations {:conflicts-with [[clojurewerkz/machine_head "MQTT クライアントは片方に統一、machine-head は :deprecated"]]
+              :pairs-with     {:edge com.pi4j/pi4j-core}}}
 
  ;; === 代替と却下 ===
  ;; machine-head (clojurewerkz): Paho MQTT Java を直接使うほうが依存が薄い。
@@ -2008,12 +2054,14 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
   :ids       {:coord com.taoensso/nippy :ns "taoensso.nippy"}
   :judgment  {:status :recommended}
   :reasons   {:text "高速バイナリシリアライザ、Fressian の代替"}
-  :relations {:conflicts-with [[org.clojure/data.fressian "バイナリストレージは片方に統一、fressian は :conditional（既存継続のみ）"]]}}
+  :relations {:conflicts-with [[org.clojure/data.fressian "バイナリストレージは片方に統一、fressian は :conditional（既存継続のみ）"]]
+              :pairs-with     {:wire-format com.cognitect/transit-clj}}}
 
- {:purpose  [:serialization :transit]
-  :ids      {:coord com.cognitect/transit-clj :ns "cognitect.transit"}
-  :judgment {:status :recommended}
-  :reasons  {:text "Cognitect Transit、Clojure 標準のバイナリ転送"}}
+ {:purpose   [:serialization :transit]
+  :ids       {:coord com.cognitect/transit-clj :ns "cognitect.transit"}
+  :judgment  {:status :recommended}
+  :reasons   {:text "Cognitect Transit、Clojure 標準のバイナリ転送"}
+  :relations {:pairs-with {:storage com.taoensso/nippy}}}
 
  ;; === 代替と却下 ===
  ;; data.fressian: 使えるが Nippy の方が速度・対応型で優位。既存採用プロジェクトは継続可。
@@ -2382,7 +2430,8 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
   :ids       {:coord org.clojure/core.async :ns "clojure.core.async"}
   :judgment  {:status :recommended}
   :reasons   {:text "CSP チャネル、manifold の代替"}
-  :relations {:conflicts-with [[manifold/manifold "非同期抽象は片方に統一、manifold は設計思想不整合"]]}}
+  :relations {:conflicts-with [[manifold/manifold "非同期抽象は片方に統一、manifold は設計思想不整合"]]
+              :pairs-with     {:scheduling jarohen/chime}}}
 
  ;; === 代替と却下 ===
  ;; manifold: aleph と同系統の設計不整合、core.async / promise.cljc へ。

@@ -67,11 +67,16 @@
   {:conflicts-with
    [[com.stuartsierra/component
      "lifecycle 管理は片方に統一、component は defrecord 依存で :deprecated"]
-    [mount/mount "lifecycle 管理は片方に統一、mount はグローバル状態で :deprecated"]]}}
+    [mount/mount "lifecycle 管理は片方に統一、mount はグローバル状態で :deprecated"]],
+   :pairs-with
+   {:repl integrant/repl,
+    :config aero/aero,
+    :logging com.brunobonacci/mulog}}}
  {:purpose [:lifecycle :repl],
   :ids {:coord integrant/repl, :ns "integrant.repl"},
   :judgment {:status :recommended, :version "0.4.0"},
-  :reasons {:text "REPL での go/reset/halt サイクル"}}
+  :reasons {:text "REPL での go/reset/halt サイクル"},
+  :relations {:pairs-with {:core integrant/integrant}}}
  {:purpose [:lifecycle],
   :ids
   {:coord com.stuartsierra/component,
@@ -99,7 +104,8 @@
   {:conflicts-with
    [[environ/environ "設定ライブラリは片方に統一、environ は構造化設定に弱く :deprecated"]
     [immuconf/immuconf
-     "設定ライブラリは片方に統一、immuconf は aero より普及度劣り :deprecated"]]}}
+     "設定ライブラリは片方に統一、immuconf は aero より普及度劣り :deprecated"]],
+   :pairs-with {:lifecycle integrant/integrant}}}
  {:purpose [:config],
   :ids {:coord environ/environ, :ns "environ.core"},
   :judgment
@@ -134,7 +140,10 @@
  {:purpose [:web :http-core],
   :ids {:coord ring/ring-core, :ns "ring.core"},
   :judgment {:status :recommended, :version "1.13.0"},
-  :reasons {:text "Ring 仕様の標準実装"}}
+  :reasons {:text "Ring 仕様の標準実装"},
+  :relations
+  {:pairs-with
+   {:server ring/ring-jetty-adapter, :routing metosin/reitit-ring}}}
  {:purpose [:web :http-server],
   :ids {:coord ring/ring-jetty-adapter, :ns "ring.adapter.jetty"},
   :judgment {:status :recommended, :version "1.13.0"},
@@ -144,7 +153,8 @@
    [[http-kit/http-kit
      "HTTP サーバは片方に統一、http-kit は :acceptable（高同時接続時のみ）"]
     [aleph/aleph "HTTP サーバは片方に統一、aleph は Netty 依存重く :deprecated"]
-    [org.immutant/web "HTTP サーバは片方に統一、immutant はメンテ停止 :deprecated"]]}}
+    [org.immutant/web "HTTP サーバは片方に統一、immutant はメンテ停止 :deprecated"]],
+   :pairs-with {:core ring/ring-core, :routing metosin/reitit-ring}}}
  {:purpose [:web :http-server],
   :ids {:coord http-kit/http-kit, :ns "org.httpkit.server"},
   :judgment {:status :acceptable, :version "2.8.0"},
@@ -154,7 +164,8 @@
    [[ring/ring-jetty-adapter
      "HTTP サーバは片方に統一、jetty が :recommended（初期推奨）"]
     [aleph/aleph "HTTP サーバは片方に統一、aleph は :deprecated"]
-    [org.immutant/web "HTTP サーバは片方に統一、immutant は :deprecated"]]}}
+    [org.immutant/web "HTTP サーバは片方に統一、immutant は :deprecated"]],
+   :pairs-with {:routing metosin/reitit-ring}}}
  {:purpose [:web :routing],
   :ids {:coord metosin/reitit, :ns "reitit.core"},
   :judgment {:status :recommended, :version "0.7.2"},
@@ -167,24 +178,37 @@
      "ルーティングは片方に統一、pedestal は :conditional（大規模 interceptor 機構時のみ）"]
     [bidi/bidi "ルーティングは片方に統一、bidi は :conditional（Malli 統合不要な保守時のみ）"]
     [metosin/compojure-api
-     "ルーティングは片方に統一、compojure-api は :conditional（Swagger 既存保守時のみ）"]]}}
+     "ルーティングは片方に統一、compojure-api は :conditional（Swagger 既存保守時のみ）"]],
+   :pairs-with
+   {:ring metosin/reitit-ring, :coercion metosin/reitit-malli}}}
  {:purpose [:web :routing :ring],
   :ids {:coord metosin/reitit-ring, :ns "reitit.ring"},
   :judgment {:status :recommended, :version "0.7.2"},
-  :reasons {:text "Ring handler integration、CORS middleware も同梱"}}
+  :reasons {:text "Ring handler integration、CORS middleware も同梱"},
+  :relations
+  {:pairs-with
+   {:core metosin/reitit,
+    :coercion metosin/reitit-malli,
+    :content-negotiation metosin/muuntaja,
+    :csrf ring/ring-anti-forgery}}}
  {:purpose [:web :routing :malli],
   :ids {:coord metosin/reitit-malli, :ns "reitit.coercion.malli"},
   :judgment {:status :recommended, :version "0.7.2"},
-  :reasons {:text "Malli coercion for reitit"}}
+  :reasons {:text "Malli coercion for reitit"},
+  :relations
+  {:pairs-with {:core metosin/reitit, :validation metosin/malli}}}
  {:purpose [:web :content-negotiation],
   :ids {:coord metosin/muuntaja, :ns "muuntaja.core"},
   :judgment {:status :recommended, :version "0.6.10"},
-  :reasons {:text "Accept/Content-Type に基づく自動変換"}}
+  :reasons {:text "Accept/Content-Type に基づく自動変換"},
+  :relations
+  {:pairs-with {:json metosin/jsonista, :routing metosin/reitit-ring}}}
  {:purpose [:web :csrf],
   :ids
   {:coord ring/ring-anti-forgery, :ns "ring.middleware.anti-forgery"},
   :judgment {:status :recommended, :version "1.3.0"},
-  :reasons {:text "公開 Web API 必須の CSRF 対策"}}
+  :reasons {:text "公開 Web API 必須の CSRF 対策"},
+  :relations {:pairs-with {:routing metosin/reitit-ring}}}
  {:purpose [:web :routing],
   :ids {:coord compojure/compojure, :ns "compojure.core"},
   :judgment
@@ -266,7 +290,8 @@
      "JSON ライブラリは片方に統一、cheshire は :conditional（既存段階移行のみ）"]
     [org.clojure/data.json
      "JSON ライブラリは片方に統一、data.json はパフォーマンス劣位で :deprecated"]
-    [org.json/json "JSON ライブラリは片方に統一、org.json は脆弱性歴で :forbidden"]]}}
+    [org.json/json "JSON ライブラリは片方に統一、org.json は脆弱性歴で :forbidden"]],
+   :pairs-with {:content-negotiation metosin/muuntaja}}}
  {:purpose [:json],
   :ids {:coord cheshire/cheshire, :ns "cheshire.core"},
   :judgment
@@ -305,15 +330,21 @@
   :relations
   {:conflicts-with
    [[org.clojure/java.jdbc
-     "JDBC ラッパは片方に統一、java.jdbc はメンテ停止 :deprecated"]]}}
+     "JDBC ラッパは片方に統一、java.jdbc はメンテ停止 :deprecated"]],
+   :pairs-with
+   {:sql-builder com.github.seancorfield/honeysql,
+    :pool com.zaxxer/HikariCP,
+    :migration migratus/migratus}}}
  {:purpose [:db :sql-builder],
   :ids {:coord com.github.seancorfield/honeysql, :ns "honey.sql"},
   :judgment {:status :recommended, :version "2.6.1230"},
-  :reasons {:text "data 駆動 SQL DSL、next.jdbc と組み合わせる"}}
+  :reasons {:text "data 駆動 SQL DSL、next.jdbc と組み合わせる"},
+  :relations {:pairs-with {:jdbc com.github.seancorfield/next.jdbc}}}
  {:purpose [:db :connection-pool],
   :ids {:coord com.zaxxer/HikariCP},
   :judgment {:status :recommended, :version "6.2.1"},
-  :reasons {:text "最速の JDBC コネクションプール"}}
+  :reasons {:text "最速の JDBC コネクションプール"},
+  :relations {:pairs-with {:jdbc com.github.seancorfield/next.jdbc}}}
  {:purpose [:db :jdbc],
   :ids {:coord org.clojure/java.jdbc, :ns "clojure.java.jdbc"},
   :judgment
@@ -342,11 +373,15 @@
   {:conflicts-with
    [[com.taoensso/timbre "ロギングは片方に統一、timbre は構造化表現力劣り :deprecated"]
     [org.apache.logging.log4j/log4j-1.2-api
-     "ロギングは片方に統一、log4j 1.x は CVE 未修正で :forbidden"]]}}
+     "ロギングは片方に統一、log4j 1.x は CVE 未修正で :forbidden"]],
+   :pairs-with
+   {:json-output com.brunobonacci/mulog-json,
+    :lifecycle integrant/integrant}}}
  {:purpose [:logging :json-output],
   :ids {:coord com.brunobonacci/mulog-json},
   :judgment {:status :recommended, :version "0.9.0"},
-  :reasons {:text "mulog の JSON publisher"}}
+  :reasons {:text "mulog の JSON publisher"},
+  :relations {:pairs-with {:core com.brunobonacci/mulog}}}
  {:purpose [:logging],
   :ids {:coord com.taoensso/timbre, :ns "taoensso.timbre"},
   :judgment
@@ -381,13 +416,16 @@
   :ids {:coord djblue/portal, :ns "portal.api"},
   :judgment {:status :recommended, :version "0.58.5"},
   :reasons
-  {:text "tap> 出力先、data インスペクション。人間向け UI、ワークスペースルート :dev エイリアス専用"}}
+  {:text "tap> 出力先、data インスペクション。人間向け UI、ワークスペースルート :dev エイリアス専用"},
+  :relations
+  {:pairs-with {:repl-debugger com.github.flow-storm/flow-storm-dbg}}}
  {:purpose [:dev :repl-debugger],
   :ids
   {:coord com.github.flow-storm/flow-storm-dbg, :ns "flow-storm.api"},
   :judgment {:status :recommended, :version "4.5.9"},
   :reasons
-  {:text "REPL-native trace / step、LLM 協働で evaluation 履歴を追える"}}
+  {:text "REPL-native trace / step、LLM 協働で evaluation 履歴を追える"},
+  :relations {:pairs-with {:inspect djblue/portal}}}
  {:purpose [:cli :arg-parse],
   :ids {:coord org.clojure/tools.cli},
   :judgment {:status :recommended, :version "1.1.230"},
@@ -399,7 +437,8 @@
   :relations
   {:conflicts-with
    [[clj-http/clj-http
-     "HTTP クライアントは片方に統一、clj-http は :conditional（既存段階移行のみ）"]]}}
+     "HTTP クライアントは片方に統一、clj-http は :conditional（既存段階移行のみ）"]],
+   :pairs-with {:retry sunng87/diehard, :json metosin/jsonista}}}
  {:purpose [:web :http-client],
   :ids {:coord clj-http/clj-http, :ns "clj-http.client"},
   :judgment
@@ -415,11 +454,13 @@
  {:purpose [:auth :jwt],
   :ids {:coord buddy/buddy-sign, :ns "buddy.sign.jwt"},
   :judgment {:status :recommended},
-  :reasons {:text "JWT / JWS / JWE"}}
+  :reasons {:text "JWT / JWS / JWE"},
+  :relations {:pairs-with {:password-hashing buddy/buddy-hashers}}}
  {:purpose [:auth :password-hashing],
   :ids {:coord buddy/buddy-hashers, :ns "buddy.hashers"},
   :judgment {:status :recommended},
-  :reasons {:text "パスワードハッシュ bcrypt/argon2"}}
+  :reasons {:text "パスワードハッシュ bcrypt/argon2"},
+  :relations {:pairs-with {:jwt buddy/buddy-sign}}}
  {:purpose [:auth],
   :ids
   {:coord cemerick/friend,
@@ -468,7 +509,9 @@
    [[overtone/at-at "スケジューラは片方に統一、at-at は停止制御弱く :deprecated"]
     [clojurewerkz/quartzite
      "スケジューラは片方に統一、quartzite は :conditional（cron/永続化時のみ）"]
-    [tea-time/tea-time "スケジューラは片方に統一、tea-time はメンテ停止 :deprecated"]]}}
+    [tea-time/tea-time "スケジューラは片方に統一、tea-time はメンテ停止 :deprecated"]],
+   :pairs-with
+   {:lifecycle integrant/integrant, :async org.clojure/core.async}}}
  {:purpose [:scheduling],
   :ids {:coord overtone/at-at, :ns "overtone.at-at"},
   :judgment
@@ -503,7 +546,8 @@
   :relations
   {:conflicts-with
    [[robert/robert.bruce
-     "リトライは片方に統一、robert.bruce はメンテ停止 :deprecated"]]}}
+     "リトライは片方に統一、robert.bruce はメンテ停止 :deprecated"]],
+   :pairs-with {:http-client hato/hato}}}
  {:purpose [:resilience :retry],
   :ids {:coord robert/robert.bruce, :ns "robert.bruce"},
   :judgment
@@ -517,7 +561,8 @@
   :reasons {:text "tower の後継、同作者"},
   :relations
   {:conflicts-with
-   [[com.taoensso/tower "i18n は片方に統一、tower はメンテ停止 :deprecated"]]}}
+   [[com.taoensso/tower "i18n は片方に統一、tower はメンテ停止 :deprecated"]],
+   :pairs-with {:lifecycle integrant/integrant}}}
  {:purpose [:i18n],
   :ids {:coord com.taoensso/tower, :ns "taoensso.tower"},
   :judgment
@@ -571,7 +616,8 @@
      "マイグレーションは片方に統一、flyway は :conditional（Java 資産保守のみ）"]
     [org.liquibase/liquibase-core
      "マイグレーションは片方に統一、liquibase は :conditional（Java 資産保守のみ）"]
-    [joplin/joplin "マイグレーションは片方に統一、joplin はメンテ低迷 :deprecated"]]}}
+    [joplin/joplin "マイグレーションは片方に統一、joplin はメンテ低迷 :deprecated"]],
+   :pairs-with {:jdbc com.github.seancorfield/next.jdbc}}}
  {:purpose [:db :migration],
   :ids {:coord org.flywaydb/flyway-core},
   :judgment
@@ -700,7 +746,8 @@
   :relations
   {:conflicts-with
    [[clojurewerkz/elastisch
-     "Elasticsearch クライアントは片方に統一、elastisch はメンテ停止 :deprecated"]]}}
+     "Elasticsearch クライアントは片方に統一、elastisch はメンテ停止 :deprecated"]],
+   :pairs-with {:json metosin/jsonista}}}
  {:purpose [:search :elasticsearch],
   :ids {:coord clojurewerkz/elastisch, :ns "clojurewerkz.elastisch"},
   :judgment
@@ -798,11 +845,16 @@
  {:purpose [:edge :gpio],
   :ids {:coord com.pi4j/pi4j-core},
   :judgment {:status :recommended, :version "2.x"},
-  :reasons {:text "Raspberry Pi GPIO の標準、Pi4J v2"}}
+  :reasons {:text "Raspberry Pi GPIO の標準、Pi4J v2"},
+  :relations
+  {:pairs-with
+   {:backend com.pi4j/pi4j-plugin-pigpio,
+    :mqtt org.eclipse.paho/org.eclipse.paho.client.mqttv3}}}
  {:purpose [:edge :gpio :pigpio],
   :ids {:coord com.pi4j/pi4j-plugin-pigpio},
   :judgment {:status :recommended, :version "2.x"},
-  :reasons {:text "pigpio バックエンド、Pi4J v2 のネイティブ実装"}}
+  :reasons {:text "pigpio バックエンド、Pi4J v2 のネイティブ実装"},
+  :relations {:pairs-with {:core com.pi4j/pi4j-core}}}
  {:purpose [:messaging :mqtt],
   :ids
   {:coord org.eclipse.paho/org.eclipse.paho.client.mqttv3,
@@ -812,7 +864,8 @@
   :relations
   {:conflicts-with
    [[clojurewerkz/machine_head
-     "MQTT クライアントは片方に統一、machine-head は :deprecated"]]}}
+     "MQTT クライアントは片方に統一、machine-head は :deprecated"]],
+   :pairs-with {:edge com.pi4j/pi4j-core}}}
  {:purpose [:messaging :mqtt],
   :ids
   {:coord clojurewerkz/machine_head,
@@ -841,11 +894,13 @@
   :relations
   {:conflicts-with
    [[org.clojure/data.fressian
-     "バイナリストレージは片方に統一、fressian は :conditional（既存継続のみ）"]]}}
+     "バイナリストレージは片方に統一、fressian は :conditional（既存継続のみ）"]],
+   :pairs-with {:wire-format com.cognitect/transit-clj}}}
  {:purpose [:serialization :transit],
   :ids {:coord com.cognitect/transit-clj, :ns "cognitect.transit"},
   :judgment {:status :recommended},
-  :reasons {:text "Cognitect Transit、Clojure 標準のバイナリ転送"}}
+  :reasons {:text "Cognitect Transit、Clojure 標準のバイナリ転送"},
+  :relations {:pairs-with {:storage com.taoensso/nippy}}}
  {:purpose [:serialization],
   :ids {:coord org.clojure/data.fressian, :ns "clojure.data.fressian"},
   :judgment
@@ -981,7 +1036,8 @@
   :reasons {:text "CSP チャネル、manifold の代替"},
   :relations
   {:conflicts-with
-   [[manifold/manifold "非同期抽象は片方に統一、manifold は設計思想不整合"]]}}
+   [[manifold/manifold "非同期抽象は片方に統一、manifold は設計思想不整合"]],
+   :pairs-with {:scheduling jarohen/chime}}}
  {:purpose [:async],
   :ids {:coord manifold/manifold, :ns "manifold.deferred"},
   :judgment
