@@ -52,7 +52,7 @@ if [ -f ".llm/scripts/gen_lib_catalog.clj" ] && [ -d ".llm/data" ]; then
   # trap を使わず、各 diff の後に手動で clean up（check 内 exit 時に lc_tmpdir を残さない）
   if clj -X:gen-lib-catalog :out-dir "\"$lc_tmpdir\"" >/dev/null 2>&1; then
     lc_fail=0
-    for artifact in libs.edn deprecated-libs.patterns forbidden-requires.patterns; do
+    for artifact in libs.edn deprecated-libs.patterns forbidden-requires.patterns conflicts.patterns; do
       if ! diff -u ".llm/data/$artifact" "$lc_tmpdir/$artifact" >/dev/null 2>&1; then
         echo "ERROR: .llm/data/$artifact が STACK_GUIDE.md §8 と同期していません"
         echo "  Fix: clj -X:gen-lib-catalog && diff を確認して commit"
@@ -82,6 +82,10 @@ run_step "非推奨ライブラリ検査" \
 # --- 禁止 namespace の require 検知（polyguard hook の置き換え） ---
 run_step "禁止 namespace require 検査" \
   "$SCRIPT_DIR/check-forbidden-requires.sh"
+
+# --- 併用禁止ライブラリペア検査（:conflicts-with） ---
+run_step "併用禁止ライブラリペア検査" \
+  "$SCRIPT_DIR/check-conflicting-libs.sh"
 
 # --- interface.clj の m/=> 契約付与 ---
 run_step "interface 契約検査" \

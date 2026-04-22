@@ -554,6 +554,7 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
 - `.llm/data/libs.edn` — 全エントリ（人間可読形式、pretty-print）
 - `.llm/data/deprecated-libs.patterns` — `check-deprecated-libs.sh` が読む `<regex>|<reason>` 行
 - `.llm/data/forbidden-requires.patterns` — `check-forbidden-requires.sh` が読む `<ns-regex>|<reason>` 行
+- `.llm/data/conflicts.patterns` — `check-conflicting-libs.sh` が読む `<coord-a>|<coord-b>|<reason>` 行（`:relations :conflicts-with` 由来の併用禁止ペア）
 
 **schema**（詳細は `.llm/scripts/gen_lib_catalog.clj` 内の `entry-schema` 参照）:
 
@@ -601,7 +602,7 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
 | **L1 構文・型・未使用** | clj-kondo 組み込み linter | AST 解析、命名空間解決、アリティ検査 | `:unresolved-var`、`:invalid-arity`、`:unused-binding`、段階 1 / 2 の 38 linter |
 | **L2 本テンプレート固有パターン** | `.clj-kondo/polyguard/hooks.clj` (custom hook) | form 単体の AST 解析 | 関数行数、top-level mutable、catch Throwable、空 catch（位置引数）、go blocking、destructuring 深さ 近似 |
 | **L3 スタイル・イディオム** | Splint (`clj -M:lint-splint`) | Clojure イディオム違反、リファクタリング提案 | `(= 0 x)` → `(zero? x)`、`(first (filter ...))` → `(some ...)` 等 |
-| **L4 設定ファイル・ディレクトリ構造** | `.llm/scripts/*.sh` + `.llm/scripts/*.clj` | EDN 構造、ファイル実在、採用宣言、file-level 照合、source 文書から artifact 生成 | brick 登録（hook 取り込み）（プレースホルダ）（総合検査）、非推奨ライブラリ採用、interface 契約、1 ファイル 1 ns、`gen_lib_catalog.clj` による STACK_GUIDE.md §8 からの artifact 生成 |
+| **L4 設定ファイル・ディレクトリ構造** | `.llm/scripts/*.sh` + `.llm/scripts/*.clj` | EDN 構造、ファイル実在、採用宣言、file-level 照合、source 文書から artifact 生成、併用禁止関係検知 | brick 登録（hook 取り込み）（プレースホルダ）（総合検査）、非推奨ライブラリ採用、interface 契約、1 ファイル 1 ns、`gen_lib_catalog.clj` による STACK_GUIDE.md §3 からの artifact 生成、**`check-conflicting-libs.sh` による `:conflicts-with` ペア検知** |
 | **L5 依存脆弱性（時間軸）** | clj-watson (`./.llm/scripts/check-vulnerabilities.sh`) | NIST NVD + GitHub Advisory Database 照合 | 承認済み依存が後から脆弱化した場合の検知。release 前必須 |
 
 **補完関係の典型例**: 非推奨ライブラリ `timbre` は、コード内で `timbre/info` を呼び出している使用箇所は `clj-kondo :discouraged-var`が、`deps.edn` に `com.taoensso/timbre` を採用宣言している箇所は `.llm/scripts/check-deprecated-libs.sh`が検知する。両方で二重に防御する。

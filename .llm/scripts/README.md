@@ -33,6 +33,7 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 | `check-brick-registration.sh` | `components/` / `bases/` の brick が `deps.edn` に登録されているか検査 |
 | `check-deprecated-libs.sh` | `STACK_GUIDE.md §8` 非推奨ライブラリの `deps.edn` 採用宣言検査（パターンは `.llm/data/deprecated-libs.patterns` から読み取り、source は `gen_lib_catalog.clj`） |
 | `check-forbidden-requires.sh` | `STACK_GUIDE.md §8` 非推奨 namespace の `(:require ...)` 検知（パターンは `.llm/data/forbidden-requires.patterns` から読み取り、source は `gen_lib_catalog.clj`） |
+| `check-conflicting-libs.sh` | `STACK_GUIDE.md §3` の `:relations :conflicts-with` で宣言された併用禁止ペアが同一 deps.edn に両方宣言されていないか検知（パターンは `.llm/data/conflicts.patterns` から読み取り、source は `gen_lib_catalog.clj`） |
 | `gen_lib_catalog.clj` | `STACK_GUIDE.md §8` の `;; lib-catalog` EDN block から `.llm/data/{libs.edn, deprecated-libs.patterns, forbidden-requires.patterns}` を生成（`clj -X:gen-lib-catalog`）。schema 検証 + uniqueness 検査付き |
 | `check-interface-contracts.sh` | `interface.clj` の全公開 `defn` に対応する `m/=>` 契約があるか検査 |
 | `check-single-ns-per-file.sh` | 1 つの `.clj` / `.cljc` / `.cljs` ファイルに `(ns ...)` が複数ないか検査 |
