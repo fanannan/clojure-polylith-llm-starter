@@ -341,7 +341,7 @@ POLYLITH_GUIDE.md §5 「Polylith 特有の頻出誤りと対処」も参照。
 
 Integrant と Malli の起動順序、`set-refresh-dirs` の対象、`add-tap` の配線などを確認。`development/src/dev/user.clj` の docstring を確認。**よくある失敗**:
 
-- **ClassNotFoundException（brick 依存未解決）**: `(require 'acme.inventory.api.system)` で `java.lang.ClassNotFoundException: integrant.core` 等が発生する場合、ワークスペースルート `deps.edn` の `:dev :extra-deps` に brick が `:local/root` 登録されていない。tools.deps は `:extra-paths` だけでは brick の deps.edn を自動解決しない。→ §2.5 参照、`poly/<domain> {:local/root "components/<domain>"}` 等を追加
+- **ClassNotFoundException（brick 依存未解決）**: `(require 'gugenkoubou.inventory.api.system)` で `java.lang.ClassNotFoundException: integrant.core` 等が発生する場合、ワークスペースルート `deps.edn` の `:dev :extra-deps` に brick が `:local/root` 登録されていない。tools.deps は `:extra-paths` だけでは brick の deps.edn を自動解決しない。→ §2.5 参照、`poly/<domain> {:local/root "components/<domain>"}` 等を追加
 - **FileNotFoundException: config.edn**: `config.edn` が classpath に含まれていない。開発時は `projects/<deploy>/resources` が `:dev :extra-paths` に追加されているか確認（§2.5）、または dev/user.clj の `config` 関数で `io/file` でファイルパス直接指定する代替手段も可（POLYLITH_GUIDE.md §2.4）
 - **config.edn の未作成**: Integrant を含む stack を採用したのに config.edn が存在しない → §2.7 参照
 - **aero の `#env` 参照先未定義**: 環境変数が未設定、または aero の記法ミス

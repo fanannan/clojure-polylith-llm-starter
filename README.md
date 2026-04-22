@@ -52,8 +52,8 @@
  - .llm/guide/STACK_GUIDE.md §4.1-§4.2
 
 【プロジェクト名】<例: billing-service>
-【組織名】<例: acme>
-【トップ名前空間】<例: acme.billing>
+【組織名】<例: gugenkoubou>
+【トップ名前空間】<例: gugenkoubou.billing>
 【最初のドメイン名】<例: invoice>
 【エントリ種別】<例: Web API / CLI / バッチ / ライブラリ / ワーカ / bot / GUI>
 【デプロイ構成】<例: 単一 uberjar を Docker イメージに同梱して ECS で実行>

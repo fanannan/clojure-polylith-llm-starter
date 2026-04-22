@@ -4,7 +4,7 @@
 ;;   - development project のみ有効
 ;;   - 最初の project を作ったら :projects に追加
 
-{:top-namespace "myorg.myapp"          ; TODO: 実プロジェクトの名前空間プレフィックスに変更（例: "acme.billing"）
+{:top-namespace "myorg.myapp"          ; TODO: 実プロジェクトの名前空間プレフィックスに変更（例: "gugenkoubou.billing"）
  :interface-ns  "interface"
 
  :dialects      ["clj"]                ; poly ツールが読み取るソース方言（"clj"/"cljs"、.cljc は常に対象）
