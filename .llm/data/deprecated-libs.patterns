@@ -21,14 +21,14 @@ org\.apache\.logging\.log4j/log4j-1\.2-api|log4j 1.x CVE-2019-17571 等、公式
 log4j/log4j|log4j 1.x CVE-2019-17571 等、公式サポート終了。推奨: com.brunobonacci/mulog または ch.qos.logback/logback-classic
 cemerick/friend|メンテ停止、Ring 1.11+ 整合性に懸念。推奨: buddy/buddy-sign または buddy/buddy-hashers
 clj-commons/cemerick\.friend|メンテ停止、Ring 1.11+ 整合性に懸念。推奨: buddy/buddy-sign または buddy/buddy-hashers
-io\.github\.metrics-clojure-ring/metrics-clojure-ring|mulog のイベント駆動と重複、mulog に一元化。推奨: com.brunobonacci/mulog
+metrics-clojure-ring/metrics-clojure-ring|mulog のイベント駆動と重複、mulog に一元化。推奨: com.brunobonacci/mulog
 metrics-clojure/metrics-clojure|mulog のイベント駆動と重複、mulog に一元化。推奨: com.brunobonacci/mulog
-clj-commons/iapetos|mulog のイベント駆動と重複、mulog に一元化。推奨: com.brunobonacci/mulog
+iapetos/iapetos|mulog のイベント駆動と重複、mulog に一元化。推奨: com.brunobonacci/mulog
 overtone/at-at|停止制御が弱く Integrant 統合しにくい。推奨: jarohen/chime
 tea-time/tea-time|メンテ停止、chime へ。推奨: jarohen/chime
 robert/robert\.bruce|メンテ停止、diehard が後継。推奨: sunng87/diehard
 com\.taoensso/tower|メンテ停止、同作者の tempura が後継。推奨: com.taoensso/tempura
-joplin/joplin\.core|メンテ低迷、migratus へ。推奨: migratus/migratus
+joplin/joplin|メンテ低迷、migratus へ。推奨: migratus/migratus
 clj-webdriver/clj-webdriver|メンテ停止、etaoin が現役。推奨: etaoin/etaoin
 endophile/endophile|メンテ停止、markdown-clj へ。推奨: markdown-clj/markdown-clj
 xerces/xercesImpl|XXE 脆弱性、bundled 版は JDK 付属のほうが安全。推奨: org.clojure/data.xml

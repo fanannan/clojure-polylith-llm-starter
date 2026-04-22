@@ -275,7 +275,7 @@
   :judgment {:status :recommended, :version "3.3.2"},
   :reasons {:text "Redis クライアント、Cookie 認証スケールアウト時の session store 兼用"}}
  {:purpose [:metrics :dropwizard-ring],
-  :ids {:coord io.github.metrics-clojure-ring/metrics-clojure-ring},
+  :ids {:coord metrics-clojure-ring/metrics-clojure-ring},
   :judgment
   {:status :deprecated,
    :severity :superseded,
@@ -291,7 +291,7 @@
   :reasons
   {:text "mulog のイベント駆動と重複、mulog に一元化", :tags [:philosophy-mismatch]}}
  {:purpose [:metrics :prometheus],
-  :ids {:coord clj-commons/iapetos, :ns "iapetos.core"},
+  :ids {:coord iapetos/iapetos, :ns "iapetos.core"},
   :judgment
   {:status :deprecated,
    :severity :superseded,
@@ -392,7 +392,7 @@
   :reasons
   {:text "新規 Clojure プロジェクトでは migratus が自然", :tags [:conditional]}}
  {:purpose [:db :migration],
-  :ids {:coord joplin/joplin.core, :ns "joplin.core"},
+  :ids {:coord joplin/joplin, :ns "joplin.core"},
   :judgment
   {:status :deprecated,
    :severity :superseded,
@@ -542,7 +542,7 @@
   {:text "メンテ停止、libpython-clj 経由へ", :tags [:maintenance-stopped]}}
  {:purpose [:ml],
   :ids
-  {:coord com.github.haifengl/smile,
+  {:coord com.github.haifengl/smile-core,
    :aliases [haifengl/smile],
    :ns "smile.classification"},
   :judgment
@@ -564,11 +564,11 @@
   :judgment {:status :recommended},
   :reasons {:text "OpenCV Java wrapper、コンピュータビジョン用途"}}
  {:purpose [:media :svg],
-  :ids {:coord rm-hull/dali},
+  :ids {:coord dali/dali},
   :judgment {:status :recommended},
   :reasons {:text "SVG 生成、data 駆動・hiccup 風 DSL"}}
  {:purpose [:media :ffmpeg],
-  :ids {:coord com.github.kokorin/jaffree},
+  :ids {:coord com.github.kokorin.jaffree/jaffree},
   :judgment {:status :recommended},
   :reasons {:text "FFmpeg shell out wrapper、動画トランスコード"}}
  {:purpose [:media :ocr],
@@ -643,7 +643,7 @@
   :reasons
   {:text "insertion-order を保つ map/set、Clojure 標準 map は順序保証なし"}}
  {:purpose [:platform :framework],
-  :ids {:coord duct-framework/duct},
+  :ids {:coord duct/core},
   :judgment
   {:status :conditional,
    :applicable-when
@@ -702,7 +702,7 @@
   :judgment {:status :acceptable},
   :reasons {:text "Redis Stream / Pub-Sub。cache と同ライブラリ"}}
  {:purpose [:bot :discord],
-  :ids {:coord suskalo/discljord},
+  :ids {:coord org.suskalo/discljord},
   :judgment {:status :recommended},
   :reasons {:text "Discord Bot 向け、Clojure 特化"}}
  {:purpose [:web :ssr],

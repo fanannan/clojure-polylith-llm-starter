@@ -758,7 +758,7 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
  ;; metrics-clojure Ring wrapper: 独立した metrics レイヤは mulog のイベント駆動と重複、
  ;; 二重管理になる。mulog に一元化。
  {:purpose  [:metrics :dropwizard-ring]
-  :ids      {:coord io.github.metrics-clojure-ring/metrics-clojure-ring}
+  :ids      {:coord metrics-clojure-ring/metrics-clojure-ring}
   :judgment {:status :deprecated :severity :superseded :replacement com.brunobonacci/mulog}
   :reasons  {:text "mulog のイベント駆動と重複、mulog に一元化"
              :tags [:philosophy-mismatch]}}
@@ -772,7 +772,7 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 
  ;; iapetos (Prometheus): mulog publisher で Prometheus 出力可、独立 lib 不要。
  {:purpose  [:metrics :prometheus]
-  :ids      {:coord clj-commons/iapetos :ns "iapetos.core"}
+  :ids      {:coord iapetos/iapetos :ns "iapetos.core"}
   :judgment {:status :deprecated :severity :superseded :replacement com.brunobonacci/mulog}
   :reasons  {:text "mulog のイベント駆動と重複、mulog に一元化"
              :tags [:philosophy-mismatch]}}
@@ -1175,7 +1175,7 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 
  ;; joplin: メンテ低迷、migratus へ。
  {:purpose  [:db :migration]
-  :ids      {:coord joplin/joplin.core :ns "joplin.core"}
+  :ids      {:coord joplin/joplin :ns "joplin.core"}
   :judgment {:status :deprecated :severity :superseded :replacement migratus/migratus}
   :reasons  {:text "メンテ低迷、migratus へ"
              :tags [:maintenance-stopped]}}
@@ -1617,7 +1617,7 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
  ;; だが GPL 3.0 ライセンスで SaaS/商用配布と衝突。研究・社内閉じ利用のみ
  ;; ADR 発行の上で条件付き採用可。
  {:purpose  [:ml]
-  :ids      {:coord   com.github.haifengl/smile
+  :ids      {:coord   com.github.haifengl/smile-core
              :aliases [haifengl/smile]
              :ns      "smile.classification"}
   :judgment {:status          :conditional
@@ -1689,8 +1689,8 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 **採用**:
 - **画像処理（軽）**: JDK 標準 `javax.imageio` + 薄い純 Clojure ヘルパ
 - **画像処理（複雑）**: `org.bytedeco/opencv-platform`（OpenCV Java wrapper）
-- **SVG 生成**: `rm-hull/dali`（data 駆動、hiccup 風）
-- **動画トランスコード**: `com.github.kokorin/jaffree`（FFmpeg shell out wrapper）
+- **SVG 生成**: `dali/dali`（data 駆動、hiccup 風）
+- **動画トランスコード**: `com.github.kokorin.jaffree/jaffree`（FFmpeg shell out wrapper）
 - **OCR**: Tesseract（`net.sourceforge.tess4j`）を **shell out で呼び出し**、インプロセス JNI は避ける
 - **音声**: JDK 標準 + 必要時 Java ライブラリ（`overtone` は創作用途のみ）
 
@@ -1708,12 +1708,12 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
   :reasons  {:text "OpenCV Java wrapper、コンピュータビジョン用途"}}
 
  {:purpose  [:media :svg]
-  :ids      {:coord rm-hull/dali}
+  :ids      {:coord dali/dali}
   :judgment {:status :recommended}
   :reasons  {:text "SVG 生成、data 駆動・hiccup 風 DSL"}}
 
  {:purpose  [:media :ffmpeg]
-  :ids      {:coord com.github.kokorin/jaffree}
+  :ids      {:coord com.github.kokorin.jaffree/jaffree}
   :judgment {:status :recommended}
   :reasons  {:text "FFmpeg shell out wrapper、動画トランスコード"}}
 
@@ -1931,7 +1931,7 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
  ;; 構造との統合でレイヤが過剰になりやすい。convention-over-configuration を好む
  ;; チーム向け、新規チームには直接 Integrant 推奨。
  {:purpose  [:platform :framework]
-  :ids      {:coord duct-framework/duct}
+  :ids      {:coord duct/core}
   :judgment {:status          :conditional
              :applicable-when "convention-over-configuration を好むチーム、直接 Integrant より抽象が欲しい場合、ADR 必須"
              :replacement     integrant/integrant}
@@ -2117,7 +2117,7 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 ;; lib-catalog
 [;; === 採用 ===
  {:purpose  [:bot :discord]
-  :ids      {:coord suskalo/discljord}
+  :ids      {:coord org.suskalo/discljord}
   :judgment {:status :recommended}
   :reasons  {:text "Discord Bot 向け、Clojure 特化"}}
 
