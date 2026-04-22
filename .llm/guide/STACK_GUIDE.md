@@ -449,9 +449,7 @@ stack 層と組み合わせて使う。開発支援ライブラリは通常 **de
              :tags [:security :replacement-available]}}]
 ```
 
-**採用 stack**: web-api stack、graphql-api stack、bot stack、llm-app stack、saas stack
-
-**採用 stack**: web-api stack（Reitit と連動）
+**採用 stack**: web-api stack、graphql-api stack、bot stack、llm-app stack、saas stack（Reitit / content negotiation と連動）
 
 ### 3.6 永続化
 
@@ -511,6 +509,11 @@ stack 層と組み合わせて使う。開発支援ライブラリは通常 **de
 
 **採用**: mulog
 
+**採用理由**:
+- イベント駆動の構造化ログ（`mulog/log ::event :key value`）
+- publisher プラグインで出力先を柔軟に切替（コンソール / JSON / ELK / CloudWatch 等）
+- context 継承が自動
+
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
@@ -550,11 +553,6 @@ stack 層と組み合わせて使う。開発支援ライブラリは通常 **de
  ;; イベント駆動構造化を持たない。採用しない（coord エントリ化せず narrative のみ）。
  ]
 ```
-
-**採用理由**:
-- イベント駆動の構造化ログ（`mulog/log ::event :key value`）
-- publisher プラグインで出力先を柔軟に切替（コンソール / JSON / ELK / CloudWatch 等）
-- context 継承が自動
 
 **採用 stack**: Integrant を採用する stack すべて（web-api stack、batch stack 等）
 
@@ -1422,6 +1420,8 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 - Markdown → markdown-clj（軽量） or Flexmark（拡張必要時）
 - 外部 XML API 連携 → data.xml
 
+**採用 stack**: web-api stack（拡張、Markdown レンダリング等）、外部 XML 連携を持つ stack
+
 ### 3.33 メール / SMS / プッシュ通知
 
 **採用**:
@@ -1653,15 +1653,6 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 - Malli で request/response スキーマ契約化が自然
 - プロバイダ切替（OpenAI ↔ Anthropic ↔ Ollama）は wrapper 層で吸収
 
-**採用 stack**: llm-app stack
-
-**適用条件**:
-- 単発 LLM 呼び出し → hato 直接、または `wkok/openai-clojure`
-- RAG → pgvector + `wkok/openai-clojure` (embeddings)
-- ローカル LLM → Ollama HTTP endpoint + hato
-- 複雑 agent → ADR 必須、独自実装、外部ラッパ採用は避ける
-- **規約**: プロンプトテンプレートは EDN、運用変更は ADR（プロンプトもコード扱い）
-
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
@@ -1684,6 +1675,8 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
  ]
 ```
 
+**採用 stack**: llm-app stack
+
 ### 3.38 画像・映像・音声処理
 
 **採用**:
@@ -1693,6 +1686,12 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 - **動画トランスコード**: `com.github.kokorin.jaffree/jaffree`（FFmpeg shell out wrapper）
 - **OCR**: Tesseract（`net.sourceforge.tess4j`）を **shell out で呼び出し**、インプロセス JNI は避ける
 - **音声**: JDK 標準 + 必要時 Java ライブラリ（`overtone` は創作用途のみ）
+
+**採用理由**:
+- JDK 標準で済む軽量処理は追加依存を入れない
+- OpenCV は Java wrapper 経由が実績十分（JavaCV より stable）
+- dali は SVG を hiccup 風 data で記述、Clojure 慣用で Malli 統合も自然
+- shell out（jaffree / Tesseract）は JNI 同居によるクラッシュリスクを回避
 
 **検討して却下した代替（narrative のみ、coord 化せず）**:
 - JavaCV 直接: OpenCV-Clojure 経由が慣用
@@ -1917,6 +1916,11 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 ### 3.43 代替アーキテクチャプラットフォーム（条件付き採用）
 
 **採用方針**: 本テンプレートは **Integrant + Reitit + next.jdbc + mulog** の組合せを標準とするが、以下の代替フレームワークを**条件付きで採用可**とする。いずれも ADR 必須。
+
+**採用理由（条件付き採用を許容する立場）**:
+- 本テンプレート標準で対応困難な要件（convention-over-configuration を好むチーム、DB + streaming + queue + ML の超大規模統合要件）が存在し得る
+- 哲学と部分整合する代替は ADR 付きで採用可、ただし **Polylith brick 構造との統合**は個別に検証が必要
+- 標準脱却の判断は新規チームより経験あるチームで行うのが安全
 
 **条件付き採用候補**:
 
@@ -2171,7 +2175,12 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 
 ### 3.49 その他（stack 未分類）
 
-**位置づけ**: 明確な機能分類（§3.1〜§3.48）に属さないが、本テンプレートの運用で言及される lib。多くは cross-cutting or 基盤。
+**採用**: core.async（非同期チャネル、cross-cutting）
+
+**採用理由**:
+- 明確な機能分類（§3.1〜§3.48）に属さないが、本テンプレートの運用で言及される lib を集約
+- 多くは cross-cutting or 基盤（core.async の CSP、leiningen の非推奨扱い等）
+- 独立節を立てるには個別 lib が少ない・再帰的に分類困難なものを「その他」にまとめる
 
 ```edn
 ;; lib-catalog
