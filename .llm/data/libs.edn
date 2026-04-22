@@ -55,6 +55,15 @@
   :reasons
   {:text "関数契約・generator の表現力で Malli に劣る",
    :tags [:philosophy-mismatch :replacement-available]}}
+ {:purpose [:validation],
+  :ids {:coord prismatic/schema, :ns "schema.core"},
+  :judgment
+  {:status :deprecated,
+   :severity :superseded,
+   :replacement metosin/malli},
+  :reasons
+  {:text "Malli の前身的存在、registry/instrumentation 統合で Malli が優位",
+   :tags [:philosophy-mismatch :replacement-available]}}
  {:purpose [:web :http-core],
   :ids {:coord ring/ring-core, :ns "ring.core"},
   :judgment {:status :recommended, :version "1.13.0"},
@@ -113,6 +122,15 @@
    :replacement metosin/reitit},
   :reasons
   {:text "Malli 統合で reitit が優位、新規採用不可",
+   :tags [:conditional :replacement-available]}}
+ {:purpose [:web :routing],
+  :ids {:coord metosin/compojure-api, :ns "compojure.api.core"},
+  :judgment
+  {:status :conditional,
+   :applicable-when "Swagger UI 既存設定の保守、新規は reitit-ring",
+   :replacement metosin/reitit-ring},
+  :reasons
+  {:text "metosin 自身が reitit を後継と位置づけ、新規は reitit-ring",
    :tags [:conditional :replacement-available]}}
  {:purpose [:web :http-server],
   :ids {:coord aleph/aleph, :ns "aleph.http"},
@@ -233,7 +251,14 @@
  {:purpose [:dev :inspect],
   :ids {:coord djblue/portal, :ns "portal.api"},
   :judgment {:status :recommended, :version "0.58.5"},
-  :reasons {:text "tap> 出力先、data インスペクション。ワークスペースルート :dev エイリアス専用"}}
+  :reasons
+  {:text "tap> 出力先、data インスペクション。人間向け UI、ワークスペースルート :dev エイリアス専用"}}
+ {:purpose [:dev :repl-debugger],
+  :ids
+  {:coord com.github.flow-storm/flow-storm-dbg, :ns "flow-storm.api"},
+  :judgment {:status :recommended, :version "4.5.9"},
+  :reasons
+  {:text "REPL-native trace / step、LLM 協働で evaluation 履歴を追える"}}
  {:purpose [:cli :arg-parse],
   :ids {:coord org.clojure/tools.cli},
   :judgment {:status :recommended, :version "1.1.230"},
@@ -713,6 +738,10 @@
   :ids {:coord hiccup/hiccup, :ns "hiccup.core"},
   :judgment {:status :acceptable},
   :reasons {:text "Clojure data として HTML を組み立てる DSL。rum の代替軽量版"}}
+ {:purpose [:web :html-transform],
+  :ids {:coord enlive/enlive, :ns "net.cgrand.enlive-html"},
+  :judgment {:status :acceptable},
+  :reasons {:text "HTML 走査・selector 変換、scraping / HTML after-edit 用途"}}
  {:purpose [:async],
   :ids {:coord org.clojure/core.async, :ns "clojure.core.async"},
   :judgment {:status :recommended},
@@ -734,4 +763,35 @@
    :replacement org.clojure/tools.deps},
   :reasons
   {:text "新規プロジェクトは tools.deps",
-   :tags [:conditional :replacement-available]}}]
+   :tags [:conditional :replacement-available]}}
+ {:purpose [:parser],
+  :ids {:coord instaparse/instaparse, :ns "instaparse.core"},
+  :judgment {:status :acceptable},
+  :reasons {:text "BNF/PEG パーサジェネレータ、独自 DSL / 設定言語用途"}}
+ {:purpose [:exception],
+  :ids {:coord slingshot/slingshot, :ns "slingshot.slingshot"},
+  :judgment
+  {:status :deprecated,
+   :severity :superseded,
+   :replacement org.clojure/clojure},
+  :reasons
+  {:text "ex-info / ex-data で代替可、throw+/try+ は副作用深化を伴う",
+   :tags [:philosophy-mismatch :replacement-available]}}
+ {:purpose [:time],
+  :ids {:coord tick/tick, :ns "tick.core"},
+  :judgment {:status :recommended, :version "1.0"},
+  :reasons {:text "data 駆動 java.time ラッパ、Malli 統合容易"}}
+ {:purpose [:time :jdk-wrapper],
+  :ids
+  {:coord clojure.java-time/clojure.java-time, :ns "java-time.api"},
+  :judgment {:status :acceptable},
+  :reasons {:text "JDK java.time 薄ラッパ、依存最小・学習コスト低"}}
+ {:purpose [:time],
+  :ids {:coord clj-time/clj-time, :ns "clj-time.core"},
+  :judgment
+  {:status :deprecated,
+   :severity :superseded,
+   :replacement [tick/tick clojure.java-time/clojure.java-time]},
+  :reasons
+  {:text "Joda-Time ベース、JDK java.time で不要。tick / java-time へ",
+   :tags [:replacement-available :maintenance-stopped]}}]

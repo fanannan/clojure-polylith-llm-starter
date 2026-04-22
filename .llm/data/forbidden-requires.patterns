@@ -9,6 +9,7 @@ mount\.core|グローバル状態を生み、副作用の隔離が弱い。推�
 environ\.core|構造化設定に弱い、aero の tagged literal が表現力で優位。推奨: aero/aero
 immuconf\.config|aero が事実上のコミュニティ標準。推奨: aero/aero
 clojure\.spec\.alpha|関数契約・generator の表現力で Malli に劣る。推奨: metosin/malli
+schema\.core|Malli の前身的存在、registry/instrumentation 統合で Malli が優位。推奨: metosin/malli
 compojure\.core|data 駆動でない、新規は reitit-ring。レガシー保守は可。推奨: metosin/reitit-ring
 aleph\.http|Netty 基盤で依存重い、manifold を抱え込む。Jetty / http-kit が軽量。推奨: ring/ring-jetty-adapter または http-kit/http-kit
 org\.immutant\.web|WildFly 系列はメンテ停止。推奨: ring/ring-jetty-adapter
@@ -35,3 +36,5 @@ dl4clj|libpython-clj 経由で PyTorch/TensorFlow が現実的。推奨: clj-pyt
 cortex|メンテ停止、libpython-clj 経由へ。推奨: clj-python/libpython-clj
 clojurewerkz\.machine-head|Paho MQTT Java を直接使うほうが依存が薄い。推奨: org.eclipse.paho/org.eclipse.paho.client.mqttv3
 manifold\.deferred|aleph と同系統の設計不整合、core.async / promise.cljc へ。推奨: org.clojure/core.async
+slingshot\.slingshot|ex-info / ex-data で代替可、throw+/try+ は副作用深化を伴う。推奨: org.clojure/clojure
+clj-time\.core|Joda-Time ベース、JDK java.time で不要。tick / java-time へ。推奨: tick/tick または clojure.java-time/clojure.java-time

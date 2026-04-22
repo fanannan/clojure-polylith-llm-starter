@@ -292,8 +292,15 @@ stack 層と組み合わせて使う。開発支援ライブラリは通常 **de
   :reasons  {:text "関数契約・generator の表現力で Malli に劣る"
              :tags [:philosophy-mismatch :replacement-available]}}
 
- ;; Plumatic Schema: メンテナンス頻度が低下、Malli が後継として広く採用される。
- ;; coord としてエントリ化しないが却下理由は保持。
+ ;; Prismatic / Plumatic Schema (prismatic/schema): Malli の前身的存在。
+ ;; メンテは継続だが頻度低下。record ベースで data 駆動度も Malli に劣り、
+ ;; registry・instrumentation・generator 統合で Malli が優位。新規不可。
+ ;; (Clojars は prismatic/schema のまま、プロジェクト名は plumatic に改名した経緯あり)
+ {:purpose  [:validation]
+  :ids      {:coord prismatic/schema :ns "schema.core"}
+  :judgment {:status :deprecated :severity :superseded :replacement metosin/malli}
+  :reasons  {:text "Malli の前身的存在、registry/instrumentation 統合で Malli が優位"
+             :tags [:philosophy-mismatch :replacement-available]}}
  ]
 ```
 
@@ -384,6 +391,18 @@ stack 層と組み合わせて使う。開発支援ライブラリは通常 **de
              :applicable-when "Malli 統合が不要な既存プロジェクトの保守"
              :replacement     metosin/reitit}
   :reasons  {:text "Malli 統合で reitit が優位、新規採用不可"
+             :tags [:conditional :replacement-available]}}
+
+ ;; compojure-api (metosin): metosin 自身が reitit を後継として推奨しており、
+ ;; 新規は reitit-ring + reitit-malli。ただし Swagger UI 統合の既存設定が
+ ;; 簡潔なため、swagger 周辺のレガシー保守や小規模用途で条件付き採用可。
+ ;; metosin リポジトリ自体はメンテ継続中。
+ {:purpose  [:web :routing]
+  :ids      {:coord metosin/compojure-api :ns "compojure.api.core"}
+  :judgment {:status          :conditional
+             :applicable-when "Swagger UI 既存設定の保守、新規は reitit-ring"
+             :replacement     metosin/reitit-ring}
+  :reasons  {:text "metosin 自身が reitit を後継と位置づけ、新規は reitit-ring"
              :tags [:conditional :replacement-available]}}
 
  ;; aleph: Netty 基盤の HTTP サーバ。依存が重く、manifold を抱え込む。
@@ -589,21 +608,41 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 
 **採用 stack**: 全 stack（dev-tools 横断）
 
-### 3.9 開発時データインスペクション
+### 3.9 開発時データインスペクション / REPL デバッガ
 
-**採用**: Portal（dev-tools stack）
+**採用**:
+- **Portal** (`djblue/portal`): 人間向け tap> UI インスペクタ
+- **flow-storm** (`com.github.flow-storm/flow-storm-dbg`): **LLM 協働時に有効な REPL-native トレース・デバッガ**
 
 **採用理由**:
-- `tap>` の出力先として豊富な表示
-- `println` デバッグの代替
-- 開発時のみ、プロダクション依存なし
+
+両者は competing でなく**補完関係**にある:
+
+- **Portal**: `tap>` の出力先として UI 表示が豊富。人間開発者が対話的にデータ構造を観察するのに適する。ただし UI ベースのため **LLM 協働時は LLM が画面を見られず効果が薄い**。
+- **flow-storm**: trace / step / explore API が text / EDN ベースで取り出せ、**REPL-native に evaluation 履歴・値変遷を LLM が読める**。本テンプレートの第一原理（LLM と人間の共同開発における修復コスト最小化）と整合し、Portal の盲点（LLM から UI が不可視）を埋める。
+- **使い分け**: 人間が 値の構造を観察したいとき → Portal / tap>。複数段の変換・非同期・Integrant 起動連鎖の評価履歴を LLM が追うとき → flow-storm。
+- 両者とも**開発時のみ、プロダクションには混入させない**（`:dev :extra-deps` 限定）
 
 ```edn
 ;; lib-catalog
-[{:purpose  [:dev :inspect]
+[;; === 採用 ===
+ {:purpose  [:dev :inspect]
   :ids      {:coord djblue/portal :ns "portal.api"}
   :judgment {:status :recommended :version "0.58.5"}
-  :reasons  {:text "tap> 出力先、data インスペクション。ワークスペースルート :dev エイリアス専用"}}]
+  :reasons  {:text "tap> 出力先、data インスペクション。人間向け UI、ワークスペースルート :dev エイリアス専用"}}
+
+ ;; flow-storm: trace / step / REPL-native explore を提供。LLM 協働時に
+ ;; evaluation 履歴を text / EDN で取り出せるため、LLM が画面を見られない
+ ;; 本テンプレートの使用文脈で Portal の盲点を補う。
+ {:purpose  [:dev :repl-debugger]
+  :ids      {:coord com.github.flow-storm/flow-storm-dbg :ns "flow-storm.api"}
+  :judgment {:status :recommended :version "4.5.9"}
+  :reasons  {:text "REPL-native trace / step、LLM 協働で evaluation 履歴を追える"}}
+
+ ;; === 代替と却下 ===
+ ;; Reveal / 他の dev UI inspector 複数同時導入: Portal に一本化、複数ビューア
+ ;; 競合を避ける。§3.8 採用時の確認事項と整合。narrative のみ。
+ ]
 ```
 
 **採用 stack**: 全 stack（dev-tools 横断）
@@ -2162,6 +2201,13 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
   :judgment {:status :acceptable}
   :reasons  {:text "Clojure data として HTML を組み立てる DSL。rum の代替軽量版"}}
 
+ ;; enlive: HTML 走査・変換（テンプレーティングというより scraping・selector 駆動）。
+ ;; 既存 HTML を CSS selector 風に変換する用途で有効、templating の代替ではない。
+ {:purpose  [:web :html-transform]
+  :ids      {:coord enlive/enlive :ns "net.cgrand.enlive-html"}
+  :judgment {:status :acceptable}
+  :reasons  {:text "HTML 走査・selector 変換、scraping / HTML after-edit 用途"}}
+
  ;; selmer は §3.37 LLM で採用済、本節では重複登録せず narrative のみで言及。
  ]
 ```
@@ -2208,10 +2254,72 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
              :replacement     org.clojure/tools.deps}
   :reasons  {:text "新規プロジェクトは tools.deps"
              :tags [:conditional :replacement-available]}}
+
+ ;; instaparse: BNF / PEG ベースのパーサジェネレータ。独自 DSL や設定言語の
+ ;; パーサを書くときの第一選択、Clojure で代替少ない。
+ {:purpose  [:parser]
+  :ids      {:coord instaparse/instaparse :ns "instaparse.core"}
+  :judgment {:status :acceptable}
+  :reasons  {:text "BNF/PEG パーサジェネレータ、独自 DSL / 設定言語用途"}}
+
+ ;; === 代替と却下 ===
+ ;; slingshot (throw+/try+): 例外に map を載せる拡張だが、ex-info / ex-data が
+ ;; Clojure 標準として整備された今は冗長。副作用深化を伴い関数合成を阻害する。
+ ;; 設計思想としても ex-info に統一（CODING_GUIDE §7.3 例外処理パターン）。
+ {:purpose  [:exception]
+  :ids      {:coord slingshot/slingshot :ns "slingshot.slingshot"}
+  :judgment {:status :deprecated :severity :superseded :replacement org.clojure/clojure}
+  :reasons  {:text "ex-info / ex-data で代替可、throw+/try+ は副作用深化を伴う"
+             :tags [:philosophy-mismatch :replacement-available]}}
  ]
 ```
 
 **採用 stack**: 全 stack（cross-cutting / 基盤）
+
+### 3.50 時刻処理
+
+**採用**: `tick/tick` を第一選択、`clojure.java-time` を :acceptable な代替。
+
+**採用理由**:
+- tick: data 駆動 API、Instant / Duration / Period が map-friendly で Malli 統合容易。JDK `java.time` の上に薄い Clojure 慣用 DSL を被せる
+- clojure.java-time: JDK `java.time` の直接薄ラッパ。依存最小、学習コスト低。tick 特有 DSL を導入しない選択肢
+- JDK 8 以降は `java.time` が標準、Joda-Time 依存（clj-time）は不要
+- どちらを採用するかはプロジェクト方針（data 駆動重視なら tick、依存最小なら java-time）。両立は避ける（同一プロジェクトで混在すると読み手が混乱）
+
+```edn
+;; lib-catalog
+[;; === 採用 ===
+ {:purpose  [:time]
+  :ids      {:coord tick/tick :ns "tick.core"}
+  :judgment {:status :recommended :version "1.0"}
+  :reasons  {:text "data 駆動 java.time ラッパ、Malli 統合容易"}}
+
+ {:purpose  [:time :jdk-wrapper]
+  :ids      {:coord clojure.java-time/clojure.java-time :ns "java-time.api"}
+  :judgment {:status :acceptable}
+  :reasons  {:text "JDK java.time 薄ラッパ、依存最小・学習コスト低"}}
+
+ ;; === 代替と却下 ===
+ ;; clj-time (Joda-Time ベース): JDK 8+ で java.time が標準化された現在は不要。
+ ;; Joda-Time 依存が重く、timezone 処理や生成 API が java.time に劣る局面もある。
+ ;; 既存コードでの継続使用は可能だが、新規採用は避ける。
+ {:purpose  [:time]
+  :ids      {:coord clj-time/clj-time :ns "clj-time.core"}
+  :judgment {:status      :deprecated
+             :severity    :superseded
+             :replacement [tick/tick clojure.java-time/clojure.java-time]}
+  :reasons  {:text "Joda-Time ベース、JDK java.time で不要。tick / java-time へ"
+             :tags [:replacement-available :maintenance-stopped]}}
+ ]
+```
+
+**採用 stack**: 全 stack（時刻処理は cross-cutting）
+
+**適用条件**:
+- data 駆動を徹底したい / Malli 統合 → tick
+- 依存最小 / JDK 直接利用の発想 → clojure.java-time
+- レガシー Joda-Time 保守のみ → clj-time（新規不可）
+- tick と java-time を同プロジェクトで混用しない（片方に統一）
 
 ---
 
