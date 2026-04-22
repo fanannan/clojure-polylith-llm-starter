@@ -18,5 +18,10 @@ clojure\.java\.jdbc|メンテ停止、推奨代替あり。推奨: com.github.se
 korma\.core|data 駆動でない。HoneySQL + next.jdbc で SQL を組み立てる。推奨: com.github.seancorfield/honeysql または com.github.seancorfield/next.jdbc
 taoensso\.timbre|構造化ログの表現力が mulog より弱い。推奨: com.brunobonacci/mulog
 org\.apache\.log4j|log4j 1.x CVE-2019-17571 等、公式サポート終了。推奨: com.brunobonacci/mulog または ch.qos.logback/logback-classic
-javax\.xml\.parsers\.xerces|XXE 脆弱性、bundled 版は JDK 付属のほうが安全。推奨: org.clojure/data.xml
+cemerick\.friend|メンテ停止、Ring 1.11+ 整合性に懸念。推奨: buddy/buddy-sign または buddy/buddy-hashers
 iapetos\.core|mulog のイベント駆動と重複、mulog に一元化。推奨: com.brunobonacci/mulog
+overtone\.at-at|停止制御が弱く Integrant 統合しにくい。推奨: jarohen/chime
+tea-time\.core|メンテ停止、chime へ。推奨: jarohen/chime
+robert\.bruce|メンテ停止、diehard が後継。推奨: sunng87/diehard
+taoensso\.tower|メンテ停止、同作者の tempura が後継。推奨: com.taoensso/tempura
+javax\.xml\.parsers\.xerces|XXE 脆弱性、bundled 版は JDK 付属のほうが安全。推奨: org.clojure/data.xml

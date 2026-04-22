@@ -221,6 +221,132 @@
   :reasons
   {:text "log4j 1.x CVE-2019-17571 等、公式サポート終了",
    :tags [:security :maintenance-stopped]}}
+ {:purpose [:dev :property-testing],
+  :ids {:coord org.clojure/test.check, :ns "clojure.test.check"},
+  :judgment {:status :recommended, :version "1.1.1"},
+  :reasons {:text "Malli generator と組み合わせて最大効果"}}
+ {:purpose [:dev :assert],
+  :ids
+  {:coord nubank/matcher-combinators, :ns "matcher-combinators.core"},
+  :judgment {:status :recommended, :version "3.9.1"},
+  :reasons {:text "部分マッチングで assert の可読性向上"}}
+ {:purpose [:dev :inspect],
+  :ids {:coord djblue/portal, :ns "portal.api"},
+  :judgment {:status :recommended, :version "0.58.5"},
+  :reasons {:text "tap> 出力先、data インスペクション。ワークスペースルート :dev エイリアス専用"}}
+ {:purpose [:cli :arg-parse],
+  :ids {:coord org.clojure/tools.cli},
+  :judgment {:status :recommended, :version "1.1.230"},
+  :reasons {:text "CLI 引数パースの標準、docopt 系より軽量"}}
+ {:purpose [:web :http-client],
+  :ids {:coord hato/hato, :ns "hato.client"},
+  :judgment {:status :recommended, :version "1.0.0"},
+  :reasons {:text "Java 11+ HttpClient ベース、HTTP/2 対応"}}
+ {:purpose [:web :http-client],
+  :ids {:coord clj-http/clj-http, :ns "clj-http.client"},
+  :judgment
+  {:status :conditional,
+   :applicable-when "既存コードの段階移行、新規は hato",
+   :replacement hato/hato},
+  :reasons
+  {:text "hato が Java 11+ HttpClient ベースで第一選択",
+   :tags [:conditional :replacement-available]}}
+ {:purpose [:auth :jwt],
+  :ids {:coord buddy/buddy-sign, :ns "buddy.sign.jwt"},
+  :judgment {:status :recommended},
+  :reasons {:text "JWT / JWS / JWE"}}
+ {:purpose [:auth :password-hashing],
+  :ids {:coord buddy/buddy-hashers, :ns "buddy.hashers"},
+  :judgment {:status :recommended},
+  :reasons {:text "パスワードハッシュ bcrypt/argon2"}}
+ {:purpose [:auth],
+  :ids
+  {:coord cemerick/friend,
+   :aliases [clj-commons/cemerick.friend],
+   :ns "cemerick.friend"},
+  :judgment
+  {:status :deprecated,
+   :severity :superseded,
+   :replacement [buddy/buddy-sign buddy/buddy-hashers]},
+  :reasons
+  {:text "メンテ停止、Ring 1.11+ 整合性に懸念", :tags [:maintenance-stopped]}}
+ {:purpose [:cache :redis],
+  :ids {:coord com.taoensso/carmine, :ns "taoensso.carmine"},
+  :judgment {:status :recommended, :version "3.3.2"},
+  :reasons {:text "Redis クライアント、Cookie 認証スケールアウト時の session store 兼用"}}
+ {:purpose [:metrics :dropwizard-ring],
+  :ids {:coord io.github.metrics-clojure-ring/metrics-clojure-ring},
+  :judgment
+  {:status :deprecated,
+   :severity :superseded,
+   :replacement com.brunobonacci/mulog},
+  :reasons
+  {:text "mulog のイベント駆動と重複、mulog に一元化", :tags [:philosophy-mismatch]}}
+ {:purpose [:metrics :dropwizard],
+  :ids {:coord metrics-clojure/metrics-clojure},
+  :judgment
+  {:status :deprecated,
+   :severity :superseded,
+   :replacement com.brunobonacci/mulog},
+  :reasons
+  {:text "mulog のイベント駆動と重複、mulog に一元化", :tags [:philosophy-mismatch]}}
+ {:purpose [:metrics :prometheus],
+  :ids {:coord clj-commons/iapetos, :ns "iapetos.core"},
+  :judgment
+  {:status :deprecated,
+   :severity :superseded,
+   :replacement com.brunobonacci/mulog},
+  :reasons
+  {:text "mulog のイベント駆動と重複、mulog に一元化", :tags [:philosophy-mismatch]}}
+ {:purpose [:scheduling],
+  :ids {:coord jarohen/chime, :ns "chime.core"},
+  :judgment {:status :recommended, :version "0.3.3"},
+  :reasons {:text "core.async ベース、Integrant 統合容易"}}
+ {:purpose [:scheduling],
+  :ids {:coord overtone/at-at, :ns "overtone.at-at"},
+  :judgment
+  {:status :deprecated,
+   :severity :superseded,
+   :replacement jarohen/chime},
+  :reasons
+  {:text "停止制御が弱く Integrant 統合しにくい", :tags [:philosophy-mismatch]}}
+ {:purpose [:scheduling],
+  :ids {:coord clojurewerkz/quartzite},
+  :judgment
+  {:status :conditional,
+   :applicable-when "複雑な業務要件 (cron 式・永続化) が必要",
+   :replacement jarohen/chime},
+  :reasons {:text "重量級、設定が冗長。単純用途は chime", :tags [:conditional]}}
+ {:purpose [:scheduling],
+  :ids {:coord tea-time/tea-time, :ns "tea-time.core"},
+  :judgment
+  {:status :deprecated,
+   :severity :superseded,
+   :replacement jarohen/chime},
+  :reasons {:text "メンテ停止、chime へ", :tags [:maintenance-stopped]}}
+ {:purpose [:resilience :retry],
+  :ids {:coord sunng87/diehard, :ns "diehard.core"},
+  :judgment {:status :recommended},
+  :reasons {:text "Retry / Circuit Breaker、外部 API 呼出時に必須化"}}
+ {:purpose [:resilience :retry],
+  :ids {:coord robert/robert.bruce, :ns "robert.bruce"},
+  :judgment
+  {:status :deprecated,
+   :severity :superseded,
+   :replacement sunng87/diehard},
+  :reasons {:text "メンテ停止、diehard が後継", :tags [:maintenance-stopped]}}
+ {:purpose [:i18n],
+  :ids {:coord com.taoensso/tempura, :ns "taoensso.tempura"},
+  :judgment {:status :recommended},
+  :reasons {:text "tower の後継、同作者"}}
+ {:purpose [:i18n],
+  :ids {:coord com.taoensso/tower, :ns "taoensso.tower"},
+  :judgment
+  {:status :deprecated,
+   :severity :superseded,
+   :replacement com.taoensso/tempura},
+  :reasons
+  {:text "メンテ停止、同作者の tempura が後継", :tags [:maintenance-stopped]}}
  {:purpose [:xml],
   :ids {:coord xerces/xercesImpl, :ns "javax.xml.parsers.xerces"},
   :judgment
@@ -246,30 +372,6 @@
   :reasons
   {:text "新規プロジェクトは tools.deps",
    :tags [:conditional :replacement-available]}}
- {:purpose [:metrics :dropwizard-ring],
-  :ids {:coord io.github.metrics-clojure-ring/metrics-clojure-ring},
-  :judgment
-  {:status :deprecated,
-   :severity :superseded,
-   :replacement com.brunobonacci/mulog},
-  :reasons
-  {:text "mulog のイベント駆動と重複、mulog に一元化", :tags [:philosophy-mismatch]}}
- {:purpose [:metrics :dropwizard],
-  :ids {:coord metrics-clojure/metrics-clojure},
-  :judgment
-  {:status :deprecated,
-   :severity :superseded,
-   :replacement com.brunobonacci/mulog},
-  :reasons
-  {:text "mulog のイベント駆動と重複、mulog に一元化", :tags [:philosophy-mismatch]}}
- {:purpose [:metrics :prometheus],
-  :ids {:coord clj-commons/iapetos, :ns "iapetos.core"},
-  :judgment
-  {:status :deprecated,
-   :severity :superseded,
-   :replacement com.brunobonacci/mulog},
-  :reasons
-  {:text "mulog のイベント駆動と重複、mulog に一元化", :tags [:philosophy-mismatch]}}
  {:purpose [:platform],
   :ids {:coord com.rpl/rama, :aliases [rama/rama], :ns "com.rpl.rama"},
   :judgment

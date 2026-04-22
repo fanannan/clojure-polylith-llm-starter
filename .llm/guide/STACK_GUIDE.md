@@ -576,6 +576,21 @@ stack 層と組み合わせて使う。開発支援ライブラリは通常 **de
 
 kaocha 等の追加テストランナーは本テンプレートでは採用しない。派生プロジェクトで追加機能（カバレッジ測定、CI 統合用 JUnit XML 出力等）が必要な場合は、派生プロジェクト側の判断で導入する。
 
+```edn
+;; lib-catalog
+[{:purpose  [:dev :property-testing]
+  :ids      {:coord org.clojure/test.check :ns "clojure.test.check"}
+  :judgment {:status :recommended :version "1.1.1"}
+  :reasons  {:text "Malli generator と組み合わせて最大効果"}}
+
+ {:purpose  [:dev :assert]
+  :ids      {:coord nubank/matcher-combinators :ns "matcher-combinators.core"}
+  :judgment {:status :recommended :version "3.9.1"}
+  :reasons  {:text "部分マッチングで assert の可読性向上"}}]
+```
+
+**採用 stack**: 全 stack（dev-tools 横断）
+
 ### 3.9 開発時データインスペクション
 
 **採用**: Portal（dev-tools stack）
@@ -585,6 +600,16 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 - `println` デバッグの代替
 - 開発時のみ、プロダクション依存なし
 
+```edn
+;; lib-catalog
+[{:purpose  [:dev :inspect]
+  :ids      {:coord djblue/portal :ns "portal.api"}
+  :judgment {:status :recommended :version "0.58.5"}
+  :reasons  {:text "tap> 出力先、data インスペクション。ワークスペースルート :dev エイリアス専用"}}]
+```
+
+**採用 stack**: 全 stack（dev-tools 横断）
+
 ### 3.10 CLI 引数パース
 
 **採用**: tools.cli（cli stack）
@@ -592,6 +617,22 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 **採用理由**:
 - Clojure 標準、Malli との統合は各プロジェクトで薄く書く
 - 軽量、依存ゼロ
+
+```edn
+;; lib-catalog
+[;; === 採用 ===
+ {:purpose  [:cli :arg-parse]
+  :ids      {:coord org.clojure/tools.cli}
+  :judgment {:status :recommended :version "1.1.230"}
+  :reasons  {:text "CLI 引数パースの標準、docopt 系より軽量"}}
+
+ ;; === 代替と却下 ===
+ ;; docopt 系 Clojure port: メンテナンス活動が低く、tools.cli で十分。
+ ;; 採用しない（coord エントリ化せず narrative のみ）。
+ ]
+```
+
+**採用 stack**: cli stack
 
 ### 3.11 HTTP クライアント
 
@@ -603,21 +644,67 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 
 **位置づけ**: 現時点では必須 stack に含めない。外部 API 呼び出しが必要になった時点で個別プロジェクトで採用判断。
 
+```edn
+;; lib-catalog
+[;; === 採用 ===
+ {:purpose  [:web :http-client]
+  :ids      {:coord hato/hato :ns "hato.client"}
+  :judgment {:status :recommended :version "1.0.0"}
+  :reasons  {:text "Java 11+ HttpClient ベース、HTTP/2 対応"}}
+
+ ;; === 代替と却下 ===
+ ;; clj-http: 古くから広く使われているが、hato が Java 11+ HttpClient ベースで第一選択。
+ ;; 新規採用は避け、既存コードは段階移行。
+ {:purpose  [:web :http-client]
+  :ids      {:coord clj-http/clj-http :ns "clj-http.client"}
+  :judgment {:status          :conditional
+             :applicable-when "既存コードの段階移行、新規は hato"
+             :replacement     hato/hato}
+  :reasons  {:text "hato が Java 11+ HttpClient ベースで第一選択"
+             :tags [:conditional :replacement-available]}}]
+```
+
+**採用 stack**: web-api stack、bot stack、llm-app stack、必要に応じて全 stack
+
 ### 3.12 認証・認可
 
 **採用**: buddy-sign + buddy-hashers（認証）、権限判定は自作 middleware + Malli で契約化
 
-**検討した代替**:
-
-| 候補 | 却下理由 |
-|---|---|
-| friend | メンテナンス停滞、Ring 1.11 以降との整合性に懸念 |
-| ring-oauth2 | OAuth2 クライアントとしては有効だが、サーバ側認証の全体像を与えない |
-| Keycloak + adapter | 重量級、小〜中規模プロジェクトで過剰 |
-
 **採用理由**:
 - buddy-sign: JWT 発行・検証。data 駆動で Malli と整合
 - buddy-hashers: パスワードハッシュ。bcrypt / argon2 対応
+
+```edn
+;; lib-catalog
+[;; === 採用 ===
+ {:purpose  [:auth :jwt]
+  :ids      {:coord buddy/buddy-sign :ns "buddy.sign.jwt"}
+  :judgment {:status :recommended}
+  :reasons  {:text "JWT / JWS / JWE"}}
+
+ {:purpose  [:auth :password-hashing]
+  :ids      {:coord buddy/buddy-hashers :ns "buddy.hashers"}
+  :judgment {:status :recommended}
+  :reasons  {:text "パスワードハッシュ bcrypt/argon2"}}
+
+ ;; === 代替と却下 ===
+ ;; friend: メンテナンス停滞、Ring 1.11 以降との整合性に懸念。buddy 系へ移行。
+ {:purpose  [:auth]
+  :ids      {:coord   cemerick/friend
+             :aliases [clj-commons/cemerick.friend]
+             :ns      "cemerick.friend"}
+  :judgment {:status      :deprecated
+             :severity    :superseded
+             :replacement [buddy/buddy-sign buddy/buddy-hashers]}
+  :reasons  {:text "メンテ停止、Ring 1.11+ 整合性に懸念"
+             :tags [:maintenance-stopped]}}
+
+ ;; ring-oauth2: OAuth2 クライアントとしては有効だが、サーバ側認証の全体像を
+ ;; 与えない。プロジェクト要件次第で追加採用可（本 block に載せず narrative のみ）。
+ ;; Keycloak + adapter: 重量級、小〜中規模プロジェクトで過剰。エンタープライズ
+ ;; 認証で必須なら ADR 付き採用可（narrative のみ）。
+ ]
+```
 - 認可（権限判定）は Malli スキーマで資格情報を契約化し、middleware で強制
 - OAuth2 / OIDC が必要な場合は個別判断（buddy-auth + ring-oauth2 等）
 
@@ -627,19 +714,28 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 
 **採用候補**: core.cache（メモリ内）、carmine（Redis 連携）
 
-**検討した代替**:
-
-| 候補 | 却下理由 |
-|---|---|
-| Caffeine + java interop | 高性能だが、core.cache の上位互換を自作する価値が薄い |
-| Memcached クライアント | Redis のほうが機能的に優位、二重採用の理由が薄い |
-
 **採用理由**:
 - core.cache: 純 Clojure、LRU / TTL / LU 等の戦略が宣言的
 - carmine: Redis 連携の標準的ライブラリ、Lua スクリプト対応
 - 選択基準: プロセス内で閉じるなら core.cache、プロセス跨ぎや永続化が必要なら carmine
 
-**採用 stack**: プロファイル横断。必要性が生じた時点で該当 stack（典型的には web-api stack / worker stack）に追加
+```edn
+;; lib-catalog
+[;; === 採用 ===
+ {:purpose  [:cache :redis]
+  :ids      {:coord com.taoensso/carmine :ns "taoensso.carmine"}
+  :judgment {:status :recommended :version "3.3.2"}
+  :reasons  {:text "Redis クライアント、Cookie 認証スケールアウト時の session store 兼用"}}
+
+ ;; === 代替と却下 ===
+ ;; Caffeine + java interop: 高性能だが、core.cache の上位互換を自作する価値が
+ ;; 薄い。採用しない (coord 化せず narrative)。
+ ;; Memcached クライアント: Redis のほうが機能的に優位（Lua、Stream、Pub-Sub）、
+ ;; 二重採用の理由が薄い。coord を持たず narrative のみ。
+ ]
+```
+
+**採用 stack**: プロファイル横断。必要性が生じた時点で該当 stack（典型的には web-api stack / worker stack / saas stack）に追加
 
 **注意**: Malli instrumentation と組み合わせる時、キャッシュヒット時の契約検証をスキップするか判断が必要（KNOWLEDGE.md に運用規約を書く）
 
@@ -647,17 +743,44 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 
 **採用**: mulog の publisher（Prometheus / CloudWatch 等）+ Micrometer（必要時）
 
-**検討した代替**:
-
-| 候補 | 却下理由 |
-|---|---|
-| metrics-clojure（iapetos 等） | 独立した metrics レイヤは mulog のイベント駆動と重複 |
-| OpenTelemetry agent（自動計装） | 自動計装は便利だが、構造化ログとメトリクスが分離し一貫性が下がる |
-
 **採用理由**:
 - mulog のイベントを**メトリクスと構造化ログの共通源**にできる
 - mulog publisher で Prometheus / CloudWatch / ELK 等へ同一イベントを配信
 - JVM メトリクス（GC、heap 等）は Micrometer を補助採用
+
+```edn
+;; lib-catalog
+[;; === 採用 ===
+ ;; mulog 本体は §3.7 構造化ロギングで採用済み（:purpose [:logging]）
+ ;; 本節では :metrics purpose として重複採用しない（同一 lib で complementary）。
+
+ ;; === 代替と却下 ===
+ ;; metrics-clojure Ring wrapper: 独立した metrics レイヤは mulog のイベント駆動と重複、
+ ;; 二重管理になる。mulog に一元化。
+ {:purpose  [:metrics :dropwizard-ring]
+  :ids      {:coord io.github.metrics-clojure-ring/metrics-clojure-ring}
+  :judgment {:status :deprecated :severity :superseded :replacement com.brunobonacci/mulog}
+  :reasons  {:text "mulog のイベント駆動と重複、mulog に一元化"
+             :tags [:philosophy-mismatch]}}
+
+ ;; metrics-clojure 本体: 同上。
+ {:purpose  [:metrics :dropwizard]
+  :ids      {:coord metrics-clojure/metrics-clojure}
+  :judgment {:status :deprecated :severity :superseded :replacement com.brunobonacci/mulog}
+  :reasons  {:text "mulog のイベント駆動と重複、mulog に一元化"
+             :tags [:philosophy-mismatch]}}
+
+ ;; iapetos (Prometheus): mulog publisher で Prometheus 出力可、独立 lib 不要。
+ {:purpose  [:metrics :prometheus]
+  :ids      {:coord clj-commons/iapetos :ns "iapetos.core"}
+  :judgment {:status :deprecated :severity :superseded :replacement com.brunobonacci/mulog}
+  :reasons  {:text "mulog のイベント駆動と重複、mulog に一元化"
+             :tags [:philosophy-mismatch]}}
+
+ ;; OpenTelemetry agent (自動計装): 自動計装は便利だが、構造化ログとメトリクスが
+ ;; 分離し一貫性が下がる。mulog のイベント駆動で統合する。coord エントリ化せず。
+ ]
+```
 
 **採用 stack**: Integrant を伴う stack すべて（web-api stack / graphql-api stack / batch stack / worker stack / data-pipeline stack / bot stack）
 
@@ -667,18 +790,44 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 
 **採用**: chime
 
-**検討した代替**:
-
-| 候補 | 却下理由 |
-|---|---|
-| at-at | シンプルだが停止制御が弱い、Integrant と統合しにくい |
-| Quartz（java interop） | 重量級、設定が冗長 |
-| tea-time | メンテナンス停滞 |
-
 **採用理由**:
 - chime: `core.async` ベースで軽量
 - cron 式ではなく Clojure の `java.time` で schedule を data として表現
 - Integrant component として起動・停止を制御可能
+
+```edn
+;; lib-catalog
+[;; === 採用 ===
+ {:purpose  [:scheduling]
+  :ids      {:coord jarohen/chime :ns "chime.core"}
+  :judgment {:status :recommended :version "0.3.3"}
+  :reasons  {:text "core.async ベース、Integrant 統合容易"}}
+
+ ;; === 代替と却下 ===
+ ;; at-at: シンプルだが停止制御が弱く、Integrant 統合しにくい。chime へ。
+ {:purpose  [:scheduling]
+  :ids      {:coord overtone/at-at :ns "overtone.at-at"}
+  :judgment {:status :deprecated :severity :superseded :replacement jarohen/chime}
+  :reasons  {:text "停止制御が弱く Integrant 統合しにくい"
+             :tags [:philosophy-mismatch]}}
+
+ ;; Quartz (java interop): 重量級、設定が冗長。複雑な業務要件 (cron 式・永続化)
+ ;; が必要なら条件付きで採用可。
+ {:purpose  [:scheduling]
+  :ids      {:coord clojurewerkz/quartzite}
+  :judgment {:status          :conditional
+             :applicable-when "複雑な業務要件 (cron 式・永続化) が必要"
+             :replacement     jarohen/chime}
+  :reasons  {:text "重量級、設定が冗長。単純用途は chime"
+             :tags [:conditional]}}
+
+ ;; tea-time: メンテナンス停滞、chime へ。
+ {:purpose  [:scheduling]
+  :ids      {:coord tea-time/tea-time :ns "tea-time.core"}
+  :judgment {:status :deprecated :severity :superseded :replacement jarohen/chime}
+  :reasons  {:text "メンテ停止、chime へ"
+             :tags [:maintenance-stopped]}}]
+```
 
 **採用 stack**: batch stack、worker stack、data-pipeline stack（定期実行を含む場合）
 
@@ -716,19 +865,33 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 - **Rate Limit (in-process)**: 自作 token-bucket（`atom` + `reduce`、依存ゼロ）
 - **Rate Limit (分散)**: `com.taoensso/carmine` + Redis Lua script
 
-**検討した代替**:
-
-| 候補 | 却下理由 |
-|---|---|
-| resilience4j 直接 interop | Java fluent API、data 駆動でない（G1） |
-| failsafe (Java) | 同上 |
-| ring-ratelimit | メンテ停滞（G4） |
-| robert.bruce | メンテ停止（G4） |
-
 **採用理由**:
 - diehard は `{:retry-on ... :max-retries ...}` の map で policy 指定、data 駆動
 - Malli スキーマで policy を契約化可能
 - 分散 rate limit は Redis で小さく解け、専用ライブラリ不要
+
+```edn
+;; lib-catalog
+[;; === 採用 ===
+ {:purpose  [:resilience :retry]
+  :ids      {:coord sunng87/diehard :ns "diehard.core"}
+  :judgment {:status :recommended}
+  :reasons  {:text "Retry / Circuit Breaker、外部 API 呼出時に必須化"}}
+
+ ;; === 代替と却下 ===
+ ;; robert.bruce: メンテ停止、diehard が後継。
+ {:purpose  [:resilience :retry]
+  :ids      {:coord robert/robert.bruce :ns "robert.bruce"}
+  :judgment {:status :deprecated :severity :superseded :replacement sunng87/diehard}
+  :reasons  {:text "メンテ停止、diehard が後継"
+             :tags [:maintenance-stopped]}}
+
+ ;; resilience4j 直接 interop: Java fluent API、data 駆動でない。採用しない。
+ ;; failsafe (Java): 同上。採用しない（diehard は failsafe ラッパで十分）。
+ ;; ring-ratelimit: メンテ停滞。採用しない。
+ ;; 以上 3 件は coord 化せず narrative のみ。
+ ]
+```
 
 **採用 stack**: web-api stack、worker stack、bot stack、llm-app stack（外部 API 呼び出しを伴う全 stack）
 
@@ -744,18 +907,16 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 - **セッション**: Ring 標準 `ring.middleware.session`（cookie 認証時）。store は Redis（`carmine`）、JWT 認証なら store 不要
 - **CORS**: `metosin/reitit-ring` の CORS middleware、または `jumblerg/ring.middleware.cors`
 
-**検討した代替**:
-
-| 候補 | 却下理由 |
-|---|---|
-| buddy-auth 全体採用 | 認証とsession/CSRF が混在、関心分離の観点で避ける（G7） |
-| 自作 CSRF token 管理 | 再発明禁止（G6） |
-| in-memory session store（本番） | スケールアウトで session 消失（G3 設計思想） |
-
 **採用理由**:
 - Ring 標準 middleware は副作用が明示的で、middleware 順序を data として記述可能（Reitit と統合）
 - session store は環境に応じて差替可能な依存注入パターン
 - CSRF / CORS は security header 規約化で済む、フレームワーク不要
+- ring-anti-forgery は §3.4 で EDN 登録済、carmine（session store 用）は §3.13 で登録済
+
+**検討して却下した代替（narrative のみ、coord エントリ化せず）**:
+- buddy-auth 全体採用: 認証と session/CSRF が混在、関心分離の観点で避ける
+- 自作 CSRF token 管理: 再発明禁止
+- in-memory session store（本番）: スケールアウトで session 消失（設計思想）
 
 **採用 stack**: web-api stack、graphql-api stack、saas stack
 
@@ -769,14 +930,6 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 
 **採用**: `mulog` の `with-context` による trace ID / span ID 伝播 + 自作 middleware。外部送信は mulog publisher で Jaeger / Tempo / OpenTelemetry Collector へ。
 
-**検討した代替**:
-
-| 候補 | 却下理由 |
-|---|---|
-| OpenTelemetry Java Agent（自動計装） | §8.2 既に却下（構造化ログと分離）|
-| Micrometer Tracing | Spring 文脈が強く、Clojure との親和性低い（G7） |
-| 独自 trace ID 実装 | mulog context で既に可能、再発明禁止（G6） |
-
 **採用理由**:
 - mulog `with-context` は map を継承する仕組みで、data 駆動
 - 同一イベント源（mulog）から logs / metrics / traces を配信、一貫性保持（§3.14 と整合）
@@ -789,22 +942,40 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 - マイクロサービス → W3C Trace Context ヘッダ（`traceparent`）で trace ID を引き回し
 - 本規約は KNOWLEDGE.md §アーキテクチャ上の約束 に明記必須（§3.14 イベント名統一と同格の規約）
 
+**検討して却下した代替（narrative のみ、coord エントリ化せず）**:
+- OpenTelemetry Java Agent（自動計装）: §3.14 で既に却下（構造化ログと分離）
+- Micrometer Tracing: Spring 文脈が強く、Clojure との親和性低い
+- 独自 trace ID 実装: mulog context で既に可能、再発明禁止
+
 ### 3.20 i18n / l10n
 
 **採用**: `taoensso/tempura`
-
-**検討した代替**:
-
-| 候補 | 却下理由 |
-|---|---|
-| tower | 開発停止、tempura が後継（G4） |
-| ICU4J 直接 | 重量、tempura で包める範囲では不要（G6） |
-| Java ResourceBundle | data 駆動でない、Clojure 慣用外（G1） |
 
 **採用理由**:
 - tempura は辞書も data（map）、参照も純粋関数
 - Malli スキーマで翻訳キーの型安全化が可能
 - Taoensso 作者は安定的にメンテ継続
+
+```edn
+;; lib-catalog
+[;; === 採用 ===
+ {:purpose  [:i18n]
+  :ids      {:coord com.taoensso/tempura :ns "taoensso.tempura"}
+  :judgment {:status :recommended}
+  :reasons  {:text "tower の後継、同作者"}}
+
+ ;; === 代替と却下 ===
+ ;; tower: 開発停止、tempura が後継。
+ {:purpose  [:i18n]
+  :ids      {:coord com.taoensso/tower :ns "taoensso.tower"}
+  :judgment {:status :deprecated :severity :superseded :replacement com.taoensso/tempura}
+  :reasons  {:text "メンテ停止、同作者の tempura が後継"
+             :tags [:maintenance-stopped]}}
+
+ ;; ICU4J 直接: 重量、tempura で包める範囲では不要。採用しない。
+ ;; Java ResourceBundle: data 駆動でない、Clojure 慣用外。採用しない。
+ ]
+```
 
 **採用 stack**: web-api stack（多言語 UI 時）、bot stack（複数言語サポート時）
 
