@@ -138,17 +138,46 @@ stack 層と組み合わせて使う。開発支援ライブラリは通常 **de
 
 本節は**このテンプレートで採用している技術選定の判断根拠**を機能別に記録する。新規採用・変更時は本節を更新する（対応 ADR も発行）。
 
+### 3.0 機械可読ライブラリカタログ（lib-catalog）の仕組み
+
+**本節が lib 情報の唯一の source of truth**（narrative + 機械可読 EDN の同居）。各 §3.X に採用 lib の `;; lib-catalog` EDN block を埋め込み、採用エントリと不採用（代替と却下）エントリをまとめて置く。これにより「どの lib を採用し、代替として何を却下したか」が 1 箇所で一望でき、maintainer は narrative と data を同時に更新する。
+
+**EDN block 構造**:
+
+```clojure
+;; lib-catalog
+[;; === 採用 ===
+ {:purpose  [:function :subcategory]        ; 機能分類 vec
+  :ids      {:coord library/artifact
+             :ns    "namespace.prefix"}
+  :judgment {:status :recommended :version "x.y.z"}
+  :reasons  {:text "1 行要約"}}
+
+ ;; === 代替と却下 ===
+ ;; Alternative1: 却下理由の詳細（収まらない場合は ;; コメントで複数行）
+ {:purpose  [:function :subcategory]
+  :ids      {:coord alt/library}
+  :judgment {:status      :deprecated
+             :severity    :superseded   ; :forbidden も可
+             :replacement library/artifact}
+  :reasons  {:text "却下理由 1 行"
+             :tags [:philosophy-mismatch]}}]  ; :tags は §8.0 の標準理由タグから
+```
+
+**要点**:
+
+- **`:reasons :text` は 1 行要約**（grep しやすい）。判定根拠の全文は EDN 直前の `;;` コメントで保持（旧「検討した代替」table の却下理由は完全にここに移植される）
+- **考え方 / 採用理由の全体像**は EDN の外側の prose（**採用理由**、**採用 stack** 等の markdown 節）で表現
+- **`:purpose` vec**: `[:lifecycle]`, `[:db :jdbc]`, `[:web :routing]` のような階層 keyword。uniqueness key は `[[:ids :coord] :purpose]` pair
+- **`:status`**: `:recommended` / `:acceptable` / `:conditional` / `:deprecated` / `:scope-excluded`（詳細は §8.0 理由タグと Malli schema）
+- **`;; lib-catalog` は完全一致マーカ**。`.llm/scripts/gen_lib_catalog.clj` が本文書を走査、各 block を収集し `.llm/data/libs.edn` / `.patterns` を生成。`check-workspace-integrity.sh` が diff で drift を自動検知
+- **cross-cutting lib の多重記述は許容**（構造完全一致時のみ dedup、矛盾は error）。ある lib が複数 §3.X に現れる場合は、全て同一内容で記述する必要がある
+
+**詳細 schema**: `.llm/scripts/gen_lib_catalog.clj` の `entry-schema`、運用規約は `MAINTAINERS_GUIDE.md §5.9`。
+
 ### 3.1 ライフサイクル管理
 
 **採用**: Integrant
-
-**検討した代替**:
-
-| 候補 | 却下理由 |
-|---|---|
-| Component | 関数合成より `defrecord` 依存が強い。Malli との統合がやや冗長 |
-| Mount | グローバル状態を生む。純粋性の観点で副作用の隔離が弱い |
-| 自作（atom ベース） | テストと再起動のコストが高い、再発明の価値なし |
 
 **採用理由**:
 - 純粋な data としてシステムを表現（`ig/init` に渡す map）
@@ -156,43 +185,119 @@ stack 層と組み合わせて使う。開発支援ライブラリは通常 **de
 - `integrant.repl` で `(go)` `(reset)` `(halt)` が動作し REPL 駆動開発に適する
 - Malli instrumentation の起動・停止を他コンポーネントと同列に扱える
 
-**採用 stack**: web-api stack、batch stack、worker stack、data-pipeline stack
+```edn
+;; lib-catalog
+[;; === 採用 ===
+ {:purpose  [:lifecycle]
+  :ids      {:coord integrant/integrant :ns "integrant.core"}
+  :judgment {:status :recommended :version "0.13.1"}
+  :reasons  {:text "data 駆動 DI、本テンプレート採用"}}
+
+ ;; REPL 駆動開発用。dev エイリアスへ配置し、本番 uberjar には混入させない
+ {:purpose  [:lifecycle :repl]
+  :ids      {:coord integrant/repl :ns "integrant.repl"}
+  :judgment {:status :recommended :version "0.4.0"}
+  :reasons  {:text "REPL での go/reset/halt サイクル"}}
+
+ ;; === 代替と却下 ===
+ ;; Component (stuartsierra/component): Integrant より古い世代の lifecycle 管理。
+ ;; 関数合成より defrecord への依存が強く、Malli との統合でラップ層が冗長化する。
+ ;; 設計思想として defrecord 中心で、値ベース data 駆動との相性が弱い。
+ {:purpose  [:lifecycle]
+  :ids      {:coord com.stuartsierra/component :ns "com.stuartsierra.component"}
+  :judgment {:status :deprecated :severity :superseded :replacement integrant/integrant}
+  :reasons  {:text "defrecord 依存が強く Malli 統合が冗長、data 駆動と相性悪"
+             :tags [:philosophy-mismatch]}}
+
+ ;; Mount: defstate でグローバル状態を生む実装。副作用の隔離（§1.1.3）の観点で、
+ ;; 純粋性を保ちにくく、依存注入の明示性に劣る。
+ {:purpose  [:lifecycle]
+  :ids      {:coord mount/mount :ns "mount.core"}
+  :judgment {:status :deprecated :severity :superseded :replacement integrant/integrant}
+  :reasons  {:text "グローバル状態を生み、副作用の隔離が弱い"
+             :tags [:philosophy-mismatch]}}
+
+ ;; 自作（atom ベース）: テストと再起動のコストが高い、既成ライブラリの再発明は
+ ;; 価値なし。採用しない。coord を持たないため EDN エントリ化はせず narrative のみ。
+ ]
+```
+
+**採用 stack**: web-api stack、batch stack、worker stack、data-pipeline stack、saas stack、llm-app stack、cli stack（ファイル I/O や DB を扱う場合）、bot stack、desktop stack、edge stack
 
 ### 3.2 設定管理
 
 **採用**: aero
-
-**検討した代替**:
-
-| 候補 | 却下理由 |
-|---|---|
-| environ | 環境変数のフラット参照中心、構造化設定に弱い |
-| cprop | 機能は十分だが aero より宣言性が低い |
-| 自作 EDN リーダー | `#env` `#profile` を再実装する価値なし |
 
 **採用理由**:
 - `#profile :dev / :staging / :prod` による環境別設定が宣言的
 - `#env` で環境変数参照、`#or` でフォールバック
 - config.edn を一枚で完結させやすい
 
-**採用 stack**: Integrant と組で使う stack すべて
+```edn
+;; lib-catalog
+[;; === 採用 ===
+ {:purpose  [:config]
+  :ids      {:coord aero/aero :ns "aero.core"}
+  :judgment {:status :recommended :version "1.1.6"}
+  :reasons  {:text "tagged literal (#env #profile) で環境別設定"}}
+
+ ;; === 代替と却下 ===
+ ;; environ: 環境変数のフラット参照中心。構造化設定（profile 切替、ネスト、
+ ;; 複数環境変数の合成）が弱く、config.edn を宣言的に表現しにくい。
+ {:purpose  [:config]
+  :ids      {:coord environ/environ :ns "environ.core"}
+  :judgment {:status :deprecated :severity :superseded :replacement aero/aero}
+  :reasons  {:text "構造化設定に弱い、aero の tagged literal が表現力で優位"
+             :tags [:replacement-available]}}
+
+ ;; immuconf: 機能は aero に近いが、aero がコミュニティ事実上の標準として広く採用済み。
+ ;; 生態系の広さと #env / #profile / #or の組み合わせで aero 優位。
+ {:purpose  [:config]
+  :ids      {:coord immuconf/immuconf :ns "immuconf.config"}
+  :judgment {:status :deprecated :severity :superseded :replacement aero/aero}
+  :reasons  {:text "aero が事実上のコミュニティ標準"
+             :tags [:replacement-available]}}
+
+ ;; cprop: 機能は十分だが aero より宣言性が低い。採用しない。
+ ;; 自作 EDN リーダー: `#env` `#profile` を再実装する価値なし。採用しない。
+ ;; (cprop / 自作は coord としてエントリ化しないが却下理由は保持)
+ ]
+```
+
+**採用 stack**: Integrant と組で使う stack すべて（web-api, batch, worker, saas, bot, llm-app, edge 等）
 
 ### 3.3 検証・契約
 
 **採用**: Malli（必須層、stack 非依存）
-
-**検討した代替**:
-
-| 候補 | 却下理由 |
-|---|---|
-| clojure.spec.alpha | `defn` 外での定義、generator が生 Clojure で冗長。`m/=>` のような関数契約が弱い |
-| Plumatic Schema | メンテナンス頻度が低下、Malli が後継 |
 
 **採用理由**:
 - `m/=>` による関数契約（引数・返り値の双方向検証）
 - instrumentation による境界での自動検証
 - Malli スキーマから test.check generator が自動生成（プロパティテストのコストが激減）
 - reitit-malli で HTTP レイヤーの検証と統合
+
+```edn
+;; lib-catalog
+[;; === 採用 ===
+ ;; Malli は必須層なのでルート deps.edn で管理、本 block ではエントリ化しない
+ ;; （全 brick が透過的に利用する前提）
+
+ ;; === 代替と却下 ===
+ ;; clojure.spec.alpha: `defn` 外での定義、generator が生 Clojure で冗長。
+ ;; `m/=>` のような関数契約が弱く、instrumentation も Malli より弱い。
+ ;; 設計思想として Malli（data 駆動 schema + registry）と衝突。
+ {:purpose  [:validation]
+  :ids      {:coord org.clojure/spec.alpha :ns "clojure.spec.alpha"}
+  :judgment {:status :deprecated :severity :superseded :replacement metosin/malli}
+  :reasons  {:text "関数契約・generator の表現力で Malli に劣る"
+             :tags [:philosophy-mismatch :replacement-available]}}
+
+ ;; Plumatic Schema: メンテナンス頻度が低下、Malli が後継として広く採用される。
+ ;; coord としてエントリ化しないが却下理由は保持。
+ ]
+```
+
+**採用 stack**: 全 stack（必須層、stack 非依存）
 
 ### 3.4 HTTP サーバ・ルーティング
 
@@ -1162,1319 +1267,6 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 
 **複数の性格を持つプロジェクト**（例: Web API + バッチ併設）は**複数 stack の併用**で対応する。採用 stack は DESIGN.md §8.3 に記録し、各 brick の deps.edn にそれぞれの推奨ライブラリ（§4.2）を反映する。brick の構造は Polylith の通常通り（components / bases / projects）。
 
-### 4.2 各 stack の詳細定義
-
-以下は**各 stack の推奨カタログ**。採用時は該当 stack の推奨ライブラリを **brick の deps.edn** に記述する（ワークスペースルートの deps.edn には書かない）。**一次情報源は brick の deps.edn**、本節はそれを書く際の判断基準と推奨を提供する。
-
-#### 機械可読カタログ（SSOT）
-
-**本節のライブラリ情報は `;; lib-catalog` マーカ付き EDN block を唯一の source of truth とする**。markdown テーブル形式は廃止した（テーブルと EDN の二重管理で drift する設計不安を排除）。各 stack のセクションに、その stack に必要なエントリのみを含む `;; lib-catalog` block を co-locate する。
-
-- `.llm/scripts/gen_lib_catalog.clj`（generator）が本文書と §8 の全 block を走査、`.llm/data/libs.edn` / `.llm/data/*.patterns` を生成
-- shell 検査スクリプト（`check-deprecated-libs.sh` / `check-forbidden-requires.sh`）は生成された `.patterns` を読む
-- `check-workspace-integrity.sh` が「再生成 + diff」で drift を自動検知
-- generator は `[[:ids :coord] :purpose]` pair の重複を許容（**構造が完全一致する場合のみ**）、矛盾する重複は error。これにより cross-cutting lib (mulog / integrant / aero 等) が複数 stack block に現れても OK で、同時に SSOT 規律が崩れない
-- 詳細 schema は `.llm/scripts/gen_lib_catalog.clj` の `entry-schema`、schema とフィールドの意味論は `MAINTAINERS_GUIDE.md §5.9.8` を参照
-
-各 stack は以下の統一フォーマットで記述する：
-
-- **目的**: stack の主たる目的
-- **必要機能**: 揃えるべき機能カテゴリ
-- **推奨ライブラリ**: `;; lib-catalog` EDN block（該当 stack に必要な libs のみ）
-- **選定ポイント**: 選定上の留意点・採用理由・ノウハウ（EDN の `:reasons :text` に入り切らない背景説明を維持）
-- **避けるべきライブラリ**: 当該 stack で特に避けるべきもの（不採用理由の narrative、詳細は §8 参照）
-- **採用時の確認事項**: brick 作成時・動作確認時にチェックすべき項目（推奨の強制ではなく、機能カテゴリ充足性と設定漏れの防止）
-
-#### 4.2.1 library stack
-
-**目的**: 他プロジェクトから依存されるライブラリ配布。
-
-**必要機能**: 追加なし（必須層のみ）。
-
-**推奨ライブラリ**: 追加なし（lib-catalog block も空）。必須層以外を brick deps.edn に足さないのが作法。
-
-**選定ポイント**:
-- ライブラリはユーザに依存を強要しないのが作法。Integrant / aero / mulog 等は含めない
-- Malli スキーマをライブラリ利用者に公開する場合、`:registry` の公開 API を明示
-- Polylith を利用していても、ライブラリ配布時は**単一 project** から 1 つの uberjar または jar を作る
-
-**避けるべきライブラリ**:
-- ライフサイクル管理の埋め込み（Integrant / Component / Mount 等）— ライブラリ側でライフサイクルを強制するとユーザの選択肢を奪う
-- ロギング実装の強制（mulog / timbre / logback の直接依存）— ロギングは `clojure.tools.logging` 等の facade で抽象化し、実装はユーザに委ねる
-- 詳細は §8 参照
-
-**採用時の確認事項**（brick 作成時・動作確認時に確認）:
-- [ ] brick の deps.edn は Malli 以外の不要な依存を持たない（ライブラリ利用者への負担最小化）
-- [ ] 公開 API（interface.clj）の Malli スキーマが `:registry` で公開されている
-- [ ] ライフサイクル管理を埋め込んでいない（ユーザに判断を委ねる）
-- [ ] README または docstring で利用者向けのインポート方法が示されている
-
-#### 4.2.2 cli stack
-
-**目的**: コマンドライン実行ツール。
-
-**必要機能**: 引数パース、ログ、終了コード管理、シグナルハンドリング(任意)。
-
-**推奨ライブラリ**:
-
-```edn
-;; lib-catalog
-[{:purpose  [:cli :arg-parse]
-  :ids      {:coord org.clojure/tools.cli}
-  :judgment {:status :recommended :version "1.1.230"}
-  :reasons  {:text "CLI 引数パースの標準、docopt 系より軽量"}}
-
- {:purpose  [:logging]
-  :ids      {:coord com.brunobonacci/mulog :ns "com.brunobonacci.mulog"}
-  :judgment {:status :recommended :version "0.9.0"}
-  :reasons  {:text "イベント駆動の構造化ログ、publisher 切替可能"}}
-
- {:purpose  [:lifecycle]
-  :ids      {:coord integrant/integrant :ns "integrant.core"}
-  :judgment {:status :recommended :version "0.13.1"}
-  :reasons  {:text "data 駆動 DI、本テンプレート採用"}}
-
- ;; === 不採用 ===
- ;; :logging 系の非推奨
- {:purpose  [:logging]
-  :ids      {:coord   org.apache.logging.log4j/log4j-1.2-api
-             :aliases [log4j/log4j]
-             :ns      "org.apache.log4j"}
-  :judgment {:status      :deprecated
-             :severity    :forbidden
-             :replacement [com.brunobonacci/mulog ch.qos.logback/logback-classic]}
-  :reasons  {:text "log4j 1.x CVE-2019-17571 等、公式サポート終了"
-             :tags [:security :maintenance-stopped]}}
-
- {:purpose  [:logging]
-  :ids      {:coord com.taoensso/timbre
-             :ns    "taoensso.timbre"}
-  :judgment {:status :deprecated :severity :superseded :replacement com.brunobonacci/mulog}
-  :reasons  {:text "構造化ログの表現力が mulog より弱い"
-             :tags [:replacement-available]}}
-
- ;; :lifecycle 系の非推奨
- {:purpose  [:lifecycle]
-  :ids      {:coord com.stuartsierra/component
-             :ns    "com.stuartsierra.component"}
-  :judgment {:status :deprecated :severity :superseded :replacement integrant/integrant}
-  :reasons  {:text "本テンプレートは Integrant を採用、設計思想が衝突"
-             :tags [:philosophy-mismatch]}}
-
- {:purpose  [:lifecycle]
-  :ids      {:coord mount/mount
-             :ns    "mount.core"}
-  :judgment {:status :deprecated :severity :superseded :replacement integrant/integrant}
-  :reasons  {:text "グローバル状態を生む、Integrant は依存注入で回避"
-             :tags [:philosophy-mismatch]}}]
-```
-
-**選定ポイント**:
-- 小さな CLI なら Integrant 不要、`-main` の直列処理で十分
-- ファイル I/O や DB を扱う場合、シグナルハンドリング(Ctrl+C)での正しいクリーンアップが必要 → Integrant 採用を推奨
-- 終了コードは `System/exit` で明示。非ゼロ終了の慣習(0=成功、1=一般的失敗、2=使用方法エラー、64〜78=sysexits)を守る
-
-**避けるべきライブラリ**:
-- `docopt` 系の Clojure port — メンテナンス活動が低く、`tools.cli` で十分
-- ロギング用の `timbre` — `mulog` の構造化ログに統一（§8.2）
-- 詳細は §8 参照
-
-**採用時の確認事項**（brick 作成時・動作確認時に確認）:
-- [ ] 引数パースライブラリが base の deps.edn にある（tools.cli 等）
-- [ ] 構造化ログライブラリがある（mulog 等）
-- [ ] `-main` が終了コードを明示的に返す（`System/exit` または return 値による制御）
-- [ ] ファイル I/O / DB / 外部 API を扱う場合、Integrant でリソース管理されている
-- [ ] 処理中断時（Ctrl+C）のクリーンアップが設定されている（Integrant 採用時は shutdown hook）
-
-#### 4.2.3 web-api stack
-
-**目的**: HTTP API サーバ（REST）。
-
-**必要機能**: ライフサイクル、HTTP サーバ、ルーティング、JSON 変換、検証、構造化ログ。
-
-**推奨ライブラリ**:
-
-```edn
-;; lib-catalog
-[{:purpose  [:lifecycle]
-  :ids      {:coord integrant/integrant :ns "integrant.core"}
-  :judgment {:status :recommended :version "0.13.1"}
-  :reasons  {:text "data 駆動 DI、本テンプレート採用"}}
-
- {:purpose  [:lifecycle :repl]
-  :ids      {:coord integrant/repl :ns "integrant.repl"}
-  :judgment {:status :recommended :version "0.4.0"}
-  :reasons  {:text "REPL での go/reset/halt サイクル、dev エイリアス専用"}}
-
- {:purpose  [:config]
-  :ids      {:coord aero/aero :ns "aero.core"}
-  :judgment {:status :recommended :version "1.1.6"}
-  :reasons  {:text "tagged literal (#env #profile) で環境別設定"}}
-
- {:purpose  [:web :http-core]
-  :ids      {:coord ring/ring-core :ns "ring.core"}
-  :judgment {:status :recommended :version "1.13.0"}
-  :reasons  {:text "Ring 仕様の標準実装"}}
-
- {:purpose  [:web :http-server]
-  :ids      {:coord ring/ring-jetty-adapter :ns "ring.adapter.jetty"}
-  :judgment {:status :recommended :version "1.13.0"}
-  :reasons  {:text "Jetty ベース、初期推奨。成熟・枯れている"}}
-
- {:purpose  [:web :http-server]
-  :ids      {:coord http-kit/http-kit :ns "org.httpkit.server"}
-  :judgment {:status :acceptable :version "2.8.0"}
-  :reasons  {:text "NIO 軽量、高同時接続性能が要るなら検討"}}
-
- {:purpose  [:web :routing]
-  :ids      {:coord metosin/reitit :ns "reitit.core"}
-  :judgment {:status :recommended :version "0.7.2"}
-  :reasons  {:text "data 駆動ルーティング、Malli 統合"}}
-
- {:purpose  [:web :routing :ring]
-  :ids      {:coord metosin/reitit-ring :ns "reitit.ring"}
-  :judgment {:status :recommended :version "0.7.2"}
-  :reasons  {:text "Ring handler integration、CORS middleware も同梱"}}
-
- {:purpose  [:web :routing :malli]
-  :ids      {:coord metosin/reitit-malli :ns "reitit.coercion.malli"}
-  :judgment {:status :recommended :version "0.7.2"}
-  :reasons  {:text "Malli coercion for reitit"}}
-
- {:purpose  [:web :content-negotiation]
-  :ids      {:coord metosin/muuntaja :ns "muuntaja.core"}
-  :judgment {:status :recommended :version "0.6.10"}
-  :reasons  {:text "Accept/Content-Type に基づく自動変換"}}
-
- {:purpose  [:web :csrf]
-  :ids      {:coord ring/ring-anti-forgery :ns "ring.middleware.anti-forgery"}
-  :judgment {:status :recommended :version "1.3.0"}
-  :reasons  {:text "公開 Web API 必須の CSRF 対策"}}
-
- {:purpose  [:json]
-  :ids      {:coord metosin/jsonista :ns "jsonista.core"}
-  :judgment {:status :recommended :version "0.3.11"}
-  :reasons  {:text "Jackson 直叩きで高速、cheshire の代替"}}
-
- {:purpose  [:logging]
-  :ids      {:coord com.brunobonacci/mulog :ns "com.brunobonacci.mulog"}
-  :judgment {:status :recommended :version "0.9.0"}
-  :reasons  {:text "イベント駆動の構造化ログ、publisher 切替可能"}}
-
- {:purpose  [:logging :json-output]
-  :ids      {:coord com.brunobonacci/mulog-json}
-  :judgment {:status :recommended :version "0.9.0"}
-  :reasons  {:text "mulog の JSON publisher"}}
-
- {:purpose  [:cache :redis]
-  :ids      {:coord com.taoensso/carmine :ns "taoensso.carmine"}
-  :judgment {:status :recommended :version "3.3.2"}
-  :reasons  {:text "Redis クライアント、Cookie 認証スケールアウト時の session store 兼用"}}
-
- {:purpose  [:resilience :retry]
-  :ids      {:coord sunng87/diehard :ns "diehard.core"}
-  :judgment {:status :recommended}
-  :reasons  {:text "Retry / Circuit Breaker、外部 API 呼出時に必須化"}}
-
- {:purpose  [:search :elasticsearch]
-  :ids      {:coord mpenet/spandex :ns "qbits.spandex"}
-  :judgment {:status :acceptable}
-  :reasons  {:text "大規模全文検索時の選択肢、小規模なら PostgreSQL tsvector で十分"}}
-
- {:purpose  [:report :pdf]
-  :ids      {:coord clj-pdf/clj-pdf}
-  :judgment {:status :acceptable}
-  :reasons  {:text "PDF 出力が必要な時、iText ベース (iText 直接利用は §8 narrative で回避)"}}
-
- {:purpose  [:i18n]
-  :ids      {:coord com.taoensso/tempura :ns "taoensso.tempura"}
-  :judgment {:status :acceptable}
-  :reasons  {:text "多言語対応時、tower の後継"}}
-
- {:purpose  [:markdown]
-  :ids      {:coord markdown-clj/markdown-clj :ns "markdown.core"}
-  :judgment {:status :acceptable}
-  :reasons  {:text "Markdown レンダリングが必要な場合、endophile の代替"}}
-
- ;; === 不採用 ===
- ;; :json 系の非推奨
- {:purpose  [:json]
-  :ids      {:coord org.json/json
-             :ns    "org.json"}
-  :judgment {:status :deprecated :severity :forbidden :replacement metosin/jsonista}
-  :reasons  {:text "デシリアライズ脆弱性の歴史、推奨代替あり"
-             :tags [:security :replacement-available]}}
-
- {:purpose  [:json]
-  :ids      {:coord org.clojure/data.json
-             :ns    "clojure.data.json"}
-  :judgment {:status :deprecated :severity :superseded :replacement metosin/jsonista}
-  :reasons  {:text "パフォーマンスで jsonista に劣る"
-             :tags [:replacement-available]}}
-
- {:purpose  [:json]
-  :ids      {:coord cheshire/cheshire
-             :ns    "cheshire.core"}
-  :judgment {:status          :conditional
-             :applicable-when "既存コードの段階移行、新規は jsonista"
-             :replacement     metosin/jsonista}
-  :reasons  {:text "jsonista が Jackson 直叩きで高速"
-             :tags [:conditional :replacement-available]}}
-
- ;; :config 系の非推奨
- {:purpose  [:config]
-  :ids      {:coord environ/environ
-             :ns    "environ.core"}
-  :judgment {:status :deprecated :severity :superseded :replacement aero/aero}
-  :reasons  {:text "構造化設定に弱い、aero の tagged literal が表現力で優位"
-             :tags [:replacement-available]}}
-
- {:purpose  [:config]
-  :ids      {:coord immuconf/immuconf
-             :ns    "immuconf.config"}
-  :judgment {:status :deprecated :severity :superseded :replacement aero/aero}
-  :reasons  {:text "aero が事実上のコミュニティ標準"
-             :tags [:replacement-available]}}
-
- ;; :web :http-server 系の非推奨
- {:purpose  [:web :http-server]
-  :ids      {:coord aleph/aleph
-             :ns    "aleph.http"}
-  :judgment {:status      :deprecated
-             :severity    :superseded
-             :replacement [ring/ring-jetty-adapter http-kit/http-kit]}
-  :reasons  {:text "Netty 基盤で依存重い、manifold を抱え込む。Jetty / http-kit が軽量"
-             :tags [:philosophy-mismatch]}}
-
- {:purpose  [:web :http-server]
-  :ids      {:coord org.immutant/web
-             :ns    "org.immutant.web"}
-  :judgment {:status :deprecated :severity :superseded :replacement ring/ring-jetty-adapter}
-  :reasons  {:text "WildFly 系列はメンテ停止"
-             :tags [:maintenance-stopped]}}
-
- ;; :web :routing 系の非推奨
- {:purpose  [:web :routing]
-  :ids      {:coord compojure/compojure
-             :ns    "compojure.core"}
-  :judgment {:status :deprecated :severity :superseded :replacement metosin/reitit-ring}
-  :reasons  {:text "data 駆動でない、新規は reitit-ring。レガシー保守は可"
-             :tags [:philosophy-mismatch]}}
-
- {:purpose  [:web :routing]
-  :ids      {:coord io.pedestal/pedestal
-             :ns    "io.pedestal.http"}
-  :judgment {:status          :conditional
-             :applicable-when "大規模 interceptor 機構が必要"
-             :replacement     metosin/reitit-ring}
-  :reasons  {:text "小〜中規模で過剰、interceptor 機構が要るなら検討可"
-             :tags [:conditional]}}
-
- {:purpose  [:web :routing]
-  :ids      {:coord bidi/bidi
-             :ns    "bidi.ring"}
-  :judgment {:status          :conditional
-             :applicable-when "Malli 統合が不要な既存プロジェクトの保守"
-             :replacement     metosin/reitit}
-  :reasons  {:text "Malli 統合で reitit が優位、新規採用不可"
-             :tags [:conditional :replacement-available]}}
-
- ;; :i18n / :markdown / :search / :retry 系の非推奨
- {:purpose  [:i18n]
-  :ids      {:coord com.taoensso/tower
-             :ns    "taoensso.tower"}
-  :judgment {:status :deprecated :severity :superseded :replacement com.taoensso/tempura}
-  :reasons  {:text "メンテ停止、同作者の tempura が後継"
-             :tags [:maintenance-stopped]}}
-
- {:purpose  [:markdown]
-  :ids      {:coord endophile/endophile
-             :ns    "endophile.core"}
-  :judgment {:status :deprecated :severity :superseded :replacement markdown-clj/markdown-clj}
-  :reasons  {:text "メンテ停止、markdown-clj へ"
-             :tags [:maintenance-stopped]}}
-
- {:purpose  [:search :elasticsearch]
-  :ids      {:coord clojurewerkz/elastisch
-             :ns    "clojurewerkz.elastisch"}
-  :judgment {:status :deprecated :severity :superseded :replacement mpenet/spandex}
-  :reasons  {:text "メンテ停止、spandex が Elasticsearch の現役クライアント"
-             :tags [:maintenance-stopped]}}
-
- {:purpose  [:resilience :retry]
-  :ids      {:coord robert/robert.bruce
-             :ns    "robert.bruce"}
-  :judgment {:status :deprecated :severity :superseded :replacement sunng87/diehard}
-  :reasons  {:text "メンテ停止、diehard が後継"
-             :tags [:maintenance-stopped]}}]
-```
-
-**選定ポイント**:
-- **HTTP サーバ実装**: Jetty(標準・成熟)が初期推奨。高同時接続性能が重要なら http-kit(NIO、軽量)を検討。aleph は §8.2 非推奨（manifold 依存、過剰）。プロファイル要件で判断
-- **middleware の順序**: Reitit の data 駆動ルーティングで middleware を list として明示。順序依存のバグを契約で防ぐ
-- **認証・認可**: §3.12 参照。JWT なら buddy-sign 追加
-- **エラーハンドリング**: Reitit の `exception` middleware で例外 → HTTP エラーレスポンスへの変換を中央集権化
-- **CORS**: 必要に応じて `ring-cors` または reitit の middleware を追加
-- **圧縮**: `ring.middleware.gzip` または Jetty 側で有効化
-
-**避けるべきライブラリ**:
-- ルーティング: **Compojure**（data 駆動でなく Malli 統合が弱い、§8.2）、**Pedestal**（小〜中規模で過剰、§8.2）
-- JSON: **data.json**（パフォーマンス劣位、§8.2）
-- ロギング: **timbre / log4j 1.x**（log4j 1.x は §8.1 禁止）
-- 認証: **friend**（メンテ停滞、§8.2）
-
-**採用時の確認事項**（brick 作成時・動作確認時に確認）:
-- [ ] HTTP サーバ実装が base の deps.edn にある（ring-jetty-adapter / http-kit / aleph のいずれか）
-- [ ] ルーティングライブラリがある（reitit 等）
-- [ ] JSON 処理ライブラリがある（jsonista 等）
-- [ ] ライフサイクル管理がある（integrant 等）
-- [ ] 構造化ログライブラリがある（mulog 等、publisher 設定含む）
-- [ ] `projects/<deploy>/resources/config.edn` が作成され、aero の `#profile` / `#env` で環境別設定されている
-- [ ] `development/src/dev/user.clj` の Integrant ライフサイクルセクションが有効化されている
-- [ ] エラーハンドリング middleware が設定されている（例外 → HTTP エラーレスポンス変換）
-- [ ] 必要に応じて認証（buddy-sign 等）、CORS、レートリミットの設定がある
-- [ ] **DB を使う場合**: §3.6 永続化の推奨（next.jdbc + HoneySQL + HikariCP + DB ドライバ）が base の deps.edn にある、Integrant key で接続プール管理、config.edn に DB 接続情報（aero `#env`）
-
-#### 4.2.4 graphql-api stack
-
-**目的**: GraphQL API サーバ。
-
-**必要機能**: ライフサイクル、HTTP サーバ、GraphQL スキーマ定義・解決、検証、構造化ログ。
-
-**推奨ライブラリ**:
-
-```edn
-;; lib-catalog
-[{:purpose  [:lifecycle]
-  :ids      {:coord integrant/integrant :ns "integrant.core"}
-  :judgment {:status :recommended :version "0.13.1"}
-  :reasons  {:text "data 駆動 DI、本テンプレート採用"}}
-
- {:purpose  [:lifecycle :repl]
-  :ids      {:coord integrant/repl :ns "integrant.repl"}
-  :judgment {:status :recommended :version "0.4.0"}
-  :reasons  {:text "REPL での go/reset/halt サイクル、dev エイリアス専用"}}
-
- {:purpose  [:config]
-  :ids      {:coord aero/aero :ns "aero.core"}
-  :judgment {:status :recommended :version "1.1.6"}
-  :reasons  {:text "tagged literal (#env #profile) で環境別設定"}}
-
- {:purpose  [:web :http-core]
-  :ids      {:coord ring/ring-core :ns "ring.core"}
-  :judgment {:status :recommended :version "1.13.0"}
-  :reasons  {:text "Ring 仕様の標準実装"}}
-
- {:purpose  [:web :http-server]
-  :ids      {:coord ring/ring-jetty-adapter :ns "ring.adapter.jetty"}
-  :judgment {:status :recommended :version "1.13.0"}
-  :reasons  {:text "Jetty ベース、初期推奨。成熟・枯れている"}}
-
- {:purpose  [:graphql]
-  :ids      {:coord com.walmartlabs/lacinia :ns "com.walmartlabs.lacinia"}
-  :judgment {:status :recommended :version "1.2.2"}
-  :reasons  {:text "Clojure 界デファクト、スキーマを EDN 宣言、Malli 親和性"}}
-
- {:purpose  [:graphql :ring-integration]
-  :ids      {:coord com.walmartlabs/lacinia-pedestal}
-  :judgment {:status :acceptable :version "1.3"}
-  :reasons  {:text "Lacinia-Ring 統合、または自作 middleware でも可"}}
-
- {:purpose  [:json]
-  :ids      {:coord metosin/jsonista :ns "jsonista.core"}
-  :judgment {:status :recommended :version "0.3.11"}
-  :reasons  {:text "Jackson 直叩きで高速、cheshire の代替"}}
-
- {:purpose  [:logging]
-  :ids      {:coord com.brunobonacci/mulog :ns "com.brunobonacci.mulog"}
-  :judgment {:status :recommended :version "0.9.0"}
-  :reasons  {:text "イベント駆動の構造化ログ、publisher 切替可能"}}]
-```
-
-**選定ポイント**:
-- **Lacinia 採用理由**: Clojure 界のデファクト、スキーマを EDN として宣言、Malli との親和性（変換レイヤーを挟む）
-- **N+1 問題対策**: Lacinia の `superlifter` または自作 batching で対応
-- **REST との併用**: web-api stack と graphql-api stack の併用可能(同一サーバで両エンドポイント提供)
-- **スキーマと Malli の関係**: GraphQL スキーマを source of truth とするか、Malli スキーマを source of truth として GraphQL を生成するかはプロジェクト判断。Malli → GraphQL の自動生成ツールは成熟途上
-
-**避けるべきライブラリ**:
-- GraphQL クライアント実装をサーバと同一プロジェクトに入れる構成 — サーバ・クライアントで関心分離を崩す
-- 古い `graphql-java` 直接利用 — Lacinia の data 駆動抽象を活かせない
-- §4.2.3 web-api stack の避けるべきリストも該当（Compojure、timbre 等）
-
-**採用時の確認事項**（brick 作成時・動作確認時に確認）:
-- [ ] GraphQL 実装ライブラリがある（lacinia 等）
-- [ ] HTTP サーバ・Ring 統合がある（ring-jetty-adapter + GraphQL エンドポイント handler）
-- [ ] ライフサイクル管理・設定管理・JSON・構造化ログが揃っている（web-api stack §4.2.3 と同様）
-- [ ] GraphQL スキーマが定義され、resolver が対応している
-- [ ] N+1 問題対策が考慮されている（superlifter / batching / DataLoader 相当）
-- [ ] エラーハンドリングで Lacinia の例外を GraphQL errors に変換する設定がある
-
-#### 4.2.5 batch stack
-
-**目的**: 定期実行または手動起動のバッチ処理。
-
-**必要機能**: ライフサイクル、設定管理、DB、構造化ログ、スケジューリング(任意)。
-
-**推奨ライブラリ**:
-
-```edn
-;; lib-catalog
-[{:purpose  [:lifecycle]
-  :ids      {:coord integrant/integrant :ns "integrant.core"}
-  :judgment {:status :recommended :version "0.13.1"}
-  :reasons  {:text "data 駆動 DI、本テンプレート採用"}}
-
- {:purpose  [:lifecycle :repl]
-  :ids      {:coord integrant/repl :ns "integrant.repl"}
-  :judgment {:status :recommended :version "0.4.0"}
-  :reasons  {:text "REPL での go/reset/halt サイクル、dev エイリアス専用"}}
-
- {:purpose  [:config]
-  :ids      {:coord aero/aero :ns "aero.core"}
-  :judgment {:status :recommended :version "1.1.6"}
-  :reasons  {:text "tagged literal (#env #profile) で環境別設定"}}
-
- {:purpose  [:db :jdbc]
-  :ids      {:coord com.github.seancorfield/next.jdbc :ns "next.jdbc"}
-  :judgment {:status :recommended :version "1.3.967"}
-  :reasons  {:text "モダン JDBC ラッパ、transducer 対応"}}
-
- {:purpose  [:db :sql-builder]
-  :ids      {:coord com.github.seancorfield/honeysql :ns "honey.sql"}
-  :judgment {:status :recommended :version "2.6.1230"}
-  :reasons  {:text "data 駆動 SQL DSL、next.jdbc と組み合わせる"}}
-
- {:purpose  [:db :connection-pool]
-  :ids      {:coord com.zaxxer/HikariCP}
-  :judgment {:status :recommended :version "6.2.1"}
-  :reasons  {:text "最速の JDBC コネクションプール"}}
-
- {:purpose  [:db :migration]
-  :ids      {:coord migratus/migratus :ns "migratus.core"}
-  :judgment {:status :recommended}
-  :reasons  {:text "SQL ベース、純 Clojure、新規 Clojure プロジェクトの第一選択"}}
-
- {:purpose  [:logging]
-  :ids      {:coord com.brunobonacci/mulog :ns "com.brunobonacci.mulog"}
-  :judgment {:status :recommended :version "0.9.0"}
-  :reasons  {:text "イベント駆動の構造化ログ、publisher 切替可能"}}
-
- {:purpose  [:scheduling]
-  :ids      {:coord jarohen/chime :ns "chime.core"}
-  :judgment {:status :recommended :version "0.3.3"}
-  :reasons  {:text "core.async ベース、Integrant 統合容易。定期実行時"}}
-
- {:purpose  [:resilience :retry]
-  :ids      {:coord sunng87/diehard :ns "diehard.core"}
-  :judgment {:status :recommended}
-  :reasons  {:text "Retry / Circuit Breaker、外部 API 呼出時に必須化"}}
-
- {:purpose  [:report :excel]
-  :ids      {:coord dk.ative/docjure}
-  :judgment {:status :acceptable}
-  :reasons  {:text "Apache POI ラッパ、Excel 出力が必要な時"}}
-
- {:purpose  [:report :pdf]
-  :ids      {:coord clj-pdf/clj-pdf}
-  :judgment {:status :acceptable}
-  :reasons  {:text "PDF 出力が必要な時、iText ベース (iText 直接利用は §8 narrative で回避)"}}
-
- {:purpose  [:email :smtp]
-  :ids      {:coord draines/postal :ns "postal.core"}
-  :judgment {:status :acceptable}
-  :reasons  {:text "SMTP メール送信、通知用途。hato 直接でも可"}}
-
- ;; === 不採用 ===
- ;; :db :jdbc / :db :orm の非推奨
- {:purpose  [:db :jdbc]
-  :ids      {:coord org.clojure/java.jdbc
-             :ns    "clojure.java.jdbc"}
-  :judgment {:status      :deprecated
-             :severity    :superseded
-             :replacement com.github.seancorfield/next.jdbc}
-  :reasons  {:text "メンテ停止、推奨代替あり"
-             :tags [:maintenance-stopped :replacement-available]}}
-
- {:purpose  [:db :orm]
-  :ids      {:coord korma/korma
-             :ns    "korma.core"}
-  :judgment {:status      :deprecated
-             :severity    :superseded
-             :replacement [com.github.seancorfield/honeysql com.github.seancorfield/next.jdbc]}
-  :reasons  {:text "data 駆動でない。HoneySQL + next.jdbc で SQL を組み立てる"
-             :tags [:philosophy-mismatch]}}
-
- ;; :db :migration の非推奨・条件付き
- {:purpose  [:db :migration]
-  :ids      {:coord org.flywaydb/flyway-core}
-  :judgment {:status          :conditional
-             :applicable-when "既存 Java 資産の互換保守、新規 Clojure プロジェクトは migratus"
-             :replacement     migratus/migratus}
-  :reasons  {:text "新規 Clojure プロジェクトでは migratus が自然"
-             :tags [:conditional]}}
-
- {:purpose  [:db :migration]
-  :ids      {:coord org.liquibase/liquibase-core}
-  :judgment {:status          :conditional
-             :applicable-when "既存 Java 資産の互換保守、新規 Clojure プロジェクトは migratus"
-             :replacement     migratus/migratus}
-  :reasons  {:text "新規 Clojure プロジェクトでは migratus が自然"
-             :tags [:conditional]}}
-
- {:purpose  [:db :migration]
-  :ids      {:coord joplin/joplin.core
-             :ns    "joplin.core"}
-  :judgment {:status :deprecated :severity :superseded :replacement migratus/migratus}
-  :reasons  {:text "メンテ低迷、migratus へ"
-             :tags [:maintenance-stopped]}}
-
- ;; :scheduling の非推奨・条件付き
- {:purpose  [:scheduling]
-  :ids      {:coord overtone/at-at
-             :ns    "overtone.at-at"}
-  :judgment {:status :deprecated :severity :superseded :replacement jarohen/chime}
-  :reasons  {:text "停止制御が弱く Integrant 統合しにくい"
-             :tags [:philosophy-mismatch]}}
-
- {:purpose  [:scheduling]
-  :ids      {:coord clojurewerkz/quartzite}
-  :judgment {:status          :conditional
-             :applicable-when "複雑な業務要件 (cron 式・永続化) が必要"
-             :replacement     jarohen/chime}
-  :reasons  {:text "重量級、設定が冗長。単純用途は chime"
-             :tags [:conditional]}}
-
- {:purpose  [:scheduling]
-  :ids      {:coord tea-time/tea-time
-             :ns    "tea-time.core"}
-  :judgment {:status :deprecated :severity :superseded :replacement jarohen/chime}
-  :reasons  {:text "メンテ停止、chime へ"
-             :tags [:maintenance-stopped]}}]
-```
-
-DB ドライバ（`org.postgresql/postgresql` 等）は利用 DB に応じて brick の deps.edn に追加。ドライバは接続文字列選択の延長で、`;; lib-catalog` には記述しない（代替選択があるため）。
-
-**選定ポイント**:
-- **冪等性**: バッチは再実行安全（冪等）に設計。途中失敗からのリトライを前提
-- **排他制御**: 複数インスタンスが同時起動する可能性がある場合、DB advisory lock / Redis SETNX 等で排他
-- **進捗記録**: 中断と再開に備え、処理済みの position を DB に保存する設計
-- **スケジューリング**: chime(§3.15 参照)。cron 実行は OS 側 / Kubernetes CronJob で管理する構成も妥当
-
-**避けるべきライブラリ**:
-- DB: **clojure.java.jdbc**（next.jdbc に移行、§8.2）
-- スケジューリング: **at-at / tea-time**（Integrant 統合が弱い、メンテ停滞、§8.2）
-- ロギング: **timbre**（§8.2）
-
-**採用時の確認事項**（brick 作成時・動作確認時に確認）:
-- [ ] ライフサイクル管理がある（integrant 等）
-- [ ] 設定管理がある（aero 等）
-- [ ] DB クライアント・SQL ビルダ・接続プールが揃っている（next.jdbc + honeysql + HikariCP 等）
-- [ ] DB ドライバが brick の deps.edn に追加されている（PostgreSQL / MySQL 等、利用 DB 固有）
-- [ ] 構造化ログライブラリがある（mulog 等）
-- [ ] 定期実行が必要な場合、スケジューリング（chime 等）または外部（cron / CronJob）が設定されている
-- [ ] 冪等性設計がされている（再実行安全）
-- [ ] 複数インスタンス起動時の排他制御が設計されている（DB advisory lock 等）
-- [ ] 進捗記録・中断復帰の仕組みが設計されている
-
-#### 4.2.6 worker stack
-
-**目的**: メッセージキューからタスクを取得して処理するワーカ。
-
-**必要機能**: batch stack 全機能 + メッセージキュークライアント。
-
-**推奨ライブラリ**: batch stack の全要素に加えて下記を brick の deps.edn に追加する。
-
-```edn
-;; lib-catalog
-[{:purpose  [:resilience :retry]
-  :ids      {:coord sunng87/diehard :ns "diehard.core"}
-  :judgment {:status :recommended}
-  :reasons  {:text "Retry / Circuit Breaker、外部 API 呼出時に必須化"}}
-
- {:purpose  [:aws :core]
-  :ids      {:coord com.cognitect.aws/api :ns "cognitect.aws.api"}
-  :judgment {:status :recommended}
-  :reasons  {:text "Cognitect aws-api 本体、SDK v2 ベース・純 Clojure"}}
-
- {:purpose  [:aws :s3]
-  :ids      {:coord com.cognitect.aws/s3}
-  :judgment {:status :acceptable}
-  :reasons  {:text "ファイルストレージ必要時。aws-api 系列、サービスごと分割"}}
-
- {:purpose  [:messaging :queue :sqs]
-  :ids      {:coord com.cognitect.aws/sqs}
-  :judgment {:status :acceptable}
-  :reasons  {:text "AWS SQS キュー、aws-api 系列"}}
-
- {:purpose  [:messaging :queue :kafka]
-  :ids      {:coord fundingcircle/jackdaw}
-  :judgment {:status :acceptable}
-  :reasons  {:text "Kafka、Confluent Platform 連携可"}}
-
- {:purpose  [:messaging :queue :rabbitmq]
-  :ids      {:coord com.novemberain/langohr}
-  :judgment {:status :acceptable}
-  :reasons  {:text "RabbitMQ AMQP"}}
-
- {:purpose  [:messaging :queue :redis]
-  :ids      {:coord com.taoensso/carmine :ns "taoensso.carmine"}
-  :judgment {:status :acceptable}
-  :reasons  {:text "Redis Stream / Pub-Sub。cache と同ライブラリ"}}
-
- ;; === 不採用 ===
- ;; :aws 系の非推奨
- {:purpose  [:aws]
-  :ids      {:coord amazonica/amazonica
-             :ns    "amazonica"}
-  :judgment {:status :deprecated :severity :superseded :replacement com.cognitect.aws/api}
-  :reasons  {:text "Cognitect aws-api が SDK v2 ベース、サービスごと分割で軽量"
-             :tags [:replacement-available]}}]
-```
-
-PostgreSQL LISTEN/NOTIFY を使う場合は next.jdbc で直接実装（専用ライブラリ不要）、小規模に有効。
-
-**選定ポイント**:
-- **Exactly-once vs At-least-once**: 多くのキューは at-least-once、ハンドラ側で冪等性を保証
-- **poison message 対策**: DLQ(Dead Letter Queue)設計を最初から組み込む
-- **並列度**: キュー特性と DB 接続プールサイズを合わせる
-- **バックプレッシャ**: 処理速度がキュー流入を下回る時の挙動(prefetch 制限、スケールアウト条件)を設計
-
-**避けるべきライブラリ**:
-- §4.2.5 batch stack の避けるべきリストに加えて：
-- キューライブラリの独自ラッパを多層に重ねる構成 — 障害時の挙動が追いにくくなる。各キューの公式推奨クライアントを直接使う
-
-**採用時の確認事項**（brick 作成時・動作確認時に確認）:
-- [ ] §4.2.5 batch stack の確認事項（ライフサイクル・設定管理・DB・ログ）をすべて満たす
-- [ ] メッセージキュークライアントが brick の deps.edn に追加されている（AWS SQS / Kafka / RabbitMQ / Redis 等、利用キュー固有）
-- [ ] ハンドラが冪等性を保証している（at-least-once を前提）
-- [ ] DLQ（Dead Letter Queue）の扱いが設計されている
-- [ ] 並列度の設定が DB 接続プールサイズと整合している
-- [ ] バックプレッシャ対策（prefetch 制限等）が設定されている
-
-#### 4.2.7 data-pipeline stack
-
-**目的**: 大量データの ETL・変換処理。
-
-**必要機能**: batch stack 全機能 + 大量データ処理支援。
-
-**推奨ライブラリ**: batch stack の全要素に加えて下記を brick の deps.edn に追加する。
-
-```edn
-;; lib-catalog
-[{:purpose  [:serialization :transit]
-  :ids      {:coord com.cognitect/transit-clj :ns "cognitect.transit"}
-  :judgment {:status :acceptable}
-  :reasons  {:text "Cognitect Transit、バイナリデータ転送が必要な時"}}
-
- {:purpose  [:async]
-  :ids      {:coord org.clojure/core.async :ns "clojure.core.async"}
-  :judgment {:status :recommended}
-  :reasons  {:text "CSP チャネル、非同期パイプライン。manifold の代替"}}
-
- {:purpose  [:data :pipeline-dataset]
-  :ids      {:coord techascent/tech.ml.dataset :ns "tech.v3.dataset"}
-  :judgment {:status :recommended}
-  :reasons  {:text "表形式データの効率処理、tablecloth の基盤"}}
-
- {:purpose  [:csv]
-  :ids      {:coord org.clojure/data.csv :ns "clojure.data.csv"}
-  :judgment {:status :recommended}
-  :reasons  {:text "CSV の標準"}}
-
- ;; === 不採用 ===
- ;; :async 系の非推奨
- {:purpose  [:async]
-  :ids      {:coord manifold/manifold
-             :ns    "manifold.deferred"}
-  :judgment {:status :deprecated :severity :superseded :replacement org.clojure/core.async}
-  :reasons  {:text "aleph と同系統の設計不整合、core.async / promise.cljc へ"
-             :tags [:philosophy-mismatch]}}
-
- ;; :serialization 系の条件付き（:transit は採用、:fressian は条件付き）
- {:purpose  [:serialization]
-  :ids      {:coord org.clojure/data.fressian
-             :ns    "clojure.data.fressian"}
-  :judgment {:status          :conditional
-             :applicable-when "既存採用プロジェクトは継続可、新規は nippy"
-             :replacement     com.taoensso/nippy}
-  :reasons  {:text "nippy が速度・型対応で優位"
-             :tags [:conditional :replacement-available]}}]
-```
-
-Parquet / Arrow が必要な場合は `org.apache.arrow/arrow-vector` 等を追加。形式固有のため `;; lib-catalog` には記述しない。
-
-**選定ポイント**:
-- **メモリ制約**: 大量データは遅延シーケンス / transducer で逐次処理、全件メモリ展開を避ける
-- **並列化**: `pmap` / `core.async` / `claypoole` から要件で選択
-- **中間結果**: 大きな変換の途中成果は S3 / ローカルファイルに永続化しリトライ可能に
-- **進捗可視化**: mulog でステージ別進捗を記録、外部監視へ連携
-
-**避けるべきライブラリ**:
-- §4.2.5 batch stack の避けるべきリストに加えて：
-- Spark/Flink の Clojure 薄ラッパ系 — 抽象が中途半端、生 Java interop のほうが保守性が高い
-- `incanter`（統計処理を多用する場合以外） — `tech.ml.dataset` のほうが現代的
-
-**採用時の確認事項**（brick 作成時・動作確認時に確認）:
-- [ ] §4.2.5 batch stack の確認事項をすべて満たす
-- [ ] 非同期パイプライン用ライブラリがある（core.async 等）
-- [ ] 大量データ処理の形式に応じたライブラリがある（data.csv / transit-clj / tech.ml.dataset 等）
-- [ ] メモリ制約を考慮した設計（遅延シーケンス / transducer / バッチ処理）
-- [ ] 中間結果の永続化戦略が決まっている（S3 / ローカルファイル等）
-- [ ] ステージ別の進捗記録が mulog で構造化されている
-
-#### 4.2.8 bot stack
-
-**目的**: チャット bot(Telegram / Slack / Discord 等)。
-
-**必要機能**: ライフサイクル、HTTP クライアント(polling / webhook)、イベント駆動、構造化ログ、DB(状態保持時)。
-
-**推奨ライブラリ**:
-
-```edn
-;; lib-catalog
-[{:purpose  [:lifecycle]
-  :ids      {:coord integrant/integrant :ns "integrant.core"}
-  :judgment {:status :recommended :version "0.13.1"}
-  :reasons  {:text "data 駆動 DI、本テンプレート採用"}}
-
- {:purpose  [:lifecycle :repl]
-  :ids      {:coord integrant/repl :ns "integrant.repl"}
-  :judgment {:status :recommended :version "0.4.0"}
-  :reasons  {:text "REPL での go/reset/halt サイクル、dev エイリアス専用"}}
-
- {:purpose  [:config]
-  :ids      {:coord aero/aero :ns "aero.core"}
-  :judgment {:status :recommended :version "1.1.6"}
-  :reasons  {:text "tagged literal (#env #profile) で環境別設定"}}
-
- {:purpose  [:web :http-client]
-  :ids      {:coord hato/hato :ns "hato.client"}
-  :judgment {:status :recommended :version "1.0.0"}
-  :reasons  {:text "Java 11+ HttpClient ベース、HTTP/2 対応"}}
-
- {:purpose  [:web :http-server]
-  :ids      {:coord ring/ring-jetty-adapter :ns "ring.adapter.jetty"}
-  :judgment {:status :recommended :version "1.13.0"}
-  :reasons  {:text "Jetty ベース、初期推奨。成熟・枯れている"}}
-
- {:purpose  [:json]
-  :ids      {:coord metosin/jsonista :ns "jsonista.core"}
-  :judgment {:status :recommended :version "0.3.11"}
-  :reasons  {:text "Jackson 直叩きで高速、cheshire の代替"}}
-
- {:purpose  [:logging]
-  :ids      {:coord com.brunobonacci/mulog :ns "com.brunobonacci.mulog"}
-  :judgment {:status :recommended :version "0.9.0"}
-  :reasons  {:text "イベント駆動の構造化ログ、publisher 切替可能"}}
-
- {:purpose  [:bot :discord]
-  :ids      {:coord suskalo/discljord}
-  :judgment {:status :recommended}
-  :reasons  {:text "Discord Bot 向け、Clojure 特化"}}
-
- ;; === 不採用 ===
- ;; :web :http-client の条件付き
- {:purpose  [:web :http-client]
-  :ids      {:coord clj-http/clj-http
-             :ns    "clj-http.client"}
-  :judgment {:status          :conditional
-             :applicable-when "既存コードの段階移行、新規は hato"
-             :replacement     hato/hato}
-  :reasons  {:text "hato が Java 11+ HttpClient ベースで第一選択"
-             :tags [:conditional :replacement-available]}}]
-```
-
-プラットフォーム別の実装指針:
-- **Telegram / Slack**: Bot API は HTTP REST、`hato/hato` で自作 HTTP 呼び出しで十分
-- **Discord**: `suskalo/discljord` 採用（上記 block）
-- **DB（状態保持時）**: batch stack の `next.jdbc` + `HikariCP` を brick deps.edn に追加
-
-**選定ポイント**:
-- **Polling vs Webhook**: 開発時は polling が楽(bot stack 内で完結)、本番は webhook(web-api stack と併用)
-- **会話状態**: DB 必須の場合 worker stack の要素を追加
-- **レートリミット**: 各プラットフォーム固有のレートリミットに対応(token bucket 等)
-- **秘匿情報**: bot token は aero の `#env` で環境変数から読み込み、決してコードに埋め込まない
-
-**避けるべきライブラリ**:
-- HTTP クライアント: **clj-http**（新規採用は hato へ、§8.2）
-- トークンやシークレットを管理する独自 helper の乱立 — aero の `#env` に統一し、プロジェクト全体で方針を一致させる
-- 旧世代の bot フレームワーク系（メンテナンス停滞のもの） — 純 Clojure の HTTP 呼び出しで実装するほうが寿命が長い
-
-**採用時の確認事項**（brick 作成時・動作確認時に確認）:
-- [ ] ライフサイクル管理がある（integrant 等）
-- [ ] HTTP クライアントがある（hato 等）
-- [ ] JSON 処理ライブラリがある（jsonista 等）
-- [ ] 構造化ログライブラリがある（mulog 等）
-- [ ] bot token 等の秘匿情報が aero `#env` 経由で環境変数から読み込まれている（コード埋め込み禁止）
-- [ ] webhook 受信を採用する場合、HTTP サーバライブラリがある（ring-jetty-adapter 等）
-- [ ] 会話状態を保持する場合、DB / 接続プール（next.jdbc + HikariCP 等）が設定されている
-- [ ] プラットフォーム固有のレートリミット対策（token bucket / retry 等）が実装されている
-
-#### 4.2.9 desktop stack
-
-**目的**: デスクトップ GUI アプリ（JVM ネイティブ、ClojureScript/Web は対象外）。
-
-**必要機能**: ライフサイクル、GUI フレームワーク、構造化ログ。
-
-**推奨ライブラリ**:
-
-```edn
-;; lib-catalog
-[{:purpose  [:lifecycle]
-  :ids      {:coord integrant/integrant :ns "integrant.core"}
-  :judgment {:status :recommended :version "0.13.1"}
-  :reasons  {:text "data 駆動 DI、本テンプレート採用"}}
-
- {:purpose  [:lifecycle :repl]
-  :ids      {:coord integrant/repl :ns "integrant.repl"}
-  :judgment {:status :recommended :version "0.4.0"}
-  :reasons  {:text "REPL での go/reset/halt サイクル、dev エイリアス専用"}}
-
- {:purpose  [:config]
-  :ids      {:coord aero/aero :ns "aero.core"}
-  :judgment {:status :recommended :version "1.1.6"}
-  :reasons  {:text "tagged literal (#env #profile) で環境別設定"}}
-
- {:purpose  [:desktop :gui]
-  :ids      {:coord io.github.humbleui/humbleui}
-  :judgment {:status :recommended :version "0.2.0"}
-  :reasons  {:text "Skia ベース、宣言的 API。開発途上で API 変動リスクあり (暫定採用)"}}
-
- {:purpose  [:desktop :gui :javafx]
-  :ids      {:coord cljfx/cljfx :ns "cljfx.api"}
-  :judgment {:status :acceptable}
-  :reasons  {:text "JavaFX 宣言的ラッパ、成熟。安定性優先なら採用を判断し ADR 記録"}}
-
- {:purpose  [:logging]
-  :ids      {:coord com.brunobonacci/mulog :ns "com.brunobonacci.mulog"}
-  :judgment {:status :recommended :version "0.9.0"}
-  :reasons  {:text "イベント駆動の構造化ログ、publisher 切替可能"}}
-
- ;; === 不採用 ===
- ;; :desktop :gui 条件付き（レガシー保守のみ）
- {:purpose  [:desktop :gui]
-  :ids      {:coord seesaw/seesaw
-             :ns    "seesaw.core"}
-  :judgment {:status          :conditional
-             :applicable-when "レガシー保守"
-             :replacement     [io.github.humbleui/humbleui cljfx/cljfx]}
-  :reasons  {:text "Swing ベースで古い、新規は humbleui / cljfx"
-             :tags [:conditional]}}]
-```
-
-他の代替: `membrane`（純 Clojure、クロスプラットフォーム挑戦的）は ADR を伴う採用可。
-
-**選定ポイント**:
-- **humbleui 採用理由（暫定）**: Rich Hickey 系エコシステム、Skia ベースで高性能、宣言的 API
-- **成熟度への注意**: humbleui は開発途上、API 変更リスクあり。プロダクション投入は慎重に
-- **cljfx への切替可能性**: プロダクション要件で安定性優先なら cljfx 採用を判断、ADR として記録
-- **配布**: jlink / jpackage でネイティブイメージ化、GraalVM は GUI 用途では制約多い
-- **ClojureScript 版が必要な場合**: 本テンプレート対象外。別途 shadow-cljs ベースのテンプレートを検討
-
-**避けるべきライブラリ**:
-- 生の Swing / AWT を `proxy` で多用する構成 — 宣言的でなく、テスト性が低い。cljfx や humbleui で吸収
-- メンテナンス停滞した古い Clojure GUI ラッパ — 最新 JVM との非整合リスク
-
-**採用時の確認事項**（brick 作成時・動作確認時に確認）:
-- [ ] ライフサイクル管理がある（integrant 等）
-- [ ] GUI フレームワークが brick の deps.edn にある（humbleui / cljfx / seesaw のいずれか）
-- [ ] 構造化ログライブラリがある（mulog 等）
-- [ ] 配布形態が決まっている（jlink / jpackage / uberjar + JRE バンドル）
-- [ ] GUI スレッドと業務ロジックスレッドの分離が設計されている（EDT / Skia thread 等の扱い）
-- [ ] 採用した GUI フレームワークの成熟度リスクが ADR で評価されている（humbleui 採用時は特に）
-
-#### 4.2.10 dev-tools stack（横断）
-
-**目的**: 開発支援。stack 層と組み合わせて使う。
-
-**必要機能**: データインスペクション、プロパティテスト、アサーション拡張。
-
-**推奨ライブラリ**:
-
-```edn
-;; lib-catalog
-[{:purpose  [:dev :inspect]
-  :ids      {:coord djblue/portal :ns "portal.api"}
-  :judgment {:status :recommended :version "0.58.5"}
-  :reasons  {:text "tap> 出力先、data インスペクション。ワークスペースルート :dev エイリアス専用"}}
-
- {:purpose  [:dev :property-testing]
-  :ids      {:coord org.clojure/test.check :ns "clojure.test.check"}
-  :judgment {:status :recommended :version "1.1.1"}
-  :reasons  {:text "Malli generator と組み合わせて最大効果"}}
-
- {:purpose  [:dev :assert]
-  :ids      {:coord nubank/matcher-combinators :ns "matcher-combinators.core"}
-  :judgment {:status :recommended :version "3.9.1"}
-  :reasons  {:text "部分マッチングで assert の可読性向上"}}]
-```
-
-**選定ポイント**:
-- **推奨**: 全 stack で常に併用（開発効率が大幅に向上）
-- **Portal**: `tap>` の出力先として運用。プロダクションには配布しない(:dev エイリアス限定)
-- **test.check**: Malli スキーマからの generator 自動生成と組み合わせることで最大効果
-- **matcher-combinators**: 部分マッチングで assert の可読性向上
-
-**避けるべきライブラリ**:
-- dev 専用の重量 UI（Reveal 等の代替）を複数導入 — Portal に一本化。複数ビューアが競合すると混乱
-- プロダクションビルドへの dev 依存の混入 — `:dev` エイリアス限定を徹底、uberjar ビルド時に除外確認（§6 整合性チェック）
-
-**採用時の確認事項**（ブートストラップ時・動作確認時に確認）:
-- [ ] ワークスペースルート `deps.edn` の `:dev :extra-deps` に配置されている（brick deps.edn ではない）
-- [ ] `development/src/dev/user.clj` の Portal セクションが有効化されている
-- [ ] Integrant を含む stack と併用する場合、`integrant/repl` が `:dev :extra-deps` にある
-- [ ] uberjar ビルドで dev-tools ライブラリが除外されている（`cd projects/<deploy> && clj -T:build uber` の成果物を確認）
-- [ ] test.check generator が Malli スキーマから生成できる（動作確認）
-
-#### 4.2.11 saas stack
-
-**目的**: SaaS・社内サービス向け、Biff + XTDB を軸にしたマルチテナント対応完結ソリューション。
-
-**必要機能**: ライフサイクル、bitemporal DB、認証、HTMX or reitit、セッション、マルチテナント、構造化ログ。
-
-**推奨ライブラリ**:
-
-```edn
-;; lib-catalog
-[;; Biff は XTDB/Rum/HTMX を同梱した opinionated SaaS framework。
- ;; Integrant とは衝突するため併用不可（Biff 内部で独自 lifecycle 管理）。
- {:purpose   [:saas :framework]
-  :ids       {:coord com.biffweb/biff}
-  :judgment  {:status :recommended :version "0.9.0"}
-  :reasons   {:text "opinionated SaaS framework、XTDB/Rum/HTMX 同梱"}
-  :relations {:bundles        [com.xtdb/xtdb-api rum/rum]
-              :conflicts-with [[integrant/integrant "Biff uses its own lifecycle manager"]]}}
-
- {:purpose  [:db :document-db]
-  :ids      {:coord com.xtdb/xtdb-api :ns "xtdb.api"}
-  :judgment {:status :recommended :version "2.0.0"}
-  :reasons  {:text "bitemporal document DB、Biff 同梱 / 単体採用いずれも可"}}
-
- ;; Datomic は Clojure コミュニティ実績あり、Pro 商用ライセンス条件に注意。
- {:purpose  [:db :document-db]
-  :ids      {:coord com.datomic/local
-             :ns    "datomic.api"}
-  :judgment {:status :acceptable}
-  :reasons  {:text "選択肢として許容、商用条件要確認"
-             :tags [:license]}}
-
- {:purpose  [:config]
-  :ids      {:coord aero/aero :ns "aero.core"}
-  :judgment {:status :recommended :version "1.1.6"}
-  :reasons  {:text "tagged literal (#env #profile) で環境別設定"}}
-
- {:purpose  [:web :http-server]
-  :ids      {:coord ring/ring-jetty-adapter :ns "ring.adapter.jetty"}
-  :judgment {:status :recommended :version "1.13.0"}
-  :reasons  {:text "Jetty ベース、初期推奨。成熟・枯れている"}}
-
- {:purpose  [:web :routing]
-  :ids      {:coord metosin/reitit :ns "reitit.core"}
-  :judgment {:status :recommended :version "0.7.2"}
-  :reasons  {:text "data 駆動ルーティング、Malli 統合"}}
-
- {:purpose  [:web :ssr]
-  :ids      {:coord rum/rum :ns "rum.core"}
-  :judgment {:status :recommended}
-  :reasons  {:text "SSR テンプレート、React 互換の概念。Biff と組み合わせ標準"}}
-
- {:purpose  [:web :html-dsl]
-  :ids      {:coord hiccup/hiccup :ns "hiccup.core"}
-  :judgment {:status :acceptable}
-  :reasons  {:text "Clojure data として HTML を組み立てる DSL。rum の代替軽量版"}}
-
- {:purpose  [:auth :jwt]
-  :ids      {:coord buddy/buddy-sign :ns "buddy.sign.jwt"}
-  :judgment {:status :recommended}
-  :reasons  {:text "JWT / JWS / JWE。認証セッション発行に使用"}}
-
- {:purpose  [:auth :password-hashing]
-  :ids      {:coord buddy/buddy-hashers :ns "buddy.hashers"}
-  :judgment {:status :recommended}
-  :reasons  {:text "パスワードハッシュ bcrypt/argon2"}}
-
- {:purpose  [:logging]
-  :ids      {:coord com.brunobonacci/mulog :ns "com.brunobonacci.mulog"}
-  :judgment {:status :recommended :version "0.9.0"}
-  :reasons  {:text "イベント駆動の構造化ログ、publisher 切替可能"}}
-
- ;; === 不採用 ===
- ;; :auth 系の非推奨（JWT / password-hashing に分離したため :auth 単独は非推奨）
- {:purpose  [:auth]
-  :ids      {:coord   cemerick/friend
-             :aliases [clj-commons/cemerick.friend]
-             :ns      "cemerick.friend"}
-  :judgment {:status      :deprecated
-             :severity    :superseded
-             :replacement [buddy/buddy-sign buddy/buddy-hashers]}
-  :reasons  {:text "メンテ停止、Ring 1.11+ 整合性に懸念"
-             :tags [:maintenance-stopped]}}
-
- ;; :web :fullstack 射程外
- {:purpose  [:web :fullstack]
-  :ids      {:coord   com.hyperfiddle/electric
-             :aliases [hyperfiddle/electric]
-             :ns      "hyperfiddle.electric"}
-  :judgment {:status :scope-excluded}
-  :reasons  {:text "§3.40.1 射程外、cljs 前提・macro 重依存・API 変動"
-             :tags [:philosophy-mismatch :conditional]}}]
-```
-
-**選定ポイント**:
-- Biff は Polylith brick 構造と流儀が異なるため、**Biff 側の helpers を component 化して包む**パターン（ADR 必須）
-- XTDB の tenant 分離は `tenant-id` 属性 + valid-time で実現
-- 認証セッションは XTDB に直接保存可能、別セッションストア不要
-- SSR + HTMX で SPA を避ける設計（ClojureScript 不要）
-
-**避けるべきライブラリ**:
-- ClojureScript フロントエンド全面採用（HTMX で済むなら不要、G6）
-- 別 ORM / 別 query builder（XTDB の Datalog で十分）
-- §4.2.3 web-api stack の避けるべきリストも該当
-
-**採用時の確認事項**:
-- [ ] XTDB submit log / document store が設定されている（in-memory / RocksDB / PostgreSQL backing）
-- [ ] tenant-id 属性が全 document に必須化されている（Malli スキーマで契約）
-- [ ] 認証 middleware が全ルートで tenant-id 検証を実施
-- [ ] Biff の auto-reload が開発時有効、production で無効
-- [ ] バックアップ戦略（XTDB log/docs の対象化）が設計済み
-
-#### 4.2.12 ml stack
-
-**目的**: データサイエンス・機械学習、ノートブック駆動開発。
-
-**必要機能**: dataset 操作、ML pipeline、可視化、ノートブック。
-
-**推奨ライブラリ**:
-
-```edn
-;; lib-catalog
-[{:purpose  [:ml :dataset]
-  :ids      {:coord scicloj/tablecloth :ns "tablecloth.api"}
-  :judgment {:status :recommended}
-  :reasons  {:text "tech.ml.dataset 上の高レベル API、data 駆動で scicloj 系"}}
-
- {:purpose  [:ml :pipeline]
-  :ids      {:coord scicloj/scicloj.ml}
-  :judgment {:status :recommended}
-  :reasons  {:text "ML pipeline、scicloj エコシステム"}}
-
- {:purpose  [:ml :notebook]
-  :ids      {:coord scicloj/clay}
-  :judgment {:status :recommended}
-  :reasons  {:text "Markdown + Clojure + 結果のノートブック、可視化にも使う"}}
-
- {:purpose  [:ml :integration]
-  :ids      {:coord scicloj/noj}
-  :judgment {:status :acceptable}
-  :reasons  {:text "scicloj 系の integration helper、任意"}}
-
- {:purpose  [:python-interop]
-  :ids      {:coord clj-python/libpython-clj :ns "libpython-clj.python"}
-  :judgment {:status :acceptable}
-  :reasons  {:text "Python interop、PyTorch/TensorFlow を境界で扱う"}}
-
- {:purpose  [:dev :inspect]
-  :ids      {:coord djblue/portal :ns "portal.api"}
-  :judgment {:status :recommended :version "0.58.5"}
-  :reasons  {:text "tap> 出力先、data インスペクション。ワークスペースルート :dev エイリアス専用"}}
-
- {:purpose  [:logging]
-  :ids      {:coord com.brunobonacci/mulog :ns "com.brunobonacci.mulog"}
-  :judgment {:status :recommended :version "0.9.0"}
-  :reasons  {:text "イベント駆動の構造化ログ、publisher 切替可能"}}
-
- ;; === 不採用 ===
- ;; :ml 系の非推奨・条件付き
- {:purpose  [:ml :data]
-  :ids      {:coord incanter/incanter
-             :ns    "incanter.core"}
-  :judgment {:status      :deprecated
-             :severity    :superseded
-             :replacement [scicloj/tablecloth scicloj/scicloj.ml]}
-  :reasons  {:text "メンテ低迷、scicloj エコシステムが活発"
-             :tags [:maintenance-stopped :philosophy-mismatch]}}
-
- {:purpose  [:ml :dl]
-  :ids      {:coord dl4clj/dl4clj
-             :ns    "dl4clj"}
-  :judgment {:status :deprecated :severity :superseded :replacement clj-python/libpython-clj}
-  :reasons  {:text "libpython-clj 経由で PyTorch/TensorFlow が現実的"
-             :tags [:philosophy-mismatch]}}
-
- {:purpose  [:ml :dl]
-  :ids      {:coord thinktopic/cortex
-             :ns    "cortex"}
-  :judgment {:status :deprecated :severity :superseded :replacement clj-python/libpython-clj}
-  :reasons  {:text "メンテ停止、libpython-clj 経由へ"
-             :tags [:maintenance-stopped]}}
-
- {:purpose  [:ml]
-  :ids      {:coord   com.github.haifengl/smile
-             :aliases [haifengl/smile]
-             :ns      "smile.classification"}
-  :judgment {:status          :conditional
-             :applicable-when "研究・社内閉じ利用のみ、SaaS / 商用配布不可、ADR 必須"
-             :replacement     [scicloj/tablecloth clj-python/libpython-clj]}
-  :reasons  {:text "GPL 3.0 ライセンスで SaaS 配布と衝突"
-             :tags [:license :conditional]}}]
-```
-
-**選定ポイント**:
-- data 駆動の頂点、scicloj 系は本テンプレート哲学に最も整合
-- Python 依存は境界に限定、Clojure コアは純粋保持
-- ノートブック（clay）は Markdown + Clojure コード + 結果の data 駆動記録
-- Portal で tap> ベースのインスペクションを活用
-
-**避けるべきライブラリ**:
-- `deeplearning4j`（OOP 重い、§8.2）
-- `incanter`（メンテ低迷、§8.2）
-- 自作 dataset 構造（tablecloth で十分）
-
-**採用時の確認事項**:
-- [ ] tablecloth で dataset 操作が書ける
-- [ ] Malli スキーマで dataset 構造を契約化
-- [ ] Python 連携時は libpython-clj の仮想環境が固定（`requirements.txt` 管理）
-- [ ] 学習済みモデルの serialize / deserialize 経路が明確
-- [ ] ノートブック（clay）の生成先・公開先（HTML）が決まっている
-
-#### 4.2.13 llm-app stack
-
-**目的**: LLM / AI を組み込んだアプリケーション（RAG、チャット、Agent）。
-
-**必要機能**: LLM プロバイダ呼出し、embedding 生成、ベクトルストア、プロンプト管理、リトライ、構造化ログ。
-
-**推奨ライブラリ**:
-
-```edn
-;; lib-catalog
-[{:purpose  [:lifecycle]
-  :ids      {:coord integrant/integrant :ns "integrant.core"}
-  :judgment {:status :recommended :version "0.13.1"}
-  :reasons  {:text "data 駆動 DI、本テンプレート採用"}}
-
- {:purpose  [:web :http-client]
-  :ids      {:coord hato/hato :ns "hato.client"}
-  :judgment {:status :recommended :version "1.0.0"}
-  :reasons  {:text "Java 11+ HttpClient ベース、HTTP/2 対応"}}
-
- {:purpose  [:llm :openai]
-  :ids      {:coord wkok/openai-clojure}
-  :judgment {:status :acceptable}
-  :reasons  {:text "OpenAI 互換 API 向け wrapper、hato 直接実装も可"}}
-
- {:purpose  [:json]
-  :ids      {:coord metosin/jsonista :ns "jsonista.core"}
-  :judgment {:status :recommended :version "0.3.11"}
-  :reasons  {:text "Jackson 直叩きで高速、cheshire の代替"}}
-
- {:purpose  [:templating :text]
-  :ids      {:coord selmer/selmer :ns "selmer.parser"}
-  :judgment {:status :recommended :version "1.12.0"}
-  :reasons  {:text "Django 風テンプレート、プロンプト管理に適合"}}
-
- {:purpose  [:resilience :retry]
-  :ids      {:coord sunng87/diehard :ns "diehard.core"}
-  :judgment {:status :recommended}
-  :reasons  {:text "Retry / Circuit Breaker、外部 API 呼出時に必須化"}}
-
- {:purpose  [:logging]
-  :ids      {:coord com.brunobonacci/mulog :ns "com.brunobonacci.mulog"}
-  :judgment {:status :recommended :version "0.9.0"}
-  :reasons  {:text "イベント駆動の構造化ログ、publisher 切替可能"}}]
-```
-
-ベクトルストアは PostgreSQL + pgvector（next.jdbc 経由）を第一選択。batch stack の DB 依存を brick deps.edn に追加。Pinecone 等は ADR。
-
-**選定ポイント**:
-- プロンプトは EDN 管理、git 追跡対象（コードと同等）
-- プロバイダ切替は wrapper 層で、core は純粋保持
-- ベクトル検索は PostgreSQL で完結を第一選択、Pinecone 等は ADR
-- token 使用量ログは mulog event `::llm-call` で統一
-
-**避けるべきライブラリ**:
-- `langchain4j` Clojure 移植（OOP 重い、変動早い、§8.2）
-- 専用 agent framework（2025 時点で成熟品なし）
-- `llama-clj`（native 依存、ビルド複雑、条件付き）
-
-**採用時の確認事項**:
-- [ ] API key が aero `#env` 管理、コード埋込なし
-- [ ] token 使用量が mulog で記録、コスト追跡可能
-- [ ] リトライポリシーが diehard で定義、rate limit 対応
-- [ ] プロンプトテンプレート全てに Malli 入出力スキーマ
-- [ ] embedding ベクトル次元が pgvector スキーマと一致（起動時検証）
-- [ ] プロバイダ切替時の wrapper 層インタフェースが明確
-
-#### 4.2.14 edge stack
-
-**目的**: Raspberry Pi / 組込み JVM 環境、GraalVM Native Image による軽量化。
-
-**必要機能**: GraalVM Native Image、GPIO、MQTT、設定管理、軽量構造化ログ。
-
-**推奨ライブラリ**:
-
-```edn
-;; lib-catalog
-[{:purpose  [:edge :gpio]
-  :ids      {:coord com.pi4j/pi4j-core}
-  :judgment {:status :recommended :version "2.x"}
-  :reasons  {:text "Raspberry Pi GPIO の標準、Pi4J v2"}}
-
- {:purpose  [:edge :gpio :pigpio]
-  :ids      {:coord com.pi4j/pi4j-plugin-pigpio}
-  :judgment {:status :recommended :version "2.x"}
-  :reasons  {:text "pigpio バックエンド、Pi4J v2 のネイティブ実装"}}
-
- {:purpose  [:messaging :mqtt]
-  :ids      {:coord org.eclipse.paho/org.eclipse.paho.client.mqttv3
-             :ns    "org.eclipse.paho.client.mqttv3"}
-  :judgment {:status :recommended :version "1.2.5"}
-  :reasons  {:text "Paho MQTT Java 公式、machine-head の代替"}}
-
- {:purpose  [:config]
-  :ids      {:coord aero/aero :ns "aero.core"}
-  :judgment {:status :recommended :version "1.1.6"}
-  :reasons  {:text "tagged literal (#env #profile) で環境別設定"}}
-
- {:purpose  [:logging]
-  :ids      {:coord com.brunobonacci/mulog :ns "com.brunobonacci.mulog"}
-  :judgment {:status :recommended :version "0.9.0"}
-  :reasons  {:text "イベント駆動の構造化ログ、publisher 切替可能"}}
-
- ;; === 不採用 ===
- ;; :messaging :mqtt 系の非推奨
- {:purpose  [:messaging :mqtt]
-  :ids      {:coord   clojurewerkz/machine_head
-             :aliases [clojurewerkz/machine-head]
-             :ns      "clojurewerkz.machine-head"}
-  :judgment {:status      :deprecated
-             :severity    :superseded
-             :replacement org.eclipse.paho/org.eclipse.paho.client.mqttv3}
-  :reasons  {:text "Paho MQTT Java を直接使うほうが依存が薄い"
-             :tags [:replacement-available]}}]
-```
-
-GraalVM 21 は build ツール（`clj -T:build native-image`）、ライブラリではない。`build.clj` に追加。
-
-**選定ポイント**:
-- `clj -T:build native-image` を build.clj に追加、GraalVM 必須
-- reflection 回避、`*warn-on-reflection* true` 必須
-- mulog publisher は console または軽量ネットワーク（CloudWatch 等）
-- MQTT 再接続・バックオフ戦略を必須実装
-
-**避けるべきライブラリ**:
-- reflection を伴う Java interop 多用ライブラリ（Native Image ビルド時警告）
-- Babashka（shell script 優先方針、§8.2）
-- 重量 GUI フレームワーク
-
-**採用時の確認事項**:
-- [ ] GraalVM Native Image ビルドが成功する（`reflect-config.json` 必要時）
-- [ ] 起動時間 < 500ms、メモリ < 100MB（計測証跡）
-- [ ] Pi4J の native lib（libpigpio）がデプロイ先にインストール済み
-- [ ] MQTT 再接続戦略が実装済み（ネットワーク断耐性）
-- [ ] 更新配布方法が決まっている（ota / 手動デプロイ）
-
----
 
 ### 4.3 複数 stack の組み合わせ
 
