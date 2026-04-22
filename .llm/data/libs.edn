@@ -130,6 +130,68 @@
    :severity :superseded,
    :replacement ring/ring-jetty-adapter},
   :reasons {:text "WildFly 系列はメンテ停止", :tags [:maintenance-stopped]}}
+ {:purpose [:json],
+  :ids {:coord metosin/jsonista, :ns "jsonista.core"},
+  :judgment {:status :recommended, :version "0.3.11"},
+  :reasons {:text "Jackson 直叩きで高速、cheshire の代替"}}
+ {:purpose [:json],
+  :ids {:coord cheshire/cheshire, :ns "cheshire.core"},
+  :judgment
+  {:status :conditional,
+   :applicable-when "既存コードの段階移行、新規は jsonista",
+   :replacement metosin/jsonista},
+  :reasons
+  {:text "jsonista が Jackson 直叩きで高速",
+   :tags [:conditional :replacement-available]}}
+ {:purpose [:json],
+  :ids {:coord org.clojure/data.json, :ns "clojure.data.json"},
+  :judgment
+  {:status :deprecated,
+   :severity :superseded,
+   :replacement metosin/jsonista},
+  :reasons
+  {:text "パフォーマンスで jsonista に劣る", :tags [:replacement-available]}}
+ {:purpose [:json],
+  :ids {:coord org.json/json, :ns "org.json"},
+  :judgment
+  {:status :deprecated,
+   :severity :forbidden,
+   :replacement metosin/jsonista},
+  :reasons
+  {:text "デシリアライズ脆弱性の歴史、推奨代替あり",
+   :tags [:security :replacement-available]}}
+ {:purpose [:db :jdbc],
+  :ids {:coord com.github.seancorfield/next.jdbc, :ns "next.jdbc"},
+  :judgment {:status :recommended, :version "1.3.967"},
+  :reasons {:text "モダン JDBC ラッパ、transducer 対応"}}
+ {:purpose [:db :sql-builder],
+  :ids {:coord com.github.seancorfield/honeysql, :ns "honey.sql"},
+  :judgment {:status :recommended, :version "2.6.1230"},
+  :reasons {:text "data 駆動 SQL DSL、next.jdbc と組み合わせる"}}
+ {:purpose [:db :connection-pool],
+  :ids {:coord com.zaxxer/HikariCP},
+  :judgment {:status :recommended, :version "6.2.1"},
+  :reasons {:text "最速の JDBC コネクションプール"}}
+ {:purpose [:db :jdbc],
+  :ids {:coord org.clojure/java.jdbc, :ns "clojure.java.jdbc"},
+  :judgment
+  {:status :deprecated,
+   :severity :superseded,
+   :replacement com.github.seancorfield/next.jdbc},
+  :reasons
+  {:text "メンテ停止、推奨代替あり",
+   :tags [:maintenance-stopped :replacement-available]}}
+ {:purpose [:db :orm],
+  :ids {:coord korma/korma, :ns "korma.core"},
+  :judgment
+  {:status :deprecated,
+   :severity :superseded,
+   :replacement
+   [com.github.seancorfield/honeysql
+    com.github.seancorfield/next.jdbc]},
+  :reasons
+  {:text "data 駆動でない。HoneySQL + next.jdbc で SQL を組み立てる",
+   :tags [:philosophy-mismatch]}}
  {:purpose [:xml],
   :ids {:coord xerces/xercesImpl, :ns "javax.xml.parsers.xerces"},
   :judgment

@@ -410,16 +410,46 @@ stack 層と組み合わせて使う。開発支援ライブラリは通常 **de
 
 **採用**: jsonista
 
-**検討した代替**:
-
-| 候補 | 却下理由 |
-|---|---|
-| Cheshire | 高速だが jsonista のほうが Jackson の活用が緻密 |
-| data.json | 純 Clojure 実装、パフォーマンス劣位 |
-
 **採用理由**:
 - Jackson をベースに最適化、高速
 - キーワード化オプション等の設定が柔軟
+
+```edn
+;; lib-catalog
+[;; === 採用 ===
+ {:purpose  [:json]
+  :ids      {:coord metosin/jsonista :ns "jsonista.core"}
+  :judgment {:status :recommended :version "0.3.11"}
+  :reasons  {:text "Jackson 直叩きで高速、cheshire の代替"}}
+
+ ;; === 代替と却下 ===
+ ;; Cheshire: 高速で広く使われているが、jsonista のほうが Jackson の活用が緻密で
+ ;; より高速。既存プロジェクトの段階移行なら可、新規は jsonista。
+ {:purpose  [:json]
+  :ids      {:coord cheshire/cheshire :ns "cheshire.core"}
+  :judgment {:status          :conditional
+             :applicable-when "既存コードの段階移行、新規は jsonista"
+             :replacement     metosin/jsonista}
+  :reasons  {:text "jsonista が Jackson 直叩きで高速"
+             :tags [:conditional :replacement-available]}}
+
+ ;; data.json: 純 Clojure 実装、パフォーマンス劣位。
+ {:purpose  [:json]
+  :ids      {:coord org.clojure/data.json :ns "clojure.data.json"}
+  :judgment {:status :deprecated :severity :superseded :replacement metosin/jsonista}
+  :reasons  {:text "パフォーマンスで jsonista に劣る"
+             :tags [:replacement-available]}}
+
+ ;; org.json (legacy): デシリアライズ脆弱性の歴史あり、禁止レベル（§8.1）。
+ ;; jsonista へ移行必須。
+ {:purpose  [:json]
+  :ids      {:coord org.json/json :ns "org.json"}
+  :judgment {:status :deprecated :severity :forbidden :replacement metosin/jsonista}
+  :reasons  {:text "デシリアライズ脆弱性の歴史、推奨代替あり"
+             :tags [:security :replacement-available]}}]
+```
+
+**採用 stack**: web-api stack、graphql-api stack、bot stack、llm-app stack、saas stack
 
 **採用 stack**: web-api stack（Reitit と連動）
 
@@ -427,18 +457,53 @@ stack 層と組み合わせて使う。開発支援ライブラリは通常 **de
 
 **採用**: next.jdbc + HoneySQL + HikariCP
 
-**検討した代替**:
-
-| 候補 | 却下理由 |
-|---|---|
-| clojure.java.jdbc | next.jdbc の前身、非推奨 |
-| ORM 系（Korma 等） | 関数型と相性が悪い、ブラックボックス化 |
-| hugsql | SQL ファイル分離は魅力だが、静的解析・Malli 統合が弱い |
-
 **採用理由**:
 - next.jdbc: 純関数的 API、パフォーマンス良好
 - HoneySQL: SQL を data として構築（Reitit と同様の data 駆動思想）
 - HikariCP: JVM 界のデファクト接続プール
+
+```edn
+;; lib-catalog
+[;; === 採用 ===
+ {:purpose  [:db :jdbc]
+  :ids      {:coord com.github.seancorfield/next.jdbc :ns "next.jdbc"}
+  :judgment {:status :recommended :version "1.3.967"}
+  :reasons  {:text "モダン JDBC ラッパ、transducer 対応"}}
+
+ {:purpose  [:db :sql-builder]
+  :ids      {:coord com.github.seancorfield/honeysql :ns "honey.sql"}
+  :judgment {:status :recommended :version "2.6.1230"}
+  :reasons  {:text "data 駆動 SQL DSL、next.jdbc と組み合わせる"}}
+
+ {:purpose  [:db :connection-pool]
+  :ids      {:coord com.zaxxer/HikariCP}
+  :judgment {:status :recommended :version "6.2.1"}
+  :reasons  {:text "最速の JDBC コネクションプール"}}
+
+ ;; === 代替と却下 ===
+ ;; clojure.java.jdbc: next.jdbc の前身。メンテ停止、next.jdbc へ移行。
+ {:purpose  [:db :jdbc]
+  :ids      {:coord org.clojure/java.jdbc :ns "clojure.java.jdbc"}
+  :judgment {:status      :deprecated
+             :severity    :superseded
+             :replacement com.github.seancorfield/next.jdbc}
+  :reasons  {:text "メンテ停止、推奨代替あり"
+             :tags [:maintenance-stopped :replacement-available]}}
+
+ ;; Korma (ORM 系): 関数型と相性が悪く、SQL 生成がブラックボックス化する。
+ ;; data 駆動の HoneySQL + next.jdbc で SQL を組み立てるほうが透明性が高い。
+ {:purpose  [:db :orm]
+  :ids      {:coord korma/korma :ns "korma.core"}
+  :judgment {:status      :deprecated
+             :severity    :superseded
+             :replacement [com.github.seancorfield/honeysql com.github.seancorfield/next.jdbc]}
+  :reasons  {:text "data 駆動でない。HoneySQL + next.jdbc で SQL を組み立てる"
+             :tags [:philosophy-mismatch]}}
+
+ ;; hugsql: SQL ファイル分離は魅力だが、静的解析・Malli 統合が弱い。採用しない。
+ ;; coord エントリ化せず narrative のみ。
+ ]
+```
 
 **採用 stack**: batch stack、worker stack、data-pipeline stack、および web-api stack（DB を扱う場合）
 

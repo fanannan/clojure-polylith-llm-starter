@@ -12,6 +12,10 @@ org\.clojure/spec\.alpha|関数契約・generator の表現力で Malli に劣�
 compojure/compojure|data 駆動でない、新規は reitit-ring。レガシー保守は可。推奨: metosin/reitit-ring
 aleph/aleph|Netty 基盤で依存重い、manifold を抱え込む。Jetty / http-kit が軽量。推奨: ring/ring-jetty-adapter または http-kit/http-kit
 org\.immutant/web|WildFly 系列はメンテ停止。推奨: ring/ring-jetty-adapter
+org\.clojure/data\.json|パフォーマンスで jsonista に劣る。推奨: metosin/jsonista
+org\.json/json|デシリアライズ脆弱性の歴史、推奨代替あり。推奨: metosin/jsonista
+org\.clojure/java\.jdbc|メンテ停止、推奨代替あり。推奨: com.github.seancorfield/next.jdbc
+korma/korma|data 駆動でない。HoneySQL + next.jdbc で SQL を組み立てる。推奨: com.github.seancorfield/honeysql または com.github.seancorfield/next.jdbc
 xerces/xercesImpl|XXE 脆弱性、bundled 版は JDK 付属のほうが安全。推奨: org.clojure/data.xml
 xalan/xalan|XXE 脆弱性、bundled 版は JDK 付属のほうが安全。推奨: org.clojure/data.xml
 io\.github\.metrics-clojure-ring/metrics-clojure-ring|mulog のイベント駆動と重複、mulog に一元化。推奨: com.brunobonacci/mulog
