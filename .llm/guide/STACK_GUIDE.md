@@ -511,12 +511,45 @@ stack 層と組み合わせて使う。開発支援ライブラリは通常 **de
 
 **採用**: mulog
 
-**検討した代替**:
+```edn
+;; lib-catalog
+[;; === 採用 ===
+ {:purpose  [:logging]
+  :ids      {:coord com.brunobonacci/mulog :ns "com.brunobonacci.mulog"}
+  :judgment {:status :recommended :version "0.9.0"}
+  :reasons  {:text "イベント駆動の構造化ログ、publisher 切替可能"}}
 
-| 候補 | 却下理由 |
-|---|---|
-| timbre | 構造化ログの表現力が mulog より弱い |
-| clojure.tools.logging + Logback | 構造化ログに追加実装が必要 |
+ {:purpose  [:logging :json-output]
+  :ids      {:coord com.brunobonacci/mulog-json}
+  :judgment {:status :recommended :version "0.9.0"}
+  :reasons  {:text "mulog の JSON publisher"}}
+
+ ;; === 代替と却下 ===
+ ;; timbre: 構造化ログの表現力が mulog より弱い。イベント駆動（μ/log）的な発想がなく、
+ ;; 文字列ベースに寄りがちで、downstream の処理（JSON 出力・aggregation）が冗長化する。
+ {:purpose  [:logging]
+  :ids      {:coord com.taoensso/timbre :ns "taoensso.timbre"}
+  :judgment {:status :deprecated :severity :superseded :replacement com.brunobonacci/mulog}
+  :reasons  {:text "構造化ログの表現力が mulog より弱い"
+             :tags [:replacement-available]}}
+
+ ;; log4j 1.x: CVE-2019-17571 等の未修正脆弱性あり、公式サポート終了（2015）。
+ ;; 使用禁止レベル（§8.1）、mulog 統一が第一選択。互換制約で段階移行する場合のみ
+ ;; logback-classic で受ける。
+ {:purpose  [:logging]
+  :ids      {:coord   org.apache.logging.log4j/log4j-1.2-api
+             :aliases [log4j/log4j]
+             :ns      "org.apache.log4j"}
+  :judgment {:status      :deprecated
+             :severity    :forbidden
+             :replacement [com.brunobonacci/mulog ch.qos.logback/logback-classic]}
+  :reasons  {:text "log4j 1.x CVE-2019-17571 等、公式サポート終了"
+             :tags [:security :maintenance-stopped]}}
+
+ ;; clojure.tools.logging + Logback: 構造化ログに追加実装が必要、mulog の
+ ;; イベント駆動構造化を持たない。採用しない（coord エントリ化せず narrative のみ）。
+ ]
+```
 
 **採用理由**:
 - イベント駆動の構造化ログ（`mulog/log ::event :key value`）

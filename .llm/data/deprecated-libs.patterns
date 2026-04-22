@@ -16,6 +16,9 @@ org\.clojure/data\.json|パフォーマンスで jsonista に劣る。推奨: me
 org\.json/json|デシリアライズ脆弱性の歴史、推奨代替あり。推奨: metosin/jsonista
 org\.clojure/java\.jdbc|メンテ停止、推奨代替あり。推奨: com.github.seancorfield/next.jdbc
 korma/korma|data 駆動でない。HoneySQL + next.jdbc で SQL を組み立てる。推奨: com.github.seancorfield/honeysql または com.github.seancorfield/next.jdbc
+com\.taoensso/timbre|構造化ログの表現力が mulog より弱い。推奨: com.brunobonacci/mulog
+org\.apache\.logging\.log4j/log4j-1\.2-api|log4j 1.x CVE-2019-17571 等、公式サポート終了。推奨: com.brunobonacci/mulog または ch.qos.logback/logback-classic
+log4j/log4j|log4j 1.x CVE-2019-17571 等、公式サポート終了。推奨: com.brunobonacci/mulog または ch.qos.logback/logback-classic
 xerces/xercesImpl|XXE 脆弱性、bundled 版は JDK 付属のほうが安全。推奨: org.clojure/data.xml
 xalan/xalan|XXE 脆弱性、bundled 版は JDK 付属のほうが安全。推奨: org.clojure/data.xml
 io\.github\.metrics-clojure-ring/metrics-clojure-ring|mulog のイベント駆動と重複、mulog に一元化。推奨: com.brunobonacci/mulog
