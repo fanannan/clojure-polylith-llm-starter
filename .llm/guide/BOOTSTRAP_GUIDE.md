@@ -30,7 +30,7 @@ README.md が「**誰が何をするか**」を示すのに対し、本文書は
 本テンプレートは技術スタックを**必須層 + stack 層**として配布する：
 
 - **必須層**（ワークスペースルートの `deps.edn` の `:deps` および必須エイリアス）: Clojure + tools.deps + Polylith + Malli + clj-kondo + cljfmt。全プロジェクトで常に採用、入れ替え不可
-- **stack 層**: 目的別の推奨構成（web-api stack / batch stack / cli stack / library stack 等）。**STACK_GUIDE.md §4.2 は推奨カタログであり、実ライブラリ依存は各 brick の `deps.edn` に書かれる**（Polylith の本番ビルドはそこから依存解決する）
+- **stack 層**: 目的別の推奨構成（web-api stack / batch stack / cli stack / library stack 等）。**STACK_GUIDE.md §3 機能別節 は推奨カタログであり、実ライブラリ依存は各 brick の `deps.edn` に書かれる**（Polylith の本番ビルドはそこから依存解決する）
 - **横断層**（dev-tools stack）: 開発支援。ワークスペースルートの `deps.edn` の `:dev :extra-deps` に配置（本番ビルドに混入させない）
 
 **真実の一箇所化**: ライブラリ依存の一次情報源は **brick の deps.edn**。ワークスペースルートの deps.edn には stack 層の依存を書かない（二重管理を回避）。
@@ -66,7 +66,7 @@ README.md のキックオフプロンプトを受信した LLM は、以下の�
 
 | ゲート | 直前で提示する内容（実テキスト / 実操作） | 承認後に実施する節 |
 |---|---|---|
-| ★ゲート 1（仕様 + stack） | `../DESIGN.md` §1-§4,§8 反映案／`workspace.edn` :top-namespace 差分／`../README.md` 冒頭差分／採用 stack 提案（STACK_GUIDE.md §4.2 記載有無を明示） | §2.1 |
+| ★ゲート 1（仕様 + stack） | `../DESIGN.md` §1-§4,§8 反映案／`workspace.edn` :top-namespace 差分／`../README.md` 冒頭差分／採用 stack 提案（STACK_GUIDE.md §3 機能別節 記載有無を明示） | §2.1 |
 | ★ゲート 2（構造 + 依存） | `poly create component/base/project` 3 コマンド／brick `deps.edn` 追加内容（実コード） | §2.3, §2.4 |
 
 ゲート 3 は**縮退**（`COLLABORATION_GUIDE.md` §2.2 で ADR 発行を L2 化済）:
@@ -149,7 +149,7 @@ clj -M:poly create project name:<deploy>
 
 **§2 禁止事項により、依存追加はユーザ承認必須**。
 
-採用 stack ごとに、STACK_GUIDE.md §4.2 の該当節の「推奨ライブラリ」表を **brick の deps.edn** に記述する：
+採用 stack ごとに、STACK_GUIDE.md §3 機能別節 の該当節の「推奨ライブラリ」表を **brick の deps.edn** に記述する：
 
 - **base の deps.edn**（`bases/<entry>/deps.edn`）: 主たる stack の推奨ライブラリ（HTTP サーバ、ルーティング、JSON、Integrant 等 I/O を含むもの）
 - **component の deps.edn**（`components/<domain>/deps.edn`）: I/O 系ライブラリは書かない（ドメイン純粋性）。Malli は必須層なので common に依存
@@ -159,11 +159,11 @@ clj -M:poly create project name:<deploy>
 
 ```clojure
 ;; bases/<entry>/deps.edn
-;; ※ バージョンは参考値。正本は STACK_GUIDE.md §2.1 / §4.2（コピペ時に要確認）
+;; ※ バージョンは参考値。正本は STACK_GUIDE.md §2.1 / §3 機能別節（コピペ時に要確認）
 {:paths ["src" "resources"]
  :deps  {org.clojure/clojure          {:mvn/version "1.12.0"}
          metosin/malli                {:mvn/version "0.16.4"}
-         ;; web-api stack 推奨（STACK_GUIDE.md §4.2.3）
+         ;; web-api stack 推奨（STACK_GUIDE.md §3 機能別節.3）
          integrant/integrant          {:mvn/version "0.13.1"}
          aero/aero                    {:mvn/version "1.1.6"}
          ring/ring-core               {:mvn/version "1.13.0"}
@@ -196,7 +196,7 @@ clj -M:poly create project name:<deploy>
   poly/inventory {:local/root "components/inventory"}
   poly/api       {:local/root "bases/api"}
   ```
-- [ ] **dev-tools stack 採用時**: ワークスペースルート `deps.edn` の `:dev :extra-deps` に開発支援ライブラリを追加（STACK_GUIDE.md §4.2.10 参照）:
+- [ ] **dev-tools stack 採用時**: ワークスペースルート `deps.edn` の `:dev :extra-deps` に開発支援ライブラリを追加（STACK_GUIDE.md §3 機能別節.10 参照）:
   ```clojure
   ;; :dev :extra-deps 内
   djblue/portal                {:mvn/version "0.58.5"}
@@ -247,7 +247,7 @@ Integrant を使うプロジェクトでのみ実施する。ライブラリ配�
   ```bash
   ./.llm/scripts/lint-import-hooks.sh
   ```
-  これにより `.clj-kondo/.cache/` および `.clj-kondo/configs/` が更新され、以後の `clj -M:lint` でライブラリ固有の lint ルールが機能する。**再実行のタイミング**: brick deps.edn に新ライブラリを追加したとき、`clj -M:outdated` で依存を更新したとき、`STACK_GUIDE.md §4.2` 推奨ライブラリを採用したとき
+  これにより `.clj-kondo/.cache/` および `.clj-kondo/configs/` が更新され、以後の `clj -M:lint` でライブラリ固有の lint ルールが機能する。**再実行のタイミング**: brick deps.edn に新ライブラリを追加したとき、`clj -M:outdated` で依存を更新したとき、`STACK_GUIDE.md §3 機能別節` 推奨ライブラリを採用したとき
 
 **brick 単位の依存解決確認**:
 
@@ -278,9 +278,9 @@ Integrant を使うプロジェクトでのみ実施する。ライブラリ配�
 - [ ] `./.llm/scripts/check-vulnerabilities.sh` が通る（clj-watson、詳細は `CLAUDE.md §5.5` release 前追加節を参照）
   - **NVD API key 推奨**: 無料で `https://nvd.nist.gov/developers/request-an-api-key` から取得し、環境変数 `NVD_API_KEY` に設定するとスキャンが高速化される
 
-**採用 stack ごとの確認事項（STACK_GUIDE.md §4.2.X）**:
+**採用 stack ごとの確認事項（STACK_GUIDE.md §3 機能別節.X）**:
 
-- [ ] 採用した各 stack の「採用時の確認事項」をすべて点検（STACK_GUIDE.md §4.2.X 参照）
+- [ ] 採用した各 stack の「採用時の確認事項」をすべて点検（STACK_GUIDE.md §3 機能別節.X 参照）
 
 ---
 
@@ -291,11 +291,11 @@ Integrant を使うプロジェクトでのみ実施する。ライブラリ配�
 - [ ] **`../DESIGN.md` の必須項目（§1〜§4、§8）が埋まっている**
 - [ ] DESIGN.md §8.3 採用 stack 欄に採用 stack が記録されている
 - [ ] `workspace.edn` の `:top-namespace` が実プロジェクト名
-- [ ] 採用 stack の推奨ライブラリ（STACK_GUIDE.md §4.2）が brick の deps.edn に反映されている
+- [ ] 採用 stack の推奨ライブラリ（STACK_GUIDE.md §3 機能別節）が brick の deps.edn に反映されている
 - [ ] STACK_GUIDE.md の推奨から逸脱した場合、ADR が発行されている
 - [ ] 最低 1 組の component + base + project が存在
 - [ ] §2.9 の動作確認がすべて通過
-- [ ] 採用各 stack の §4.2.X 採用時の確認事項がすべて点検済み
+- [ ] 採用各 stack の §3 機能別節の採用時の確認事項相当がすべて点検済み
 - [ ] CI が設定されている（lint / format / poly check / poly test / uber build、brick 依存解決確認含む）
 - [ ] 初回の `stable` タグが打たれている（CI 通過後）
 - [ ] `../.llm/memory/QUESTIONS.md` に残っている open Q を点検済み
@@ -326,7 +326,7 @@ Integrant を使うプロジェクトでのみ実施する。ライブラリ配�
 
 ### 5.1 brick の依存解決が失敗する（`cd bases/<name> && clj -Spath` で例外）
 
-- brick の deps.edn の記述内容を STACK_GUIDE.md §4.2 該当節と照合
+- brick の deps.edn の記述内容を STACK_GUIDE.md §3 機能別節 該当節と照合
 - バージョンの組合せが Maven Central / Clojars に実在するか確認
 - プロジェクト固有で追加したライブラリ（DB ドライバ等）のバージョン整合性を確認
 - component の deps.edn で I/O ライブラリを誤って書いていないか確認（ドメイン純粋性）
@@ -348,15 +348,15 @@ Integrant と Malli の起動順序、`set-refresh-dirs` の対象、`add-tap` �
 - **Integrant key の init-key 未定義**: `defmethod ig/init-key :xxx [_ _] ...` を書き忘れ
 - **dev/user.clj の Integrant セクション未有効化**: `(ig-repl/set-prep! config)` 等が配布時のまま無効化状態
 
-### 5.4 採用 stack の §4.2.X 採用時の確認事項を満たしていない
+### 5.4 採用 stack の §3 機能別節の採用時の確認事項相当を満たしていない
 
-STACK_GUIDE.md §4.2.X の「採用時の確認事項」リストを点検し、漏れている項目を補完する。特に：
+STACK_GUIDE.md §3 機能別節.X の「採用時の確認事項」リストを点検し、漏れている項目を補完する。特に：
 
 - 設定ファイル（config.edn、logging publisher 設定等）の未作成
 - プロジェクト固有ライブラリ（DB ドライバ、キュークライアント等）の未追加
 - 必要な機能カテゴリ（HTTP サーバ実装、JSON 処理等）のライブラリが未採用
 
-**注意**: §4.2 の推奨ライブラリ完全一致は求められていない。機能カテゴリを満たす別ライブラリを採用している場合は OK（ただし逸脱理由を ADR で記録）。
+**注意**: §3 機能別節の推奨ライブラリ完全一致は求められていない。機能カテゴリを満たす別ライブラリを採用している場合は OK（ただし逸脱理由を ADR で記録）。
 
 ### 5.5 uberjar ビルドに dev-tools ライブラリが混入している
 

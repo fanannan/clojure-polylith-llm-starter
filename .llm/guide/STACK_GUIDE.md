@@ -122,7 +122,7 @@ stack は時間とともに増え、選定根拠は詳細化し、機能領域�
 | **llm-app stack** | LLM / AI 組込アプリ | LLM API 呼出し、embedding、ベクトルストア、プロンプト管理 |
 | **edge stack** | IoT / エッジ | GraalVM Native Image、GPIO、MQTT、軽量ログ |
 
-各 stack で推奨するライブラリは §4.2 参照。採用時は該当 stack の推奨ライブラリを **brick の deps.edn** に記述する（ワークスペースルートの deps.edn ではない）。
+各 stack で推奨するライブラリは §3 機能別節を参照。採用時は該当 stack の推奨ライブラリを **brick の deps.edn** に記述する（ワークスペースルートの deps.edn ではない）。
 
 ### 2.3 横断層（任意併用、brick deps.edn に反映）
 
@@ -837,19 +837,24 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 
 **採用**: `ring-websocket`（Ring 1.11+ 組込み、Jetty adapter 経由）。大規模同時接続時は `http-kit`。SSE は Ring の chunked response で自作。
 
-**検討した代替**:
-
-| 候補 | 却下理由 |
-|---|---|
-| aleph | Netty 基盤で依存重い、data 駆動でない（G6） |
-| manifold（aleph 同梱） | promise/stream が純粋関数と相性悪い、core.async で代替可（G3） |
-| immutant | 開発停止（G4） |
-| sente | 独自プロトコル層で抽象が厚い、ring-websocket で十分（G6） |
-
 **採用理由**:
 - ring-websocket は Ring 仕様の一部、既存 middleware と統合容易
 - handshake / onmessage / onclose を純粋データ（map）で扱える
 - SSE は Ring の chunked response で自作可、外部依存不要
+
+ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では代替却下のみ記載。
+
+```edn
+;; lib-catalog
+[;; === 代替と却下 ===
+ ;; aleph / manifold: §3.4 HTTP サーバで採用不可と判定済（Netty 基盤で重い、
+ ;; data 駆動でなく manifold promise/stream が純粋関数と相性悪い）。
+ ;; WebSocket 用途でも同理由で採用しない（§3.4 の EDN 参照）。
+ ;; immutant: §3.4 HTTP サーバで採用不可（メンテ停止、§3.4 EDN 参照）。
+ ;; sente: 独自プロトコル層で抽象が厚い、ring-websocket で十分。
+ ;; narrative のみ、coord 化せず（§3.4 で関連エントリは既に収録）。
+ ]
+```
 
 **採用 stack**: web-api stack（拡張）、bot stack（webhook サーバ側）
 
@@ -1593,7 +1598,7 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
  ]
 ```
 
-**採用 stack**: ml stack（§4.2.12）または data-pipeline stack 拡張
+**採用 stack**: ml stack または data-pipeline stack 拡張
 
 **適用条件**:
 - データ分析・特徴量エンジニアリング → tablecloth
@@ -2148,14 +2153,14 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 | LLM / AI を組み込んだアプリ（RAG、チャット、Agent） | **llm-app stack** |
 | IoT / エッジ（Raspberry Pi 等、GraalVM Native Image） | **edge stack** |
 
-**複数の性格を持つプロジェクト**（例: Web API + バッチ併設）は**複数 stack の併用**で対応する。採用 stack は DESIGN.md §8.3 に記録し、各 brick の deps.edn にそれぞれの推奨ライブラリ（§4.2）を反映する。brick の構造は Polylith の通常通り（components / bases / projects）。
+**複数の性格を持つプロジェクト**（例: Web API + バッチ併設）は**複数 stack の併用**で対応する。採用 stack は DESIGN.md §8.3 に記録し、各 brick の deps.edn にそれぞれの推奨ライブラリ（§3 機能別節）を反映する。brick の構造は Polylith の通常通り（components / bases / projects）。
 
 
 ### 4.3 複数 stack の組み合わせ
 
 stack は排他的ではなく**タグ的な概念**。複数を組み合わせ可能。Polylith の構造では、組み合わせは以下のように実現する：
 
-- **同一 base が複数 stack の性格を持つ**: 当該 base の deps.edn に、採用する全 stack の推奨ライブラリ（§4.2）をマージして記述
+- **同一 base が複数 stack の性格を持つ**: 当該 base の deps.edn に、採用する全 stack の推奨ライブラリ（§3 各機能節）をマージして記述
 - **異なる base が異なる stack の性格を持つ**: 各 base が独立した deps.edn を持ち、それぞれに該当 stack の推奨ライブラリを記述。同一プロジェクト内でも base 単位で stack が異なって良い
 - **プロジェクトとして採用する stack の集合**は DESIGN.md §8.3 採用 stack に記録
 
@@ -2179,12 +2184,12 @@ stack は排他的ではなく**タグ的な概念**。複数を組み合わせ�
 
 ### 5.2 brick deps.edn への推奨ライブラリの反映
 
-最初の brick（component / base）を作成したら、採用 stack の推奨ライブラリ（§4.2 該当項）を **brick の deps.edn** に反映する。LLM はユーザ承認後、CLAUDE.md §2 禁止事項（依存追加）に従って進める：
+最初の brick（component / base）を作成したら、採用 stack の推奨ライブラリ（§3 の該当機能節の `;; lib-catalog` block）を **brick の deps.edn** に反映する。LLM はユーザ承認後、CLAUDE.md §2 禁止事項（依存追加）に従って進める：
 
 1. `clj -M:poly create component name:<domain>` でドメイン component を作成
 2. `clj -M:poly create base name:<entry>` で entry base を作成（ユーザ承認必須）
-3. 作成された **base の deps.edn**（`bases/<entry>/deps.edn`）に、採用 stack の §4.2 該当推奨ライブラリを記述
-   - 例: web-api stack なら §4.2.3 の推奨ライブラリ表を反映
+3. 作成された **base の deps.edn**（`bases/<entry>/deps.edn`）に、採用 stack の §3 該当推奨ライブラリを記述
+   - 例: web-api stack なら §3.4 HTTP サーバ・ルーティング / §3.5 JSON / §3.6 永続化 / §3.7 構造化ロギング 等の採用エントリを反映
    - 複数 stack 採用時は、該当 stack の推奨をマージ（重複は一度だけ書く）
 4. component の deps.edn（`components/<domain>/deps.edn`）には、ドメイン純粋性を保つため **I/O 系ライブラリは書かない**（I/O は base 側）
 5. プロジェクト固有ライブラリ（DB ドライバ等）も同じ brick deps.edn に追加（stack 推奨ライブラリと扱いは対称）
@@ -2203,7 +2208,7 @@ stack は排他的ではなく**タグ的な概念**。複数を組み合わせ�
 プロジェクト進行中に stack を追加・変更する場合：
 
 1. 追加・変更の理由を **ADR として発行**（`adr/NNNN-add-stack-<name>.md` または `adr/NNNN-modify-stack-<name>.md`）
-2. §4.2 の該当推奨に従って、影響する brick の deps.edn を更新
+2. §3 の該当機能節の採用推奨に従って、影響する brick の deps.edn を更新
 3. §6 整合性チェック
 4. DESIGN.md §8.3 の採用 stack 欄を更新
 
@@ -2217,7 +2222,7 @@ stack から離脱する場合：
 
 ### 5.4 推奨から外れる場合（テンプレート推奨の上書き）
 
-§4.2 の推奨がプロジェクト要件に合わない場合（例: mulog を timbre に差し替え、組織方針で特定ライブラリの採用等）：
+§3 の推奨がプロジェクト要件に合わない場合（例: mulog を timbre に差し替え、組織方針で特定ライブラリの採用等）：
 
 1. 変更理由と根拠を **ADR として発行**（`adr/NNNN-stack-customization.md`）
 2. brick の deps.edn に**プロジェクト固有の選択**として記述
@@ -2250,9 +2255,9 @@ clj -M:dev:nrepl
 
 ### 6.2 採用 stack と brick deps.edn の整合（文書的チェック）
 
-**STACK_GUIDE.md §4.2 は強制一致ではなく推奨カタログ**。brick の deps.edn が §4.2 と完全一致している必要はない。ただし以下を確認する：
+**STACK_GUIDE.md §3 は強制一致ではなく推奨カタログ**。brick の deps.edn が §3 と完全一致している必要はない。ただし以下を確認する：
 
-1. 採用した stack の **§4.2.X 採用時の確認事項**を満たしているか（機能カテゴリの充足、設定ファイルの存在等）
+1. 採用した stack に対応する **§3 機能別節の「採用時の確認事項」相当**を満たしているか（機能カテゴリの充足、設定ファイルの存在等）
 2. 推奨からの逸脱がある場合、ADR が発行されているか（§5.4 参照）
 3. DESIGN.md §8.3 採用 stack 欄の記載と brick の実装が整合しているか
 
@@ -2281,7 +2286,7 @@ clj -M:dev:nrepl
 
 ### 6.5 将来の自動検証（継続充実項目）
 
-brick deps.edn が採用 stack の §4.2.X 採用時の確認事項を満たしているかの機械検証は、**将来的に Babashka タスク等でスクリプト化**される予定（MAINTAINERS_GUIDE.md §5.9 継続充実項目）。現時点では文書上の確認事項として運用する。検証の粒度は「機能カテゴリの充足」であり、「具体ライブラリ名の一致」ではない（推奨の強制ではなく、漏れの防止）。
+brick deps.edn が採用 stack に対応する §3 機能別推奨を満たしているかの機械検証は、**将来的にスクリプト化**される予定（MAINTAINERS_GUIDE.md §5.9 継続充実項目）。現時点では文書上の確認事項として運用する。検証の粒度は「機能カテゴリの充足」であり、「具体ライブラリ名の一致」ではない（推奨の強制ではなく、漏れの防止）。
 
 ---
 
@@ -2310,7 +2315,7 @@ brick deps.edn が採用 stack の §4.2.X 採用時の確認事項を満たし�
 2. ユーザと議論
 3. 採用決定後、**ADR として記録**（`adr/NNNN-adopt-XXX.md`、検討した代替・却下理由を含む）
 4. **本文書 §3 に追記**（機能別選定根拠、採用理由、却下代替）
-5. **本文書 §4.2 の該当 stack 定義を更新**（推奨ライブラリ表への追加）
+5. **本文書 §3 の該当機能節の `;; lib-catalog` block に採用エントリを追加**
 6. 派生プロジェクトの場合、該当 brick の deps.edn を更新（テンプレート保守の場合、本文書の更新のみで完結）
 7. §6 整合性チェック
 8. DESIGN.md §8.3 の採用 stack 欄を更新（stack 構成が変わった場合）
