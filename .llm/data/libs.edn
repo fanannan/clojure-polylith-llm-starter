@@ -390,6 +390,41 @@
    :severity :superseded,
    :replacement migratus/migratus},
   :reasons {:text "メンテ低迷、migratus へ", :tags [:maintenance-stopped]}}
+ {:purpose [:testing :e2e],
+  :ids {:coord etaoin/etaoin, :ns "etaoin.api"},
+  :judgment {:status :recommended},
+  :reasons {:text "100% Clojure、map で driver 設定、data 駆動"}}
+ {:purpose [:testing :e2e],
+  :ids {:coord clj-webdriver/clj-webdriver, :ns "clj-webdriver.taxi"},
+  :judgment
+  {:status :deprecated,
+   :severity :superseded,
+   :replacement etaoin/etaoin},
+  :reasons {:text "メンテ停止、etaoin が現役", :tags [:maintenance-stopped]}}
+ {:purpose [:report :pdf],
+  :ids {:coord clj-pdf/clj-pdf},
+  :judgment {:status :recommended},
+  :reasons {:text "PDF 生成、iText ベース (iText 直接利用は narrative で回避)"}}
+ {:purpose [:report :excel],
+  :ids {:coord dk.ative/docjure},
+  :judgment {:status :recommended},
+  :reasons {:text "Apache POI ラッパ、Excel 読み書き"}}
+ {:purpose [:csv],
+  :ids {:coord org.clojure/data.csv, :ns "clojure.data.csv"},
+  :judgment {:status :recommended},
+  :reasons {:text "CSV の標準"}}
+ {:purpose [:markdown],
+  :ids {:coord markdown-clj/markdown-clj, :ns "markdown.core"},
+  :judgment {:status :recommended},
+  :reasons {:text "endophile の代替、メンテ継続中"}}
+ {:purpose [:markdown],
+  :ids {:coord endophile/endophile, :ns "endophile.core"},
+  :judgment
+  {:status :deprecated,
+   :severity :superseded,
+   :replacement markdown-clj/markdown-clj},
+  :reasons
+  {:text "メンテ停止、markdown-clj へ", :tags [:maintenance-stopped]}}
  {:purpose [:xml],
   :ids {:coord xerces/xercesImpl, :ns "javax.xml.parsers.xerces"},
   :judgment
@@ -406,6 +441,92 @@
    :replacement org.clojure/data.xml},
   :reasons
   {:text "XXE 脆弱性、bundled 版は JDK 付属のほうが安全", :tags [:security]}}
+ {:purpose [:email :smtp],
+  :ids {:coord draines/postal, :ns "postal.core"},
+  :judgment {:status :recommended},
+  :reasons {:text "SMTP メール送信、軽量"}}
+ {:purpose [:search :elasticsearch],
+  :ids {:coord mpenet/spandex, :ns "qbits.spandex"},
+  :judgment {:status :recommended},
+  :reasons {:text "Elasticsearch クライアント、elastisch の代替"}}
+ {:purpose [:search :elasticsearch],
+  :ids {:coord clojurewerkz/elastisch, :ns "clojurewerkz.elastisch"},
+  :judgment
+  {:status :deprecated,
+   :severity :superseded,
+   :replacement mpenet/spandex},
+  :reasons
+  {:text "メンテ停止、spandex が Elasticsearch の現役クライアント",
+   :tags [:maintenance-stopped]}}
+ {:purpose [:ml :dataset],
+  :ids {:coord scicloj/tablecloth, :ns "tablecloth.api"},
+  :judgment {:status :recommended},
+  :reasons {:text "tech.ml.dataset 上の高レベル API、data 駆動で scicloj 系"}}
+ {:purpose [:ml :pipeline],
+  :ids {:coord scicloj/scicloj.ml},
+  :judgment {:status :recommended},
+  :reasons {:text "ML pipeline、scicloj エコシステム"}}
+ {:purpose [:ml :notebook],
+  :ids {:coord scicloj/clay},
+  :judgment {:status :recommended},
+  :reasons {:text "Markdown + Clojure + 結果のノートブック、可視化にも使う"}}
+ {:purpose [:ml :integration],
+  :ids {:coord scicloj/noj},
+  :judgment {:status :acceptable},
+  :reasons {:text "scicloj 系の integration helper、任意"}}
+ {:purpose [:data :pipeline-dataset],
+  :ids {:coord techascent/tech.ml.dataset, :ns "tech.v3.dataset"},
+  :judgment {:status :recommended},
+  :reasons {:text "表形式データの効率処理、tablecloth の基盤"}}
+ {:purpose [:python-interop],
+  :ids {:coord clj-python/libpython-clj, :ns "libpython-clj.python"},
+  :judgment {:status :recommended},
+  :reasons {:text "Python interop、PyTorch/TensorFlow を境界で扱う"}}
+ {:purpose [:ml :data],
+  :ids {:coord incanter/incanter, :ns "incanter.core"},
+  :judgment
+  {:status :deprecated,
+   :severity :superseded,
+   :replacement [scicloj/tablecloth scicloj/scicloj.ml]},
+  :reasons
+  {:text "メンテ低迷、scicloj エコシステムが活発",
+   :tags [:maintenance-stopped :philosophy-mismatch]}}
+ {:purpose [:ml :dl],
+  :ids {:coord dl4clj/dl4clj, :ns "dl4clj"},
+  :judgment
+  {:status :deprecated,
+   :severity :superseded,
+   :replacement clj-python/libpython-clj},
+  :reasons
+  {:text "libpython-clj 経由で PyTorch/TensorFlow が現実的",
+   :tags [:philosophy-mismatch]}}
+ {:purpose [:ml :dl],
+  :ids {:coord thinktopic/cortex, :ns "cortex"},
+  :judgment
+  {:status :deprecated,
+   :severity :superseded,
+   :replacement clj-python/libpython-clj},
+  :reasons
+  {:text "メンテ停止、libpython-clj 経由へ", :tags [:maintenance-stopped]}}
+ {:purpose [:ml],
+  :ids
+  {:coord com.github.haifengl/smile,
+   :aliases [haifengl/smile],
+   :ns "smile.classification"},
+  :judgment
+  {:status :conditional,
+   :applicable-when "研究・社内閉じ利用のみ、SaaS / 商用配布不可、ADR 必須",
+   :replacement [scicloj/tablecloth clj-python/libpython-clj]},
+  :reasons
+  {:text "GPL 3.0 ライセンスで SaaS 配布と衝突", :tags [:license :conditional]}}
+ {:purpose [:llm :openai],
+  :ids {:coord wkok/openai-clojure},
+  :judgment {:status :acceptable},
+  :reasons {:text "OpenAI 互換 API 向け wrapper、hato 直接実装も可"}}
+ {:purpose [:templating :text],
+  :ids {:coord selmer/selmer, :ns "selmer.parser"},
+  :judgment {:status :recommended, :version "1.12.0"},
+  :reasons {:text "Django 風テンプレート、プロンプト管理等"}}
  {:purpose [:build],
   :ids {:coord leiningen/leiningen},
   :judgment

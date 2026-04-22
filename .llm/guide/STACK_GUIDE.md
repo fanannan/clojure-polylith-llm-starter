@@ -1172,17 +1172,14 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 - **メトリクス** → mulog publisher（§3.14 既採用）
 - **イベントソーシング** → **XTDB**（bitemporal で代替）
 
-**検討した代替**:
-
-| 候補 | 却下理由 |
-|---|---|
-| InfluxDB Clojure wrapper | 成熟度低、hato で直接 HTTP 叩けば十分（G6） |
-| EventStoreDB (Kurrent) gRPC クライアント | 純 Clojure wrapper なし、XTDB で代替可（G6） |
-| 専用時系列 DB 採用 | プロジェクト規模で正当化されるケースは稀（G6） |
-
 **採用理由**:
 - 既存永続化層（PostgreSQL）の拡張で済む
 - XTDB の bitemporal は EventStore の主要機能を内包
+
+**検討して却下した代替（narrative のみ、特定 coord なし）**:
+- InfluxDB Clojure wrapper: 成熟度低、hato で直接 HTTP 叩けば十分
+- EventStoreDB (Kurrent) gRPC クライアント: 純 Clojure wrapper なし、XTDB で代替可
+- 専用時系列 DB 採用: プロジェクト規模で正当化されるケースは稀
 
 **採用 stack**: batch / worker / data-pipeline（時系列要件時）
 
@@ -1195,17 +1192,31 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 
 **採用**: `etaoin/etaoin`（WebDriver）
 
-**検討した代替**:
-
-| 候補 | 却下理由 |
-|---|---|
-| clj-webdriver | メンテ停止、etaoin が後継（G4） |
-| Playwright | Node.js / Python 経由、JVM 統合しにくい（G7） |
-| Selenium 直接 | 低レベル、etaoin で包める範囲（G6） |
-
 **採用理由**:
 - etaoin は 100% Clojure、map で driver 設定、data 駆動
 - matcher-combinators と組で assert を書ける
+
+```edn
+;; lib-catalog
+[;; === 採用 ===
+ {:purpose  [:testing :e2e]
+  :ids      {:coord etaoin/etaoin :ns "etaoin.api"}
+  :judgment {:status :recommended}
+  :reasons  {:text "100% Clojure、map で driver 設定、data 駆動"}}
+
+ ;; === 代替と却下 ===
+ ;; clj-webdriver: メンテ停止、etaoin が後継。
+ {:purpose  [:testing :e2e]
+  :ids      {:coord clj-webdriver/clj-webdriver :ns "clj-webdriver.taxi"}
+  :judgment {:status :deprecated :severity :superseded :replacement etaoin/etaoin}
+  :reasons  {:text "メンテ停止、etaoin が現役"
+             :tags [:maintenance-stopped]}}
+
+ ;; Playwright: Node.js / Python 経由、JVM 統合しにくい。
+ ;; Selenium 直接: 低レベル、etaoin で包める範囲。
+ ;; 以上 2 件は coord 化せず narrative のみ。
+ ]
+```
 
 **採用 stack**: dev-tools stack 拡張、必要プロジェクトのみ任意
 
@@ -1218,17 +1229,16 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 
 **採用**: **Gatling**（Scala DSL、JVM 同居）
 
-**検討した代替**:
-
-| 候補 | 却下理由 |
-|---|---|
-| k6 | JavaScript、Clojure と別スタック（G7） |
-| Apache Bench / wrk | 単純な HTTP 用途のみ、シナリオ書けない |
-| JMeter | XML 設定、data 駆動でない（G1） |
-| 純 Clojure 負荷テスト | 成熟ライブラリなし（G4） |
-
 **採用理由**:
 - Gatling は JVM 内で走る、HTML レポート自動生成
+
+**検討して却下した代替（narrative のみ）**:
+- k6: JavaScript、Clojure と別スタック
+- Apache Bench / wrk: 単純な HTTP 用途のみ、シナリオ書けない
+- JMeter: XML 設定、data 駆動でない
+- 純 Clojure 負荷テスト: 成熟ライブラリなし
+
+**Gatling 本体は JVM（Scala）ライブラリ、`;; lib-catalog` への登録は現時点で見送り（採用 stack なし、プロジェクト個別採用）。**
 - シナリオが data として書ける（Scala DSL だが構造は map）
 
 **採用 stack**: 負荷要件があるプロジェクトに任意併用（stack 化しない、別 project として追加）
@@ -1242,16 +1252,13 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 
 **採用方針**: **Pact（pact-jvm）を Java interop で利用**、純 Clojure ラッパは採用しない。
 
-**検討した代替**:
-
-| 候補 | 却下理由 |
-|---|---|
-| 純 Clojure 契約テストライブラリ | 成熟品なし（G4） |
-| 自作 | 契約テストの標準化効果が失われる |
-
 **採用理由**:
 - Pact は業界標準、broker と連携可能
 - Consumer-Driven Contract を Malli スキーマから生成可能（自作ブリッジ）
+
+**検討して却下した代替（narrative のみ）**:
+- 純 Clojure 契約テストライブラリ: 成熟品なし
+- 自作: 契約テストの標準化効果が失われる
 
 **採用 stack**: マイクロサービス構成時のみ（saas stack の兄弟として）
 
@@ -1263,14 +1270,6 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 
 **採用方針**: **積極採用しない**。社内で gRPC 必須の場合のみ `protojure/protojure`。
 
-**検討した代替**:
-
-| 候補 | 却下理由 |
-|---|---|
-| io.grpc/grpc-java 直接 | OOP 重い、生成コードが data 駆動でない（G1） |
-| lambdaisland 系 gRPC | 新興、成熟度不足（G4） |
-| HTTP/2 + JSON | ほとんどのユースケースでこちらで十分（G6） |
-
 **採用理由（protojure）**:
 - 純 Clojure 風 API、`.proto` 定義から Clojure 関数生成
 - ただし抽象の厚みは大きい（採用は慎重）
@@ -1281,6 +1280,11 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 - 社内で gRPC 規約がある → protojure、ADR 発行
 - 性能要件のみ → HTTP/2 + http-kit で十分
 
+**検討して却下した代替（narrative のみ）**:
+- io.grpc/grpc-java 直接: OOP 重い、生成コードが data 駆動でない
+- lambdaisland 系 gRPC: 新興、成熟度不足
+- HTTP/2 + JSON: ほとんどのユースケースでこちらで十分
+
 ### 3.31 PDF / Excel / ドキュメント生成
 
 **採用**:
@@ -1289,13 +1293,32 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 - **Excel**: `dk.ative/docjure`（Apache POI の data 駆動ラッパ）
 - **CSV**: `org.clojure/data.csv`（公式）
 
-**検討した代替**:
+```edn
+;; lib-catalog
+[;; === 採用 ===
+ {:purpose  [:report :pdf]
+  :ids      {:coord clj-pdf/clj-pdf}
+  :judgment {:status :recommended}
+  :reasons  {:text "PDF 生成、iText ベース (iText 直接利用は narrative で回避)"}}
 
-| 候補 | 却下理由 |
-|---|---|
-| iText 直接 | Java fluent API、data 駆動でない。ライセンス（AGPL）注意（G5） |
-| Apache POI 直接 | docjure が Clojure 慣用ラッパ（G1） |
-| pandoc（外部）| 外部プロセス、本格要件では使うが内部生成には過剰（G7） |
+ {:purpose  [:report :excel]
+  :ids      {:coord dk.ative/docjure}
+  :judgment {:status :recommended}
+  :reasons  {:text "Apache POI ラッパ、Excel 読み書き"}}
+
+ {:purpose  [:csv]
+  :ids      {:coord org.clojure/data.csv :ns "clojure.data.csv"}
+  :judgment {:status :recommended}
+  :reasons  {:text "CSV の標準"}}
+
+ ;; === 代替と却下 ===
+ ;; iText 直接: Java fluent API、data 駆動でない。また AGPL ライセンスで
+ ;; SaaS/商用配布と衝突。clj-pdf は iText 経由だが DSL 層で隔離される。
+ ;; 直接利用は避ける（narrative のみ、coord 化せず）。
+ ;; Apache POI 直接: docjure が Clojure 慣用ラッパ、直接利用は冗長。
+ ;; pandoc（外部）: 外部プロセス、本格要件では使うが内部生成には過剰。
+ ]
+```
 
 **採用理由**:
 - clj-pdf は hiccup 風 data で PDF 構造を記述、Malli で構造契約化可
@@ -1317,18 +1340,44 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 - **TOML**: **採用しない**（EDN 推奨）
 - **XML**: `org.clojure/data.xml`
 
-**検討した代替**:
-
-| 候補 | 却下理由 |
-|---|---|
-| endophile (markdown) | 開発停止（G4） |
-| xerces / xalan（独立版） | §8.1 既に禁止（XXE 脆弱性） |
-| snake-yaml 直接 | clj-yaml がラップ（G6） |
-
 **採用理由**:
 - markdown-clj は data 駆動（parsed tree を vector で扱える）
 - data.xml は公式、XXE 対策済み
 - YAML は aero 経由で扱うので clj-yaml を使う場面は限定的
+
+```edn
+;; lib-catalog
+[;; === 採用 ===
+ {:purpose  [:markdown]
+  :ids      {:coord markdown-clj/markdown-clj :ns "markdown.core"}
+  :judgment {:status :recommended}
+  :reasons  {:text "endophile の代替、メンテ継続中"}}
+
+ ;; === 代替と却下 ===
+ ;; endophile: 開発停止、markdown-clj へ移行。
+ {:purpose  [:markdown]
+  :ids      {:coord endophile/endophile :ns "endophile.core"}
+  :judgment {:status :deprecated :severity :superseded :replacement markdown-clj/markdown-clj}
+  :reasons  {:text "メンテ停止、markdown-clj へ"
+             :tags [:maintenance-stopped]}}
+
+ ;; xerces (独立版) / xalan (独立版): XXE 脆弱性、JDK 付属を使う。
+ ;; 禁止レベル（cross-cutting security）。
+ {:purpose  [:xml]
+  :ids      {:coord xerces/xercesImpl :ns "javax.xml.parsers.xerces"}
+  :judgment {:status :deprecated :severity :forbidden :replacement org.clojure/data.xml}
+  :reasons  {:text "XXE 脆弱性、bundled 版は JDK 付属のほうが安全"
+             :tags [:security]}}
+
+ {:purpose  [:xml]
+  :ids      {:coord xalan/xalan}
+  :judgment {:status :deprecated :severity :forbidden :replacement org.clojure/data.xml}
+  :reasons  {:text "XXE 脆弱性、bundled 版は JDK 付属のほうが安全"
+             :tags [:security]}}
+
+ ;; snake-yaml 直接: clj-yaml がラップ済み、直接利用の価値なし。coord 化せず。
+ ]
+```
 
 **適用条件**:
 - 設定ファイル → EDN + aero（YAML/TOML 不要）
@@ -1343,16 +1392,21 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 - **SMS（Twilio 等）**: `hato` 直接
 - **FCM（プッシュ通知）**: `hato` 直接 + Firebase Admin Java SDK（認証のみ）
 
-**検討した代替**:
-
-| 候補 | 却下理由 |
-|---|---|
-| 各サービス専用 Clojure wrapper | 多くはメンテ停滞（G4） |
-| Spring Mail 等 Java フレームワーク | 重い、Clojure 慣用外（G7） |
-
 **採用理由**:
 - bot stack と同じ思想（HTTP API は hato 直接が最も寿命長い）
 - SMTP は java mail ベースの postal が実績十分
+
+```edn
+;; lib-catalog
+[{:purpose  [:email :smtp]
+  :ids      {:coord draines/postal :ns "postal.core"}
+  :judgment {:status :recommended}
+  :reasons  {:text "SMTP メール送信、軽量"}}]
+```
+
+**検討して却下した代替（narrative のみ）**:
+- 各サービス専用 Clojure wrapper: 多くはメンテ停滞
+- Spring Mail 等 Java フレームワーク: 重い、Clojure 慣用外
 
 **採用 stack**: web-api / worker / batch に通知機能を追加する時
 
@@ -1367,13 +1421,6 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 - **AWS S3**: `com.cognitect.aws/s3`（aws-api 系列、既採用）
 - **GCS**: `com.google.cloud/google-cloud-storage`（Google Java SDK 直接、薄く利用）
 - **Azure Blob**: Azure Java SDK 直接（稀）
-
-**検討した代替**:
-
-| 候補 | 却下理由 |
-|---|---|
-| Amazonica | メンテ停止傾向、aws-api が後継（G4） |
-| 自作クラウド抽象レイヤー | 疎結合の名目で抽象が漏れる（G6） |
 
 **採用理由**:
 - aws-api の呼出しパターンを流用、学習コスト最小
@@ -1404,6 +1451,23 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 - PostgreSQL の tsvector は既存 DB で完結、追加インフラ不要
 - spandex は data 駆動クエリ（map で ES クエリを記述）
 
+```edn
+;; lib-catalog
+[;; === 採用 ===
+ {:purpose  [:search :elasticsearch]
+  :ids      {:coord mpenet/spandex :ns "qbits.spandex"}
+  :judgment {:status :recommended}
+  :reasons  {:text "Elasticsearch クライアント、elastisch の代替"}}
+
+ ;; === 代替と却下 ===
+ ;; elastisch: メンテナンス停止、spandex が現役。
+ {:purpose  [:search :elasticsearch]
+  :ids      {:coord clojurewerkz/elastisch :ns "clojurewerkz.elastisch"}
+  :judgment {:status :deprecated :severity :superseded :replacement mpenet/spandex}
+  :reasons  {:text "メンテ停止、spandex が Elasticsearch の現役クライアント"
+             :tags [:maintenance-stopped]}}]
+```
+
 **採用 stack**: web-api stack（検索要件時）
 
 **適用条件**:
@@ -1431,20 +1495,85 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 - 用途: 進化計算、プログラム自動生成、探索型最適化
 - **明示的 opt-in**、§8.2 禁止扱いにしない。通常プロジェクトでは採用しない
 
-**検討した代替**:
-
-| 候補 | 却下理由 |
-|---|---|
-| incanter | メンテ低迷、tablecloth が後継（G4） |
-| deeplearning4j Clojure wrapper | OOP 重い、mutation 多用（G1/G2） |
-| cortex | 開発停止（G4） |
-| PyTorch 直接 JNI | libpython-clj で包める範囲（G6） |
-| **SMILE** (Haifeng Li の ML エンジン) | 機能は広範（分類・クラスタリング・NLP 他）だが **ライセンスが GPL 3.0** で SaaS/商用配布と衝突（G5）。研究・社内閉じ利用のみ ADR 発行の上で条件付き採用可（§8.2 参照） |
-
 **採用理由**:
 - scicloj 系は data 駆動が徹底、dataset は map/vector の集合として扱える
 - Malli スキーマで dataset 構造を契約化可能
 - libpython-clj は Python モデルを関数としてラップ、境界で副作用を隔離できる
+
+```edn
+;; lib-catalog
+[;; === 採用 ===
+ {:purpose  [:ml :dataset]
+  :ids      {:coord scicloj/tablecloth :ns "tablecloth.api"}
+  :judgment {:status :recommended}
+  :reasons  {:text "tech.ml.dataset 上の高レベル API、data 駆動で scicloj 系"}}
+
+ {:purpose  [:ml :pipeline]
+  :ids      {:coord scicloj/scicloj.ml}
+  :judgment {:status :recommended}
+  :reasons  {:text "ML pipeline、scicloj エコシステム"}}
+
+ {:purpose  [:ml :notebook]
+  :ids      {:coord scicloj/clay}
+  :judgment {:status :recommended}
+  :reasons  {:text "Markdown + Clojure + 結果のノートブック、可視化にも使う"}}
+
+ {:purpose  [:ml :integration]
+  :ids      {:coord scicloj/noj}
+  :judgment {:status :acceptable}
+  :reasons  {:text "scicloj 系の integration helper、任意"}}
+
+ {:purpose  [:data :pipeline-dataset]
+  :ids      {:coord techascent/tech.ml.dataset :ns "tech.v3.dataset"}
+  :judgment {:status :recommended}
+  :reasons  {:text "表形式データの効率処理、tablecloth の基盤"}}
+
+ {:purpose  [:python-interop]
+  :ids      {:coord clj-python/libpython-clj :ns "libpython-clj.python"}
+  :judgment {:status :recommended}
+  :reasons  {:text "Python interop、PyTorch/TensorFlow を境界で扱う"}}
+
+ ;; === 代替と却下 ===
+ ;; incanter: メンテ低迷、scicloj エコシステムが活発。
+ {:purpose  [:ml :data]
+  :ids      {:coord incanter/incanter :ns "incanter.core"}
+  :judgment {:status      :deprecated
+             :severity    :superseded
+             :replacement [scicloj/tablecloth scicloj/scicloj.ml]}
+  :reasons  {:text "メンテ低迷、scicloj エコシステムが活発"
+             :tags [:maintenance-stopped :philosophy-mismatch]}}
+
+ ;; deeplearning4j Clojure wrapper: OOP 重い、mutation 多用、Clojure 慣用外。
+ {:purpose  [:ml :dl]
+  :ids      {:coord dl4clj/dl4clj :ns "dl4clj"}
+  :judgment {:status :deprecated :severity :superseded :replacement clj-python/libpython-clj}
+  :reasons  {:text "libpython-clj 経由で PyTorch/TensorFlow が現実的"
+             :tags [:philosophy-mismatch]}}
+
+ ;; cortex: 開発停止、libpython-clj 経由へ。
+ {:purpose  [:ml :dl]
+  :ids      {:coord thinktopic/cortex :ns "cortex"}
+  :judgment {:status :deprecated :severity :superseded :replacement clj-python/libpython-clj}
+  :reasons  {:text "メンテ停止、libpython-clj 経由へ"
+             :tags [:maintenance-stopped]}}
+
+ ;; SMILE (Haifeng Li の ML エンジン): 機能は広範（分類・クラスタリング・NLP 他）
+ ;; だが GPL 3.0 ライセンスで SaaS/商用配布と衝突。研究・社内閉じ利用のみ
+ ;; ADR 発行の上で条件付き採用可。
+ {:purpose  [:ml]
+  :ids      {:coord   com.github.haifengl/smile
+             :aliases [haifengl/smile]
+             :ns      "smile.classification"}
+  :judgment {:status          :conditional
+             :applicable-when "研究・社内閉じ利用のみ、SaaS / 商用配布不可、ADR 必須"
+             :replacement     [scicloj/tablecloth clj-python/libpython-clj]}
+  :reasons  {:text "GPL 3.0 ライセンスで SaaS 配布と衝突"
+             :tags [:license :conditional]}}
+
+ ;; PyTorch 直接 JNI: libpython-clj で包める範囲、直接 JNI の価値薄い。
+ ;; narrative のみ、coord 化せず。
+ ]
+```
 
 **採用 stack**: ml stack（§4.2.12）または data-pipeline stack 拡張
 
@@ -1462,21 +1591,13 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 - ラッパとして `wkok/openai-clojure`（OpenAI / Ollama / Azure OpenAI 互換）採用可
 - **ベクトルストア**: **PostgreSQL + pgvector**（追加インフラ不要時）/ pinecone-api（ADR 必須）
 
-**検討した代替**:
-
-| 候補 | 却下理由 |
-|---|---|
-| langchain4j Clojure 移植 | OOP/継承多用、LLM 界隈は変動早く、薄い HTTP の方が長寿命（G1/G6） |
-| llama-clj (native binding) | native 依存、ビルド複雑化（G6） |
-| 専用 agent framework（LangGraph 等 Clojure 移植） | 2025 時点で成熟品なし（G4） |
-
 **採用理由**:
 - LLM プロバイダ API は REST であり、hato 直接で足りる
 - プロンプトは Clojure の map で表現、data 駆動
 - Malli で request/response スキーマ契約化が自然
 - プロバイダ切替（OpenAI ↔ Anthropic ↔ Ollama）は wrapper 層で吸収
 
-**採用 stack**: llm-app stack（§4.2.13）
+**採用 stack**: llm-app stack
 
 **適用条件**:
 - 単発 LLM 呼び出し → hato 直接、または `wkok/openai-clojure`
@@ -1484,6 +1605,28 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 - ローカル LLM → Ollama HTTP endpoint + hato
 - 複雑 agent → ADR 必須、独自実装、外部ラッパ採用は避ける
 - **規約**: プロンプトテンプレートは EDN、運用変更は ADR（プロンプトもコード扱い）
+
+```edn
+;; lib-catalog
+[;; === 採用 ===
+ {:purpose  [:llm :openai]
+  :ids      {:coord wkok/openai-clojure}
+  :judgment {:status :acceptable}
+  :reasons  {:text "OpenAI 互換 API 向け wrapper、hato 直接実装も可"}}
+
+ {:purpose  [:templating :text]
+  :ids      {:coord selmer/selmer :ns "selmer.parser"}
+  :judgment {:status :recommended :version "1.12.0"}
+  :reasons  {:text "Django 風テンプレート、プロンプト管理等"}}
+
+ ;; === 代替と却下 ===
+ ;; langchain4j Clojure 移植: OOP/継承多用、LLM 界隈は変動早く、薄い HTTP の
+ ;; 方が長寿命。採用しない (coord 化せず narrative のみ)。
+ ;; llama-clj (native binding): native 依存、ビルド複雑化。条件付き採用は可。
+ ;; 専用 agent framework (LangGraph 等 Clojure 移植): 2025 時点で成熟品なし。
+ ;; narrative のみ。
+ ]
+```
 
 ### 3.38 画像・映像・音声処理
 
