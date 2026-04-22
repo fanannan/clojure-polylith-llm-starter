@@ -1059,6 +1059,28 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 - monger は map で document を表現、Clojure 慣用
 - aws-api は全 AWS サービスで同じパターン、学習コスト低
 
+```edn
+;; lib-catalog
+[;; === 採用 ===
+ ;; carmine は §3.13 キャッシュで採用済（同一 lib を重複登録せず、参照のみ）。
+ {:purpose  [:db :mongodb]
+  :ids      {:coord com.novemberain/monger :ns "monger.core"}
+  :judgment {:status :recommended}
+  :reasons  {:text "MongoDB の Clojure 慣用ラッパ、document を map で扱える"}}
+
+ {:purpose  [:db :dynamodb]
+  :ids      {:coord com.cognitect.aws/dynamodb}
+  :judgment {:status :recommended}
+  :reasons  {:text "aws-api 系列、全 AWS サービスで同じパターン"}}
+
+ ;; === 代替と却下 ===
+ ;; Cassandra Java driver 直接: Clojure 慣用ラッパなし、必要時 ADR で個別採用。
+ ;; MongoDB Java Driver 直接: monger がシンプル data 駆動ラッパ。
+ ;; faraday (DynamoDB): aws-api に統一 (worker stack と整合)。
+ ;; 以上 3 件は coord 化せず narrative のみ。
+ ]
+```
+
 **採用 stack**: web-api / worker / batch / saas（必要性に応じ）
 
 **適用条件**:
@@ -1278,6 +1300,17 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 **採用理由（protojure）**:
 - 純 Clojure 風 API、`.proto` 定義から Clojure 関数生成
 - ただし抽象の厚みは大きい（採用は慎重）
+
+```edn
+;; lib-catalog
+[;; === 採用（条件付き）===
+ {:purpose  [:grpc]
+  :ids      {:coord protojure/protojure}
+  :judgment {:status          :conditional
+             :applicable-when "社内で gRPC 規約がある、ADR 発行"}
+  :reasons  {:text "純 Clojure 風 API、.proto から Clojure 関数生成。抽象の厚みに注意"
+             :tags [:conditional]}}]
+```
 
 **採用 stack**: なし（プロジェクト固有採用、ADR 必須）
 
@@ -1666,6 +1699,30 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 - Imaging 系の古い Clojure wrapper: メンテ停滞
 - overtone（プロダクション）: 創作用途のみ、副作用が内側に漏れる
 
+```edn
+;; lib-catalog
+[;; === 採用 ===
+ {:purpose  [:media :opencv]
+  :ids      {:coord org.bytedeco/opencv-platform}
+  :judgment {:status :recommended}
+  :reasons  {:text "OpenCV Java wrapper、コンピュータビジョン用途"}}
+
+ {:purpose  [:media :svg]
+  :ids      {:coord rm-hull/dali}
+  :judgment {:status :recommended}
+  :reasons  {:text "SVG 生成、data 駆動・hiccup 風 DSL"}}
+
+ {:purpose  [:media :ffmpeg]
+  :ids      {:coord com.github.kokorin/jaffree}
+  :judgment {:status :recommended}
+  :reasons  {:text "FFmpeg shell out wrapper、動画トランスコード"}}
+
+ {:purpose  [:media :ocr]
+  :ids      {:coord net.sourceforge.tess4j/tess4j}
+  :judgment {:status :acceptable}
+  :reasons  {:text "Tesseract、shell out 推奨（インプロセス JNI はクラッシュリスク）"}}]
+```
+
 **採用 stack**: 画像・動画処理を扱うプロジェクトに任意追加（web-api / batch / worker 拡張）
 
 **適用条件**:
@@ -1825,6 +1882,24 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 - 「測ってから最適化」（CODING_GUIDE §9.1）を機械化するための最小セット
 - `org.flatland/ordered` は順序保証が必要な場面（`insertion-order` キーが意味を持つシリアライズ等）で有用
 - clj-memory-meter は heap profiling の計測を 1 行で、性能ボトルネック特定に必須
+
+```edn
+;; lib-catalog
+[{:purpose  [:dev :benchmark]
+  :ids      {:coord criterium/criterium :ns "criterium.core"}
+  :judgment {:status :recommended}
+  :reasons  {:text "JIT warm-up 込み統計計測、測ってから最適化"}}
+
+ {:purpose  [:dev :memory-measure]
+  :ids      {:coord com.clojure-goes-fast/clj-memory-meter :ns "clj-memory-meter.core"}
+  :judgment {:status :recommended}
+  :reasons  {:text "オブジェクトサイズ実測、heap profiling を 1 行で"}}
+
+ {:purpose  [:data :ordered-map]
+  :ids      {:coord org.flatland/ordered :ns "flatland.ordered.map"}
+  :judgment {:status :recommended}
+  :reasons  {:text "insertion-order を保つ map/set、Clojure 標準 map は順序保証なし"}}]
+```
 
 **採用 stack**: dev-tools stack 拡張（常時併用推奨）
 

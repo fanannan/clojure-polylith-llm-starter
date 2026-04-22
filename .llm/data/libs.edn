@@ -355,6 +355,14 @@
   {:bundles [com.xtdb/xtdb-api rum/rum],
    :conflicts-with
    [[integrant/integrant "Biff uses its own lifecycle manager"]]}}
+ {:purpose [:db :mongodb],
+  :ids {:coord com.novemberain/monger, :ns "monger.core"},
+  :judgment {:status :recommended},
+  :reasons {:text "MongoDB の Clojure 慣用ラッパ、document を map で扱える"}}
+ {:purpose [:db :dynamodb],
+  :ids {:coord com.cognitect.aws/dynamodb},
+  :judgment {:status :recommended},
+  :reasons {:text "aws-api 系列、全 AWS サービスで同じパターン"}}
  {:purpose [:db :document-db],
   :ids {:coord com.xtdb/xtdb-api, :ns "xtdb.api"},
   :judgment {:status :recommended, :version "2.0.0"},
@@ -401,6 +409,13 @@
    :severity :superseded,
    :replacement etaoin/etaoin},
   :reasons {:text "メンテ停止、etaoin が現役", :tags [:maintenance-stopped]}}
+ {:purpose [:grpc],
+  :ids {:coord protojure/protojure},
+  :judgment
+  {:status :conditional, :applicable-when "社内で gRPC 規約がある、ADR 発行"},
+  :reasons
+  {:text "純 Clojure 風 API、.proto から Clojure 関数生成。抽象の厚みに注意",
+   :tags [:conditional]}}
  {:purpose [:report :pdf],
   :ids {:coord clj-pdf/clj-pdf},
   :judgment {:status :recommended},
@@ -544,6 +559,22 @@
   :ids {:coord selmer/selmer, :ns "selmer.parser"},
   :judgment {:status :recommended, :version "1.12.0"},
   :reasons {:text "Django 風テンプレート、プロンプト管理等"}}
+ {:purpose [:media :opencv],
+  :ids {:coord org.bytedeco/opencv-platform},
+  :judgment {:status :recommended},
+  :reasons {:text "OpenCV Java wrapper、コンピュータビジョン用途"}}
+ {:purpose [:media :svg],
+  :ids {:coord rm-hull/dali},
+  :judgment {:status :recommended},
+  :reasons {:text "SVG 生成、data 駆動・hiccup 風 DSL"}}
+ {:purpose [:media :ffmpeg],
+  :ids {:coord com.github.kokorin/jaffree},
+  :judgment {:status :recommended},
+  :reasons {:text "FFmpeg shell out wrapper、動画トランスコード"}}
+ {:purpose [:media :ocr],
+  :ids {:coord net.sourceforge.tess4j/tess4j},
+  :judgment {:status :acceptable},
+  :reasons {:text "Tesseract、shell out 推奨（インプロセス JNI はクラッシュリスク）"}}
  {:purpose [:edge :gpio],
   :ids {:coord com.pi4j/pi4j-core},
   :judgment {:status :recommended, :version "2.x"},
@@ -596,6 +627,21 @@
   :reasons
   {:text "nippy が速度・型対応で優位",
    :tags [:conditional :replacement-available]}}
+ {:purpose [:dev :benchmark],
+  :ids {:coord criterium/criterium, :ns "criterium.core"},
+  :judgment {:status :recommended},
+  :reasons {:text "JIT warm-up 込み統計計測、測ってから最適化"}}
+ {:purpose [:dev :memory-measure],
+  :ids
+  {:coord com.clojure-goes-fast/clj-memory-meter,
+   :ns "clj-memory-meter.core"},
+  :judgment {:status :recommended},
+  :reasons {:text "オブジェクトサイズ実測、heap profiling を 1 行で"}}
+ {:purpose [:data :ordered-map],
+  :ids {:coord org.flatland/ordered, :ns "flatland.ordered.map"},
+  :judgment {:status :recommended},
+  :reasons
+  {:text "insertion-order を保つ map/set、Clojure 標準 map は順序保証なし"}}
  {:purpose [:platform :framework],
   :ids {:coord duct-framework/duct},
   :judgment
