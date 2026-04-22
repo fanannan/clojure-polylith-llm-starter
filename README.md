@@ -2,9 +2,10 @@
 
 **Clojure + Polylith プロジェクト**（LLM と人間の仕様共同開発フレームワーク）
 
-- 必須技術: Clojure + tools.deps + Polylith + Malli 契約 + clj-kondo + cljfmt（バージョン・JVM LTS は `.llm/guide/STACK_GUIDE.md` §2.1 参照）
+- 必須技術: Clojure + tools.deps + Polylith + Malli 契約 + clj-kondo + cljfmt + Splint + clj-watson + `.llm/scripts/`（ワークスペース整合性検査スクリプト群）（バージョン・JVM LTS は `.llm/guide/STACK_GUIDE.md` §2.1 参照）
 - 目的別の追加ライブラリは **stack**（web-api stack / batch stack / cli stack / library stack / worker stack / data-pipeline stack / dev-tools stack）として構成
 - stack 選定論理と実装マッピングの一次情報源は `.llm/guide/STACK_GUIDE.md`
+- 機械化は 5 層で構成（clj-kondo 組込 / polyguard hook / Splint / `.llm/scripts/` shell + gen / clj-watson）。詳細は `.llm/guide/MAINTAINERS_GUIDE.md` §5.10、スクリプト一覧は `.llm/scripts/README.md`
 
 > ⚠️ **このファイルはテンプレート配布時のものです。**
 >
@@ -15,7 +16,7 @@
 
 ## このテンプレートは何か
 
-**Clojure + tools.deps + Polylith + Malli + clj-kondo + cljfmt** を必須層とし、プロジェクトの性格に応じた **stack 層**（Web API、バッチ、CLI、ライブラリ配布等の目的別推奨構成）を選択できる、**LLM 駆動開発向け**のプロジェクトテンプレート（必須層のバージョンは `STACK_GUIDE.md §2.1` を参照）。Integrant・Ring・DB ドライバ等は採用する stack に応じて brick の deps.edn に追加する（必須層ではない）。
+**Clojure + tools.deps + Polylith + Malli + clj-kondo + cljfmt + Splint + clj-watson + `.llm/scripts/`**（ワークスペース整合性検査スクリプト群）を必須層とし、プロジェクトの性格に応じた **stack 層**（Web API、バッチ、CLI、ライブラリ配布等の目的別推奨構成）を選択できる、**LLM 駆動開発向け**のプロジェクトテンプレート（必須層のバージョンは `STACK_GUIDE.md §2.1` を参照）。Integrant・Ring・DB ドライバ等は採用する stack に応じて brick の deps.edn に追加する（必須層ではない）。
 
 疲労最小化原則（LLM と人間の共同開発における修復コスト最小化）に基づき設計されている。
 詳細思想は `CLAUDE.md` §1、設計原則は `.llm/guide/MAINTAINERS_GUIDE.md`、stack 選定は `.llm/guide/STACK_GUIDE.md`。
@@ -165,7 +166,29 @@ LLM が自己停止プロトコル（`CLAUDE.md` §7）発動時、`.llm/memory/
 │       ├── template.md          ADR 雛形
 │       └── NNNN-topic.md        発行された ADR（テンプレートには含まれない）
 │
-├── .clj-kondo/config.edn        lint 機械化
+├── .llm/scripts/             ← ワークスペース整合性検査・EDN 生成スクリプト
+│   ├── README.md                スクリプト一覧・機械化 5 層構造
+│   ├── check-workspace-integrity.sh  総合検査（完了条件から起動、§5.5）
+│   ├── check-placeholders.sh         workspace.edn / deps.edn プレースホルダ残存
+│   ├── check-brick-registration.sh   brick と deps.edn の登録整合
+│   ├── check-deprecated-libs.sh      非推奨ライブラリの採用宣言検知
+│   ├── check-forbidden-requires.sh   非推奨 namespace の require 検知
+│   ├── check-conflicting-libs.sh     併用禁止ライブラリペアの検知
+│   ├── check-interface-contracts.sh  interface.clj の m/=> 契約網羅
+│   ├── check-single-ns-per-file.sh   1 ファイル 1 ns
+│   ├── check-vulnerabilities.sh      clj-watson による脆弱性スキャン（release 前）
+│   ├── gen_lib_catalog.clj           STACK_GUIDE.md §3 の EDN block から artifact 生成
+│   ├── lint-import-hooks.sh          依存ライブラリ提供の clj-kondo hook 取込
+│   └── session-briefing.sh           SessionStart 時の状態ブリーフィング
+│
+├── .llm/data/                ← gen-lib-catalog が生成する artifact（SSOT 生成物）
+│   ├── libs.edn                      lib-catalog 全 entry（Malli 検証済）
+│   ├── deprecated-libs.patterns      deps.edn 採用検知用パターン
+│   ├── forbidden-requires.patterns   require 検知用パターン
+│   └── conflicts.patterns            併用禁止ペアパターン
+│
+├── .clj-kondo/config.edn        lint 機械化（polyguard hook 同梱）
+├── .clj-kondo/polyguard/        custom hook（L2 本テンプレート固有パターン）
 ├── .gitignore
 ├── cljfmt.edn                   フォーマッタ
 ├── deps.edn                     tools.deps（必須層のみ、stack 層は brick deps.edn に）
@@ -188,12 +211,14 @@ LLM が自己停止プロトコル（`CLAUDE.md` §7）発動時、`.llm/memory/
 | 判断に迷った時（Q を立てる） | `.llm/memory/QUESTIONS.md` |
 | 契約・不変条件の記録 | `.llm/memory/KNOWLEDGE.md` |
 | 重要な設計判断の記録 | `.llm/memory/adr/README.md`（運用ルール） |
+| ワークスペース整合性検査スクリプト・機械化 5 層構造 | `.llm/scripts/README.md` |
 
 ## 設計の基底思想（要約）
 
 - **疲労最小化**: LLM の誤りを構造的に封じる（全域性・不変性・副作用の隔離）
-- **機械化**: 規約を人間の注意力ではなくツール（clj-kondo、cljfmt、Polylith の `poly check`、Malli instrumentation）で強制
-- **stack 方式の技術スタック**: 必須層（Clojure、tools.deps、Polylith、Malli、clj-kondo、cljfmt）はワークスペースルートで常に採用、目的別の stack 層は各 brick の deps.edn に配置。推奨カタログは `.llm/guide/STACK_GUIDE.md`（真実の一箇所化）
+- **機械化 5 層**: L1 clj-kondo 組込 linter / L2 `.clj-kondo/polyguard/` custom hook / L3 Splint / L4 `.llm/scripts/check-*.sh`（設定・構造検査）+ Polylith `poly check` + Malli instrumentation / L5 clj-watson（時間軸脆弱性）。規約を人間の注意力ではなくツールで強制（詳細は `MAINTAINERS_GUIDE.md` §5.10）
+- **SSOT 生成**: `.llm/scripts/gen_lib_catalog.clj` が `STACK_GUIDE.md §3` の `;; lib-catalog` EDN block を Malli で検証し `.llm/data/` 配下に artifact を emit。shell script は artifact を参照して検査、markdown と生成物の drift は `check-workspace-integrity.sh` が diff 検知
+- **stack 方式の技術スタック**: 必須層（Clojure、tools.deps、Polylith、Malli、clj-kondo、cljfmt、Splint、clj-watson、`.llm/scripts/`）はワークスペースルートで常に採用、目的別の stack 層は各 brick の deps.edn に配置。推奨カタログは `.llm/guide/STACK_GUIDE.md`（真実の一箇所化）
 - **4 種の文書分離**: 仕様（DESIGN）/ 知識（KNOWLEDGE）/ 決定履歴（ADR）/ 判断保留（QUESTIONS）
 - **自己停止プロトコル**: LLM が時間感覚なく詰まった時、ターン数閾値で停止し Q を立てる
 
