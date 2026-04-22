@@ -347,6 +347,49 @@
    :replacement com.taoensso/tempura},
   :reasons
   {:text "メンテ停止、同作者の tempura が後継", :tags [:maintenance-stopped]}}
+ {:purpose [:saas :framework],
+  :ids {:coord com.biffweb/biff},
+  :judgment {:status :recommended, :version "0.9.0"},
+  :reasons {:text "opinionated SaaS framework、XTDB/Rum/HTMX 同梱"},
+  :relations
+  {:bundles [com.xtdb/xtdb-api rum/rum],
+   :conflicts-with
+   [[integrant/integrant "Biff uses its own lifecycle manager"]]}}
+ {:purpose [:db :document-db],
+  :ids {:coord com.xtdb/xtdb-api, :ns "xtdb.api"},
+  :judgment {:status :recommended, :version "2.0.0"},
+  :reasons {:text "bitemporal document DB、Biff 同梱 / 単体採用いずれも可"}}
+ {:purpose [:db :document-db],
+  :ids {:coord com.datomic/local, :ns "datomic.api"},
+  :judgment {:status :acceptable},
+  :reasons {:text "選択肢として許容、商用条件要確認", :tags [:license]}}
+ {:purpose [:db :migration],
+  :ids {:coord migratus/migratus, :ns "migratus.core"},
+  :judgment {:status :recommended},
+  :reasons {:text "SQL ベース、純 Clojure、新規 Clojure プロジェクトの第一選択"}}
+ {:purpose [:db :migration],
+  :ids {:coord org.flywaydb/flyway-core},
+  :judgment
+  {:status :conditional,
+   :applicable-when "既存 Java 資産の互換保守、新規 Clojure プロジェクトは migratus",
+   :replacement migratus/migratus},
+  :reasons
+  {:text "新規 Clojure プロジェクトでは migratus が自然", :tags [:conditional]}}
+ {:purpose [:db :migration],
+  :ids {:coord org.liquibase/liquibase-core},
+  :judgment
+  {:status :conditional,
+   :applicable-when "既存 Java 資産の互換保守、新規 Clojure プロジェクトは migratus",
+   :replacement migratus/migratus},
+  :reasons
+  {:text "新規 Clojure プロジェクトでは migratus が自然", :tags [:conditional]}}
+ {:purpose [:db :migration],
+  :ids {:coord joplin/joplin.core, :ns "joplin.core"},
+  :judgment
+  {:status :deprecated,
+   :severity :superseded,
+   :replacement migratus/migratus},
+  :reasons {:text "メンテ低迷、migratus へ", :tags [:maintenance-stopped]}}
  {:purpose [:xml],
   :ids {:coord xerces/xercesImpl, :ns "javax.xml.parsers.xerces"},
   :judgment

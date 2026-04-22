@@ -28,5 +28,6 @@ overtone/at-at|停止制御が弱く Integrant 統合しにくい。推奨: jaro
 tea-time/tea-time|メンテ停止、chime へ。推奨: jarohen/chime
 robert/robert\.bruce|メンテ停止、diehard が後継。推奨: sunng87/diehard
 com\.taoensso/tower|メンテ停止、同作者の tempura が後継。推奨: com.taoensso/tempura
+joplin/joplin\.core|メンテ低迷、migratus へ。推奨: migratus/migratus
 xerces/xercesImpl|XXE 脆弱性、bundled 版は JDK 付属のほうが安全。推奨: org.clojure/data.xml
 xalan/xalan|XXE 脆弱性、bundled 版は JDK 付属のほうが安全。推奨: org.clojure/data.xml

@@ -988,14 +988,6 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 
 **採用**: **自作**（EDN フラグ + aero `#profile` + DB 動的フラグの組合せ）
 
-**検討した代替**:
-
-| 候補 | 却下理由 |
-|---|---|
-| LaunchDarkly Java SDK | コスト、外部サービス依存、クローズドソース（G5/G6） |
-| Flagsmith | OSS 代替、自作で足りる規模では過剰（G6） |
-| feature-flag（Clojure 純） | メンテ不明（G4） |
-
 **採用理由**:
 - フラグは本質的に map。`{:feature/new-checkout true :feature/ab-variant :b}`
 - 静的フラグは aero profile、動的フラグは DB 1 テーブル（`feature_flags`）で十分
@@ -1009,23 +1001,41 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 - A/B テスト → 自作（user-id ハッシュ→variant）、分析基盤は別
 - **規約**: フラグ定義は 1 つの EDN ファイルに集約、Malli スキーマで全網羅
 
+**検討して却下した代替（narrative のみ、coord 化せず）**:
+- LaunchDarkly Java SDK: コスト、外部サービス依存、クローズドソース
+- Flagsmith: OSS 代替、自作で足りる規模では過剰
+- feature-flag（Clojure 純）: メンテ不明
+
 ### 3.22 マルチテナント（Biff + XTDB パターン）
 
-**採用方針**: **Biff + XTDB** の組合せを saas stack（§4.2.11）として導入。RDBMS 併用時は tenant-id カラム + row-level isolation パターン。
-
-**検討した代替**:
-
-| 候補 | 却下理由 |
-|---|---|
-| 独自テナント分離フレームワーク | Biff + XTDB で完結、再発明不要（G6） |
-| schema-per-tenant（RDBMS、migratus で切替） | 運用複雑化、row-level で十分なケースが多い（条件付き採用は可） |
+**採用方針**: **Biff + XTDB** の組合せを SaaS 向け framework として導入。RDBMS 併用時は tenant-id カラム + row-level isolation パターン。
 
 **採用理由**:
 - Biff は Polylith brick と流儀が異なるが、data 駆動・純 Clojure・副作用隔離で本テンプレート整合
 - XTDB の valid-time + tenant-id 属性で自然に multi-tenant 実現
 - Datalog クエリに tenant-id 条件を middleware で強制注入可能
 
-**採用 stack**: saas stack（§4.2.11）
+```edn
+;; lib-catalog
+[;; === 採用 ===
+ ;; Biff は XTDB/Rum/HTMX を同梱した opinionated SaaS framework。
+ ;; Integrant とは衝突するため併用不可（Biff 内部で独自 lifecycle 管理）。
+ {:purpose   [:saas :framework]
+  :ids       {:coord com.biffweb/biff}
+  :judgment  {:status :recommended :version "0.9.0"}
+  :reasons   {:text "opinionated SaaS framework、XTDB/Rum/HTMX 同梱"}
+  :relations {:bundles        [com.xtdb/xtdb-api rum/rum]
+              :conflicts-with [[integrant/integrant "Biff uses its own lifecycle manager"]]}}
+
+ ;; === 代替と却下 ===
+ ;; 独自テナント分離フレームワーク: Biff + XTDB で完結、再発明不要。
+ ;; schema-per-tenant (RDBMS): 運用複雑化、row-level で十分なケースが多い。
+ ;; 条件付き採用は可（コンプライアンス要件明確時のみ、ADR 必須）。
+ ;; 以上 2 件は coord 化せず narrative のみ。
+ ]
+```
+
+**採用 stack**: saas stack
 
 **適用条件**:
 - SaaS・社内サービス → saas stack（Biff + XTDB）
@@ -1038,14 +1048,6 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 - **Key-Value / Cache / Pub-Sub**: `com.taoensso/carmine`（既採用、primary 用途も公式化）
 - **ドキュメント型（MongoDB）**: `com.novemberain/monger`
 - **AWS DynamoDB**: `com.cognitect.aws/dynamodb`（aws-api 系列）
-
-**検討した代替**:
-
-| 候補 | 却下理由 |
-|---|---|
-| Cassandra Java driver 直接 | Clojure 慣用ラッパなし、必要時 ADR で個別採用 |
-| MongoDB Java Driver 直接 | monger がシンプル data 駆動ラッパ（G6） |
-| faraday (DynamoDB) | aws-api に統一（worker stack と整合） |
 
 **採用理由**:
 - carmine は EDN-native、Redis コマンドを data で記述
@@ -1060,23 +1062,44 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 - ドキュメント型が明確に有利（スキーマレス + 集計不要）→ monger
 - AWS native 環境 → aws-api/dynamodb
 
+**検討して却下した代替（narrative のみ）**:
+- Cassandra Java driver 直接: Clojure 慣用ラッパなし、必要時 ADR で個別採用
+- MongoDB Java Driver 直接: monger がシンプル data 駆動ラッパ
+- faraday (DynamoDB): aws-api に統一（worker stack と整合）
+
 ### 3.24 XTDB / Datomic / グラフ DB
 
 **採用**: **XTDB**（`com.xtdb/xtdb-api`）を第一選択。ライセンス（MIT/Apache）・Clojure 親和性・bitemporal が揃う。
-
-**検討した代替**:
-
-| 候補 | 却下理由 |
-|---|---|
-| Datomic Pro | 商用ライセンス、新規採用時のコスト・ロックインリスク（G5）。既存運用プロジェクトは継続可 |
-| Datomic Free/Solo | 機能制限あり、本番用途なら XTDB が自然 |
-| Neo4j（neo4j-clj） | 複雑グラフ特化用途のみ、一般 Web API では RDBMS/XTDB で足りる（G6） |
-| Datahike | XTDB のサブセット的位置づけ、XTDB 優先 |
 
 **採用理由**:
 - XTDB は EDN-native、クエリは Datalog（data 駆動）、Malli と整合
 - bitemporal で「現在の事実 + 歴史」を扱え、audit log 機能が自然に得られる
 - ライセンスが OSS で SaaS 展開にも制約なし
+
+```edn
+;; lib-catalog
+[;; === 採用 ===
+ {:purpose  [:db :document-db]
+  :ids      {:coord com.xtdb/xtdb-api :ns "xtdb.api"}
+  :judgment {:status :recommended :version "2.0.0"}
+  :reasons  {:text "bitemporal document DB、Biff 同梱 / 単体採用いずれも可"}}
+
+ ;; === 代替（許容）===
+ ;; Datomic Pro: 商用ライセンス、新規採用時のコスト・ロックインリスク。
+ ;; 既存運用プロジェクトは継続可、Clojure コミュニティ実績あり。
+ {:purpose  [:db :document-db]
+  :ids      {:coord com.datomic/local :ns "datomic.api"}
+  :judgment {:status :acceptable}
+  :reasons  {:text "選択肢として許容、商用条件要確認"
+             :tags [:license]}}
+
+ ;; === 代替と却下 ===
+ ;; Datomic Free/Solo: 機能制限あり、本番用途なら XTDB が自然。narrative のみ。
+ ;; Neo4j (neo4j-clj): 複雑グラフ特化用途のみ、一般 Web API では RDBMS/XTDB で
+ ;; 足りる。coord 化せず。
+ ;; Datahike: XTDB のサブセット的位置づけ、XTDB 優先。coord 化せず。
+ ]
+```
 
 **採用 stack**: saas stack（既定）、web-api stack（RDBMS の代替）、batch stack（イベントソーシング用途）
 
@@ -1090,18 +1113,50 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 
 **採用**: `migratus/migratus`
 
-**検討した代替**:
-
-| 候補 | 却下理由 |
-|---|---|
-| ragtime | 互角だが、migratus の方が普及、data 駆動度も十分（G6） |
-| Flyway（Java） | XML/Java 設定が冗長（G1） |
-| Liquibase | 同上、XML DSL |
-
 **採用理由**:
 - SQL ファイルをそのまま書ける、学習コスト最小
 - up/down 管理、履歴テーブル、Clojure から直接起動可能
 - next.jdbc と同じ接続情報を使える
+
+```edn
+;; lib-catalog
+[;; === 採用 ===
+ {:purpose  [:db :migration]
+  :ids      {:coord migratus/migratus :ns "migratus.core"}
+  :judgment {:status :recommended}
+  :reasons  {:text "SQL ベース、純 Clojure、新規 Clojure プロジェクトの第一選択"}}
+
+ ;; === 代替と却下 ===
+ ;; Flyway (Java): XML/Java 設定が冗長、data 駆動ではない。既存 Java 資産の
+ ;; 互換保守なら条件付き採用可、新規 Clojure プロジェクトは migratus。
+ {:purpose  [:db :migration]
+  :ids      {:coord org.flywaydb/flyway-core}
+  :judgment {:status          :conditional
+             :applicable-when "既存 Java 資産の互換保守、新規 Clojure プロジェクトは migratus"
+             :replacement     migratus/migratus}
+  :reasons  {:text "新規 Clojure プロジェクトでは migratus が自然"
+             :tags [:conditional]}}
+
+ ;; Liquibase: 同上、XML DSL。条件付き採用。
+ {:purpose  [:db :migration]
+  :ids      {:coord org.liquibase/liquibase-core}
+  :judgment {:status          :conditional
+             :applicable-when "既存 Java 資産の互換保守、新規 Clojure プロジェクトは migratus"
+             :replacement     migratus/migratus}
+  :reasons  {:text "新規 Clojure プロジェクトでは migratus が自然"
+             :tags [:conditional]}}
+
+ ;; joplin: メンテ低迷、migratus へ。
+ {:purpose  [:db :migration]
+  :ids      {:coord joplin/joplin.core :ns "joplin.core"}
+  :judgment {:status :deprecated :severity :superseded :replacement migratus/migratus}
+  :reasons  {:text "メンテ低迷、migratus へ"
+             :tags [:maintenance-stopped]}}
+
+ ;; ragtime: 互角だが、migratus の方が普及、data 駆動度も十分。採用しない。
+ ;; coord 化せず narrative のみ。
+ ]
+```
 
 **採用 stack**: next.jdbc を採用する全 stack（batch / worker / data-pipeline / web-api で DB 使用時）
 
