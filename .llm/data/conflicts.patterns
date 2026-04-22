@@ -6,4 +6,59 @@
 # 同一 deps.edn 内で coord-a / coord-b の両方が宣言されている場合に
 # check-conflicting-libs.sh が error 終了する。
 
+aero/aero|immuconf/immuconf|設定ライブラリは片方に統一、immuconf は aero より普及度劣り :deprecated
+aero/aero|environ/environ|設定ライブラリは片方に統一、environ は構造化設定に弱く :deprecated
+aleph/aleph|http-kit/http-kit|HTTP サーバは片方に統一、aleph は :deprecated
+aleph/aleph|ring/ring-jetty-adapter|HTTP サーバは片方に統一、aleph は Netty 依存重く :deprecated
+bidi/bidi|metosin/reitit|ルーティングは片方に統一、bidi は :conditional（Malli 統合不要な保守時のみ）
+bidi/bidi|compojure/compojure|ルーティングは片方に統一、compojure は :deprecated
+bidi/bidi|metosin/compojure-api|ルーティングは片方に統一、compojure-api は :conditional
+bidi/bidi|io\.pedestal/pedestal|ルーティングは片方に統一、bidi は :conditional
+cheshire/cheshire|org\.json/json|JSON ライブラリは片方に統一、org.json は :forbidden
+cheshire/cheshire|org\.clojure/data\.json|JSON ライブラリは片方に統一、data.json は :deprecated
+cheshire/cheshire|metosin/jsonista|JSON ライブラリは片方に統一、cheshire は :conditional（既存段階移行のみ）
+clj-http/clj-http|hato/hato|HTTP クライアントは片方に統一、clj-http は :conditional（既存段階移行のみ）
+clj-time/clj-time|clojure\.java-time/clojure\.java-time|時刻処理は片方に統一、clj-time は Joda-Time ベースで非推奨
+clj-time/clj-time|tick/tick|時刻処理は片方に統一、clj-time は Joda-Time ベースで非推奨
+clj-webdriver/clj-webdriver|etaoin/etaoin|E2E WebDriver は片方に統一、clj-webdriver はメンテ停止 :deprecated
+cljfx/cljfx|io\.github\.humbleui/humbleui|デスクトップ GUI は片方に統一、cljfx は :acceptable（安定性優先時）
+cljfx/cljfx|seesaw/seesaw|デスクトップ GUI は片方に統一、seesaw は :conditional
+clojure\.java-time/clojure\.java-time|tick/tick|時刻処理は片方に統一
+clojurewerkz/elastisch|mpenet/spandex|Elasticsearch クライアントは片方に統一、elastisch はメンテ停止 :deprecated
+clojurewerkz/machine_head|org\.eclipse\.paho/org\.eclipse\.paho\.client\.mqttv3|MQTT クライアントは片方に統一、machine-head は :deprecated
+clojurewerkz/quartzite|overtone/at-at|スケジューラは片方に統一、at-at は :deprecated
+clojurewerkz/quartzite|jarohen/chime|スケジューラは片方に統一、quartzite は :conditional（cron/永続化時のみ）
+clojurewerkz/quartzite|tea-time/tea-time|スケジューラは片方に統一、tea-time は :deprecated
 com\.biffweb/biff|integrant/integrant|Biff uses its own lifecycle manager
+com\.brunobonacci/mulog|org\.apache\.logging\.log4j/log4j-1\.2-api|ロギングは片方に統一、log4j 1.x は CVE 未修正で :forbidden
+com\.brunobonacci/mulog|com\.taoensso/timbre|ロギングは片方に統一、timbre は構造化表現力劣り :deprecated
+com\.datomic/local|com\.xtdb/xtdb-api|document DB は片方に統一、datomic は :acceptable（商用条件要確認）
+com\.github\.seancorfield/next\.jdbc|org\.clojure/java\.jdbc|JDBC ラッパは片方に統一、java.jdbc はメンテ停止 :deprecated
+com\.stuartsierra/component|integrant/integrant|lifecycle 管理は片方に統一、component は defrecord 依存で :deprecated
+com\.taoensso/tempura|com\.taoensso/tower|i18n は片方に統一、tower はメンテ停止 :deprecated
+compojure/compojure|io\.pedestal/pedestal|ルーティングは片方に統一、compojure は :deprecated
+compojure/compojure|metosin/compojure-api|ルーティングは片方に統一、compojure は :deprecated
+compojure/compojure|metosin/reitit|ルーティングは片方に統一、compojure は data 駆動でなく :deprecated
+endophile/endophile|markdown-clj/markdown-clj|markdown ライブラリは片方に統一、endophile はメンテ停止 :deprecated
+http-kit/http-kit|org\.immutant/web|HTTP サーバは片方に統一、immutant は :deprecated
+http-kit/http-kit|ring/ring-jetty-adapter|HTTP サーバは片方に統一、http-kit は :acceptable（高同時接続時のみ）
+integrant/integrant|mount/mount|lifecycle 管理は片方に統一、mount はグローバル状態で :deprecated
+io\.github\.humbleui/humbleui|seesaw/seesaw|デスクトップ GUI は片方に統一、seesaw は :conditional（レガシー保守のみ）
+io\.pedestal/pedestal|metosin/reitit|ルーティングは片方に統一、pedestal は :conditional（大規模 interceptor 機構時のみ）
+io\.pedestal/pedestal|metosin/compojure-api|ルーティングは片方に統一、compojure-api は :conditional
+jarohen/chime|overtone/at-at|スケジューラは片方に統一、at-at は停止制御弱く :deprecated
+jarohen/chime|tea-time/tea-time|スケジューラは片方に統一、tea-time はメンテ停止 :deprecated
+joplin/joplin|org\.liquibase/liquibase-core|マイグレーションは片方に統一、joplin は :deprecated
+joplin/joplin|migratus/migratus|マイグレーションは片方に統一、joplin はメンテ低迷 :deprecated
+joplin/joplin|org\.flywaydb/flyway-core|マイグレーションは片方に統一、joplin は :deprecated
+manifold/manifold|org\.clojure/core\.async|非同期抽象は片方に統一、manifold は設計思想不整合
+metosin/compojure-api|metosin/reitit|ルーティングは片方に統一、compojure-api は :conditional（Swagger 既存保守時のみ）
+metosin/jsonista|org\.clojure/data\.json|JSON ライブラリは片方に統一、data.json はパフォーマンス劣位で :deprecated
+metosin/jsonista|org\.json/json|JSON ライブラリは片方に統一、org.json は脆弱性歴で :forbidden
+metosin/malli|org\.clojure/spec\.alpha|検証ライブラリは片方に統一、spec.alpha は §3.3 で :deprecated
+metosin/malli|prismatic/schema|検証ライブラリは片方に統一、prismatic/schema は §3.3 で :deprecated
+migratus/migratus|org\.liquibase/liquibase-core|マイグレーションは片方に統一、liquibase は :conditional（Java 資産保守のみ）
+migratus/migratus|org\.flywaydb/flyway-core|マイグレーションは片方に統一、flyway は :conditional（Java 資産保守のみ）
+org\.flywaydb/flyway-core|org\.liquibase/liquibase-core|マイグレーションは片方に統一、liquibase は :conditional
+org\.immutant/web|ring/ring-jetty-adapter|HTTP サーバは片方に統一、immutant はメンテ停止 :deprecated
+robert/robert\.bruce|sunng87/diehard|リトライは片方に統一、robert.bruce はメンテ停止 :deprecated

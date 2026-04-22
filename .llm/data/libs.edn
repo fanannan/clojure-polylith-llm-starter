@@ -13,7 +13,13 @@
  {:purpose [:validation],
   :ids {:coord metosin/malli, :ns "malli.core"},
   :judgment {:status :recommended, :version "0.16.4"},
-  :reasons {:text "関数契約 m/=>、instrumentation。§1.1.1 全域性の実装"}}
+  :reasons {:text "関数契約 m/=>、instrumentation。§1.1.1 全域性の実装"},
+  :relations
+  {:conflicts-with
+   [[org.clojure/spec.alpha
+     "検証ライブラリは片方に統一、spec.alpha は §3.3 で :deprecated"]
+    [prismatic/schema
+     "検証ライブラリは片方に統一、prismatic/schema は §3.3 で :deprecated"]]}}
  {:purpose [:lint :ast],
   :ids {:coord clj-kondo/clj-kondo},
   :judgment {:status :recommended, :version "2024.11.14"},
@@ -56,7 +62,12 @@
  {:purpose [:lifecycle],
   :ids {:coord integrant/integrant, :ns "integrant.core"},
   :judgment {:status :recommended, :version "0.13.1"},
-  :reasons {:text "data 駆動 DI、本テンプレート採用"}}
+  :reasons {:text "data 駆動 DI、本テンプレート採用"},
+  :relations
+  {:conflicts-with
+   [[com.stuartsierra/component
+     "lifecycle 管理は片方に統一、component は defrecord 依存で :deprecated"]
+    [mount/mount "lifecycle 管理は片方に統一、mount はグローバル状態で :deprecated"]]}}
  {:purpose [:lifecycle :repl],
   :ids {:coord integrant/repl, :ns "integrant.repl"},
   :judgment {:status :recommended, :version "0.4.0"},
@@ -83,7 +94,12 @@
  {:purpose [:config],
   :ids {:coord aero/aero, :ns "aero.core"},
   :judgment {:status :recommended, :version "1.1.6"},
-  :reasons {:text "tagged literal (#env #profile) で環境別設定"}}
+  :reasons {:text "tagged literal (#env #profile) で環境別設定"},
+  :relations
+  {:conflicts-with
+   [[environ/environ "設定ライブラリは片方に統一、environ は構造化設定に弱く :deprecated"]
+    [immuconf/immuconf
+     "設定ライブラリは片方に統一、immuconf は aero より普及度劣り :deprecated"]]}}
  {:purpose [:config],
   :ids {:coord environ/environ, :ns "environ.core"},
   :judgment
@@ -122,15 +138,36 @@
  {:purpose [:web :http-server],
   :ids {:coord ring/ring-jetty-adapter, :ns "ring.adapter.jetty"},
   :judgment {:status :recommended, :version "1.13.0"},
-  :reasons {:text "Jetty ベース、初期推奨。成熟・枯れている"}}
+  :reasons {:text "Jetty ベース、初期推奨。成熟・枯れている"},
+  :relations
+  {:conflicts-with
+   [[http-kit/http-kit
+     "HTTP サーバは片方に統一、http-kit は :acceptable（高同時接続時のみ）"]
+    [aleph/aleph "HTTP サーバは片方に統一、aleph は Netty 依存重く :deprecated"]
+    [org.immutant/web "HTTP サーバは片方に統一、immutant はメンテ停止 :deprecated"]]}}
  {:purpose [:web :http-server],
   :ids {:coord http-kit/http-kit, :ns "org.httpkit.server"},
   :judgment {:status :acceptable, :version "2.8.0"},
-  :reasons {:text "NIO 軽量、高同時接続性能が要るなら検討"}}
+  :reasons {:text "NIO 軽量、高同時接続性能が要るなら検討"},
+  :relations
+  {:conflicts-with
+   [[ring/ring-jetty-adapter
+     "HTTP サーバは片方に統一、jetty が :recommended（初期推奨）"]
+    [aleph/aleph "HTTP サーバは片方に統一、aleph は :deprecated"]
+    [org.immutant/web "HTTP サーバは片方に統一、immutant は :deprecated"]]}}
  {:purpose [:web :routing],
   :ids {:coord metosin/reitit, :ns "reitit.core"},
   :judgment {:status :recommended, :version "0.7.2"},
-  :reasons {:text "data 駆動ルーティング、Malli 統合"}}
+  :reasons {:text "data 駆動ルーティング、Malli 統合"},
+  :relations
+  {:conflicts-with
+   [[compojure/compojure
+     "ルーティングは片方に統一、compojure は data 駆動でなく :deprecated"]
+    [io.pedestal/pedestal
+     "ルーティングは片方に統一、pedestal は :conditional（大規模 interceptor 機構時のみ）"]
+    [bidi/bidi "ルーティングは片方に統一、bidi は :conditional（Malli 統合不要な保守時のみ）"]
+    [metosin/compojure-api
+     "ルーティングは片方に統一、compojure-api は :conditional（Swagger 既存保守時のみ）"]]}}
  {:purpose [:web :routing :ring],
   :ids {:coord metosin/reitit-ring, :ns "reitit.ring"},
   :judgment {:status :recommended, :version "0.7.2"},
@@ -164,7 +201,14 @@
    :applicable-when "大規模 interceptor 機構が必要",
    :replacement metosin/reitit-ring},
   :reasons
-  {:text "小〜中規模で過剰、interceptor 機構が要るなら検討可", :tags [:conditional]}}
+  {:text "小〜中規模で過剰、interceptor 機構が要るなら検討可", :tags [:conditional]},
+  :relations
+  {:conflicts-with
+   [[metosin/reitit "ルーティングは片方に統一、reitit が :recommended"]
+    [compojure/compojure "ルーティングは片方に統一、compojure は :deprecated"]
+    [bidi/bidi "ルーティングは片方に統一、bidi は :conditional"]
+    [metosin/compojure-api
+     "ルーティングは片方に統一、compojure-api は :conditional"]]}}
  {:purpose [:web :routing],
   :ids {:coord bidi/bidi, :ns "bidi.ring"},
   :judgment
@@ -173,7 +217,14 @@
    :replacement metosin/reitit},
   :reasons
   {:text "Malli 統合で reitit が優位、新規採用不可",
-   :tags [:conditional :replacement-available]}}
+   :tags [:conditional :replacement-available]},
+  :relations
+  {:conflicts-with
+   [[metosin/reitit "ルーティングは片方に統一、reitit が :recommended"]
+    [compojure/compojure "ルーティングは片方に統一、compojure は :deprecated"]
+    [io.pedestal/pedestal "ルーティングは片方に統一、pedestal は :conditional"]
+    [metosin/compojure-api
+     "ルーティングは片方に統一、compojure-api は :conditional"]]}}
  {:purpose [:web :routing],
   :ids {:coord metosin/compojure-api, :ns "compojure.api.core"},
   :judgment
@@ -182,7 +233,13 @@
    :replacement metosin/reitit-ring},
   :reasons
   {:text "metosin 自身が reitit を後継と位置づけ、新規は reitit-ring",
-   :tags [:conditional :replacement-available]}}
+   :tags [:conditional :replacement-available]},
+  :relations
+  {:conflicts-with
+   [[metosin/reitit "ルーティングは片方に統一、reitit が :recommended"]
+    [compojure/compojure "ルーティングは片方に統一、compojure は :deprecated"]
+    [io.pedestal/pedestal "ルーティングは片方に統一、pedestal は :conditional"]
+    [bidi/bidi "ルーティングは片方に統一、bidi は :conditional"]]}}
  {:purpose [:web :http-server],
   :ids {:coord aleph/aleph, :ns "aleph.http"},
   :judgment
@@ -202,7 +259,14 @@
  {:purpose [:json],
   :ids {:coord metosin/jsonista, :ns "jsonista.core"},
   :judgment {:status :recommended, :version "0.3.11"},
-  :reasons {:text "Jackson 直叩きで高速、cheshire の代替"}}
+  :reasons {:text "Jackson 直叩きで高速、cheshire の代替"},
+  :relations
+  {:conflicts-with
+   [[cheshire/cheshire
+     "JSON ライブラリは片方に統一、cheshire は :conditional（既存段階移行のみ）"]
+    [org.clojure/data.json
+     "JSON ライブラリは片方に統一、data.json はパフォーマンス劣位で :deprecated"]
+    [org.json/json "JSON ライブラリは片方に統一、org.json は脆弱性歴で :forbidden"]]}}
  {:purpose [:json],
   :ids {:coord cheshire/cheshire, :ns "cheshire.core"},
   :judgment
@@ -211,7 +275,12 @@
    :replacement metosin/jsonista},
   :reasons
   {:text "jsonista が Jackson 直叩きで高速",
-   :tags [:conditional :replacement-available]}}
+   :tags [:conditional :replacement-available]},
+  :relations
+  {:conflicts-with
+   [[metosin/jsonista "JSON ライブラリは片方に統一、jsonista が :recommended"]
+    [org.clojure/data.json "JSON ライブラリは片方に統一、data.json は :deprecated"]
+    [org.json/json "JSON ライブラリは片方に統一、org.json は :forbidden"]]}}
  {:purpose [:json],
   :ids {:coord org.clojure/data.json, :ns "clojure.data.json"},
   :judgment
@@ -232,7 +301,11 @@
  {:purpose [:db :jdbc],
   :ids {:coord com.github.seancorfield/next.jdbc, :ns "next.jdbc"},
   :judgment {:status :recommended, :version "1.3.967"},
-  :reasons {:text "モダン JDBC ラッパ、transducer 対応"}}
+  :reasons {:text "モダン JDBC ラッパ、transducer 対応"},
+  :relations
+  {:conflicts-with
+   [[org.clojure/java.jdbc
+     "JDBC ラッパは片方に統一、java.jdbc はメンテ停止 :deprecated"]]}}
  {:purpose [:db :sql-builder],
   :ids {:coord com.github.seancorfield/honeysql, :ns "honey.sql"},
   :judgment {:status :recommended, :version "2.6.1230"},
@@ -264,7 +337,12 @@
  {:purpose [:logging],
   :ids {:coord com.brunobonacci/mulog, :ns "com.brunobonacci.mulog"},
   :judgment {:status :recommended, :version "0.9.0"},
-  :reasons {:text "イベント駆動の構造化ログ、publisher 切替可能"}}
+  :reasons {:text "イベント駆動の構造化ログ、publisher 切替可能"},
+  :relations
+  {:conflicts-with
+   [[com.taoensso/timbre "ロギングは片方に統一、timbre は構造化表現力劣り :deprecated"]
+    [org.apache.logging.log4j/log4j-1.2-api
+     "ロギングは片方に統一、log4j 1.x は CVE 未修正で :forbidden"]]}}
  {:purpose [:logging :json-output],
   :ids {:coord com.brunobonacci/mulog-json},
   :judgment {:status :recommended, :version "0.9.0"},
@@ -317,7 +395,11 @@
  {:purpose [:web :http-client],
   :ids {:coord hato/hato, :ns "hato.client"},
   :judgment {:status :recommended, :version "1.0.0"},
-  :reasons {:text "Java 11+ HttpClient ベース、HTTP/2 対応"}}
+  :reasons {:text "Java 11+ HttpClient ベース、HTTP/2 対応"},
+  :relations
+  {:conflicts-with
+   [[clj-http/clj-http
+     "HTTP クライアントは片方に統一、clj-http は :conditional（既存段階移行のみ）"]]}}
  {:purpose [:web :http-client],
   :ids {:coord clj-http/clj-http, :ns "clj-http.client"},
   :judgment
@@ -326,7 +408,10 @@
    :replacement hato/hato},
   :reasons
   {:text "hato が Java 11+ HttpClient ベースで第一選択",
-   :tags [:conditional :replacement-available]}}
+   :tags [:conditional :replacement-available]},
+  :relations
+  {:conflicts-with
+   [[hato/hato "HTTP クライアントは片方に統一、hato が :recommended"]]}}
  {:purpose [:auth :jwt],
   :ids {:coord buddy/buddy-sign, :ns "buddy.sign.jwt"},
   :judgment {:status :recommended},
@@ -377,7 +462,13 @@
  {:purpose [:scheduling],
   :ids {:coord jarohen/chime, :ns "chime.core"},
   :judgment {:status :recommended, :version "0.3.3"},
-  :reasons {:text "core.async ベース、Integrant 統合容易"}}
+  :reasons {:text "core.async ベース、Integrant 統合容易"},
+  :relations
+  {:conflicts-with
+   [[overtone/at-at "スケジューラは片方に統一、at-at は停止制御弱く :deprecated"]
+    [clojurewerkz/quartzite
+     "スケジューラは片方に統一、quartzite は :conditional（cron/永続化時のみ）"]
+    [tea-time/tea-time "スケジューラは片方に統一、tea-time はメンテ停止 :deprecated"]]}}
  {:purpose [:scheduling],
   :ids {:coord overtone/at-at, :ns "overtone.at-at"},
   :judgment
@@ -392,7 +483,12 @@
   {:status :conditional,
    :applicable-when "複雑な業務要件 (cron 式・永続化) が必要",
    :replacement jarohen/chime},
-  :reasons {:text "重量級、設定が冗長。単純用途は chime", :tags [:conditional]}}
+  :reasons {:text "重量級、設定が冗長。単純用途は chime", :tags [:conditional]},
+  :relations
+  {:conflicts-with
+   [[jarohen/chime "スケジューラは片方に統一、chime が :recommended"]
+    [overtone/at-at "スケジューラは片方に統一、at-at は :deprecated"]
+    [tea-time/tea-time "スケジューラは片方に統一、tea-time は :deprecated"]]}}
  {:purpose [:scheduling],
   :ids {:coord tea-time/tea-time, :ns "tea-time.core"},
   :judgment
@@ -403,7 +499,11 @@
  {:purpose [:resilience :retry],
   :ids {:coord sunng87/diehard, :ns "diehard.core"},
   :judgment {:status :recommended},
-  :reasons {:text "Retry / Circuit Breaker、外部 API 呼出時に必須化"}}
+  :reasons {:text "Retry / Circuit Breaker、外部 API 呼出時に必須化"},
+  :relations
+  {:conflicts-with
+   [[robert/robert.bruce
+     "リトライは片方に統一、robert.bruce はメンテ停止 :deprecated"]]}}
  {:purpose [:resilience :retry],
   :ids {:coord robert/robert.bruce, :ns "robert.bruce"},
   :judgment
@@ -414,7 +514,10 @@
  {:purpose [:i18n],
   :ids {:coord com.taoensso/tempura, :ns "taoensso.tempura"},
   :judgment {:status :recommended},
-  :reasons {:text "tower の後継、同作者"}}
+  :reasons {:text "tower の後継、同作者"},
+  :relations
+  {:conflicts-with
+   [[com.taoensso/tower "i18n は片方に統一、tower はメンテ停止 :deprecated"]]}}
  {:purpose [:i18n],
   :ids {:coord com.taoensso/tower, :ns "taoensso.tower"},
   :judgment
@@ -442,15 +545,30 @@
  {:purpose [:db :document-db],
   :ids {:coord com.xtdb/xtdb-api, :ns "xtdb.api"},
   :judgment {:status :recommended, :version "2.0.0"},
-  :reasons {:text "bitemporal document DB、Biff 同梱 / 単体採用いずれも可"}}
+  :reasons {:text "bitemporal document DB、Biff 同梱 / 単体採用いずれも可"},
+  :relations
+  {:conflicts-with
+   [[com.datomic/local
+     "document DB は片方に統一、datomic は :acceptable（商用条件要確認）"]]}}
  {:purpose [:db :document-db],
   :ids {:coord com.datomic/local, :ns "datomic.api"},
   :judgment {:status :acceptable},
-  :reasons {:text "選択肢として許容、商用条件要確認", :tags [:license]}}
+  :reasons {:text "選択肢として許容、商用条件要確認", :tags [:license]},
+  :relations
+  {:conflicts-with
+   [[com.xtdb/xtdb-api
+     "document DB は片方に統一、xtdb が :recommended（OSS）"]]}}
  {:purpose [:db :migration],
   :ids {:coord migratus/migratus, :ns "migratus.core"},
   :judgment {:status :recommended},
-  :reasons {:text "SQL ベース、純 Clojure、新規 Clojure プロジェクトの第一選択"}}
+  :reasons {:text "SQL ベース、純 Clojure、新規 Clojure プロジェクトの第一選択"},
+  :relations
+  {:conflicts-with
+   [[org.flywaydb/flyway-core
+     "マイグレーションは片方に統一、flyway は :conditional（Java 資産保守のみ）"]
+    [org.liquibase/liquibase-core
+     "マイグレーションは片方に統一、liquibase は :conditional（Java 資産保守のみ）"]
+    [joplin/joplin "マイグレーションは片方に統一、joplin はメンテ低迷 :deprecated"]]}}
  {:purpose [:db :migration],
   :ids {:coord org.flywaydb/flyway-core},
   :judgment
@@ -458,7 +576,13 @@
    :applicable-when "既存 Java 資産の互換保守、新規 Clojure プロジェクトは migratus",
    :replacement migratus/migratus},
   :reasons
-  {:text "新規 Clojure プロジェクトでは migratus が自然", :tags [:conditional]}}
+  {:text "新規 Clojure プロジェクトでは migratus が自然", :tags [:conditional]},
+  :relations
+  {:conflicts-with
+   [[migratus/migratus "マイグレーションは片方に統一、migratus が :recommended"]
+    [org.liquibase/liquibase-core
+     "マイグレーションは片方に統一、liquibase は :conditional"]
+    [joplin/joplin "マイグレーションは片方に統一、joplin は :deprecated"]]}}
  {:purpose [:db :migration],
   :ids {:coord org.liquibase/liquibase-core},
   :judgment
@@ -466,7 +590,12 @@
    :applicable-when "既存 Java 資産の互換保守、新規 Clojure プロジェクトは migratus",
    :replacement migratus/migratus},
   :reasons
-  {:text "新規 Clojure プロジェクトでは migratus が自然", :tags [:conditional]}}
+  {:text "新規 Clojure プロジェクトでは migratus が自然", :tags [:conditional]},
+  :relations
+  {:conflicts-with
+   [[migratus/migratus "マイグレーションは片方に統一、migratus が :recommended"]
+    [org.flywaydb/flyway-core "マイグレーションは片方に統一、flyway は :conditional"]
+    [joplin/joplin "マイグレーションは片方に統一、joplin は :deprecated"]]}}
  {:purpose [:db :migration],
   :ids {:coord joplin/joplin, :ns "joplin.core"},
   :judgment
@@ -477,7 +606,11 @@
  {:purpose [:testing :e2e],
   :ids {:coord etaoin/etaoin, :ns "etaoin.api"},
   :judgment {:status :recommended},
-  :reasons {:text "100% Clojure、map で driver 設定、data 駆動"}}
+  :reasons {:text "100% Clojure、map で driver 設定、data 駆動"},
+  :relations
+  {:conflicts-with
+   [[clj-webdriver/clj-webdriver
+     "E2E WebDriver は片方に統一、clj-webdriver はメンテ停止 :deprecated"]]}}
  {:purpose [:testing :e2e],
   :ids {:coord clj-webdriver/clj-webdriver, :ns "clj-webdriver.taxi"},
   :judgment
@@ -507,7 +640,11 @@
  {:purpose [:markdown],
   :ids {:coord markdown-clj/markdown-clj, :ns "markdown.core"},
   :judgment {:status :recommended},
-  :reasons {:text "endophile の代替、メンテ継続中"}}
+  :reasons {:text "endophile の代替、メンテ継続中"},
+  :relations
+  {:conflicts-with
+   [[endophile/endophile
+     "markdown ライブラリは片方に統一、endophile はメンテ停止 :deprecated"]]}}
  {:purpose [:markdown],
   :ids {:coord endophile/endophile, :ns "endophile.core"},
   :judgment
@@ -556,7 +693,11 @@
  {:purpose [:search :elasticsearch],
   :ids {:coord mpenet/spandex, :ns "qbits.spandex"},
   :judgment {:status :recommended},
-  :reasons {:text "Elasticsearch クライアント、elastisch の代替"}}
+  :reasons {:text "Elasticsearch クライアント、elastisch の代替"},
+  :relations
+  {:conflicts-with
+   [[clojurewerkz/elastisch
+     "Elasticsearch クライアントは片方に統一、elastisch はメンテ停止 :deprecated"]]}}
  {:purpose [:search :elasticsearch],
   :ids {:coord clojurewerkz/elastisch, :ns "clojurewerkz.elastisch"},
   :judgment
@@ -664,7 +805,11 @@
   {:coord org.eclipse.paho/org.eclipse.paho.client.mqttv3,
    :ns "org.eclipse.paho.client.mqttv3"},
   :judgment {:status :recommended, :version "1.2.5"},
-  :reasons {:text "Paho MQTT Java 公式、machine-head の代替"}}
+  :reasons {:text "Paho MQTT Java 公式、machine-head の代替"},
+  :relations
+  {:conflicts-with
+   [[clojurewerkz/machine_head
+     "MQTT クライアントは片方に統一、machine-head は :deprecated"]]}}
  {:purpose [:messaging :mqtt],
   :ids
   {:coord clojurewerkz/machine_head,
@@ -748,11 +893,21 @@
  {:purpose [:desktop :gui],
   :ids {:coord io.github.humbleui/humbleui},
   :judgment {:status :recommended, :version "0.2.0"},
-  :reasons {:text "Skia ベース、宣言的 API、API 変動リスクあり (暫定採用)"}}
+  :reasons {:text "Skia ベース、宣言的 API、API 変動リスクあり (暫定採用)"},
+  :relations
+  {:conflicts-with
+   [[cljfx/cljfx "デスクトップ GUI は片方に統一、cljfx は :acceptable（安定性優先時）"]
+    [seesaw/seesaw
+     "デスクトップ GUI は片方に統一、seesaw は :conditional（レガシー保守のみ）"]]}}
  {:purpose [:desktop :gui :javafx],
   :ids {:coord cljfx/cljfx, :ns "cljfx.api"},
   :judgment {:status :acceptable},
-  :reasons {:text "JavaFX 宣言的ラッパ、成熟。安定性優先なら採用を判断し ADR 記録"}}
+  :reasons {:text "JavaFX 宣言的ラッパ、成熟。安定性優先なら採用を判断し ADR 記録"},
+  :relations
+  {:conflicts-with
+   [[io.github.humbleui/humbleui
+     "デスクトップ GUI は片方に統一、humbleui が :recommended"]
+    [seesaw/seesaw "デスクトップ GUI は片方に統一、seesaw は :conditional"]]}}
  {:purpose [:desktop :gui],
   :ids {:coord seesaw/seesaw, :ns "seesaw.core"},
   :judgment
@@ -760,7 +915,12 @@
    :applicable-when "レガシー保守",
    :replacement [io.github.humbleui/humbleui cljfx/cljfx]},
   :reasons
-  {:text "Swing ベースで古い、新規は humbleui / cljfx", :tags [:conditional]}}
+  {:text "Swing ベースで古い、新規は humbleui / cljfx", :tags [:conditional]},
+  :relations
+  {:conflicts-with
+   [[io.github.humbleui/humbleui
+     "デスクトップ GUI は片方に統一、humbleui が :recommended"]
+    [cljfx/cljfx "デスクトップ GUI は片方に統一、cljfx は :acceptable"]]}}
  {:purpose [:messaging :queue :sqs],
   :ids {:coord com.cognitect.aws/sqs},
   :judgment {:status :recommended},
@@ -796,7 +956,10 @@
  {:purpose [:async],
   :ids {:coord org.clojure/core.async, :ns "clojure.core.async"},
   :judgment {:status :recommended},
-  :reasons {:text "CSP チャネル、manifold の代替"}}
+  :reasons {:text "CSP チャネル、manifold の代替"},
+  :relations
+  {:conflicts-with
+   [[manifold/manifold "非同期抽象は片方に統一、manifold は設計思想不整合"]]}}
  {:purpose [:async],
   :ids {:coord manifold/manifold, :ns "manifold.deferred"},
   :judgment
@@ -831,12 +994,20 @@
  {:purpose [:time],
   :ids {:coord tick/tick, :ns "tick.core"},
   :judgment {:status :recommended, :version "1.0"},
-  :reasons {:text "data 駆動 java.time ラッパ、Malli 統合容易"}}
+  :reasons {:text "data 駆動 java.time ラッパ、Malli 統合容易"},
+  :relations
+  {:conflicts-with
+   [[clojure.java-time/clojure.java-time "時刻処理は片方に統一"]
+    [clj-time/clj-time "時刻処理は片方に統一、clj-time は Joda-Time ベースで非推奨"]]}}
  {:purpose [:time :jdk-wrapper],
   :ids
   {:coord clojure.java-time/clojure.java-time, :ns "java-time.api"},
   :judgment {:status :acceptable},
-  :reasons {:text "JDK java.time 薄ラッパ、依存最小・学習コスト低"}}
+  :reasons {:text "JDK java.time 薄ラッパ、依存最小・学習コスト低"},
+  :relations
+  {:conflicts-with
+   [[tick/tick "時刻処理は片方に統一"]
+    [clj-time/clj-time "時刻処理は片方に統一、clj-time は Joda-Time ベースで非推奨"]]}}
  {:purpose [:time],
   :ids {:coord clj-time/clj-time, :ns "clj-time.core"},
   :judgment

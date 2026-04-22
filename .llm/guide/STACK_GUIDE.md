@@ -107,10 +107,12 @@ stack は時間とともに増え、選定根拠は詳細化し、機能領域�
   :reasons  {:text "brick ベースの再利用性、poly check が構造違反を検知"}}
 
  ;; === 契約・検証 ===
- {:purpose  [:validation]
-  :ids      {:coord metosin/malli :ns "malli.core"}
-  :judgment {:status :recommended :version "0.16.4"}
-  :reasons  {:text "関数契約 m/=>、instrumentation。§1.1.1 全域性の実装"}}
+ {:purpose   [:validation]
+  :ids       {:coord metosin/malli :ns "malli.core"}
+  :judgment  {:status :recommended :version "0.16.4"}
+  :reasons   {:text "関数契約 m/=>、instrumentation。§1.1.1 全域性の実装"}
+  :relations {:conflicts-with [[org.clojure/spec.alpha "検証ライブラリは片方に統一、spec.alpha は §3.3 で :deprecated"]
+                               [prismatic/schema "検証ライブラリは片方に統一、prismatic/schema は §3.3 で :deprecated"]]}}
 
  ;; === Lint / Format（§1.2.1 機械化） ===
  ;; clj-kondo は .clj-kondo/config.edn + custom hook が配布時点で同梱され、
@@ -256,10 +258,12 @@ stack 層と組み合わせて使う。開発支援ライブラリは通常 **de
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
- {:purpose  [:lifecycle]
-  :ids      {:coord integrant/integrant :ns "integrant.core"}
-  :judgment {:status :recommended :version "0.13.1"}
-  :reasons  {:text "data 駆動 DI、本テンプレート採用"}}
+ {:purpose   [:lifecycle]
+  :ids       {:coord integrant/integrant :ns "integrant.core"}
+  :judgment  {:status :recommended :version "0.13.1"}
+  :reasons   {:text "data 駆動 DI、本テンプレート採用"}
+  :relations {:conflicts-with [[com.stuartsierra/component "lifecycle 管理は片方に統一、component は defrecord 依存で :deprecated"]
+                               [mount/mount "lifecycle 管理は片方に統一、mount はグローバル状態で :deprecated"]]}}
 
  ;; REPL 駆動開発用。dev エイリアスへ配置し、本番 uberjar には混入させない
  {:purpose  [:lifecycle :repl]
@@ -304,10 +308,12 @@ stack 層と組み合わせて使う。開発支援ライブラリは通常 **de
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
- {:purpose  [:config]
-  :ids      {:coord aero/aero :ns "aero.core"}
-  :judgment {:status :recommended :version "1.1.6"}
-  :reasons  {:text "tagged literal (#env #profile) で環境別設定"}}
+ {:purpose   [:config]
+  :ids       {:coord aero/aero :ns "aero.core"}
+  :judgment  {:status :recommended :version "1.1.6"}
+  :reasons   {:text "tagged literal (#env #profile) で環境別設定"}
+  :relations {:conflicts-with [[environ/environ "設定ライブラリは片方に統一、environ は構造化設定に弱く :deprecated"]
+                               [immuconf/immuconf "設定ライブラリは片方に統一、immuconf は aero より普及度劣り :deprecated"]]}}
 
  ;; === 代替と却下 ===
  ;; environ: 環境変数のフラット参照中心。構造化設定（profile 切替、ネスト、
@@ -395,22 +401,32 @@ stack 層と組み合わせて使う。開発支援ライブラリは通常 **de
   :judgment {:status :recommended :version "1.13.0"}
   :reasons  {:text "Ring 仕様の標準実装"}}
 
- {:purpose  [:web :http-server]
-  :ids      {:coord ring/ring-jetty-adapter :ns "ring.adapter.jetty"}
-  :judgment {:status :recommended :version "1.13.0"}
-  :reasons  {:text "Jetty ベース、初期推奨。成熟・枯れている"}}
+ {:purpose   [:web :http-server]
+  :ids       {:coord ring/ring-jetty-adapter :ns "ring.adapter.jetty"}
+  :judgment  {:status :recommended :version "1.13.0"}
+  :reasons   {:text "Jetty ベース、初期推奨。成熟・枯れている"}
+  :relations {:conflicts-with [[http-kit/http-kit "HTTP サーバは片方に統一、http-kit は :acceptable（高同時接続時のみ）"]
+                               [aleph/aleph "HTTP サーバは片方に統一、aleph は Netty 依存重く :deprecated"]
+                               [org.immutant/web "HTTP サーバは片方に統一、immutant はメンテ停止 :deprecated"]]}}
 
  ;; http-kit: NIO ベースの軽量 HTTP サーバ。高同時接続性能が重要なプロジェクト向け。
  ;; ring-jetty-adapter と代替関係、どちらかを選択する。
- {:purpose  [:web :http-server]
-  :ids      {:coord http-kit/http-kit :ns "org.httpkit.server"}
-  :judgment {:status :acceptable :version "2.8.0"}
-  :reasons  {:text "NIO 軽量、高同時接続性能が要るなら検討"}}
+ {:purpose   [:web :http-server]
+  :ids       {:coord http-kit/http-kit :ns "org.httpkit.server"}
+  :judgment  {:status :acceptable :version "2.8.0"}
+  :reasons   {:text "NIO 軽量、高同時接続性能が要るなら検討"}
+  :relations {:conflicts-with [[ring/ring-jetty-adapter "HTTP サーバは片方に統一、jetty が :recommended（初期推奨）"]
+                               [aleph/aleph "HTTP サーバは片方に統一、aleph は :deprecated"]
+                               [org.immutant/web "HTTP サーバは片方に統一、immutant は :deprecated"]]}}
 
- {:purpose  [:web :routing]
-  :ids      {:coord metosin/reitit :ns "reitit.core"}
-  :judgment {:status :recommended :version "0.7.2"}
-  :reasons  {:text "data 駆動ルーティング、Malli 統合"}}
+ {:purpose   [:web :routing]
+  :ids       {:coord metosin/reitit :ns "reitit.core"}
+  :judgment  {:status :recommended :version "0.7.2"}
+  :reasons   {:text "data 駆動ルーティング、Malli 統合"}
+  :relations {:conflicts-with [[compojure/compojure "ルーティングは片方に統一、compojure は data 駆動でなく :deprecated"]
+                               [io.pedestal/pedestal "ルーティングは片方に統一、pedestal は :conditional（大規模 interceptor 機構時のみ）"]
+                               [bidi/bidi "ルーティングは片方に統一、bidi は :conditional（Malli 統合不要な保守時のみ）"]
+                               [metosin/compojure-api "ルーティングは片方に統一、compojure-api は :conditional（Swagger 既存保守時のみ）"]]}}
 
  {:purpose  [:web :routing :ring]
   :ids      {:coord metosin/reitit-ring :ns "reitit.ring"}
@@ -443,35 +459,47 @@ stack 層と組み合わせて使う。開発支援ライブラリは通常 **de
 
  ;; Pedestal: interceptor 機構が強力だが、小〜中規模で過剰。学習コストが高い。
  ;; 大規模で interceptor が必要なら条件付き採用可。
- {:purpose  [:web :routing]
-  :ids      {:coord io.pedestal/pedestal :ns "io.pedestal.http"}
-  :judgment {:status          :conditional
-             :applicable-when "大規模 interceptor 機構が必要"
-             :replacement     metosin/reitit-ring}
-  :reasons  {:text "小〜中規模で過剰、interceptor 機構が要るなら検討可"
-             :tags [:conditional]}}
+ {:purpose   [:web :routing]
+  :ids       {:coord io.pedestal/pedestal :ns "io.pedestal.http"}
+  :judgment  {:status          :conditional
+              :applicable-when "大規模 interceptor 機構が必要"
+              :replacement     metosin/reitit-ring}
+  :reasons   {:text "小〜中規模で過剰、interceptor 機構が要るなら検討可"
+              :tags [:conditional]}
+  :relations {:conflicts-with [[metosin/reitit "ルーティングは片方に統一、reitit が :recommended"]
+                               [compojure/compojure "ルーティングは片方に統一、compojure は :deprecated"]
+                               [bidi/bidi "ルーティングは片方に統一、bidi は :conditional"]
+                               [metosin/compojure-api "ルーティングは片方に統一、compojure-api は :conditional"]]}}
 
  ;; bidi: ルーティング機能は十分だが Malli との統合エコシステムが弱い。
  ;; reitit のほうが生態系で優位、新規採用不可。
- {:purpose  [:web :routing]
-  :ids      {:coord bidi/bidi :ns "bidi.ring"}
-  :judgment {:status          :conditional
-             :applicable-when "Malli 統合が不要な既存プロジェクトの保守"
-             :replacement     metosin/reitit}
-  :reasons  {:text "Malli 統合で reitit が優位、新規採用不可"
-             :tags [:conditional :replacement-available]}}
+ {:purpose   [:web :routing]
+  :ids       {:coord bidi/bidi :ns "bidi.ring"}
+  :judgment  {:status          :conditional
+              :applicable-when "Malli 統合が不要な既存プロジェクトの保守"
+              :replacement     metosin/reitit}
+  :reasons   {:text "Malli 統合で reitit が優位、新規採用不可"
+              :tags [:conditional :replacement-available]}
+  :relations {:conflicts-with [[metosin/reitit "ルーティングは片方に統一、reitit が :recommended"]
+                               [compojure/compojure "ルーティングは片方に統一、compojure は :deprecated"]
+                               [io.pedestal/pedestal "ルーティングは片方に統一、pedestal は :conditional"]
+                               [metosin/compojure-api "ルーティングは片方に統一、compojure-api は :conditional"]]}}
 
  ;; compojure-api (metosin): metosin 自身が reitit を後継として推奨しており、
  ;; 新規は reitit-ring + reitit-malli。ただし Swagger UI 統合の既存設定が
  ;; 簡潔なため、swagger 周辺のレガシー保守や小規模用途で条件付き採用可。
  ;; metosin リポジトリ自体はメンテ継続中。
- {:purpose  [:web :routing]
-  :ids      {:coord metosin/compojure-api :ns "compojure.api.core"}
-  :judgment {:status          :conditional
-             :applicable-when "Swagger UI 既存設定の保守、新規は reitit-ring"
-             :replacement     metosin/reitit-ring}
-  :reasons  {:text "metosin 自身が reitit を後継と位置づけ、新規は reitit-ring"
-             :tags [:conditional :replacement-available]}}
+ {:purpose   [:web :routing]
+  :ids       {:coord metosin/compojure-api :ns "compojure.api.core"}
+  :judgment  {:status          :conditional
+              :applicable-when "Swagger UI 既存設定の保守、新規は reitit-ring"
+              :replacement     metosin/reitit-ring}
+  :reasons   {:text "metosin 自身が reitit を後継と位置づけ、新規は reitit-ring"
+              :tags [:conditional :replacement-available]}
+  :relations {:conflicts-with [[metosin/reitit "ルーティングは片方に統一、reitit が :recommended"]
+                               [compojure/compojure "ルーティングは片方に統一、compojure は :deprecated"]
+                               [io.pedestal/pedestal "ルーティングは片方に統一、pedestal は :conditional"]
+                               [bidi/bidi "ルーティングは片方に統一、bidi は :conditional"]]}}
 
  ;; aleph: Netty 基盤の HTTP サーバ。依存が重く、manifold を抱え込む。
  ;; 設計思想として core.async / Jetty / http-kit と衝突、採用しない。
@@ -504,21 +532,27 @@ stack 層と組み合わせて使う。開発支援ライブラリは通常 **de
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
- {:purpose  [:json]
-  :ids      {:coord metosin/jsonista :ns "jsonista.core"}
-  :judgment {:status :recommended :version "0.3.11"}
-  :reasons  {:text "Jackson 直叩きで高速、cheshire の代替"}}
+ {:purpose   [:json]
+  :ids       {:coord metosin/jsonista :ns "jsonista.core"}
+  :judgment  {:status :recommended :version "0.3.11"}
+  :reasons   {:text "Jackson 直叩きで高速、cheshire の代替"}
+  :relations {:conflicts-with [[cheshire/cheshire "JSON ライブラリは片方に統一、cheshire は :conditional（既存段階移行のみ）"]
+                               [org.clojure/data.json "JSON ライブラリは片方に統一、data.json はパフォーマンス劣位で :deprecated"]
+                               [org.json/json "JSON ライブラリは片方に統一、org.json は脆弱性歴で :forbidden"]]}}
 
  ;; === 代替と却下 ===
  ;; Cheshire: 高速で広く使われているが、jsonista のほうが Jackson の活用が緻密で
  ;; より高速。既存プロジェクトの段階移行なら可、新規は jsonista。
- {:purpose  [:json]
-  :ids      {:coord cheshire/cheshire :ns "cheshire.core"}
-  :judgment {:status          :conditional
-             :applicable-when "既存コードの段階移行、新規は jsonista"
-             :replacement     metosin/jsonista}
-  :reasons  {:text "jsonista が Jackson 直叩きで高速"
-             :tags [:conditional :replacement-available]}}
+ {:purpose   [:json]
+  :ids       {:coord cheshire/cheshire :ns "cheshire.core"}
+  :judgment  {:status          :conditional
+              :applicable-when "既存コードの段階移行、新規は jsonista"
+              :replacement     metosin/jsonista}
+  :reasons   {:text "jsonista が Jackson 直叩きで高速"
+              :tags [:conditional :replacement-available]}
+  :relations {:conflicts-with [[metosin/jsonista "JSON ライブラリは片方に統一、jsonista が :recommended"]
+                               [org.clojure/data.json "JSON ライブラリは片方に統一、data.json は :deprecated"]
+                               [org.json/json "JSON ライブラリは片方に統一、org.json は :forbidden"]]}}
 
  ;; data.json: 純 Clojure 実装、パフォーマンス劣位。
  {:purpose  [:json]
@@ -550,10 +584,11 @@ stack 層と組み合わせて使う。開発支援ライブラリは通常 **de
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
- {:purpose  [:db :jdbc]
-  :ids      {:coord com.github.seancorfield/next.jdbc :ns "next.jdbc"}
-  :judgment {:status :recommended :version "1.3.967"}
-  :reasons  {:text "モダン JDBC ラッパ、transducer 対応"}}
+ {:purpose   [:db :jdbc]
+  :ids       {:coord com.github.seancorfield/next.jdbc :ns "next.jdbc"}
+  :judgment  {:status :recommended :version "1.3.967"}
+  :reasons   {:text "モダン JDBC ラッパ、transducer 対応"}
+  :relations {:conflicts-with [[org.clojure/java.jdbc "JDBC ラッパは片方に統一、java.jdbc はメンテ停止 :deprecated"]]}}
 
  {:purpose  [:db :sql-builder]
   :ids      {:coord com.github.seancorfield/honeysql :ns "honey.sql"}
@@ -604,10 +639,12 @@ stack 層と組み合わせて使う。開発支援ライブラリは通常 **de
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
- {:purpose  [:logging]
-  :ids      {:coord com.brunobonacci/mulog :ns "com.brunobonacci.mulog"}
-  :judgment {:status :recommended :version "0.9.0"}
-  :reasons  {:text "イベント駆動の構造化ログ、publisher 切替可能"}}
+ {:purpose   [:logging]
+  :ids       {:coord com.brunobonacci/mulog :ns "com.brunobonacci.mulog"}
+  :judgment  {:status :recommended :version "0.9.0"}
+  :reasons   {:text "イベント駆動の構造化ログ、publisher 切替可能"}
+  :relations {:conflicts-with [[com.taoensso/timbre "ロギングは片方に統一、timbre は構造化表現力劣り :deprecated"]
+                               [org.apache.logging.log4j/log4j-1.2-api "ロギングは片方に統一、log4j 1.x は CVE 未修正で :forbidden"]]}}
 
  {:purpose  [:logging :json-output]
   :ids      {:coord com.brunobonacci/mulog-json}
@@ -752,21 +789,23 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
- {:purpose  [:web :http-client]
-  :ids      {:coord hato/hato :ns "hato.client"}
-  :judgment {:status :recommended :version "1.0.0"}
-  :reasons  {:text "Java 11+ HttpClient ベース、HTTP/2 対応"}}
+ {:purpose   [:web :http-client]
+  :ids       {:coord hato/hato :ns "hato.client"}
+  :judgment  {:status :recommended :version "1.0.0"}
+  :reasons   {:text "Java 11+ HttpClient ベース、HTTP/2 対応"}
+  :relations {:conflicts-with [[clj-http/clj-http "HTTP クライアントは片方に統一、clj-http は :conditional（既存段階移行のみ）"]]}}
 
  ;; === 代替と却下 ===
  ;; clj-http: 古くから広く使われているが、hato が Java 11+ HttpClient ベースで第一選択。
  ;; 新規採用は避け、既存コードは段階移行。
- {:purpose  [:web :http-client]
-  :ids      {:coord clj-http/clj-http :ns "clj-http.client"}
-  :judgment {:status          :conditional
-             :applicable-when "既存コードの段階移行、新規は hato"
-             :replacement     hato/hato}
-  :reasons  {:text "hato が Java 11+ HttpClient ベースで第一選択"
-             :tags [:conditional :replacement-available]}}]
+ {:purpose   [:web :http-client]
+  :ids       {:coord clj-http/clj-http :ns "clj-http.client"}
+  :judgment  {:status          :conditional
+              :applicable-when "既存コードの段階移行、新規は hato"
+              :replacement     hato/hato}
+  :reasons   {:text "hato が Java 11+ HttpClient ベースで第一選択"
+              :tags [:conditional :replacement-available]}
+  :relations {:conflicts-with [[hato/hato "HTTP クライアントは片方に統一、hato が :recommended"]]}}]
 ```
 
 **採用 stack**: web-api stack、bot stack、llm-app stack、必要に応じて全 stack
@@ -903,10 +942,13 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
- {:purpose  [:scheduling]
-  :ids      {:coord jarohen/chime :ns "chime.core"}
-  :judgment {:status :recommended :version "0.3.3"}
-  :reasons  {:text "core.async ベース、Integrant 統合容易"}}
+ {:purpose   [:scheduling]
+  :ids       {:coord jarohen/chime :ns "chime.core"}
+  :judgment  {:status :recommended :version "0.3.3"}
+  :reasons   {:text "core.async ベース、Integrant 統合容易"}
+  :relations {:conflicts-with [[overtone/at-at "スケジューラは片方に統一、at-at は停止制御弱く :deprecated"]
+                               [clojurewerkz/quartzite "スケジューラは片方に統一、quartzite は :conditional（cron/永続化時のみ）"]
+                               [tea-time/tea-time "スケジューラは片方に統一、tea-time はメンテ停止 :deprecated"]]}}
 
  ;; === 代替と却下 ===
  ;; at-at: シンプルだが停止制御が弱く、Integrant 統合しにくい。chime へ。
@@ -918,13 +960,16 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 
  ;; Quartz (java interop): 重量級、設定が冗長。複雑な業務要件 (cron 式・永続化)
  ;; が必要なら条件付きで採用可。
- {:purpose  [:scheduling]
-  :ids      {:coord clojurewerkz/quartzite}
-  :judgment {:status          :conditional
-             :applicable-when "複雑な業務要件 (cron 式・永続化) が必要"
-             :replacement     jarohen/chime}
-  :reasons  {:text "重量級、設定が冗長。単純用途は chime"
-             :tags [:conditional]}}
+ {:purpose   [:scheduling]
+  :ids       {:coord clojurewerkz/quartzite}
+  :judgment  {:status          :conditional
+              :applicable-when "複雑な業務要件 (cron 式・永続化) が必要"
+              :replacement     jarohen/chime}
+  :reasons   {:text "重量級、設定が冗長。単純用途は chime"
+              :tags [:conditional]}
+  :relations {:conflicts-with [[jarohen/chime "スケジューラは片方に統一、chime が :recommended"]
+                               [overtone/at-at "スケジューラは片方に統一、at-at は :deprecated"]
+                               [tea-time/tea-time "スケジューラは片方に統一、tea-time は :deprecated"]]}}
 
  ;; tea-time: メンテナンス停滞、chime へ。
  {:purpose  [:scheduling]
@@ -983,10 +1028,11 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
- {:purpose  [:resilience :retry]
-  :ids      {:coord sunng87/diehard :ns "diehard.core"}
-  :judgment {:status :recommended}
-  :reasons  {:text "Retry / Circuit Breaker、外部 API 呼出時に必須化"}}
+ {:purpose   [:resilience :retry]
+  :ids       {:coord sunng87/diehard :ns "diehard.core"}
+  :judgment  {:status :recommended}
+  :reasons   {:text "Retry / Circuit Breaker、外部 API 呼出時に必須化"}
+  :relations {:conflicts-with [[robert/robert.bruce "リトライは片方に統一、robert.bruce はメンテ停止 :deprecated"]]}}
 
  ;; === 代替と却下 ===
  ;; robert.bruce: メンテ停止、diehard が後継。
@@ -1069,10 +1115,11 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
- {:purpose  [:i18n]
-  :ids      {:coord com.taoensso/tempura :ns "taoensso.tempura"}
-  :judgment {:status :recommended}
-  :reasons  {:text "tower の後継、同作者"}}
+ {:purpose   [:i18n]
+  :ids       {:coord com.taoensso/tempura :ns "taoensso.tempura"}
+  :judgment  {:status :recommended}
+  :reasons   {:text "tower の後継、同作者"}
+  :relations {:conflicts-with [[com.taoensso/tower "i18n は片方に統一、tower はメンテ停止 :deprecated"]]}}
 
  ;; === 代替と却下 ===
  ;; tower: 開発停止、tempura が後継。
@@ -1211,19 +1258,21 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
- {:purpose  [:db :document-db]
-  :ids      {:coord com.xtdb/xtdb-api :ns "xtdb.api"}
-  :judgment {:status :recommended :version "2.0.0"}
-  :reasons  {:text "bitemporal document DB、Biff 同梱 / 単体採用いずれも可"}}
+ {:purpose   [:db :document-db]
+  :ids       {:coord com.xtdb/xtdb-api :ns "xtdb.api"}
+  :judgment  {:status :recommended :version "2.0.0"}
+  :reasons   {:text "bitemporal document DB、Biff 同梱 / 単体採用いずれも可"}
+  :relations {:conflicts-with [[com.datomic/local "document DB は片方に統一、datomic は :acceptable（商用条件要確認）"]]}}
 
  ;; === 代替（許容）===
  ;; Datomic Pro: 商用ライセンス、新規採用時のコスト・ロックインリスク。
  ;; 既存運用プロジェクトは継続可、Clojure コミュニティ実績あり。
- {:purpose  [:db :document-db]
-  :ids      {:coord com.datomic/local :ns "datomic.api"}
-  :judgment {:status :acceptable}
-  :reasons  {:text "選択肢として許容、商用条件要確認"
-             :tags [:license]}}
+ {:purpose   [:db :document-db]
+  :ids       {:coord com.datomic/local :ns "datomic.api"}
+  :judgment  {:status :acceptable}
+  :reasons   {:text "選択肢として許容、商用条件要確認"
+              :tags [:license]}
+  :relations {:conflicts-with [[com.xtdb/xtdb-api "document DB は片方に統一、xtdb が :recommended（OSS）"]]}}
 
  ;; === 代替と却下 ===
  ;; Datomic Free/Solo: 機能制限あり、本番用途なら XTDB が自然。narrative のみ。
@@ -1253,30 +1302,39 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
- {:purpose  [:db :migration]
-  :ids      {:coord migratus/migratus :ns "migratus.core"}
-  :judgment {:status :recommended}
-  :reasons  {:text "SQL ベース、純 Clojure、新規 Clojure プロジェクトの第一選択"}}
+ {:purpose   [:db :migration]
+  :ids       {:coord migratus/migratus :ns "migratus.core"}
+  :judgment  {:status :recommended}
+  :reasons   {:text "SQL ベース、純 Clojure、新規 Clojure プロジェクトの第一選択"}
+  :relations {:conflicts-with [[org.flywaydb/flyway-core "マイグレーションは片方に統一、flyway は :conditional（Java 資産保守のみ）"]
+                               [org.liquibase/liquibase-core "マイグレーションは片方に統一、liquibase は :conditional（Java 資産保守のみ）"]
+                               [joplin/joplin "マイグレーションは片方に統一、joplin はメンテ低迷 :deprecated"]]}}
 
  ;; === 代替と却下 ===
  ;; Flyway (Java): XML/Java 設定が冗長、data 駆動ではない。既存 Java 資産の
  ;; 互換保守なら条件付き採用可、新規 Clojure プロジェクトは migratus。
- {:purpose  [:db :migration]
-  :ids      {:coord org.flywaydb/flyway-core}
-  :judgment {:status          :conditional
-             :applicable-when "既存 Java 資産の互換保守、新規 Clojure プロジェクトは migratus"
-             :replacement     migratus/migratus}
-  :reasons  {:text "新規 Clojure プロジェクトでは migratus が自然"
-             :tags [:conditional]}}
+ {:purpose   [:db :migration]
+  :ids       {:coord org.flywaydb/flyway-core}
+  :judgment  {:status          :conditional
+              :applicable-when "既存 Java 資産の互換保守、新規 Clojure プロジェクトは migratus"
+              :replacement     migratus/migratus}
+  :reasons   {:text "新規 Clojure プロジェクトでは migratus が自然"
+              :tags [:conditional]}
+  :relations {:conflicts-with [[migratus/migratus "マイグレーションは片方に統一、migratus が :recommended"]
+                               [org.liquibase/liquibase-core "マイグレーションは片方に統一、liquibase は :conditional"]
+                               [joplin/joplin "マイグレーションは片方に統一、joplin は :deprecated"]]}}
 
  ;; Liquibase: 同上、XML DSL。条件付き採用。
- {:purpose  [:db :migration]
-  :ids      {:coord org.liquibase/liquibase-core}
-  :judgment {:status          :conditional
-             :applicable-when "既存 Java 資産の互換保守、新規 Clojure プロジェクトは migratus"
-             :replacement     migratus/migratus}
-  :reasons  {:text "新規 Clojure プロジェクトでは migratus が自然"
-             :tags [:conditional]}}
+ {:purpose   [:db :migration]
+  :ids       {:coord org.liquibase/liquibase-core}
+  :judgment  {:status          :conditional
+              :applicable-when "既存 Java 資産の互換保守、新規 Clojure プロジェクトは migratus"
+              :replacement     migratus/migratus}
+  :reasons   {:text "新規 Clojure プロジェクトでは migratus が自然"
+              :tags [:conditional]}
+  :relations {:conflicts-with [[migratus/migratus "マイグレーションは片方に統一、migratus が :recommended"]
+                               [org.flywaydb/flyway-core "マイグレーションは片方に統一、flyway は :conditional"]
+                               [joplin/joplin "マイグレーションは片方に統一、joplin は :deprecated"]]}}
 
  ;; joplin: メンテ低迷、migratus へ。
  {:purpose  [:db :migration]
@@ -1331,10 +1389,11 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
- {:purpose  [:testing :e2e]
-  :ids      {:coord etaoin/etaoin :ns "etaoin.api"}
-  :judgment {:status :recommended}
-  :reasons  {:text "100% Clojure、map で driver 設定、data 駆動"}}
+ {:purpose   [:testing :e2e]
+  :ids       {:coord etaoin/etaoin :ns "etaoin.api"}
+  :judgment  {:status :recommended}
+  :reasons   {:text "100% Clojure、map で driver 設定、data 駆動"}
+  :relations {:conflicts-with [[clj-webdriver/clj-webdriver "E2E WebDriver は片方に統一、clj-webdriver はメンテ停止 :deprecated"]]}}
 
  ;; === 代替と却下 ===
  ;; clj-webdriver: メンテ停止、etaoin が後継。
@@ -1491,10 +1550,11 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
- {:purpose  [:markdown]
-  :ids      {:coord markdown-clj/markdown-clj :ns "markdown.core"}
-  :judgment {:status :recommended}
-  :reasons  {:text "endophile の代替、メンテ継続中"}}
+ {:purpose   [:markdown]
+  :ids       {:coord markdown-clj/markdown-clj :ns "markdown.core"}
+  :judgment  {:status :recommended}
+  :reasons   {:text "endophile の代替、メンテ継続中"}
+  :relations {:conflicts-with [[endophile/endophile "markdown ライブラリは片方に統一、endophile はメンテ停止 :deprecated"]]}}
 
  ;; === 代替と却下 ===
  ;; endophile: 開発停止、markdown-clj へ移行。
@@ -1617,10 +1677,11 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
- {:purpose  [:search :elasticsearch]
-  :ids      {:coord mpenet/spandex :ns "qbits.spandex"}
-  :judgment {:status :recommended}
-  :reasons  {:text "Elasticsearch クライアント、elastisch の代替"}}
+ {:purpose   [:search :elasticsearch]
+  :ids       {:coord mpenet/spandex :ns "qbits.spandex"}
+  :judgment  {:status :recommended}
+  :reasons   {:text "Elasticsearch クライアント、elastisch の代替"}
+  :relations {:conflicts-with [[clojurewerkz/elastisch "Elasticsearch クライアントは片方に統一、elastisch はメンテ停止 :deprecated"]]}}
 
  ;; === 代替と却下 ===
  ;; elastisch: メンテナンス停止、spandex が現役。
@@ -1862,11 +1923,12 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
   :judgment {:status :recommended :version "2.x"}
   :reasons  {:text "pigpio バックエンド、Pi4J v2 のネイティブ実装"}}
 
- {:purpose  [:messaging :mqtt]
-  :ids      {:coord org.eclipse.paho/org.eclipse.paho.client.mqttv3
-             :ns    "org.eclipse.paho.client.mqttv3"}
-  :judgment {:status :recommended :version "1.2.5"}
-  :reasons  {:text "Paho MQTT Java 公式、machine-head の代替"}}
+ {:purpose   [:messaging :mqtt]
+  :ids       {:coord org.eclipse.paho/org.eclipse.paho.client.mqttv3
+              :ns    "org.eclipse.paho.client.mqttv3"}
+  :judgment  {:status :recommended :version "1.2.5"}
+  :reasons   {:text "Paho MQTT Java 公式、machine-head の代替"}
+  :relations {:conflicts-with [[clojurewerkz/machine_head "MQTT クライアントは片方に統一、machine-head は :deprecated"]]}}
 
  ;; === 代替と却下 ===
  ;; machine-head (clojurewerkz): Paho MQTT Java を直接使うほうが依存が薄い。
@@ -2131,26 +2193,32 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
- {:purpose  [:desktop :gui]
-  :ids      {:coord io.github.humbleui/humbleui}
-  :judgment {:status :recommended :version "0.2.0"}
-  :reasons  {:text "Skia ベース、宣言的 API、API 変動リスクあり (暫定採用)"}}
+ {:purpose   [:desktop :gui]
+  :ids       {:coord io.github.humbleui/humbleui}
+  :judgment  {:status :recommended :version "0.2.0"}
+  :reasons   {:text "Skia ベース、宣言的 API、API 変動リスクあり (暫定採用)"}
+  :relations {:conflicts-with [[cljfx/cljfx "デスクトップ GUI は片方に統一、cljfx は :acceptable（安定性優先時）"]
+                               [seesaw/seesaw "デスクトップ GUI は片方に統一、seesaw は :conditional（レガシー保守のみ）"]]}}
 
- {:purpose  [:desktop :gui :javafx]
-  :ids      {:coord cljfx/cljfx :ns "cljfx.api"}
-  :judgment {:status :acceptable}
-  :reasons  {:text "JavaFX 宣言的ラッパ、成熟。安定性優先なら採用を判断し ADR 記録"}}
+ {:purpose   [:desktop :gui :javafx]
+  :ids       {:coord cljfx/cljfx :ns "cljfx.api"}
+  :judgment  {:status :acceptable}
+  :reasons   {:text "JavaFX 宣言的ラッパ、成熟。安定性優先なら採用を判断し ADR 記録"}
+  :relations {:conflicts-with [[io.github.humbleui/humbleui "デスクトップ GUI は片方に統一、humbleui が :recommended"]
+                               [seesaw/seesaw "デスクトップ GUI は片方に統一、seesaw は :conditional"]]}}
 
  ;; === 代替と却下 ===
  ;; seesaw (Swing ラッパ): 軽量・古典的だが、モダン UI には弱い。
  ;; 新規採用不可、レガシー保守のみ条件付き採用。
- {:purpose  [:desktop :gui]
-  :ids      {:coord seesaw/seesaw :ns "seesaw.core"}
-  :judgment {:status          :conditional
-             :applicable-when "レガシー保守"
-             :replacement     [io.github.humbleui/humbleui cljfx/cljfx]}
-  :reasons  {:text "Swing ベースで古い、新規は humbleui / cljfx"
-             :tags [:conditional]}}
+ {:purpose   [:desktop :gui]
+  :ids       {:coord seesaw/seesaw :ns "seesaw.core"}
+  :judgment  {:status          :conditional
+              :applicable-when "レガシー保守"
+              :replacement     [io.github.humbleui/humbleui cljfx/cljfx]}
+  :reasons   {:text "Swing ベースで古い、新規は humbleui / cljfx"
+              :tags [:conditional]}
+  :relations {:conflicts-with [[io.github.humbleui/humbleui "デスクトップ GUI は片方に統一、humbleui が :recommended"]
+                               [cljfx/cljfx "デスクトップ GUI は片方に統一、cljfx は :acceptable"]]}}
 
  ;; membrane: 純 Clojure、クロスプラットフォーム挑戦的。ADR を伴う採用可。
  ;; 生 Swing / AWT を proxy で多用する構成: 宣言的でなく、テスト性が低い。
@@ -2301,10 +2369,11 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 [;; === 採用 ===
  ;; core.async: Clojure の CSP チャネル、非同期パイプライン。
  ;; manifold の代替として data-pipeline / web-api / worker で活用。
- {:purpose  [:async]
-  :ids      {:coord org.clojure/core.async :ns "clojure.core.async"}
-  :judgment {:status :recommended}
-  :reasons  {:text "CSP チャネル、manifold の代替"}}
+ {:purpose   [:async]
+  :ids       {:coord org.clojure/core.async :ns "clojure.core.async"}
+  :judgment  {:status :recommended}
+  :reasons   {:text "CSP チャネル、manifold の代替"}
+  :relations {:conflicts-with [[manifold/manifold "非同期抽象は片方に統一、manifold は設計思想不整合"]]}}
 
  ;; === 代替と却下 ===
  ;; manifold: aleph と同系統の設計不整合、core.async / promise.cljc へ。
@@ -2357,15 +2426,19 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
- {:purpose  [:time]
-  :ids      {:coord tick/tick :ns "tick.core"}
-  :judgment {:status :recommended :version "1.0"}
-  :reasons  {:text "data 駆動 java.time ラッパ、Malli 統合容易"}}
+ {:purpose   [:time]
+  :ids       {:coord tick/tick :ns "tick.core"}
+  :judgment  {:status :recommended :version "1.0"}
+  :reasons   {:text "data 駆動 java.time ラッパ、Malli 統合容易"}
+  :relations {:conflicts-with [[clojure.java-time/clojure.java-time "時刻処理は片方に統一"]
+                               [clj-time/clj-time "時刻処理は片方に統一、clj-time は Joda-Time ベースで非推奨"]]}}
 
- {:purpose  [:time :jdk-wrapper]
-  :ids      {:coord clojure.java-time/clojure.java-time :ns "java-time.api"}
-  :judgment {:status :acceptable}
-  :reasons  {:text "JDK java.time 薄ラッパ、依存最小・学習コスト低"}}
+ {:purpose   [:time :jdk-wrapper]
+  :ids       {:coord clojure.java-time/clojure.java-time :ns "java-time.api"}
+  :judgment  {:status :acceptable}
+  :reasons   {:text "JDK java.time 薄ラッパ、依存最小・学習コスト低"}
+  :relations {:conflicts-with [[tick/tick "時刻処理は片方に統一"]
+                               [clj-time/clj-time "時刻処理は片方に統一、clj-time は Joda-Time ベースで非推奨"]]}}
 
  ;; === 代替と却下 ===
  ;; clj-time (Joda-Time ベース): JDK 8+ で java.time が標準化された現在は不要。
