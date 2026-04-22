@@ -1426,6 +1426,32 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 - aws-api の呼出しパターンを流用、学習コスト最小
 - SDK 直接でもブリッジ層を Clojure で薄く書ける
 
+```edn
+;; lib-catalog
+[;; === 採用 ===
+ {:purpose  [:aws :core]
+  :ids      {:coord com.cognitect.aws/api :ns "cognitect.aws.api"}
+  :judgment {:status :recommended}
+  :reasons  {:text "Cognitect aws-api 本体、SDK v2 ベース・純 Clojure"}}
+
+ {:purpose  [:aws :s3]
+  :ids      {:coord com.cognitect.aws/s3}
+  :judgment {:status :recommended}
+  :reasons  {:text "ファイルストレージ、aws-api 系列、サービスごと分割"}}
+
+ ;; === 代替と却下 ===
+ ;; Amazonica: メンテ停止傾向、aws-api が後継。
+ {:purpose  [:aws]
+  :ids      {:coord amazonica/amazonica :ns "amazonica"}
+  :judgment {:status :deprecated :severity :superseded :replacement com.cognitect.aws/api}
+  :reasons  {:text "Cognitect aws-api が SDK v2 ベース、サービスごと分割で軽量"
+             :tags [:replacement-available]}}
+
+ ;; 自作クラウド抽象レイヤー: 疎結合の名目で抽象が漏れる、各クラウドを直接叩く。
+ ;; narrative のみ。
+ ]
+```
+
 **採用 stack**: web-api / worker / batch に S3 要件が出た時
 
 **適用条件**:
@@ -1438,14 +1464,6 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 **採用**:
 - **PostgreSQL 全文検索**（`tsvector`）→ 既存 next.jdbc で完結、**第一選択**
 - **Elasticsearch / OpenSearch**: `mpenet/spandex`（中〜大規模時）
-
-**検討した代替**:
-
-| 候補 | 却下理由 |
-|---|---|
-| clojurewerkz/elastisch | メンテ停止（G4） |
-| Apache Lucene 直接 | 組込み用途で稀に有用だが、通常過剰（G6） |
-| Algolia / Meilisearch 専用 Clojure wrapper | ほぼ無い、HTTP 直接で十分 |
 
 **採用理由**:
 - PostgreSQL の tsvector は既存 DB で完結、追加インフラ不要
@@ -1638,13 +1656,10 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 - **OCR**: Tesseract（`net.sourceforge.tess4j`）を **shell out で呼び出し**、インプロセス JNI は避ける
 - **音声**: JDK 標準 + 必要時 Java ライブラリ（`overtone` は創作用途のみ）
 
-**検討した代替**:
-
-| 候補 | 却下理由 |
-|---|---|
-| JavaCV 直接 | OpenCV-Clojure 経由が慣用（G7） |
-| Imaging 系の古い Clojure wrapper | メンテ停滞（G4） |
-| overtone（プロダクション） | 創作用途のみ、副作用が内側に漏れる（G3） |
+**検討して却下した代替（narrative のみ、coord 化せず）**:
+- JavaCV 直接: OpenCV-Clojure 経由が慣用
+- Imaging 系の古い Clojure wrapper: メンテ停滞
+- overtone（プロダクション）: 創作用途のみ、副作用が内側に漏れる
 
 **採用 stack**: 画像・動画処理を扱うプロジェクトに任意追加（web-api / batch / worker 拡張）
 
@@ -1662,19 +1677,46 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 - **GPIO 制御（Raspberry Pi 等）**: `Pi4J`（Java、純 Clojure ラッパなし）
 - **MQTT**: `eclipse/paho.mqtt.java`（Java 直接、data 駆動ラッパ薄く）
 
-**検討した代替**:
-
-| 候補 | 却下理由 |
-|---|---|
-| Babashka | 本テンプレート方針で不採用（shell script 優先） |
-| 旧 Clojure MQTT ラッパ | メンテ停滞（G4） |
-| ESP32 等の非 JVM 環境 | 射程外（ADR で Rust/Go 推奨を記録） |
-
 **採用理由**:
 - GraalVM Native Image で起動時間 100ms 以下、メモリ 50MB 程度に削減可能
 - Pi4J は Java 界のデファクト、薄く Clojure で包む
 
-**採用 stack**: edge stack（§4.2.14）
+```edn
+;; lib-catalog
+[;; === 採用 ===
+ {:purpose  [:edge :gpio]
+  :ids      {:coord com.pi4j/pi4j-core}
+  :judgment {:status :recommended :version "2.x"}
+  :reasons  {:text "Raspberry Pi GPIO の標準、Pi4J v2"}}
+
+ {:purpose  [:edge :gpio :pigpio]
+  :ids      {:coord com.pi4j/pi4j-plugin-pigpio}
+  :judgment {:status :recommended :version "2.x"}
+  :reasons  {:text "pigpio バックエンド、Pi4J v2 のネイティブ実装"}}
+
+ {:purpose  [:messaging :mqtt]
+  :ids      {:coord org.eclipse.paho/org.eclipse.paho.client.mqttv3
+             :ns    "org.eclipse.paho.client.mqttv3"}
+  :judgment {:status :recommended :version "1.2.5"}
+  :reasons  {:text "Paho MQTT Java 公式、machine-head の代替"}}
+
+ ;; === 代替と却下 ===
+ ;; machine-head (clojurewerkz): Paho MQTT Java を直接使うほうが依存が薄い。
+ {:purpose  [:messaging :mqtt]
+  :ids      {:coord   clojurewerkz/machine_head
+             :aliases [clojurewerkz/machine-head]
+             :ns      "clojurewerkz.machine-head"}
+  :judgment {:status :deprecated :severity :superseded
+             :replacement org.eclipse.paho/org.eclipse.paho.client.mqttv3}
+  :reasons  {:text "Paho MQTT Java を直接使うほうが依存が薄い"
+             :tags [:replacement-available]}}
+
+ ;; Babashka: 本テンプレート方針で不採用（shell script 優先）。narrative のみ。
+ ;; ESP32 等の非 JVM 環境: 射程外（ADR で Rust/Go 推奨を記録）。narrative のみ。
+ ]
+```
+
+**採用 stack**: edge stack
 
 **適用条件**:
 - Raspberry Pi クラス → edge stack
@@ -1704,25 +1746,58 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 
 **採用時の扱い**: Electric を使う要件が出たら、本テンプレート外の別フレームワークとして扱い、ADR で明示的に射程外と記録。
 
+```edn
+;; lib-catalog
+[;; === 射程外 ===
+ {:purpose  [:web :fullstack]
+  :ids      {:coord   com.hyperfiddle/electric
+             :aliases [hyperfiddle/electric]
+             :ns      "hyperfiddle.electric"}
+  :judgment {:status :scope-excluded}
+  :reasons  {:text "§3.40.1 射程外、cljs 前提・macro 重依存・API 変動"
+             :tags [:philosophy-mismatch :conditional]}}]
+```
+
 ### 3.41 シリアライゼーション
 
 **採用**:
 - **EDN（既定）**: Clojure 標準、設定・永続化・IPC 全般で第一選択
 - **Nippy**: `com.taoensso/nippy`（EPL、Taoensso 安定メンテ、高速 binary、Clojure data 構造をそのまま serialize）
 
-**検討した代替**:
-
-| 候補 | 却下理由 |
-|---|---|
-| Fressian | 使えるが Nippy の方が速度・対応型で優位（G6） |
-| ProtoBuf | IDL 駆動で data 駆動でない、§3.30 gRPC で言及済（G1） |
-| Kryo 直接 | OOP 寄り、Nippy が Clojure 向けに最適化済（G6） |
-| Java Serialization | セキュリティリスク（RCE 脆弱性）、設計思想不整合（G1/G5） |
-
 **採用理由**:
 - EDN は Clojure data の自然な serialize 形式、human-readable で debug 容易
 - Nippy は Redis payload / ファイルスナップショット / IPC で EDN より高速（binary）、Clojure の record / regex / date 等も透過的に扱える
 - Taoensso ライブラリは Clojure エコシステムで信頼性が高い
+
+```edn
+;; lib-catalog
+[;; === 採用 ===
+ {:purpose  [:serialization :nippy]
+  :ids      {:coord com.taoensso/nippy :ns "taoensso.nippy"}
+  :judgment {:status :recommended}
+  :reasons  {:text "高速バイナリシリアライザ、Fressian の代替"}}
+
+ {:purpose  [:serialization :transit]
+  :ids      {:coord com.cognitect/transit-clj :ns "cognitect.transit"}
+  :judgment {:status :recommended}
+  :reasons  {:text "Cognitect Transit、Clojure 標準のバイナリ転送"}}
+
+ ;; === 代替と却下 ===
+ ;; data.fressian: 使えるが Nippy の方が速度・対応型で優位。既存採用プロジェクトは継続可。
+ {:purpose  [:serialization]
+  :ids      {:coord org.clojure/data.fressian :ns "clojure.data.fressian"}
+  :judgment {:status          :conditional
+             :applicable-when "既存採用プロジェクトは継続可、新規は nippy"
+             :replacement     com.taoensso/nippy}
+  :reasons  {:text "nippy が速度・型対応で優位"
+             :tags [:conditional :replacement-available]}}
+
+ ;; ProtoBuf: IDL 駆動で data 駆動でない、§3.30 gRPC で言及済。narrative のみ。
+ ;; Kryo 直接: OOP 寄り、Nippy が Clojure 向けに最適化済。narrative のみ。
+ ;; Java Serialization 直接: セキュリティリスク (RCE 脆弱性)、設計思想不整合。
+ ;; 特定 coord なし (JDK 標準クラスの直接利用)、§8 narrative で注意喚起。
+ ]
+```
 
 **採用 stack**: web-api / worker / batch / saas / llm-app（必要性に応じ）
 
@@ -1741,14 +1816,6 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 - **Transducer**（既に標準）: 中間 seq 削減、§9.3 で既言及
 - **VisualVM / JFR**（JDK 付属）: プロファイリング
 
-**検討した代替**:
-
-| 候補 | 却下理由 |
-|---|---|
-| メモリ計測の自作 JVM reflection | clj-memory-meter が薄いラッパで十分（G6） |
-| LinkedHashMap interop 自作 | ordered が Clojure 慣用ラッパ（G6） |
-| YourKit / JProfiler（商用プロファイラ） | 有償、JFR + VisualVM で足りる範囲では不要（G5） |
-
 **採用理由**:
 - 「測ってから最適化」（CODING_GUIDE §9.1）を機械化するための最小セット
 - `org.flatland/ordered` は順序保証が必要な場面（`insertion-order` キーが意味を持つシリアライズ等）で有用
@@ -1762,26 +1829,56 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 - 設定ファイルで key 順序が意味を持つ（文書生成等）→ `org.flatland/ordered`
 - **鉄則**: 推測で最適化しない。criterium / JFR で証跡を取ってから変更（§1.2.5 失敗早期検知）
 
+**検討して却下した代替（narrative のみ）**:
+- メモリ計測の自作 JVM reflection: clj-memory-meter が薄いラッパで十分
+- LinkedHashMap interop 自作: ordered が Clojure 慣用ラッパ
+- YourKit / JProfiler（商用プロファイラ）: 有償、JFR + VisualVM で足りる範囲では不要
+
 ### 3.43 代替アーキテクチャプラットフォーム（条件付き採用）
 
 **採用方針**: 本テンプレートは **Integrant + Reitit + next.jdbc + mulog** の組合せを標準とするが、以下の代替フレームワークを**条件付きで採用可**とする。いずれも ADR 必須。
 
 **条件付き採用候補**:
 
-| フレームワーク | ライセンス | 採用条件 | 扱い |
-|---|---|---|---|
-| **Duct** (`duct-framework/duct`) | MIT | convention-over-configuration を好むチーム、Integrant のモジュール系統を拡張したい場合 | web-api stack の代替として ADR で採用可。本テンプレートの直接 Integrant 運用より抽象が厚いため、新規チームには直接 Integrant 推奨 |
-| **Biff** (`com.biffweb/biff`) | MIT | SaaS / マルチテナント完結 | §4.2.11 saas stack として正式採用済 |
-| **Rama** (Red Planet Labs) | **商用（community edition は小規模無料）** | 特殊要件：DB + streaming + queue + ML を単一 platform で統合したい超大規模要件。**§8.2 条件付き非推奨として扱う**（下記参照） | **本テンプレート標準では採用しない**。XTDB + worker + batch で代替可能なら代替優先 |
+```edn
+;; lib-catalog
+[;; === 条件付き採用 ===
+ ;; Biff: §3.22 マルチテナントで採用済、saas stack 向け framework。
+ ;; 本節では重複登録しない（§3.22 参照）。
 
-**検討した代替（採用しない）**:
+ ;; Duct: MIT ライセンス、Integrant ベースで本テンプレート哲学と部分整合。
+ ;; ただし duct.core/module 機構は直接 Integrant より抽象が厚く、Polylith brick
+ ;; 構造との統合でレイヤが過剰になりやすい。convention-over-configuration を好む
+ ;; チーム向け、新規チームには直接 Integrant 推奨。
+ {:purpose  [:platform :framework]
+  :ids      {:coord duct-framework/duct}
+  :judgment {:status          :conditional
+             :applicable-when "convention-over-configuration を好むチーム、直接 Integrant より抽象が欲しい場合、ADR 必須"
+             :replacement     integrant/integrant}
+  :reasons  {:text "直接 Integrant より抽象が厚い、Polylith brick と重なる"
+             :tags [:conditional]}}
 
-| 候補 | 却下理由 |
-|---|---|
-| Electric Clojure | §3.40.1 で射程外宣言 |
-| Fulcro | cljs 前提、本テンプレート射程外 |
-| re-frame | cljs 前提、本テンプレート射程外 |
-| Kit (`io.github.kit-clj/kit`) | 類似位置づけだが、本テンプレートの brick 構造との流儀差が大きい（G7）|
+ ;; Rama: 商用ライセンス (community edition は小規模無料)、framework 重量、
+ ;; ベンダーロックイン。DB + streaming + queue + ML 統合要件の超大規模のみ。
+ ;; 多くは XTDB + worker + batch で代替可。
+ {:purpose  [:platform]
+  :ids      {:coord   com.rpl/rama
+             :aliases [rama/rama]
+             :ns      "com.rpl.rama"}
+  :judgment {:status          :conditional
+             :applicable-when "商用ライセンス取得済み、不可避な大規模要件で採用判断、ADR 必須"
+             :replacement     [com.xtdb/xtdb-api]}
+  :reasons  {:text "商用ライセンス、ベンダーロックイン。XTDB + worker + batch stack で多くは代替可"
+             :tags [:license :conditional :philosophy-mismatch]}}
+
+ ;; === 代替（採用しない） ===
+ ;; Electric Clojure: §3.40.1 で射程外宣言済、同節で登録済。
+ ;; Fulcro: cljs 前提、本テンプレート射程外。narrative のみ。
+ ;; re-frame: cljs 前提、本テンプレート射程外。narrative のみ。
+ ;; Kit (io.github.kit-clj/kit): 類似位置づけだが、brick 構造との流儀差が大きい。
+ ;; narrative のみ。
+ ]
+```
 
 **Duct の扱い詳細**:
 - Integrant ベースで本テンプレート哲学と部分整合（data 駆動、副作用隔離）
@@ -1795,6 +1892,237 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 - 代替可能性: XTDB（DB + bitemporal） + worker stack（queue） + batch stack（streaming 的）の組合せで多くのケースを代替可
 
 **採用 stack**: 代替として採用した場合、既存 stack（web-api 等）を置き換える形。複数 stack 併用はしない（framework の全体性と衝突）。
+
+### 3.44 GraphQL API
+
+**採用**: `com.walmartlabs/lacinia`（Clojure 界デファクト、スキーマを EDN で宣言）
+
+**採用理由**:
+- Clojure コミュニティでのデファクト GraphQL 実装
+- スキーマを EDN として宣言、data 駆動で Malli と親和
+- Ring 統合は `lacinia-pedestal` または自作 middleware
+
+```edn
+;; lib-catalog
+[;; === 採用 ===
+ {:purpose  [:graphql]
+  :ids      {:coord com.walmartlabs/lacinia :ns "com.walmartlabs.lacinia"}
+  :judgment {:status :recommended :version "1.2.2"}
+  :reasons  {:text "Clojure 界デファクト、スキーマを EDN 宣言、Malli 親和性"}}
+
+ {:purpose  [:graphql :ring-integration]
+  :ids      {:coord com.walmartlabs/lacinia-pedestal}
+  :judgment {:status :acceptable :version "1.3"}
+  :reasons  {:text "Lacinia-Ring 統合、または自作 middleware でも可"}}
+
+ ;; === 代替と却下 ===
+ ;; graphql-java 直接: Lacinia の data 駆動抽象を活かせない、OOP 重量。
+ ;; narrative のみ、coord 化せず。
+ ]
+```
+
+**採用 stack**: graphql-api stack（他 stack で REST と併設する場合も本 §3.44 参照）
+
+**適用条件**:
+- GraphQL 主体の API → lacinia + lacinia-pedestal
+- REST と併設 → web-api stack + lacinia
+- N+1 問題 → Lacinia の superlifter / batching で対応
+
+### 3.45 デスクトップ GUI
+
+**採用**: `io.github.humbleui/humbleui`（暫定、開発途上）、安定性優先なら `cljfx/cljfx`
+
+**採用理由**:
+- humbleui: Skia ベースで高性能、宣言的 API、Rich Hickey 系エコシステム
+- cljfx: JavaFX ラッパ、成熟、宣言的、リソース消費やや大
+- **暫定採用**の humbleui は API 変動リスク、プロダクション投入は慎重に
+
+```edn
+;; lib-catalog
+[;; === 採用 ===
+ {:purpose  [:desktop :gui]
+  :ids      {:coord io.github.humbleui/humbleui}
+  :judgment {:status :recommended :version "0.2.0"}
+  :reasons  {:text "Skia ベース、宣言的 API、API 変動リスクあり (暫定採用)"}}
+
+ {:purpose  [:desktop :gui :javafx]
+  :ids      {:coord cljfx/cljfx :ns "cljfx.api"}
+  :judgment {:status :acceptable}
+  :reasons  {:text "JavaFX 宣言的ラッパ、成熟。安定性優先なら採用を判断し ADR 記録"}}
+
+ ;; === 代替と却下 ===
+ ;; seesaw (Swing ラッパ): 軽量・古典的だが、モダン UI には弱い。
+ ;; 新規採用不可、レガシー保守のみ条件付き採用。
+ {:purpose  [:desktop :gui]
+  :ids      {:coord seesaw/seesaw :ns "seesaw.core"}
+  :judgment {:status          :conditional
+             :applicable-when "レガシー保守"
+             :replacement     [io.github.humbleui/humbleui cljfx/cljfx]}
+  :reasons  {:text "Swing ベースで古い、新規は humbleui / cljfx"
+             :tags [:conditional]}}
+
+ ;; membrane: 純 Clojure、クロスプラットフォーム挑戦的。ADR を伴う採用可。
+ ;; 生 Swing / AWT を proxy で多用する構成: 宣言的でなく、テスト性が低い。
+ ;; メンテナンス停滞した古い Clojure GUI ラッパ: 最新 JVM との非整合リスク。
+ ;; 以上は coord 化せず narrative のみ。
+ ]
+```
+
+**採用 stack**: desktop stack
+
+**適用条件**:
+- 新規プロジェクト、モダン UI → humbleui（API 変動注意）
+- 安定性優先（業務アプリ等）→ cljfx
+- クロスプラットフォーム challenging → membrane（ADR 必須）
+- レガシー保守 → seesaw（条件付き採用、新規不可）
+
+### 3.46 メッセージキュー
+
+**採用**: キュー選択はインフラ要件に依存するが、各キューに対する推奨クライアントを揃える。
+
+**採用理由**:
+- AWS SQS: aws-api 系列で worker stack の他 AWS サービスと一貫性
+- Kafka: Confluent Platform 連携可、業界標準
+- RabbitMQ: AMQP 標準実装
+- Redis Stream / Pub-Sub: carmine を流用、小規模に有効
+- PostgreSQL LISTEN/NOTIFY: next.jdbc で直接、小規模なら有効（専用 lib 不要）
+
+```edn
+;; lib-catalog
+[;; === 採用 ===
+ {:purpose  [:messaging :queue :sqs]
+  :ids      {:coord com.cognitect.aws/sqs}
+  :judgment {:status :recommended}
+  :reasons  {:text "AWS SQS キュー、aws-api 系列"}}
+
+ {:purpose  [:messaging :queue :kafka]
+  :ids      {:coord fundingcircle/jackdaw}
+  :judgment {:status :recommended}
+  :reasons  {:text "Kafka、Confluent Platform 連携可"}}
+
+ {:purpose  [:messaging :queue :rabbitmq]
+  :ids      {:coord com.novemberain/langohr}
+  :judgment {:status :recommended}
+  :reasons  {:text "RabbitMQ AMQP"}}
+
+ {:purpose  [:messaging :queue :redis]
+  :ids      {:coord com.taoensso/carmine :ns "taoensso.carmine"}
+  :judgment {:status :acceptable}
+  :reasons  {:text "Redis Stream / Pub-Sub。cache と同ライブラリ"}}
+
+ ;; === 代替と却下 ===
+ ;; キューライブラリの独自ラッパを多層に重ねる構成: 障害時の挙動が追いにくい、
+ ;; 各キューの公式推奨クライアントを直接使う。narrative のみ。
+ ]
+```
+
+**採用 stack**: worker stack
+
+**適用条件**:
+- AWS 環境で SQS → com.cognitect.aws/sqs
+- 高スループット・順序保証 → Kafka (jackdaw)
+- RabbitMQ 既存インフラ → langohr
+- 小規模（Redis 既存）→ carmine
+- PostgreSQL 中心 → LISTEN/NOTIFY を next.jdbc で
+
+### 3.47 Bot プラットフォーム
+
+**採用方針**: プラットフォーム別 Clojure クライアント（Discord）または純 Clojure HTTP 呼び出し（Telegram / Slack）
+
+**採用理由**:
+- Telegram / Slack: Bot API は HTTP REST、hato 直接で十分実装可（wrapper 不要）
+- Discord: リアルタイム voice / event gateway が必要なため、専用 Clojure lib（discljord）が有効
+
+```edn
+;; lib-catalog
+[;; === 採用 ===
+ {:purpose  [:bot :discord]
+  :ids      {:coord suskalo/discljord}
+  :judgment {:status :recommended}
+  :reasons  {:text "Discord Bot 向け、Clojure 特化"}}
+
+ ;; === 代替と却下 ===
+ ;; Telegram / Slack 向け: 自作 HTTP 呼び出し（hato 直接）で十分。
+ ;; 専用 Clojure wrapper は多くはメンテ停滞（narrative のみ）。
+ ;; 旧世代の bot フレームワーク系: メンテナンス停滞のもの多数、純 Clojure の
+ ;; HTTP 呼び出しで実装するほうが寿命が長い。narrative のみ。
+ ]
+```
+
+**採用 stack**: bot stack
+
+**適用条件**:
+- Telegram / Slack → hato 直接実装（§3.11 採用）
+- Discord → discljord
+- 独自プロトコル → hato + manual WebSocket（§3.16 ring-websocket で可）
+
+### 3.48 SSR / HTML テンプレート
+
+**採用**: `rum/rum`（React 互換）、軽量用途は `hiccup/hiccup`、テンプレートエンジンは `selmer/selmer`
+
+**採用理由**:
+- rum: React 互換コンポーネントを Clojure で書ける、Biff と組み合わせ標準
+- hiccup: Clojure data として HTML を組み立てる最小 DSL、軽量
+- selmer: Django 風テンプレート、プロンプト・メール文面等のテンプレート管理に適合
+
+```edn
+;; lib-catalog
+[;; === 採用 ===
+ {:purpose  [:web :ssr]
+  :ids      {:coord rum/rum :ns "rum.core"}
+  :judgment {:status :recommended}
+  :reasons  {:text "SSR テンプレート、React 互換の概念"}}
+
+ {:purpose  [:web :html-dsl]
+  :ids      {:coord hiccup/hiccup :ns "hiccup.core"}
+  :judgment {:status :acceptable}
+  :reasons  {:text "Clojure data として HTML を組み立てる DSL。rum の代替軽量版"}}
+
+ ;; selmer は §3.37 LLM で採用済、本節では重複登録せず narrative のみで言及。
+ ]
+```
+
+**採用 stack**: saas stack（rum）、web-api stack（必要時 hiccup）、llm-app stack（selmer）
+
+**適用条件**:
+- Biff ベース SaaS → rum
+- 軽量 HTML 生成 → hiccup
+- テキストテンプレート（プロンプト・メール）→ selmer
+
+### 3.49 その他（stack 未分類）
+
+**位置づけ**: 明確な機能分類（§3.1〜§3.48）に属さないが、本テンプレートの運用で言及される lib。多くは cross-cutting or 基盤。
+
+```edn
+;; lib-catalog
+[;; === 採用 ===
+ ;; core.async: Clojure の CSP チャネル、非同期パイプライン。
+ ;; manifold の代替として data-pipeline / web-api / worker で活用。
+ {:purpose  [:async]
+  :ids      {:coord org.clojure/core.async :ns "clojure.core.async"}
+  :judgment {:status :recommended}
+  :reasons  {:text "CSP チャネル、manifold の代替"}}
+
+ ;; === 代替と却下 ===
+ ;; manifold: aleph と同系統の設計不整合、core.async / promise.cljc へ。
+ {:purpose  [:async]
+  :ids      {:coord manifold/manifold :ns "manifold.deferred"}
+  :judgment {:status :deprecated :severity :superseded :replacement org.clojure/core.async}
+  :reasons  {:text "aleph と同系統の設計不整合、core.async / promise.cljc へ"
+             :tags [:philosophy-mismatch]}}
+
+ ;; leiningen (新規プロジェクト): tools.deps 移行。既存 Lein ベースは条件付き継続可。
+ {:purpose  [:build]
+  :ids      {:coord leiningen/leiningen}
+  :judgment {:status          :conditional
+             :applicable-when "既存 Lein ベースプロジェクトの段階移行"
+             :replacement     org.clojure/tools.deps}
+  :reasons  {:text "新規プロジェクトは tools.deps"
+             :tags [:conditional :replacement-available]}}
+ ]
+```
+
+**採用 stack**: 全 stack（cross-cutting / 基盤）
 
 ---
 
@@ -2011,99 +2339,47 @@ brick deps.edn が採用 stack の §4.2.X 採用時の確認事項を満たし�
 | **設計思想不整合** | 本テンプレートの原則（三基底原則、stack 構造等）と衝突 |
 | **条件付き** | 特定状況では可（例: レガシー保守は可、新規不可） |
 
-### 8.1 禁止ライブラリ（絶対に使わない）
+### 8.1 / 8.2 への記載は §3 各節へ移行済
 
-セキュリティ脆弱性・ライセンス違反リスク・決定的なメンテナンス停止など、**強い理由により採用を禁じる**ライブラリ。新規採用も既存コードでの継続使用も避ける（継続使用は速やかに代替へ移行）。
+禁止・非推奨ライブラリの lib-catalog エントリは、**すべて §3 各機能節の `;; lib-catalog` block に分配済**。本節は §8.0 理由タグ定義と §8.3 追加手順のみ残す。
 
-具体エントリは**各 stack の `;; lib-catalog` block の「不採用」節に分配済み**（§4.2.X）。本節は cross-cutting（特定 stack に属さない）禁止エントリのみ残す。
+具体 lib の採否 / 却下理由を確認する場合の索引:
 
-```edn
-;; lib-catalog
-[;; xerces bundled 版: XXE 脆弱性、全 stack で回避
- {:purpose  [:xml]
-  :ids      {:coord xerces/xercesImpl
-             :ns    "javax.xml.parsers.xerces"}
-  :judgment {:status :deprecated :severity :forbidden :replacement org.clojure/data.xml}
-  :reasons  {:text "XXE 脆弱性、bundled 版は JDK 付属のほうが安全"
-             :tags [:security]}}
+- ロギング (log4j 禁止 / timbre 非推奨) → §3.7
+- XML (xerces / xalan 禁止) → §3.32
+- JSON (org.json 禁止 / data.json / cheshire 非推奨) → §3.5
+- 検証 (spec.alpha 非推奨) → §3.3
+- 設定管理 (environ / immuconf 非推奨) → §3.2
+- ライフサイクル (Component / Mount 非推奨) → §3.1
+- HTTP (compojure / pedestal / bidi / aleph / immutant 非推奨・条件付き) → §3.4
+- HTTP クライアント (clj-http 条件付き) → §3.11
+- 認証 (friend 非推奨) → §3.12
+- DB (java.jdbc / Korma 非推奨) → §3.6
+- マイグレーション (Flyway / Liquibase / joplin 条件付き・非推奨) → §3.25
+- メトリクス (metrics-clojure 系非推奨) → §3.14
+- スケジューリング (at-at / Quartz / tea-time 非推奨・条件付き) → §3.15
+- リトライ (robert.bruce 非推奨) → §3.17
+- i18n (tower 非推奨) → §3.20
+- E2E (clj-webdriver 非推奨) → §3.27
+- Markdown (endophile 非推奨) → §3.32
+- 全文検索 (elastisch 非推奨) → §3.35
+- AWS (amazonica 非推奨) → §3.34
+- ML (incanter / dl4clj / cortex / SMILE 非推奨・条件付き) → §3.36
+- LLM (langchain4j narrative) → §3.37
+- MQTT (machine-head 非推奨) → §3.39
+- シリアライゼーション (data.fressian 条件付き / Java Serialization narrative) → §3.41
+- 代替プラットフォーム (Rama / Duct 条件付き / Electric 射程外) → §3.43
+- GUI (seesaw 条件付き) → §3.45（新設）
 
- ;; xalan bundled 版: xerces 同系統
- {:purpose  [:xml]
-  :ids      {:coord xalan/xalan}
-  :judgment {:status :deprecated :severity :forbidden :replacement org.clojure/data.xml}
-  :reasons  {:text "XXE 脆弱性、bundled 版は JDK 付属のほうが安全"
-             :tags [:security]}}]
-```
-
-stack に属するもの（log4j は §4.2.2 cli、org.json は §4.2.3 web-api）は該当 stack 参照。
-
-**追加する場合の基準**: CVE 報告 / 公式メンテナンス終了宣言 / ライセンス問題が発覚したもの。**事実駆動**で記録し、憶測では追加しない。特定 stack に属するなら当該 §4.2.X の不採用節に追加する。
-
-### 8.2 非推奨ライブラリ（新規採用を避ける）
-
-新規採用は避けるが、既存コードで使われている場合は段階的移行で可。**推奨代替への移行**を基本方針とする。
-
-具体エントリは**各 stack の `;; lib-catalog` block の「不採用」節に分配済み**（§4.2.X を参照）。本節は cross-cutting（特定 stack に属さない）非推奨エントリのみ残す。
-
-```edn
-;; lib-catalog
-[;; :validation — Malli が必須層、spec は cross-cutting で非推奨
- {:purpose  [:validation]
-  :ids      {:coord org.clojure/spec.alpha
-             :ns    "clojure.spec.alpha"}
-  :judgment {:status :deprecated :severity :superseded :replacement metosin/malli}
-  :reasons  {:text "関数契約・generator の表現力で Malli に劣る"
-             :tags [:philosophy-mismatch :replacement-available]}}
-
- ;; :build — tools.deps 移行、Lein は cross-cutting 条件付き
- {:purpose  [:build]
-  :ids      {:coord leiningen/leiningen}
-  :judgment {:status          :conditional
-             :applicable-when "既存 Lein ベースプロジェクトの段階移行"
-             :replacement     org.clojure/tools.deps}
-  :reasons  {:text "新規プロジェクトは tools.deps"
-             :tags [:conditional :replacement-available]}}
-
- ;; :metrics — mulog に一元化、metrics-clojure 系は cross-cutting 非推奨
- {:purpose  [:metrics :dropwizard-ring]
-  :ids      {:coord io.github.metrics-clojure-ring/metrics-clojure-ring}
-  :judgment {:status :deprecated :severity :superseded :replacement com.brunobonacci/mulog}
-  :reasons  {:text "mulog のイベント駆動と重複、mulog に一元化"
-             :tags [:philosophy-mismatch]}}
-
- {:purpose  [:metrics :dropwizard]
-  :ids      {:coord metrics-clojure/metrics-clojure}
-  :judgment {:status :deprecated :severity :superseded :replacement com.brunobonacci/mulog}
-  :reasons  {:text "mulog のイベント駆動と重複、mulog に一元化"
-             :tags [:philosophy-mismatch]}}
-
- {:purpose  [:metrics :prometheus]
-  :ids      {:coord clj-commons/iapetos
-             :ns    "iapetos.core"}
-  :judgment {:status :deprecated :severity :superseded :replacement com.brunobonacci/mulog}
-  :reasons  {:text "mulog のイベント駆動と重複、mulog に一元化"
-             :tags [:philosophy-mismatch]}}
-
- ;; :platform — Rama は商用 / ベンダーロックイン、条件付き
- {:purpose  [:platform]
-  :ids      {:coord   com.rpl/rama
-             :aliases [rama/rama]
-             :ns      "com.rpl.rama"}
-  :judgment {:status          :conditional
-             :applicable-when "商用ライセンス取得済み、不可避な大規模要件で採用判断、ADR 必須"
-             :replacement     [com.xtdb/xtdb]}
-  :reasons  {:text "商用ライセンス、ベンダーロックイン。XTDB + worker + batch stack で多くは代替可"
-             :tags [:license :conditional :philosophy-mismatch]}}]
-```
-
-**narrative のみ（data に含まれない）**:
-- **Keycloak + adapter**（:auth :conditional）: エンタープライズ認証ならば可、重量級で小〜中規模は過剰
+**narrative のみ（特定 coord を持たない注意喚起）**:
+- **Keycloak + adapter**（:auth）: エンタープライズ認証ならば可、重量級で小〜中規模は過剰
 - **Memcached クライアント**（:cache）: 特定 coord なし、Redis (`com.taoensso/carmine`) が機能的に優位
 - **OpenTelemetry 自動計装**（:metrics）: mulog とメトリクスを分離し一貫性が下がる
 - **Babashka 本番基盤**（:scripting）: shell script 代替のみ可、本番コードは uberjar + GraalVM Native Image
 - **iText 直接利用**（:pdf）: AGPL ライセンスで SaaS/商用配布と衝突、`clj-pdf` や Flying Saucer (openpdf 版) が安全
 - **langchain4j Clojure 移植**（:llm）: hato + wkok/openai-clojure で直接実装推奨
 - **Java Serialization 直接** (`java.io.Serializable`)（:serialization）: RCE 脆弱性歴、com.taoensso/nippy へ
+- **leiningen（新規プロジェクト、:build）**: 条件付き、tools.deps 推奨
 
 これらは特定 coord を持たない（カテゴリ / 技術 / 方針レベル）ため EDN からは外し、人間向け注意喚起として narrative にとどめる。
 

@@ -445,6 +445,23 @@
   :ids {:coord draines/postal, :ns "postal.core"},
   :judgment {:status :recommended},
   :reasons {:text "SMTP メール送信、軽量"}}
+ {:purpose [:aws :core],
+  :ids {:coord com.cognitect.aws/api, :ns "cognitect.aws.api"},
+  :judgment {:status :recommended},
+  :reasons {:text "Cognitect aws-api 本体、SDK v2 ベース・純 Clojure"}}
+ {:purpose [:aws :s3],
+  :ids {:coord com.cognitect.aws/s3},
+  :judgment {:status :recommended},
+  :reasons {:text "ファイルストレージ、aws-api 系列、サービスごと分割"}}
+ {:purpose [:aws],
+  :ids {:coord amazonica/amazonica, :ns "amazonica"},
+  :judgment
+  {:status :deprecated,
+   :severity :superseded,
+   :replacement com.cognitect.aws/api},
+  :reasons
+  {:text "Cognitect aws-api が SDK v2 ベース、サービスごと分割で軽量",
+   :tags [:replacement-available]}}
  {:purpose [:search :elasticsearch],
   :ids {:coord mpenet/spandex, :ns "qbits.spandex"},
   :judgment {:status :recommended},
@@ -527,6 +544,142 @@
   :ids {:coord selmer/selmer, :ns "selmer.parser"},
   :judgment {:status :recommended, :version "1.12.0"},
   :reasons {:text "Django 風テンプレート、プロンプト管理等"}}
+ {:purpose [:edge :gpio],
+  :ids {:coord com.pi4j/pi4j-core},
+  :judgment {:status :recommended, :version "2.x"},
+  :reasons {:text "Raspberry Pi GPIO の標準、Pi4J v2"}}
+ {:purpose [:edge :gpio :pigpio],
+  :ids {:coord com.pi4j/pi4j-plugin-pigpio},
+  :judgment {:status :recommended, :version "2.x"},
+  :reasons {:text "pigpio バックエンド、Pi4J v2 のネイティブ実装"}}
+ {:purpose [:messaging :mqtt],
+  :ids
+  {:coord org.eclipse.paho/org.eclipse.paho.client.mqttv3,
+   :ns "org.eclipse.paho.client.mqttv3"},
+  :judgment {:status :recommended, :version "1.2.5"},
+  :reasons {:text "Paho MQTT Java 公式、machine-head の代替"}}
+ {:purpose [:messaging :mqtt],
+  :ids
+  {:coord clojurewerkz/machine_head,
+   :aliases [clojurewerkz/machine-head],
+   :ns "clojurewerkz.machine-head"},
+  :judgment
+  {:status :deprecated,
+   :severity :superseded,
+   :replacement org.eclipse.paho/org.eclipse.paho.client.mqttv3},
+  :reasons
+  {:text "Paho MQTT Java を直接使うほうが依存が薄い",
+   :tags [:replacement-available]}}
+ {:purpose [:web :fullstack],
+  :ids
+  {:coord com.hyperfiddle/electric,
+   :aliases [hyperfiddle/electric],
+   :ns "hyperfiddle.electric"},
+  :judgment {:status :scope-excluded},
+  :reasons
+  {:text "§3.40.1 射程外、cljs 前提・macro 重依存・API 変動",
+   :tags [:philosophy-mismatch :conditional]}}
+ {:purpose [:serialization :nippy],
+  :ids {:coord com.taoensso/nippy, :ns "taoensso.nippy"},
+  :judgment {:status :recommended},
+  :reasons {:text "高速バイナリシリアライザ、Fressian の代替"}}
+ {:purpose [:serialization :transit],
+  :ids {:coord com.cognitect/transit-clj, :ns "cognitect.transit"},
+  :judgment {:status :recommended},
+  :reasons {:text "Cognitect Transit、Clojure 標準のバイナリ転送"}}
+ {:purpose [:serialization],
+  :ids {:coord org.clojure/data.fressian, :ns "clojure.data.fressian"},
+  :judgment
+  {:status :conditional,
+   :applicable-when "既存採用プロジェクトは継続可、新規は nippy",
+   :replacement com.taoensso/nippy},
+  :reasons
+  {:text "nippy が速度・型対応で優位",
+   :tags [:conditional :replacement-available]}}
+ {:purpose [:platform :framework],
+  :ids {:coord duct-framework/duct},
+  :judgment
+  {:status :conditional,
+   :applicable-when
+   "convention-over-configuration を好むチーム、直接 Integrant より抽象が欲しい場合、ADR 必須",
+   :replacement integrant/integrant},
+  :reasons
+  {:text "直接 Integrant より抽象が厚い、Polylith brick と重なる",
+   :tags [:conditional]}}
+ {:purpose [:platform],
+  :ids {:coord com.rpl/rama, :aliases [rama/rama], :ns "com.rpl.rama"},
+  :judgment
+  {:status :conditional,
+   :applicable-when "商用ライセンス取得済み、不可避な大規模要件で採用判断、ADR 必須",
+   :replacement [com.xtdb/xtdb-api]},
+  :reasons
+  {:text "商用ライセンス、ベンダーロックイン。XTDB + worker + batch stack で多くは代替可",
+   :tags [:license :conditional :philosophy-mismatch]}}
+ {:purpose [:graphql],
+  :ids {:coord com.walmartlabs/lacinia, :ns "com.walmartlabs.lacinia"},
+  :judgment {:status :recommended, :version "1.2.2"},
+  :reasons {:text "Clojure 界デファクト、スキーマを EDN 宣言、Malli 親和性"}}
+ {:purpose [:graphql :ring-integration],
+  :ids {:coord com.walmartlabs/lacinia-pedestal},
+  :judgment {:status :acceptable, :version "1.3"},
+  :reasons {:text "Lacinia-Ring 統合、または自作 middleware でも可"}}
+ {:purpose [:desktop :gui],
+  :ids {:coord io.github.humbleui/humbleui},
+  :judgment {:status :recommended, :version "0.2.0"},
+  :reasons {:text "Skia ベース、宣言的 API、API 変動リスクあり (暫定採用)"}}
+ {:purpose [:desktop :gui :javafx],
+  :ids {:coord cljfx/cljfx, :ns "cljfx.api"},
+  :judgment {:status :acceptable},
+  :reasons {:text "JavaFX 宣言的ラッパ、成熟。安定性優先なら採用を判断し ADR 記録"}}
+ {:purpose [:desktop :gui],
+  :ids {:coord seesaw/seesaw, :ns "seesaw.core"},
+  :judgment
+  {:status :conditional,
+   :applicable-when "レガシー保守",
+   :replacement [io.github.humbleui/humbleui cljfx/cljfx]},
+  :reasons
+  {:text "Swing ベースで古い、新規は humbleui / cljfx", :tags [:conditional]}}
+ {:purpose [:messaging :queue :sqs],
+  :ids {:coord com.cognitect.aws/sqs},
+  :judgment {:status :recommended},
+  :reasons {:text "AWS SQS キュー、aws-api 系列"}}
+ {:purpose [:messaging :queue :kafka],
+  :ids {:coord fundingcircle/jackdaw},
+  :judgment {:status :recommended},
+  :reasons {:text "Kafka、Confluent Platform 連携可"}}
+ {:purpose [:messaging :queue :rabbitmq],
+  :ids {:coord com.novemberain/langohr},
+  :judgment {:status :recommended},
+  :reasons {:text "RabbitMQ AMQP"}}
+ {:purpose [:messaging :queue :redis],
+  :ids {:coord com.taoensso/carmine, :ns "taoensso.carmine"},
+  :judgment {:status :acceptable},
+  :reasons {:text "Redis Stream / Pub-Sub。cache と同ライブラリ"}}
+ {:purpose [:bot :discord],
+  :ids {:coord suskalo/discljord},
+  :judgment {:status :recommended},
+  :reasons {:text "Discord Bot 向け、Clojure 特化"}}
+ {:purpose [:web :ssr],
+  :ids {:coord rum/rum, :ns "rum.core"},
+  :judgment {:status :recommended},
+  :reasons {:text "SSR テンプレート、React 互換の概念"}}
+ {:purpose [:web :html-dsl],
+  :ids {:coord hiccup/hiccup, :ns "hiccup.core"},
+  :judgment {:status :acceptable},
+  :reasons {:text "Clojure data として HTML を組み立てる DSL。rum の代替軽量版"}}
+ {:purpose [:async],
+  :ids {:coord org.clojure/core.async, :ns "clojure.core.async"},
+  :judgment {:status :recommended},
+  :reasons {:text "CSP チャネル、manifold の代替"}}
+ {:purpose [:async],
+  :ids {:coord manifold/manifold, :ns "manifold.deferred"},
+  :judgment
+  {:status :deprecated,
+   :severity :superseded,
+   :replacement org.clojure/core.async},
+  :reasons
+  {:text "aleph と同系統の設計不整合、core.async / promise.cljc へ",
+   :tags [:philosophy-mismatch]}}
  {:purpose [:build],
   :ids {:coord leiningen/leiningen},
   :judgment
@@ -535,13 +688,4 @@
    :replacement org.clojure/tools.deps},
   :reasons
   {:text "新規プロジェクトは tools.deps",
-   :tags [:conditional :replacement-available]}}
- {:purpose [:platform],
-  :ids {:coord com.rpl/rama, :aliases [rama/rama], :ns "com.rpl.rama"},
-  :judgment
-  {:status :conditional,
-   :applicable-when "商用ライセンス取得済み、不可避な大規模要件で採用判断、ADR 必須",
-   :replacement [com.xtdb/xtdb]},
-  :reasons
-  {:text "商用ライセンス、ベンダーロックイン。XTDB + worker + batch stack で多くは代替可",
-   :tags [:license :conditional :philosophy-mismatch]}}]
+   :tags [:conditional :replacement-available]}}]
