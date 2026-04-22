@@ -535,19 +535,7 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
 
 #### 5.9.8 lib-catalog EDN block の schema と生成フロー
 
-**役割分担**（narrative と machine-readable catalog の二重管理を避ける）:
-
-| 章 | 役割 | 内容 |
-|---|---|---|
-| `.llm/guide/STACK_GUIDE.md §3` | narrative authority | 機能別の採用理由・検討した代替・却下理由の**詳細 prose**（全体像・設計判断含む） |
-| `.llm/guide/STACK_GUIDE.md §4.2.X` | machine-readable catalog + stack 固有 guidance | 各 stack の `;; lib-catalog` block（採用 + 不採用）、stack 固有の運用 guidance（middleware 順序・integration パターン等） |
-| `.llm/guide/STACK_GUIDE.md §8.1 / §8.2` | cross-cutting 残余 | 特定 stack に属さない禁止・非推奨（xml / validation / build / metrics / platform 等） |
-
-**原則**: lib 固有の採用 / 却下理由（"なぜ X を選んだか"）は §3 が単一情報源。§4.2.X の `:reasons :text` は 1 行要約、詳細は §3.Y を参照する。stack 固有の設計 guidance（stack 文脈での lib 組み合わせ・運用 tips）は §4.2.X の選定ポイント節に残す（§3 と完全一致しない stack 文脈での再解釈は維持：「lib の選択再検討」時の情報として有用）。
-
-**pure な lib 列挙の「避けるべきライブラリ」節は §4.2.X から削除**（EDN 不採用節 + §3 検討した代替 で完全カバー）。stack 固有の設計・運用 guidance（"client をサーバと同居禁止"、"トークン独自 helper 乱立禁止" 等）は残す。
-
-**cross-cutting lib の多重記述**: cross-cutting lib（mulog / integrant / aero 等の adopted）は複数の stack block に現れることがあるが、generator は**構造完全一致のエントリのみ dedup** を許容し、矛盾（同じ coord + purpose で異なる judgment/reason）は error。stack 間で `:reasons :text` や `:judgment` が揺れたら generator が fail し、caller が canonical 形へ揃える圧力が働く。
+**単一情報源**: STACK_GUIDE.md 各 stack の `;; lib-catalog` block（§4.2.X、採用 + 不採用の両方を同一 block 内に集約）と、cross-cutting 残余の §8.1 / §8.2 block が lib catalog 情報の source of truth。cross-cutting lib（mulog / integrant / aero 等の adopted）は複数の stack block に現れることがあるが、generator は**構造完全一致のエントリのみ dedup** を許容し、矛盾（同じ coord + purpose で異なる judgment/reason）は error。
 
 **採用 + 不採用の同一 block 集約**: 各 §4.2.X の block は `;; === 不採用 ===` コメントで区切って**その stack の機能領域での採否**を一望できる構成（SSOT 徹底の副次効果: 保守時に同 stack で何が採用され何が避けられているかが単一 block 内で確認できる）。下記 2 つの shell script と EDN artifact は `clj -X:gen-lib-catalog` が生成する派生物で、手編集禁止（ヘッダに `GENERATED` コメント付き）。
 

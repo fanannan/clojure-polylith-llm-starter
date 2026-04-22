@@ -1517,7 +1517,11 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 - **CORS**: 必要に応じて `ring-cors` または reitit の middleware を追加
 - **圧縮**: `ring.middleware.gzip` または Jetty 側で有効化
 
-（不採用 lib は上記 `;; lib-catalog` block の「不採用」節に収録済、詳細な採用理由・却下理由は §3.4 / §3.5 / §3.7 / §3.12 の narrative 参照）
+**避けるべきライブラリ**:
+- ルーティング: **Compojure**（data 駆動でなく Malli 統合が弱い、§8.2）、**Pedestal**（小〜中規模で過剰、§8.2）
+- JSON: **data.json**（パフォーマンス劣位、§8.2）
+- ロギング: **timbre / log4j 1.x**（log4j 1.x は §8.1 禁止）
+- 認証: **friend**（メンテ停滞、§8.2）
 
 **採用時の確認事項**（brick 作成時・動作確認時に確認）:
 - [ ] HTTP サーバ実装が base の deps.edn にある（ring-jetty-adapter / http-kit / aleph のいずれか）
@@ -1593,10 +1597,10 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 - **REST との併用**: web-api stack と graphql-api stack の併用可能(同一サーバで両エンドポイント提供)
 - **スキーマと Malli の関係**: GraphQL スキーマを source of truth とするか、Malli スキーマを source of truth として GraphQL を生成するかはプロジェクト判断。Malli → GraphQL の自動生成ツールは成熟途上
 
-**避けるべき設計・ライブラリ**（lib の不採用は EDN block 参照、本節は stack 固有の設計 guidance）:
+**避けるべきライブラリ**:
 - GraphQL クライアント実装をサーバと同一プロジェクトに入れる構成 — サーバ・クライアントで関心分離を崩す
 - 古い `graphql-java` 直接利用 — Lacinia の data 駆動抽象を活かせない
-- web-api stack の HTTP 基盤で非推奨とされる lib は本 stack でも同様（§4.2.3 / §3.4 / §3.5 / §3.7 参照）
+- §4.2.3 web-api stack の避けるべきリストも該当（Compojure、timbre 等）
 
 **採用時の確認事項**（brick 作成時・動作確認時に確認）:
 - [ ] GraphQL 実装ライブラリがある（lacinia 等）
@@ -1757,7 +1761,10 @@ DB ドライバ（`org.postgresql/postgresql` 等）は利用 DB に応じて br
 - **進捗記録**: 中断と再開に備え、処理済みの position を DB に保存する設計
 - **スケジューリング**: chime(§3.15 参照)。cron 実行は OS 側 / Kubernetes CronJob で管理する構成も妥当
 
-（不採用 lib は上記 `;; lib-catalog` block の「不採用」節に収録済、詳細は §3.6 永続化 / §3.15 スケジューリング / §3.7 構造化ロギング / §3.25 マイグレーション の narrative 参照）
+**避けるべきライブラリ**:
+- DB: **clojure.java.jdbc**（next.jdbc に移行、§8.2）
+- スケジューリング: **at-at / tea-time**（Integrant 統合が弱い、メンテ停滞、§8.2）
+- ロギング: **timbre**（§8.2）
 
 **採用時の確認事項**（brick 作成時・動作確認時に確認）:
 - [ ] ライフサイクル管理がある（integrant 等）
@@ -2319,10 +2326,10 @@ Parquet / Arrow が必要な場合は `org.apache.arrow/arrow-vector` 等を追�
 - ノートブック（clay）は Markdown + Clojure コード + 結果の data 駆動記録
 - Portal で tap> ベースのインスペクションを活用
 
-**避けるべき設計**（lib の不採用は EDN block 参照、本節は stack 固有の設計 guidance）:
-- 自作 dataset 構造（tablecloth で十分、再発明不要）
-
-（不採用 lib `deeplearning4j` / `incanter` は EDN block 内、詳細は §3.36 機械学習・数値計算 の narrative 参照）
+**避けるべきライブラリ**:
+- `deeplearning4j`（OOP 重い、§8.2）
+- `incanter`（メンテ低迷、§8.2）
+- 自作 dataset 構造（tablecloth で十分）
 
 **採用時の確認事項**:
 - [ ] tablecloth で dataset 操作が書ける
