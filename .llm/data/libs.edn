@@ -55,6 +55,81 @@
   :reasons
   {:text "関数契約・generator の表現力で Malli に劣る",
    :tags [:philosophy-mismatch :replacement-available]}}
+ {:purpose [:web :http-core],
+  :ids {:coord ring/ring-core, :ns "ring.core"},
+  :judgment {:status :recommended, :version "1.13.0"},
+  :reasons {:text "Ring 仕様の標準実装"}}
+ {:purpose [:web :http-server],
+  :ids {:coord ring/ring-jetty-adapter, :ns "ring.adapter.jetty"},
+  :judgment {:status :recommended, :version "1.13.0"},
+  :reasons {:text "Jetty ベース、初期推奨。成熟・枯れている"}}
+ {:purpose [:web :http-server],
+  :ids {:coord http-kit/http-kit, :ns "org.httpkit.server"},
+  :judgment {:status :acceptable, :version "2.8.0"},
+  :reasons {:text "NIO 軽量、高同時接続性能が要るなら検討"}}
+ {:purpose [:web :routing],
+  :ids {:coord metosin/reitit, :ns "reitit.core"},
+  :judgment {:status :recommended, :version "0.7.2"},
+  :reasons {:text "data 駆動ルーティング、Malli 統合"}}
+ {:purpose [:web :routing :ring],
+  :ids {:coord metosin/reitit-ring, :ns "reitit.ring"},
+  :judgment {:status :recommended, :version "0.7.2"},
+  :reasons {:text "Ring handler integration、CORS middleware も同梱"}}
+ {:purpose [:web :routing :malli],
+  :ids {:coord metosin/reitit-malli, :ns "reitit.coercion.malli"},
+  :judgment {:status :recommended, :version "0.7.2"},
+  :reasons {:text "Malli coercion for reitit"}}
+ {:purpose [:web :content-negotiation],
+  :ids {:coord metosin/muuntaja, :ns "muuntaja.core"},
+  :judgment {:status :recommended, :version "0.6.10"},
+  :reasons {:text "Accept/Content-Type に基づく自動変換"}}
+ {:purpose [:web :csrf],
+  :ids
+  {:coord ring/ring-anti-forgery, :ns "ring.middleware.anti-forgery"},
+  :judgment {:status :recommended, :version "1.3.0"},
+  :reasons {:text "公開 Web API 必須の CSRF 対策"}}
+ {:purpose [:web :routing],
+  :ids {:coord compojure/compojure, :ns "compojure.core"},
+  :judgment
+  {:status :deprecated,
+   :severity :superseded,
+   :replacement metosin/reitit-ring},
+  :reasons
+  {:text "data 駆動でない、新規は reitit-ring。レガシー保守は可",
+   :tags [:philosophy-mismatch]}}
+ {:purpose [:web :routing],
+  :ids {:coord io.pedestal/pedestal, :ns "io.pedestal.http"},
+  :judgment
+  {:status :conditional,
+   :applicable-when "大規模 interceptor 機構が必要",
+   :replacement metosin/reitit-ring},
+  :reasons
+  {:text "小〜中規模で過剰、interceptor 機構が要るなら検討可", :tags [:conditional]}}
+ {:purpose [:web :routing],
+  :ids {:coord bidi/bidi, :ns "bidi.ring"},
+  :judgment
+  {:status :conditional,
+   :applicable-when "Malli 統合が不要な既存プロジェクトの保守",
+   :replacement metosin/reitit},
+  :reasons
+  {:text "Malli 統合で reitit が優位、新規採用不可",
+   :tags [:conditional :replacement-available]}}
+ {:purpose [:web :http-server],
+  :ids {:coord aleph/aleph, :ns "aleph.http"},
+  :judgment
+  {:status :deprecated,
+   :severity :superseded,
+   :replacement [ring/ring-jetty-adapter http-kit/http-kit]},
+  :reasons
+  {:text "Netty 基盤で依存重い、manifold を抱え込む。Jetty / http-kit が軽量",
+   :tags [:philosophy-mismatch]}}
+ {:purpose [:web :http-server],
+  :ids {:coord org.immutant/web, :ns "org.immutant.web"},
+  :judgment
+  {:status :deprecated,
+   :severity :superseded,
+   :replacement ring/ring-jetty-adapter},
+  :reasons {:text "WildFly 系列はメンテ停止", :tags [:maintenance-stopped]}}
  {:purpose [:xml],
   :ids {:coord xerces/xercesImpl, :ns "javax.xml.parsers.xerces"},
   :judgment

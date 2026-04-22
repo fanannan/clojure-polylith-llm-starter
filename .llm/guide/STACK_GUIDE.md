@@ -301,22 +301,110 @@ stack 層と組み合わせて使う。開発支援ライブラリは通常 **de
 
 ### 3.4 HTTP サーバ・ルーティング
 
-**採用**: Ring + Reitit（+ reitit-malli）
-
-**検討した代替**:
-
-| 候補 | 却下理由 |
-|---|---|
-| Compojure | データ駆動ルーティングではない、Malli 統合が弱い |
-| Pedestal | interceptor の学習コストが高い、小〜中規模で過剰 |
-| bidi | ルーティング機能は十分だが Malli との統合エコシステムが弱い |
+**採用**: Ring + Reitit（+ reitit-malli）+ ring-jetty-adapter（HTTP サーバ実装）+ muuntaja（content negotiation）+ ring-anti-forgery（CSRF）
 
 **採用理由**:
 - Reitit はルーティングを data（ベクタ）として表現、静的解析しやすい
 - reitit-malli により HTTP 層で契約を強制できる
 - middleware / interceptor の両対応
+- Jetty（標準・成熟）が初期推奨、高同時接続性能が重要なら http-kit（NIO、軽量）
+- middleware の順序は Reitit の data 駆動ルーティングで list として明示、順序依存のバグを契約で防ぐ
+- エラーハンドリングは Reitit の `exception` middleware で例外 → HTTP エラーレスポンス変換を中央集権化
+- CORS は reitit の middleware、圧縮は `ring.middleware.gzip` または Jetty 側で有効化
 
-**採用 stack**: web-api stack
+```edn
+;; lib-catalog
+[;; === 採用 ===
+ {:purpose  [:web :http-core]
+  :ids      {:coord ring/ring-core :ns "ring.core"}
+  :judgment {:status :recommended :version "1.13.0"}
+  :reasons  {:text "Ring 仕様の標準実装"}}
+
+ {:purpose  [:web :http-server]
+  :ids      {:coord ring/ring-jetty-adapter :ns "ring.adapter.jetty"}
+  :judgment {:status :recommended :version "1.13.0"}
+  :reasons  {:text "Jetty ベース、初期推奨。成熟・枯れている"}}
+
+ ;; http-kit: NIO ベースの軽量 HTTP サーバ。高同時接続性能が重要なプロジェクト向け。
+ ;; ring-jetty-adapter と代替関係、どちらかを選択する。
+ {:purpose  [:web :http-server]
+  :ids      {:coord http-kit/http-kit :ns "org.httpkit.server"}
+  :judgment {:status :acceptable :version "2.8.0"}
+  :reasons  {:text "NIO 軽量、高同時接続性能が要るなら検討"}}
+
+ {:purpose  [:web :routing]
+  :ids      {:coord metosin/reitit :ns "reitit.core"}
+  :judgment {:status :recommended :version "0.7.2"}
+  :reasons  {:text "data 駆動ルーティング、Malli 統合"}}
+
+ {:purpose  [:web :routing :ring]
+  :ids      {:coord metosin/reitit-ring :ns "reitit.ring"}
+  :judgment {:status :recommended :version "0.7.2"}
+  :reasons  {:text "Ring handler integration、CORS middleware も同梱"}}
+
+ {:purpose  [:web :routing :malli]
+  :ids      {:coord metosin/reitit-malli :ns "reitit.coercion.malli"}
+  :judgment {:status :recommended :version "0.7.2"}
+  :reasons  {:text "Malli coercion for reitit"}}
+
+ {:purpose  [:web :content-negotiation]
+  :ids      {:coord metosin/muuntaja :ns "muuntaja.core"}
+  :judgment {:status :recommended :version "0.6.10"}
+  :reasons  {:text "Accept/Content-Type に基づく自動変換"}}
+
+ {:purpose  [:web :csrf]
+  :ids      {:coord ring/ring-anti-forgery :ns "ring.middleware.anti-forgery"}
+  :judgment {:status :recommended :version "1.3.0"}
+  :reasons  {:text "公開 Web API 必須の CSRF 対策"}}
+
+ ;; === 代替と却下 ===
+ ;; Compojure: ルーティングを関数として表現。data 駆動ルーティングではなく、
+ ;; Malli との統合が弱く静的解析が効かない。新規採用不可、レガシー保守は可。
+ {:purpose  [:web :routing]
+  :ids      {:coord compojure/compojure :ns "compojure.core"}
+  :judgment {:status :deprecated :severity :superseded :replacement metosin/reitit-ring}
+  :reasons  {:text "data 駆動でない、新規は reitit-ring。レガシー保守は可"
+             :tags [:philosophy-mismatch]}}
+
+ ;; Pedestal: interceptor 機構が強力だが、小〜中規模で過剰。学習コストが高い。
+ ;; 大規模で interceptor が必要なら条件付き採用可。
+ {:purpose  [:web :routing]
+  :ids      {:coord io.pedestal/pedestal :ns "io.pedestal.http"}
+  :judgment {:status          :conditional
+             :applicable-when "大規模 interceptor 機構が必要"
+             :replacement     metosin/reitit-ring}
+  :reasons  {:text "小〜中規模で過剰、interceptor 機構が要るなら検討可"
+             :tags [:conditional]}}
+
+ ;; bidi: ルーティング機能は十分だが Malli との統合エコシステムが弱い。
+ ;; reitit のほうが生態系で優位、新規採用不可。
+ {:purpose  [:web :routing]
+  :ids      {:coord bidi/bidi :ns "bidi.ring"}
+  :judgment {:status          :conditional
+             :applicable-when "Malli 統合が不要な既存プロジェクトの保守"
+             :replacement     metosin/reitit}
+  :reasons  {:text "Malli 統合で reitit が優位、新規採用不可"
+             :tags [:conditional :replacement-available]}}
+
+ ;; aleph: Netty 基盤の HTTP サーバ。依存が重く、manifold を抱え込む。
+ ;; 設計思想として core.async / Jetty / http-kit と衝突、採用しない。
+ {:purpose  [:web :http-server]
+  :ids      {:coord aleph/aleph :ns "aleph.http"}
+  :judgment {:status      :deprecated
+             :severity    :superseded
+             :replacement [ring/ring-jetty-adapter http-kit/http-kit]}
+  :reasons  {:text "Netty 基盤で依存重い、manifold を抱え込む。Jetty / http-kit が軽量"
+             :tags [:philosophy-mismatch]}}
+
+ ;; immutant: WildFly 系列、公式メンテナンス停止。Jetty へ移行。
+ {:purpose  [:web :http-server]
+  :ids      {:coord org.immutant/web :ns "org.immutant.web"}
+  :judgment {:status :deprecated :severity :superseded :replacement ring/ring-jetty-adapter}
+  :reasons  {:text "WildFly 系列はメンテ停止"
+             :tags [:maintenance-stopped]}}]
+```
+
+**採用 stack**: web-api stack、graphql-api stack、saas stack、bot stack（webhook 受信時）
 
 ### 3.5 JSON
 
