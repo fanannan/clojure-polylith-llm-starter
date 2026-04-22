@@ -533,7 +533,10 @@
   :relations
   {:bundles [com.xtdb/xtdb-api rum/rum],
    :conflicts-with
-   [[integrant/integrant "Biff uses its own lifecycle manager"]]}}
+   [[integrant/integrant "Biff uses its own lifecycle manager"]
+    [duct/core "§3.43 代替プラットフォームは片方に統一、Biff と Duct は framework 全体性で衝突"]
+    [com.rpl/rama
+     "§3.43 代替プラットフォームは片方に統一、Biff と Rama は framework 全体性で衝突"]]}}
  {:purpose [:db :mongodb],
   :ids {:coord com.novemberain/monger, :ns "monger.core"},
   :judgment {:status :recommended},
@@ -834,7 +837,11 @@
  {:purpose [:serialization :nippy],
   :ids {:coord com.taoensso/nippy, :ns "taoensso.nippy"},
   :judgment {:status :recommended},
-  :reasons {:text "高速バイナリシリアライザ、Fressian の代替"}}
+  :reasons {:text "高速バイナリシリアライザ、Fressian の代替"},
+  :relations
+  {:conflicts-with
+   [[org.clojure/data.fressian
+     "バイナリストレージは片方に統一、fressian は :conditional（既存継続のみ）"]]}}
  {:purpose [:serialization :transit],
   :ids {:coord com.cognitect/transit-clj, :ns "cognitect.transit"},
   :judgment {:status :recommended},
@@ -847,7 +854,10 @@
    :replacement com.taoensso/nippy},
   :reasons
   {:text "nippy が速度・型対応で優位",
-   :tags [:conditional :replacement-available]}}
+   :tags [:conditional :replacement-available]},
+  :relations
+  {:conflicts-with
+   [[com.taoensso/nippy "バイナリストレージは片方に統一、nippy が :recommended"]]}}
  {:purpose [:dev :benchmark],
   :ids {:coord criterium/criterium, :ns "criterium.core"},
   :judgment {:status :recommended},
@@ -872,7 +882,12 @@
    :replacement integrant/integrant},
   :reasons
   {:text "直接 Integrant より抽象が厚い、Polylith brick と重なる",
-   :tags [:conditional]}}
+   :tags [:conditional]},
+  :relations
+  {:conflicts-with
+   [[com.biffweb/biff
+     "代替プラットフォームは片方に統一、Biff と Duct は framework 全体性で衝突"]
+    [com.rpl/rama "代替プラットフォームは片方に統一、Duct と Rama は framework 全体性で衝突"]]}}
  {:purpose [:platform],
   :ids {:coord com.rpl/rama, :aliases [rama/rama], :ns "com.rpl.rama"},
   :judgment
@@ -881,7 +896,14 @@
    :replacement [com.xtdb/xtdb-api]},
   :reasons
   {:text "商用ライセンス、ベンダーロックイン。XTDB + worker + batch stack で多くは代替可",
-   :tags [:license :conditional :philosophy-mismatch]}}
+   :tags [:license :conditional :philosophy-mismatch]},
+  :relations
+  {:conflicts-with
+   [[com.biffweb/biff
+     "代替プラットフォームは片方に統一、Biff と Rama は framework 全体性で衝突"]
+    [duct/core "代替プラットフォームは片方に統一、Duct と Rama は framework 全体性で衝突"]
+    [integrant/integrant
+     "Rama は独自 lifecycle を持ち、Integrant と全体 framework として衝突"]]}}
  {:purpose [:graphql],
   :ids {:coord com.walmartlabs/lacinia, :ns "com.walmartlabs.lacinia"},
   :judgment {:status :recommended, :version "1.2.2"},

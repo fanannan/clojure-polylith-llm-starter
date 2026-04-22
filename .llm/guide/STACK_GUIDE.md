@@ -1182,7 +1182,9 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
   :judgment  {:status :recommended :version "0.9.0"}
   :reasons   {:text "opinionated SaaS framework、XTDB/Rum/HTMX 同梱"}
   :relations {:bundles        [com.xtdb/xtdb-api rum/rum]
-              :conflicts-with [[integrant/integrant "Biff uses its own lifecycle manager"]]}}
+              :conflicts-with [[integrant/integrant "Biff uses its own lifecycle manager"]
+                               [duct/core "§3.43 代替プラットフォームは片方に統一、Biff と Duct は framework 全体性で衝突"]
+                               [com.rpl/rama "§3.43 代替プラットフォームは片方に統一、Biff と Rama は framework 全体性で衝突"]]}}
 
  ;; === 代替と却下 ===
  ;; 独自テナント分離フレームワーク: Biff + XTDB で完結、再発明不要。
@@ -2002,10 +2004,11 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
- {:purpose  [:serialization :nippy]
-  :ids      {:coord com.taoensso/nippy :ns "taoensso.nippy"}
-  :judgment {:status :recommended}
-  :reasons  {:text "高速バイナリシリアライザ、Fressian の代替"}}
+ {:purpose   [:serialization :nippy]
+  :ids       {:coord com.taoensso/nippy :ns "taoensso.nippy"}
+  :judgment  {:status :recommended}
+  :reasons   {:text "高速バイナリシリアライザ、Fressian の代替"}
+  :relations {:conflicts-with [[org.clojure/data.fressian "バイナリストレージは片方に統一、fressian は :conditional（既存継続のみ）"]]}}
 
  {:purpose  [:serialization :transit]
   :ids      {:coord com.cognitect/transit-clj :ns "cognitect.transit"}
@@ -2014,13 +2017,14 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 
  ;; === 代替と却下 ===
  ;; data.fressian: 使えるが Nippy の方が速度・対応型で優位。既存採用プロジェクトは継続可。
- {:purpose  [:serialization]
-  :ids      {:coord org.clojure/data.fressian :ns "clojure.data.fressian"}
-  :judgment {:status          :conditional
-             :applicable-when "既存採用プロジェクトは継続可、新規は nippy"
-             :replacement     com.taoensso/nippy}
-  :reasons  {:text "nippy が速度・型対応で優位"
-             :tags [:conditional :replacement-available]}}
+ {:purpose   [:serialization]
+  :ids       {:coord org.clojure/data.fressian :ns "clojure.data.fressian"}
+  :judgment  {:status          :conditional
+              :applicable-when "既存採用プロジェクトは継続可、新規は nippy"
+              :replacement     com.taoensso/nippy}
+  :reasons   {:text "nippy が速度・型対応で優位"
+              :tags [:conditional :replacement-available]}
+  :relations {:conflicts-with [[com.taoensso/nippy "バイナリストレージは片方に統一、nippy が :recommended"]]}}
 
  ;; ProtoBuf: IDL 駆動で data 駆動でない、§3.30 gRPC で言及済。narrative のみ。
  ;; Kryo 直接: OOP 寄り、Nippy が Clojure 向けに最適化済。narrative のみ。
@@ -2103,26 +2107,31 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
  ;; ただし duct.core/module 機構は直接 Integrant より抽象が厚く、Polylith brick
  ;; 構造との統合でレイヤが過剰になりやすい。convention-over-configuration を好む
  ;; チーム向け、新規チームには直接 Integrant 推奨。
- {:purpose  [:platform :framework]
-  :ids      {:coord duct/core}
-  :judgment {:status          :conditional
-             :applicable-when "convention-over-configuration を好むチーム、直接 Integrant より抽象が欲しい場合、ADR 必須"
-             :replacement     integrant/integrant}
-  :reasons  {:text "直接 Integrant より抽象が厚い、Polylith brick と重なる"
-             :tags [:conditional]}}
+ {:purpose   [:platform :framework]
+  :ids       {:coord duct/core}
+  :judgment  {:status          :conditional
+              :applicable-when "convention-over-configuration を好むチーム、直接 Integrant より抽象が欲しい場合、ADR 必須"
+              :replacement     integrant/integrant}
+  :reasons   {:text "直接 Integrant より抽象が厚い、Polylith brick と重なる"
+              :tags [:conditional]}
+  :relations {:conflicts-with [[com.biffweb/biff "代替プラットフォームは片方に統一、Biff と Duct は framework 全体性で衝突"]
+                               [com.rpl/rama "代替プラットフォームは片方に統一、Duct と Rama は framework 全体性で衝突"]]}}
 
  ;; Rama: 商用ライセンス (community edition は小規模無料)、framework 重量、
  ;; ベンダーロックイン。DB + streaming + queue + ML 統合要件の超大規模のみ。
  ;; 多くは XTDB + worker + batch で代替可。
- {:purpose  [:platform]
-  :ids      {:coord   com.rpl/rama
-             :aliases [rama/rama]
-             :ns      "com.rpl.rama"}
-  :judgment {:status          :conditional
-             :applicable-when "商用ライセンス取得済み、不可避な大規模要件で採用判断、ADR 必須"
-             :replacement     [com.xtdb/xtdb-api]}
-  :reasons  {:text "商用ライセンス、ベンダーロックイン。XTDB + worker + batch stack で多くは代替可"
-             :tags [:license :conditional :philosophy-mismatch]}}
+ {:purpose   [:platform]
+  :ids       {:coord   com.rpl/rama
+              :aliases [rama/rama]
+              :ns      "com.rpl.rama"}
+  :judgment  {:status          :conditional
+              :applicable-when "商用ライセンス取得済み、不可避な大規模要件で採用判断、ADR 必須"
+              :replacement     [com.xtdb/xtdb-api]}
+  :reasons   {:text "商用ライセンス、ベンダーロックイン。XTDB + worker + batch stack で多くは代替可"
+              :tags [:license :conditional :philosophy-mismatch]}
+  :relations {:conflicts-with [[com.biffweb/biff "代替プラットフォームは片方に統一、Biff と Rama は framework 全体性で衝突"]
+                               [duct/core "代替プラットフォームは片方に統一、Duct と Rama は framework 全体性で衝突"]
+                               [integrant/integrant "Rama は独自 lifecycle を持ち、Integrant と全体 framework として衝突"]]}}
 
  ;; === 代替（採用しない） ===
  ;; Electric Clojure: §3.40.1 で射程外宣言済、同節で登録済。

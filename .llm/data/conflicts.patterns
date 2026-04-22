@@ -29,12 +29,17 @@ clojurewerkz/machine_head|org\.eclipse\.paho/org\.eclipse\.paho\.client\.mqttv3|
 clojurewerkz/quartzite|overtone/at-at|スケジューラは片方に統一、at-at は :deprecated
 clojurewerkz/quartzite|jarohen/chime|スケジューラは片方に統一、quartzite は :conditional（cron/永続化時のみ）
 clojurewerkz/quartzite|tea-time/tea-time|スケジューラは片方に統一、tea-time は :deprecated
+com\.biffweb/biff|duct/core|§3.43 代替プラットフォームは片方に統一、Biff と Duct は framework 全体性で衝突
+com\.biffweb/biff|com\.rpl/rama|§3.43 代替プラットフォームは片方に統一、Biff と Rama は framework 全体性で衝突
 com\.biffweb/biff|integrant/integrant|Biff uses its own lifecycle manager
 com\.brunobonacci/mulog|org\.apache\.logging\.log4j/log4j-1\.2-api|ロギングは片方に統一、log4j 1.x は CVE 未修正で :forbidden
 com\.brunobonacci/mulog|com\.taoensso/timbre|ロギングは片方に統一、timbre は構造化表現力劣り :deprecated
 com\.datomic/local|com\.xtdb/xtdb-api|document DB は片方に統一、datomic は :acceptable（商用条件要確認）
 com\.github\.seancorfield/next\.jdbc|org\.clojure/java\.jdbc|JDBC ラッパは片方に統一、java.jdbc はメンテ停止 :deprecated
+com\.rpl/rama|integrant/integrant|Rama は独自 lifecycle を持ち、Integrant と全体 framework として衝突
+com\.rpl/rama|duct/core|代替プラットフォームは片方に統一、Duct と Rama は framework 全体性で衝突
 com\.stuartsierra/component|integrant/integrant|lifecycle 管理は片方に統一、component は defrecord 依存で :deprecated
+com\.taoensso/nippy|org\.clojure/data\.fressian|バイナリストレージは片方に統一、fressian は :conditional（既存継続のみ）
 com\.taoensso/tempura|com\.taoensso/tower|i18n は片方に統一、tower はメンテ停止 :deprecated
 compojure/compojure|io\.pedestal/pedestal|ルーティングは片方に統一、compojure は :deprecated
 compojure/compojure|metosin/compojure-api|ルーティングは片方に統一、compojure は :deprecated
