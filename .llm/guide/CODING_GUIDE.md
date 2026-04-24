@@ -1,7 +1,8 @@
 # CODING_GUIDE.md — Clojure コーディング規約
 
 本文書は **`../CLAUDE.md` §1 の原則を Clojure コードとして具体化する**詳細資料である。
-CLAUDE.md が「日々の作業フロー」を規定するのに対し、本文書は**設計判断・コーディング判断に迷った時**に参照する。
+CLAUDE が「日々の作業フロー」を規定するのに対し、本文書は**設計判断・コーディング判断に迷った時**に使う。
+∵ ../CLAUDE.md
 
 - **../CLAUDE.md §1 の三基底原則**（全域性 / 不変性 / 副作用隔離）は本文書 §2 で Clojure として詳細展開
 - **LLM が特有に犯す誤り**は §1 に先頭配置（毎コミット前の確認対象）
@@ -114,7 +115,8 @@ CLAUDE.md が「日々の作業フロー」を規定するのに対し、本文�
 
 **兆候**: 標準で解けることに外部ライブラリを提案する。
 
-**対処**: `clojure.string`, `clojure.set`, `clojure.walk`, `clojure.data` で足りないか先に確認。../CLAUDE.md §2 により**依存追加は承認必須**。
+**対処**: `clojure.string`, `clojure.set`, `clojure.walk`, `clojure.data` で足りないか先に確認。依存追加は承認必須。
+¤ ../CLAUDE.md §2
 
 ### 1.14 ドキュメントの引用過多
 
@@ -224,11 +226,13 @@ CLAUDE.md が「日々の作業フロー」を規定するのに対し、本文�
 
 **Integrant を採用しない場合**: ライフサイクル管理が必要なら、`-main` 内での直列起動・`with-open` 等で明示的にリソース管理する。
 
-技術選定の詳細は `STACK_GUIDE.md` §3.1 ライフサイクル管理を参照。
+技術選定の詳細は別紙に置く。
+∵ STACK_GUIDE.md §3.1
 
 #### 2.3.3 副作用の明示化
 
-- `println` / `prn` はアプリケーションコード（components / bases）で禁止。代わりに `mulog/log` で構造化ログ、または `tap>` でデータ確認。**例外**: ビルドスクリプト（`projects/<deploy>/build.clj`）や `development/src/` 配下の一時デバッグコードでは許容（mulog 依存を引き込む疲労を避けるため、CLAUDE.md §4.3）
+- `println` / `prn` はアプリケーションコード（components / bases）で禁止。代わりに `mulog/log` で構造化ログ、または `tap>` でデータ確認。**例外**: ビルドスクリプト（`projects/<deploy>/build.clj`）や `development/src/` 配下の一時デバッグコードでは許容（mulog 依存を引き込む疲労を避けるため）
+∵ ../CLAUDE.md §4.3
 - `with-redefs` は§1.1 全域性を破るので原則禁止。`clj-kondo` の `:discouraged-var` で警告化済。例外使用時は **ADR で理由付け必須**とする（「なぜ依存注入で置き換えられなかったか」を記録、依存注入が技術的に不可能な Java interop の境界など）
 
 #### 2.3.4 モックは設計失敗のサイン

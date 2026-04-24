@@ -26,6 +26,12 @@ cd "$WORKSPACE_ROOT"
 
 placeholder_found=0
 
+is_template_distribution_state() {
+  [ -f "README.md" ] || return 1
+  grep -q '^# ＜TODO: プロジェクト名＞' README.md || return 1
+  [ ! -d "projects" ] || [ -z "$(find projects -mindepth 1 -maxdepth 1 2>/dev/null)" ]
+}
+
 check_file() {
   local file="$1"
   if [ ! -f "$file" ]; then
@@ -45,6 +51,11 @@ check_file "workspace.edn"
 check_file "deps.edn"
 
 if [ "$placeholder_found" -eq 1 ]; then
+  if is_template_distribution_state; then
+    echo ""
+    echo "check-placeholders: skipped (template distribution state)"
+    exit 0
+  fi
   echo ""
   echo "プレースホルダを実プロジェクト名に置換してください（BOOTSTRAP_GUIDE.md §2.1）。"
   exit 1

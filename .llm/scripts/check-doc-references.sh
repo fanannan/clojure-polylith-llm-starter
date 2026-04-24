@@ -62,7 +62,9 @@ while IFS= read -r -d '' file; do
     /^[[:space:]]*[├└│]/ { next }
 
     {
-      has_ref = ($0 ~ ref_re)
+      line = $0
+      gsub(/https?:\/\/[^ )`"]+/, "", line)
+      has_ref = (line ~ ref_re)
       is_marked = ($0 ~ marked_re)
       has_cue = ($0 ~ cue_re)
     }
@@ -74,8 +76,9 @@ while IFS= read -r -d '' file; do
     }
 
     is_marked {
-      line = $0
-      ref_count = gsub(ref_re, "&", line)
+      marked_line = $0
+      gsub(/https?:\/\/[^ )`"]+/, "", marked_line)
+      ref_count = gsub(ref_re, "&", marked_line)
     }
 
     is_marked && ref_count > 1 {

@@ -152,7 +152,8 @@ Polylith は **../CLAUDE.md §1.1.3 副作用の隔離 + §1.2.1 機械化** の
 
 ### 2.2 base — HTTP API エントリの例
 
-以下は **HTTP API エントリの具体例**。採用ライブラリは `STACK_GUIDE.md` §3 機能別節で確認し、HTTP API 以外の entry base では必要な機能カテゴリに合わせて読み替える。ライフサイクル管理が不要なライブラリ配布や単発 CLI では Integrant 不要、`-main` 直列起動で構成する。
+以下は **HTTP API エントリの具体例**。採用ライブラリは STACK_GUIDE の機能別節で確認し、HTTP API 以外の entry base では必要な機能カテゴリに合わせて読み替える。ライフサイクル管理が不要なライブラリ配布や単発 CLI では lifecycle helper 不要、`-main` 直列起動で構成する。
+∵ STACK_GUIDE.md §3
 
 #### `bases/<entry>/deps.edn`
 
@@ -555,7 +556,8 @@ poly/<name> {:local/root "components/<name>"}
 
 ## 8. CI に組込むべき最小セット
 
-../CLAUDE.md §5.5 の完了条件を CI で自動化する：
+完了条件を CI で自動化する：
+¤ ../CLAUDE.md §5.5
 
 ```bash
 clj -M:lint                                          # clj-kondo

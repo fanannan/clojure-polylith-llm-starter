@@ -950,7 +950,7 @@
    :applicable-when "商用ライセンス取得済み、不可避な大規模要件で採用判断、ADR 必須",
    :replacement [com.xtdb/xtdb-api]},
   :reasons
-  {:text "商用ライセンス、ベンダーロックイン。XTDB + worker + batch stack で多くは代替可",
+  {:text "商用ライセンス、ベンダーロックイン。XTDB + worker + batch で多くは代替可",
    :tags [:license :conditional :philosophy-mismatch]},
   :relations
   {:conflicts-with
