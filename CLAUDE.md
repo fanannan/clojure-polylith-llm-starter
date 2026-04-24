@@ -125,7 +125,7 @@
 ### 1.3 原則の使い方（LLM への指示）
 
 - **判断に迷ったら §1.1 の三原則に照らせ**。規約に書かれていない状況でも原則から導出できる
-- **新しい規約や手順を提案する前に §1.2 の四戦略のどれに該当するかを明示せよ**
+- **新しい規約や手順を提案する前に §1.2.1〜§1.2.4 の四戦略、または §1.2.5 の承認設計のどれに該当するかを明示せよ**
 - **「規約で縛れば守られる」は誤り**。§1.2.1 機械化、または §7 の自己停止プロトコルのように、**守る手段**を同時に設計する
 - **生きた知識の活用で再発見の疲労を避ける**: 実装中に判明した契約・不変条件・暗黙知は `.llm/memory/KNOWLEDGE.md` に集約される。LLM は実装着手前に関連する KNOWLEDGE 節を必ず確認し、同じ判断を繰り返さないこと（詳細は §8, §11）
 - **「前提の明示」で解空間を早期に収束させる**: LLM との協働では、ユーザーが価値判断・運用制約・採否の向きを**早期に明示**するほど、LLM の提案解空間が適切に狭まり、設計コストが下がる。例: 「Babashka は使わない、shell script で書く」「サンプルコードはコメントで残す」のように採否の向きを与えると、LLM は条件付き生成・動的削除のような複雑な方向を自発的に閉じる。これは §1.3「生きた知識の活用」の延長で、**前提の言語化自体が協働の知識**になる。判断根拠が不明な時はユーザーに前提を訊くのが効率的（`.llm/guide/COLLABORATION_GUIDE.md` §4）
@@ -145,7 +145,7 @@
 | **L2: 実施 + 事後報告** | 実行して結果を報告 | core 実装、テスト追加、Q 起票、承認済判断の ADR 化 |
 | **L3: 独断可** | 実行し、必要なら簡潔に報告 | 命名の微調整、局所的な整形、内部実装の細部 |
 
-以下は L0/L1 相当として扱う。提案可否・実行可否で迷った場合は上位階層に倒す。
+以下は L0/L1 相当として扱う。採否判断は L0、具体差分の提示・承認後実行は L1 とし、迷った場合は上位階層に倒す。
 
 - 依存ライブラリの追加
 - **brick（base / component）の deps.edn へのライブラリ追加・変更**（実質的に依存追加）
@@ -248,7 +248,7 @@ Malli は必須層。`dev/user.clj` で `(malli-on!)` helper を提供する：
 - **ライフサイクル管理を使うプロジェクト**: 起動 helper が内部で `(malli-on!)` を呼ぶ
 - **ライフサイクル管理を使わないプロジェクト**（ライブラリ配布・単発 CLI 等）: REPL 起動後に明示的に `(malli-on!)` を呼ぶ
 
-`m/=>` 契約付き関数を REPL で呼び出した瞬間に契約違反が例外として顕在化。詳細は `.llm/guide/POLYLITH_GUIDE.md` §7.1。
+`m/=>` 契約付き関数を REPL で呼び出した瞬間に契約違反が例外として顕在化。実行方法は本書 §9.1 と `development/src/dev/user.clj` の docstring を参照。
 
 ### 5.5 完了条件（以下全通過で初めて完了報告）
 
@@ -279,7 +279,7 @@ release 前・週次 CI では追加で以下を実行:
 ./.llm/scripts/check-vulnerabilities.sh             # clj-watson（時間軸を跨いだ脆弱性検知、release 前必須）
 ```
 
-`./.llm/scripts/check-workspace-integrity.sh` の内訳と役割分担は `.llm/scripts/README.md` を参照。機械化の層構造（clj-kondo 組み込み / polyguard hook / Splint / scripts / Polylith / Malli / clj-watson）は `MAINTAINERS_GUIDE.md §5.10` で体系化されている。
+`./.llm/scripts/check-workspace-integrity.sh` の内訳と役割分担は `.llm/scripts/README.md` を参照。機械化された検査群（clj-kondo 組み込み / polyguard hook / Splint / scripts / Polylith / Malli / clj-watson）は `MAINTAINERS_GUIDE.md §5.10` で体系化されている。
 
 ### 5.6 CLI 呼び出しの統一
 
@@ -452,7 +452,7 @@ STACK_GUIDE.md の `;; lib-catalog` カタログは、本テンプレートの�
 
 **空スキャン規約**: 上記 4 つの確認は、該当文書が空（初期状態・該当エントリなし）の場合、**空スキャンで完了**とみなす。空を確認する行為自体が §1.3 の実装であり、スキップしてよい対象ではない。ただし、空であることを確認した後は次のステップに進む。
 
-空スキャンの目的は「読む価値があるか」を毎回推測しないことにある。空であっても確認済みなら、以後の判断で「見落としたかもしれない」という再確認を避けられる。下流 3 文書（KNOWLEDGE.md / QUESTIONS.md / adr/README.md）の §0 はこの §8.0 から呼び出される運用プロセスを定義する。
+空スキャンの目的は「読む価値があるか」を毎回推測しないことにある。空であっても確認済みなら、以後の判断で「見落としたかもしれない」という再確認を避けられる。`KNOWLEDGE.md` / `QUESTIONS.md` の §0 と `adr/README.md` の運用手順は、この §8.0 から呼び出されるプロセスを定義する。
 
 仕様・知識・未決に**実装判断へ影響する曖昧さ・矛盾・欠落**を発見したら、`.llm/memory/QUESTIONS.md` に Q を立てて**自己解釈で進めない**。誤字、言い回し、実装判断に影響しない表現揺れは Q ではなく通常のドキュメント改善候補として扱う。
 
@@ -601,6 +601,9 @@ clj -M:poly create component name:<name>
 (probe x)             ; tap> + 値をそのまま返す diagnosis primitive（println の代わり）
 (safe-reset!)         ; lifecycle helper or tools.namespace reset を try/catch で包む
 (hard-reset!)         ; stale-state recovery: halt → refresh-all → go
+(fs-start!)           ; trace helper 導入時のみ有効
+(fs-record-ns! 'ns)   ; trace helper 導入時のみ有効
+(fs-clear!)           ; trace helper 導入時のみ有効
 ```
 
 任意のライフサイクル管理セクションを有効化した場合のみ、以下も利用できる。配布状態のまま評価しない:
@@ -615,7 +618,7 @@ clj -M:poly create component name:<name>
 
 | 状況 | 手順 |
 |---|---|
-| REPL 接続の初回確認 | `session-briefing.sh` の REPL 状態節を読む。未起動なら 1 度だけ `clj -M:dev:nrepl` 起動をユーザに依頼。起動済みなら `./.llm/scripts/repl-eval.sh --expr '(dev.user/status)'` |
+| REPL 接続の初回確認 | `./.llm/scripts/session-briefing.sh` の REPL 状態節を読む。未起動なら 1 度だけ `clj -M:dev:nrepl` 起動をユーザに依頼。起動済みなら `./.llm/scripts/repl-eval.sh --expr '(dev.user/status)'` |
 | 通常の関数・契約確認 | 必要なら `(malli-on!)` → `--load-file <path>` → `--ns <ns> --expr '(<fn> <args>)'` |
 | runtime wiring 変更 | `(safe-reset!)` で refresh + 再起動。system map がある場合は対象 key を確認 |
 | 値の形状探索 | `(probe x)` を使う。raw `println` は使わない |

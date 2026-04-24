@@ -44,7 +44,7 @@ Polylith は **../CLAUDE.md §1.1.3 副作用の隔離 + §1.2.1 機械化** の
 ```clojure
 ;; ドメイン系 component の deps.edn
 ;; ★ I/O 系ライブラリ（next.jdbc, ring, hato 等）を絶対に追加しない
-;; ※ バージョンは参考値。正本は STACK_GUIDE.md §2.1 / §4.2（コピペ時に要確認）
+;; ※ バージョンは参考値。正本は STACK_GUIDE.md §2.1 / §3 機能別節（コピペ時に要確認）
 {:paths ["src" "resources"]
  :deps  {org.clojure/clojure {:mvn/version "1.12.0"}
          metosin/malli       {:mvn/version "0.16.4"}}
@@ -152,13 +152,13 @@ Polylith は **../CLAUDE.md §1.1.3 副作用の隔離 + §1.2.1 機械化** の
 
 ### 2.2 base — HTTP API エントリの例
 
-以下は **web-api stack 採用時の具体例**（stack 判定は STACK_GUIDE.md §4.1、採用ライブラリは §3 機能別節）。他 stack（batch stack / cli stack 等）採用時は該当 stack の構成に合わせて読み替える。library stack のみの場合は Integrant 不要、`-main` 直列起動で構成する。
+以下は **HTTP API エントリの具体例**。採用ライブラリは `STACK_GUIDE.md` §3 機能別節で確認し、HTTP API 以外の entry base では必要な機能カテゴリに合わせて読み替える。ライフサイクル管理が不要なライブラリ配布や単発 CLI では Integrant 不要、`-main` 直列起動で構成する。
 
 #### `bases/<entry>/deps.edn`
 
 ```clojure
 ;; HTTP エントリ base の deps.edn
-;; web-api stack 採用時の構成（Ring + Reitit + Integrant + Malli + mulog を束ねる）
+;; HTTP API entry base の構成例（Ring + Reitit + Integrant + Malli + mulog を束ねる）
 ;; ※ バージョンは参考値。正本は STACK_GUIDE.md §2.1 / §3 機能別節（コピペ時に要確認）
 {:paths ["src" "resources"]
  :deps  {org.clojure/clojure         {:mvn/version "1.12.0"}
@@ -518,7 +518,7 @@ GitHub Actions などの CI では `fetch-depth: 0` を指定する。
 
 - **全 brick を単一 REPL で触れる**環境（§1.2.2 ループ短縮の実装）
 - `clj -M:dev:nrepl` で起動
-- Integrant を使うプロジェクトでは `dev.user` の `(go)` で Integrant system + Malli instrumentation を一括起動（dev/user.clj 内部で `(malli-on!)` を呼んでから `(ig-repl/go)` を呼ぶ実装）
+- Integrant を使うプロジェクトでは、`development/src/dev/user.clj` のライフサイクル管理セクションを有効化した後、`(go)` で Integrant system + Malli instrumentation を一括起動する
 - Integrant を使わないプロジェクトでは REPL 起動後に明示的に `(malli-on!)` を呼んで Malli instrumentation を有効化する
 
 ### 7.2 新規 brick 追加時の development 更新
@@ -574,7 +574,7 @@ CI 通過時以外にも、人間が `git tag stable-$(date +%Y%m%d-%H%M%S)` を
 ## 9. 関連文書へのリンク
 
 - **../CLAUDE.md §1**: Polylith を採用する原理的根拠（機械化 + 副作用隔離）
-- **../CLAUDE.md §6**: poly コマンド早見表
+- **../CLAUDE.md §6.1**: poly コマンド早見表
 - **../CLAUDE.md §8.2**: 新規コンポーネント追加の作業プロトコル（概要）
 - **CODING_GUIDE.md §2.3**: 副作用の隔離（Polylith の構造原理と整合）
 - **Polylith 公式**: https://polylith.gitbook.io/

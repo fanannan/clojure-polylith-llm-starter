@@ -25,12 +25,14 @@
        コメントアウトされているため評価されず、依存が未解決でも REPL は壊れない。
      - Malli instrumentation セクションは全プロジェクトで有効化したまま使う（必須層、削除不可）
 
-   主要コマンド:
+   常時利用できるコマンド:
      (status)          REPL 環境の状態確認（CLAUDE.md §9）
      (malli-on!)       Malli instrumentation を起動（停止は (malli.dev/stop!)）
      (probe x)         tap> + 値保持（println の代わり）
      (safe-reset!)     reset を構造化エラー返却で包む
      (hard-reset!)     stale-state recovery
+
+   任意 helper 有効化後に利用できるコマンド:
      (go)/(reset)/(halt)/(system)  ライフサイクル管理採用時（コメント解除後）
      (portal)          データ可視化 helper 起動（コメント解除後）
      (fs-start!)/(fs-record-ns! 'ns)/(fs-clear!)  trace helper 利用時"

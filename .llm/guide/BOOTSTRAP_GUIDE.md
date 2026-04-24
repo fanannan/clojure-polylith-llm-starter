@@ -76,7 +76,7 @@ README.md のキックオフプロンプトを受信した LLM は、以下の�
 
 ADR の発行（§4）は L2 として LLM が自動実施、事後報告。ゲート 1/2 で承認済の決定内容を形式化するだけのため、事前承認不要（誤記は新 ADR で supersede）。
 
-#### ゲート外の個別 L1 承認（成果物単位で事前提示）
+#### 条件付き L1 成果物（一括提示）
 
 | 成果物 | 対応する §番号 | 採用条件 |
 |---|---|---|
@@ -85,17 +85,17 @@ ADR の発行（§4）は L2 として LLM が自動実施、事後報告。ゲ�
 | `dev/user.clj` 調整 | §2.6 | 常に |
 | ライフサイクル設定ファイル | §2.7 | 必要な場合のみ |
 | `build.clj` | §2.8 | uberjar 配布時のみ |
-| CI 設定ファイル | §2.9 前後 | 常に |
+| CI 設定ファイル | §2.9 前後 | 採用する場合のみ |
 
-いずれも L1 として扱い、実内容を事前提示して個別承認を得る（ゲートに丸め込まない。影響範囲が異なる L1 変更を 1 つの Yes/No に潰さないため）。
+いずれも L1 として扱い、実内容をまとめて提示する。承認は `COLLABORATION_GUIDE.md` §2.3.1 の通り「全承認または全修正指示」で受け、成果物ごとの部分承認プロトコルは採用しない。
 
 #### 整合性チェックと仕上げ
 
 - §2.9 整合性チェックを自動実行、結果報告
-- §4 のうち LLM が実施: ADR 自動発行（L2）、KNOWLEDGE 追加・README プロダクト版書き換え（ゲート 3 縮退承認後）
+- §4 のうち LLM が実施: ADR 自動発行（L2）、KNOWLEDGE 追加・README プロダクト版書き換え（最終提示の承認後）
 - §4 のうち人間が実行: **最終コミットのみ**
 
-**CLAUDE.md §2 禁止事項は例外なく維持する**。本文書 §4 は BOOTSTRAP_GUIDE.md の archived/ 移動・CLAUDE.md 文書参照表編集を**指示しない**。
+**CLAUDE.md §2 禁止事項は例外なく維持する**。本文書 §4 は BOOTSTRAP_GUIDE.md の移動・CLAUDE.md 文書参照表編集を**指示しない**。
 
 曖昧性検出・自己停止・Q 起票は `../CLAUDE.md` §7, §8, §11 および `COLLABORATION_GUIDE.md` §4 の規定通り。ONE BY ONE 原則は維持。
 
@@ -218,7 +218,7 @@ I/O リソースの起動・停止管理が必要な場合のみ実施する。�
 
 **clj-kondo hook の初回取り込み**:
 
-- [ ] 新ライブラリ採用後、以下のスクリプトで各ライブラリ提供の clj-kondo hook を取り込む（tools.deps の `:main-opts` はシェル展開されないため、エイリアスに埋め込めない。の実装）:
+- [ ] 新ライブラリ採用後、以下のスクリプトで各ライブラリ提供の clj-kondo hook を取り込む（tools.deps の `:main-opts` はシェル展開されないため、エイリアスに埋め込めない）:
   ```bash
   ./.llm/scripts/lint-import-hooks.sh
   ```
@@ -304,17 +304,18 @@ I/O リソースの起動・停止管理が必要な場合のみ実施する。�
 - バージョンの組合せが Maven Central / Clojars に実在するか確認
 - プロジェクト固有で追加したライブラリ（DB ドライバ等）のバージョン整合性を確認
 - component の deps.edn で I/O ライブラリを誤って書いていないか確認（ドメイン純粋性）
-- 解消できない場合は、**逆操作で直前のコミット状態に戻す**（CLAUDE.md §7 自己停止プロトコル、選択肢 B ブランチ破棄）
+- 解消できない場合は、CLAUDE.md §7 自己停止プロトコルに従って停止し、ユーザに復旧方針を確認する。`git revert` やブランチ破棄は同一ではないため、どちらを使うかは状況に応じて明示する
 
 ### 5.2 `poly check` が通らない
 
 手作業で brick を作成していないか確認。`poly create` 経由でないと構造が認識されない。
 POLYLITH_GUIDE.md §5 「Polylith 特有の頻出誤りと対処」も参照。
 
-### 5.3 `(go)` で例外、または REPL 起動時に ClassNotFoundException
+### 5.3 `(go)` が未定義、`(go)` で例外、または REPL 起動時に ClassNotFoundException
 
 Malli の起動順序、`set-refresh-dirs` の対象、任意の開発補助配線を確認。`development/src/dev/user.clj` の docstring を確認。**よくある失敗**:
 
+- **Unable to resolve symbol: go**: ライフサイクル管理セクションがコメントアウトされたまま。ライフサイクル管理を採用するなら `development/src/dev/user.clj` の該当セクションを有効化する。採用しないなら `(go)` は使わず `(malli-on!)` と通常 eval で確認する
 - **ClassNotFoundException（brick 依存未解決）**: ワークスペースルート `deps.edn` の `:dev :extra-deps` に brick が `:local/root` 登録されていない。tools.deps は `:extra-paths` だけでは brick の deps.edn を自動解決しない
 - **FileNotFoundException: config.edn**: `config.edn` が classpath に含まれていない。開発時は `projects/<deploy>/resources` が `:dev :extra-paths` に追加されているか確認（§2.5）、または dev/user.clj の `config` 関数で `io/file` でファイルパス直接指定する代替手段も可（POLYLITH_GUIDE.md §2.4）
 - **config.edn の未作成**: ライフサイクル管理を採用したのに設定ファイルが存在しない
