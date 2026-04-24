@@ -193,7 +193,7 @@ CLAUDE.md が「日々の作業フロー」を規定するのに対し、本文�
 #### 2.2.4 状態は最外層に集約
 
 - **関数内で `atom` を作らない**。蓄積は `reduce`（§1.5 参照）
-- トップレベル状態は、ライフサイクル管理下のコンポーネントに格納（Integrant を含む stack 採用時は Integrant コンポーネント、§2.3 参照）
+- トップレベル状態は、ライフサイクル管理下のコンポーネントに格納（ライフサイクル管理に Integrant を採用する場合は Integrant コンポーネント、§2.3 参照）
 
 ### 2.3 副作用の隔離（Effect Isolation）の Clojure 実装
 
@@ -212,9 +212,9 @@ CLAUDE.md が「日々の作業フロー」を規定するのに対し、本文�
 - ドメイン系コンポーネント（user, order, …）は `next.jdbc`, `hato`, `ring` 等を **require しない**
 - ドメイン関数が副作用を必要とするなら、**副作用関数を引数として受け取る**
 
-#### 2.3.2 ライフサイクル管理によるコンポーネント化（Integrant を含む stack 採用時）
+#### 2.3.2 ライフサイクル管理によるコンポーネント化（Integrant 採用時）
 
-本テンプレートで Integrant を含む stack（web-api stack / graphql-api stack / batch stack / worker stack / data-pipeline stack / bot stack / desktop stack、および Integrant を有効化した cli stack）を採用する場合、副作用の隔離は Integrant で実現する：
+ライフサイクル管理に Integrant を採用する場合、副作用の隔離は Integrant で実現する。stack ラベルは典型例を示すだけで、採否は実際のライフサイクル管理要件で決める：
 
 - 副作用を持つオブジェクト（DB 接続プール、HTTP サーバ、ロガー）はすべて Integrant key として定義
 - `init-key` で起動、`halt-key!` で停止。ライフサイクル管理を統一
@@ -495,7 +495,7 @@ CLAUDE.md が「日々の作業フロー」を規定するのに対し、本文�
 
 ### 8.2 状態は最外層に集約
 
-**Rule**: 関数内で `atom` を作るな。蓄積は `reduce`。トップレベル状態はライフサイクル管理下のコンポーネントに（Integrant を含む stack 採用時）。
+**Rule**: 関数内で `atom` を作るな。蓄積は `reduce`。トップレベル状態はライフサイクル管理下のコンポーネントに（Integrant 採用時は Integrant key）。
 
 ```clojure
 ;; ✅ Do
