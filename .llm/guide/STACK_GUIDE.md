@@ -83,7 +83,7 @@
 
 ### 2.1 必須技術基盤（常に採用）
 
-**version 情報の SSOT は下記 `;; lib-catalog` EDN block**（deps.edn の実体はこれを参照して記述される）。version 値が複数箇所に分散すると drift するため、本 block の値が一次情報源。
+**version 情報の単一の正本（SSOT）は下記 `;; lib-catalog` EDN block**（deps.edn の実体はこれを参照して記述される）。version 値が複数箇所に分散すると drift するため、本 block の値が一次情報源。
 
 **ランタイム（非 lib）**:
 - **JVM 21 LTS**（長期サポート、パフォーマンス）
@@ -92,79 +92,106 @@
 ```edn
 ;; lib-catalog
 [;; === 言語・ランタイム ===
- {:purpose  [:language]
+{:purpose  [:language]
   :ids      {:coord org.clojure/clojure}
   :judgment {:status :recommended :version "1.12.0"}
-  :reasons  {:text "本テンプレートの基盤"}}
+  :reasons  {:text "本テンプレートの基盤"}
+  :references {:repository "https://github.com/clojure/clojure"
+               :doc "https://clojure.org/reference"
+               :quick-reference "https://clojure.org/guides/learn/syntax"}}
 
  ;; === 構造化アーキテクチャ ===
  ;; Polylith は git 参照（master 最新、2026-04 時点の sha）。deps.edn の
  ;; :poly alias で :git/url + :git/sha により取り込む。
- {:purpose  [:workspace]
+{:purpose  [:workspace]
   :ids      {:coord polyfy/polylith}
   :judgment {:status :recommended :version "c804c2c"}
-  :reasons  {:text "brick ベースの再利用性、poly check が構造違反を検知"}}
+  :reasons  {:text "brick ベースの再利用性、poly check が構造違反を検知"}
+  :references {:repository "https://github.com/polyfy/polylith"
+               :doc "https://github.com/polyfy/polylith/blob/master/README.md"}}
 
  ;; === 契約・検証 ===
- {:purpose   [:validation]
+{:purpose   [:validation]
   :ids       {:coord metosin/malli :ns "malli.core"}
   :judgment  {:status :recommended :version "0.16.4"}
   :reasons   {:text "関数契約 m/=>、instrumentation。§1.1.1 全域性の実装"}
+  :references {:repository "https://github.com/metosin/malli"
+               :doc "https://github.com/metosin/malli/blob/master/README.md"
+               :quick-reference "https://cljdoc.org/d/metosin/malli/"}
   :relations {:conflicts-with [[org.clojure/spec.alpha "検証ライブラリは片方に統一、spec.alpha は §3.3 で :deprecated"]
                                [prismatic/schema "検証ライブラリは片方に統一、prismatic/schema は §3.3 で :deprecated"]]}}
 
  ;; === Lint / Format（§1.2.1 機械化） ===
  ;; clj-kondo は .clj-kondo/config.edn + custom hook が配布時点で同梱され、
  ;; LLM の悪手を error で機械的に封じる（§1.2.1 機械化の実装の柱）。
- {:purpose  [:lint :ast]
+{:purpose  [:lint :ast]
   :ids      {:coord clj-kondo/clj-kondo}
   :judgment {:status :recommended :version "2024.11.14"}
-  :reasons  {:text "構文・型・未使用の検知、LLM の悪手を error で封じる"}}
+  :reasons  {:text "構文・型・未使用の検知、LLM の悪手を error で封じる"}
+  :references {:repository "https://github.com/clj-kondo/clj-kondo"
+               :doc "https://github.com/clj-kondo/clj-kondo/blob/master/README.md"
+               :quick-reference "https://github.com/clj-kondo/clj-kondo/blob/master/doc/linters.md"}}
 
  ;; Splint は clj-kondo の補完（スタイル・イディオム）。
- {:purpose  [:lint :style]
+{:purpose  [:lint :style]
   :ids      {:coord io.github.noahtheduke/splint}
   :judgment {:status :recommended :version "1.19.0"}
-  :reasons  {:text "(= 0 x) → (zero? x) 等のイディオム違反検知、clj-kondo 補完"}}
+  :reasons  {:text "(= 0 x) → (zero? x) 等のイディオム違反検知、clj-kondo 補完"}
+  :references {:repository "https://github.com/noahtheduke/splint"
+               :doc "https://github.com/noahtheduke/splint/blob/master/README.md"}}
 
- {:purpose  [:format]
+{:purpose  [:format]
   :ids      {:coord dev.weavejester/cljfmt}
   :judgment {:status :recommended :version "0.13.0"}
-  :reasons  {:text "cljfmt.edn 同梱でフォーマット議論を排除"}}
+  :reasons  {:text "cljfmt.edn 同梱でフォーマット議論を排除"}
+  :references {:repository "https://github.com/weavejester/cljfmt"
+               :doc "https://github.com/weavejester/cljfmt/blob/master/README.md"}}
 
  ;; === セキュリティ（時間軸を跨いだ機械化） ===
  ;; clj-watson は git 参照。:version には git/tag を記載。
- {:purpose  [:security :deps-scan]
+{:purpose  [:security :deps-scan]
   :ids      {:coord io.github.clj-holmes/clj-watson}
   :judgment {:status :recommended :version "v6.0.1"}
-  :reasons  {:text "NIST NVD + GitHub Advisory 照合、承認済み依存の脆弱化を検知。release 前必須"}}
+  :reasons  {:text "NIST NVD + GitHub Advisory 照合、承認済み依存の脆弱化を検知。release 前必須"}
+  :references {:repository "https://github.com/clj-holmes/clj-watson"
+               :doc "https://github.com/clj-holmes/clj-watson/blob/master/README.md"}}
 
  ;; === 依存管理・リロード ===
- {:purpose  [:tooling :deps-update]
+{:purpose  [:tooling :deps-update]
   :ids      {:coord com.github.liquidz/antq}
   :judgment {:status :recommended :version "2.11.1264"}
-  :reasons  {:text "ライブラリ更新検知、定期実行"}}
+  :reasons  {:text "ライブラリ更新検知、定期実行"}
+  :references {:repository "https://github.com/liquidz/antq"
+               :doc "https://github.com/liquidz/antq/blob/master/README.md"}}
 
- {:purpose  [:dev :reload]
+{:purpose  [:dev :reload]
   :ids      {:coord org.clojure/tools.namespace :ns "clojure.tools.namespace.repl"}
   :judgment {:status :recommended :version "1.5.0"}
-  :reasons  {:text "(reset) の基盤、REPL 駆動開発の前提"}}
+  :reasons  {:text "(reset) の基盤、REPL 駆動開発の前提"}
+  :references {:repository "https://github.com/clojure/tools.namespace"
+               :doc "https://github.com/clojure/tools.namespace/blob/master/README.md"}}
 
  ;; === nREPL（エディタ接続） ===
- {:purpose  [:dev :nrepl :server]
+{:purpose  [:dev :nrepl :server]
   :ids      {:coord nrepl/nrepl :ns "nrepl.server"}
   :judgment {:status :recommended :version "1.3.0"}
-  :reasons  {:text "nREPL サーバ、エディタ接続の基盤"}}
+  :reasons  {:text "nREPL サーバ、エディタ接続の基盤"}
+  :references {:repository "https://github.com/nrepl/nrepl"
+               :doc "https://nrepl.org/nrepl/index.html"}}
 
- {:purpose  [:dev :nrepl :cider]
+{:purpose  [:dev :nrepl :cider]
   :ids      {:coord cider/cider-nrepl}
   :judgment {:status :recommended :version "0.50.2"}
-  :reasons  {:text "Cider 統合 middleware"}}
+  :reasons  {:text "Cider 統合 middleware"}
+  :references {:repository "https://github.com/clojure-emacs/cider-nrepl"
+               :doc "https://github.com/clojure-emacs/cider-nrepl/blob/master/README.md"}}
 
- {:purpose  [:dev :nrepl :refactor]
+{:purpose  [:dev :nrepl :refactor]
   :ids      {:coord refactor-nrepl/refactor-nrepl}
   :judgment {:status :recommended :version "3.10.0"}
-  :reasons  {:text "リファクタリング middleware"}}]
+  :reasons  {:text "リファクタリング middleware"}
+  :references {:repository "https://github.com/clojure-emacs/refactor-nrepl"
+               :doc "https://github.com/clojure-emacs/refactor-nrepl/blob/master/README.md"}}]
 ```
 
 配布物として `.clj-kondo/polyguard/hooks.clj`（AST 解析型の custom hook）と `.llm/scripts/*.sh`（設定ファイル・ディレクトリ構造の機械的検査）も必須技術基盤の一部。役割分担は `MAINTAINERS_GUIDE.md §5.10`。
@@ -275,9 +302,11 @@
 
  ;; REPL 駆動開発用。dev エイリアスへ配置し、本番 uberjar には混入させない
  {:purpose   [:lifecycle :repl]
-  :ids       {:coord integrant/repl :ns "integrant.repl"}
+ :ids       {:coord integrant/repl :ns "integrant.repl"}
   :judgment  {:status :recommended :version "0.4.0"}
   :reasons   {:text "REPL での go/reset/halt サイクル"}
+  :references {:repository "https://github.com/weavejester/integrant"
+               :doc "https://github.com/weavejester/integrant/blob/master/README.md"}
   :relations {:pairs-with {:core integrant/integrant}}}
 
  ;; === 代替と却下 ===
@@ -445,9 +474,11 @@
               :pairs-with     {:routing metosin/reitit-ring}}}
 
  {:purpose   [:web :routing]
-  :ids       {:coord metosin/reitit :ns "reitit.core"}
+ :ids       {:coord metosin/reitit :ns "reitit.core"}
   :judgment  {:status :recommended :version "0.7.2"}
   :reasons   {:text "data 駆動ルーティング、Malli 統合"}
+  :references {:repository "https://github.com/metosin/reitit"
+               :doc "https://github.com/metosin/reitit/blob/master/README.md"}
   :relations {:conflicts-with [[compojure/compojure "ルーティングは片方に統一、compojure は data 駆動でなく :deprecated"]
                                [io.pedestal/pedestal "ルーティングは片方に統一、pedestal は :conditional（大規模 interceptor 機構時のみ）"]
                                [bidi/bidi "ルーティングは片方に統一、bidi は :conditional（Malli 統合不要な保守時のみ）"]
@@ -456,32 +487,41 @@
                                :coercion metosin/reitit-malli}}}
 
  {:purpose   [:web :routing :ring]
-  :ids       {:coord metosin/reitit-ring :ns "reitit.ring"}
+ :ids       {:coord metosin/reitit-ring :ns "reitit.ring"}
   :judgment  {:status :recommended :version "0.7.2"}
   :reasons   {:text "Ring handler integration、CORS middleware も同梱"}
+  :references {:repository "https://github.com/metosin/reitit"
+               :doc "https://github.com/metosin/reitit/blob/master/doc/http/ring.md"}
   :relations {:pairs-with {:core                metosin/reitit
                            :coercion            metosin/reitit-malli
                            :content-negotiation metosin/muuntaja
                            :csrf                ring/ring-anti-forgery}}}
 
  {:purpose   [:web :routing :malli]
-  :ids       {:coord metosin/reitit-malli :ns "reitit.coercion.malli"}
+ :ids       {:coord metosin/reitit-malli :ns "reitit.coercion.malli"}
   :judgment  {:status :recommended :version "0.7.2"}
   :reasons   {:text "Malli coercion for reitit"}
+  :references {:repository "https://github.com/metosin/reitit"
+               :doc "https://github.com/metosin/reitit/blob/master/doc/malli/malli.md"}
   :relations {:pairs-with {:core       metosin/reitit
                            :validation metosin/malli}}}
 
  {:purpose   [:web :content-negotiation]
-  :ids       {:coord metosin/muuntaja :ns "muuntaja.core"}
+ :ids       {:coord metosin/muuntaja :ns "muuntaja.core"}
   :judgment  {:status :recommended :version "0.6.10"}
   :reasons   {:text "Accept/Content-Type に基づく自動変換"}
+  :references {:repository "https://github.com/metosin/muuntaja"
+               :doc "https://github.com/metosin/muuntaja/blob/master/README.md"}
   :relations {:pairs-with {:json    metosin/jsonista
                            :routing metosin/reitit-ring}}}
 
  {:purpose   [:web :csrf]
-  :ids       {:coord ring/ring-anti-forgery :ns "ring.middleware.anti-forgery"}
+ :ids       {:coord ring/ring-anti-forgery :ns "ring.middleware.anti-forgery"}
   :judgment  {:status :recommended :version "1.3.0"}
   :reasons   {:text "公開 Web API 必須の CSRF 対策"}
+  :references {:repository "https://github.com/ring-clojure/ring"
+               :doc "https://github.com/ring-clojure/ring/blob/master/README.md"
+               :quick-reference "https://github.com/ring-clojure/ring/blob/master/ring-core/src/ring/middleware/csrf.clj"}
   :relations {:pairs-with {:routing metosin/reitit-ring}}}
 
  ;; === 代替と却下 ===
@@ -572,6 +612,9 @@
   :ids       {:coord metosin/jsonista :ns "jsonista.core"}
   :judgment  {:status :recommended :version "0.3.11"}
   :reasons   {:text "Jackson 直叩きで高速、cheshire の代替"}
+  :references {:repository "https://github.com/metosin/jsonista"
+               :doc "https://github.com/metosin/jsonista/blob/master/README.md"
+               :quick-reference "https://cljdoc.org/d/metosin/jsonista"}
   :relations {:conflicts-with [[cheshire/cheshire "JSON ライブラリは片方に統一、cheshire は :conditional（既存段階移行のみ）"]
                                [org.clojure/data.json "JSON ライブラリは片方に統一、data.json はパフォーマンス劣位で :deprecated"]
                                [org.json/json "JSON ライブラリは片方に統一、org.json は脆弱性歴で :forbidden"]]
@@ -625,6 +668,9 @@
   :ids       {:coord com.github.seancorfield/next.jdbc :ns "next.jdbc"}
   :judgment  {:status :recommended :version "1.3.967"}
   :reasons   {:text "モダン JDBC ラッパ、transducer 対応"}
+  :references {:repository "https://github.com/seancorfield/next-jdbc"
+               :doc "https://github.com/seancorfield/next-jdbc/blob/master/README.md"
+               :quick-reference "https://cljdoc.org/d/com.github.seancorfield/next.jdbc"}
   :relations {:conflicts-with [[org.clojure/java.jdbc "JDBC ラッパは片方に統一、java.jdbc はメンテ停止 :deprecated"]]
               :pairs-with     {:sql-builder com.github.seancorfield/honeysql
                                :pool        com.zaxxer/HikariCP
@@ -634,12 +680,17 @@
   :ids       {:coord com.github.seancorfield/honeysql :ns "honey.sql"}
   :judgment  {:status :recommended :version "2.6.1230"}
   :reasons   {:text "data 駆動 SQL DSL、next.jdbc と組み合わせる"}
+  :references {:repository "https://github.com/seancorfield/honeysql"
+               :doc "https://github.com/seancorfield/honeysql/blob/master/README.md"
+               :quick-reference "https://cljdoc.org/d/com.github.seancorfield/honeysql"}
   :relations {:pairs-with {:jdbc com.github.seancorfield/next.jdbc}}}
 
  {:purpose   [:db :connection-pool]
   :ids       {:coord com.zaxxer/HikariCP}
   :judgment  {:status :recommended :version "6.2.1"}
   :reasons   {:text "最速の JDBC コネクションプール"}
+  :references {:repository "https://github.com/brettwooldridge/HikariCP"
+               :doc "https://github.com/brettwooldridge/HikariCP/blob/dev/README.md"}
   :relations {:pairs-with {:jdbc com.github.seancorfield/next.jdbc}}}
 
  ;; === 代替と却下 ===
@@ -685,6 +736,9 @@
   :ids       {:coord com.brunobonacci/mulog :ns "com.brunobonacci.mulog"}
   :judgment  {:status :recommended :version "0.9.0"}
   :reasons   {:text "イベント駆動の構造化ログ、publisher 切替可能"}
+  :references {:repository "https://github.com/BrunoBonacci/mulog"
+               :doc "https://github.com/BrunoBonacci/mulog/blob/master/README.md"
+               :quick-reference "https://cljdoc.org/d/com.brunobonacci/mulog"}
   :relations {:conflicts-with [[com.taoensso/timbre "ロギングは片方に統一、timbre は構造化表現力劣り :deprecated"]
                                [org.apache.logging.log4j/log4j-1.2-api "ロギングは片方に統一、log4j 1.x は CVE 未修正で :forbidden"]]
               :pairs-with     {:json-output com.brunobonacci/mulog-json
@@ -694,6 +748,9 @@
   :ids       {:coord com.brunobonacci/mulog-json}
   :judgment  {:status :recommended :version "0.9.0"}
   :reasons   {:text "mulog の JSON publisher"}
+  :references {:repository "https://github.com/BrunoBonacci/mulog"
+               :doc "https://github.com/BrunoBonacci/mulog/blob/master/README.md"
+               :quick-reference "https://cljdoc.org/d/com.brunobonacci/mulog-json"}
   :relations {:pairs-with {:core com.brunobonacci/mulog}}}
 
  ;; === 代替と却下 ===
@@ -748,12 +805,18 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 [{:purpose  [:dev :property-testing]
   :ids      {:coord org.clojure/test.check :ns "clojure.test.check"}
   :judgment {:status :recommended :version "1.1.1"}
-  :reasons  {:text "Malli generator と組み合わせて最大効果"}}
+  :reasons  {:text "Malli generator と組み合わせて最大効果"}
+  :references {:repository "https://github.com/clojure/test.check"
+               :doc "https://github.com/clojure/test.check/blob/master/README.md"
+               :quick-reference "https://cljdoc.org/d/org.clojure/test.check/1.1.1"}}
 
  {:purpose  [:dev :assert]
   :ids      {:coord nubank/matcher-combinators :ns "matcher-combinators.core"}
   :judgment {:status :recommended :version "3.9.1"}
-  :reasons  {:text "部分マッチングで assert の可読性向上"}}]
+  :reasons  {:text "部分マッチングで assert の可読性向上"}
+  :references {:repository "https://github.com/nubank/matcher-combinators"
+               :doc "https://github.com/nubank/matcher-combinators/blob/master/README.md"
+               :quick-reference "https://cljdoc.org/d/nubank/matcher-combinators/3.9.1"}}]
 ```
 
 **適用場面**: 全プロジェクト（開発支援）
@@ -780,6 +843,8 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
   :ids       {:coord djblue/portal :ns "portal.api"}
   :judgment  {:status :recommended :version "0.58.5"}
   :reasons   {:text "tap> 出力先、data インスペクション。人間向け UI、ワークスペースルート :dev エイリアス専用"}
+  :references {:repository "https://github.com/djblue/portal"
+               :doc "https://github.com/djblue/portal/blob/master/README.md"}
   :relations {:pairs-with {:repl-debugger com.github.flow-storm/flow-storm-dbg}}}
 
  ;; flow-storm: trace / step / REPL-native explore を提供。LLM 協働時に
@@ -789,6 +854,8 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
   :ids       {:coord com.github.flow-storm/flow-storm-dbg :ns "flow-storm.api"}
   :judgment  {:status :recommended :version "4.5.9"}
   :reasons   {:text "REPL-native trace / step、LLM 協働で evaluation 履歴を追える"}
+  :references {:repository "https://github.com/flow-storm/flow-storm-debugger"
+               :doc "https://github.com/flow-storm/flow-storm-debugger/blob/master/README.md"}
   :relations {:pairs-with {:inspect djblue/portal}}}
 
  ;; === 代替と却下 ===
@@ -813,7 +880,9 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
  {:purpose  [:cli :arg-parse]
   :ids      {:coord org.clojure/tools.cli}
   :judgment {:status :recommended :version "1.1.230"}
-  :reasons  {:text "CLI 引数パースの標準、docopt 系より軽量"}}
+  :reasons  {:text "CLI 引数パースの標準、docopt 系より軽量"}
+  :references {:repository "https://github.com/clojure/tools.cli"
+               :doc "https://github.com/clojure/tools.cli/blob/master/README.md"}}
 
  ;; === 代替と却下 ===
  ;; docopt 系 Clojure port: メンテナンス活動が低く、tools.cli で十分。
@@ -840,6 +909,9 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
   :ids       {:coord hato/hato :ns "hato.client"}
   :judgment  {:status :recommended :version "1.0.0"}
   :reasons   {:text "Java 11+ HttpClient ベース、HTTP/2 対応"}
+  :references {:repository "https://github.com/gnarroway/hato"
+               :doc "https://github.com/gnarroway/hato/blob/master/README.md"
+               :quick-reference "https://cljdoc.org/d/gnarroway/hato"}
   :relations {:conflicts-with [[clj-http/clj-http "HTTP クライアントは片方に統一、clj-http は :conditional（既存段階移行のみ）"]]
               :pairs-with     {:retry sunng87/diehard
                                :json  metosin/jsonista}}}
@@ -874,12 +946,16 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
   :ids       {:coord buddy/buddy-sign :ns "buddy.sign.jwt"}
   :judgment  {:status :recommended}
   :reasons   {:text "JWT / JWS / JWE"}
+  :references {:repository "https://github.com/funcool/buddy-sign"
+               :doc "https://github.com/funcool/buddy-sign/blob/master/README.md"}
   :relations {:pairs-with {:password-hashing buddy/buddy-hashers}}}
 
  {:purpose   [:auth :password-hashing]
   :ids       {:coord buddy/buddy-hashers :ns "buddy.hashers"}
   :judgment  {:status :recommended}
   :reasons   {:text "パスワードハッシュ bcrypt/argon2"}
+  :references {:repository "https://github.com/funcool/buddy-hashers"
+               :doc "https://github.com/funcool/buddy-hashers/blob/master/README.md"}
   :relations {:pairs-with {:jwt buddy/buddy-sign}}}
 
  ;; === 代替と却下 ===
@@ -920,7 +996,9 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
  {:purpose  [:cache :redis]
   :ids      {:coord com.taoensso/carmine :ns "taoensso.carmine"}
   :judgment {:status :recommended :version "3.3.2"}
-  :reasons  {:text "Redis クライアント、Cookie 認証スケールアウト時の session store 兼用"}}
+  :reasons  {:text "Redis クライアント、Cookie 認証スケールアウト時の session store 兼用"}
+  :references {:repository "https://github.com/ptaoussanis/carmine"
+               :doc "https://github.com/ptaoussanis/carmine/blob/master/README.md"}}
 
  ;; === 代替と却下 ===
  ;; Caffeine + java interop: 高性能だが、core.cache の上位互換を自作する価値が
@@ -997,6 +1075,9 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
   :ids       {:coord jarohen/chime :ns "chime.core"}
   :judgment  {:status :recommended :version "0.3.3"}
   :reasons   {:text "core.async ベース、Integrant 統合容易"}
+  :references {:repository "https://github.com/jarohen/chime"
+               :doc "https://github.com/jarohen/chime/blob/master/README.md"
+               :quick-reference "https://cljdoc.org/d/jarohen/chime"}
   :relations {:conflicts-with [[overtone/at-at "スケジューラは片方に統一、at-at は停止制御弱く :deprecated"]
                                [clojurewerkz/quartzite "スケジューラは片方に統一、quartzite は :conditional（cron/永続化時のみ）"]
                                [tea-time/tea-time "スケジューラは片方に統一、tea-time はメンテ停止 :deprecated"]]
@@ -1085,6 +1166,8 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
   :ids       {:coord sunng87/diehard :ns "diehard.core"}
   :judgment  {:status :recommended}
   :reasons   {:text "Retry / Circuit Breaker、外部 API 呼出時に必須化"}
+  :references {:repository "https://github.com/sunng87/diehard"
+               :doc "https://github.com/sunng87/diehard/blob/master/README.md"}
   :relations {:conflicts-with [[robert/robert.bruce "リトライは片方に統一、robert.bruce はメンテ停止 :deprecated"]]
               :pairs-with     {:http-client hato/hato}}}
 
@@ -1169,9 +1252,11 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
- {:purpose   [:i18n]
+{:purpose   [:i18n]
   :ids       {:coord com.taoensso/tempura :ns "taoensso.tempura"}
   :judgment  {:status :recommended}
+  :references {:repository "https://github.com/ptaoussanis/tempura"
+               :doc "https://github.com/ptaoussanis/tempura/blob/master/README.md"}
   :reasons   {:text "tower の後継、同作者"}
   :relations {:conflicts-with [[com.taoensso/tower "i18n は片方に統一、tower はメンテ停止 :deprecated"]]
               :pairs-with     {:lifecycle integrant/integrant}}}
@@ -1232,9 +1317,11 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 [;; === 採用 ===
  ;; Biff は XTDB/Rum/HTMX を同梱した opinionated SaaS framework。
  ;; Integrant とは衝突するため併用不可（Biff 内部で独自 lifecycle 管理）。
- {:purpose   [:saas :framework]
+{:purpose   [:saas :framework]
   :ids       {:coord com.biffweb/biff}
   :judgment  {:status :recommended :version "0.9.0"}
+  :references {:repository "https://github.com/jakemcc/biff"
+               :doc "https://github.com/jakemcc/biff/blob/master/README.md"}
   :reasons   {:text "opinionated SaaS framework、XTDB/Rum/HTMX 同梱"}
   :relations {:bundles        [com.xtdb/xtdb-api rum/rum]
               :conflicts-with [[integrant/integrant "Biff uses its own lifecycle manager"]
@@ -1272,14 +1359,18 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 ;; lib-catalog
 [;; === 採用 ===
  ;; carmine は §3.13 キャッシュで採用済（同一 lib を重複登録せず、参照のみ）。
- {:purpose  [:db :mongodb]
+{:purpose  [:db :mongodb]
   :ids      {:coord com.novemberain/monger :ns "monger.core"}
   :judgment {:status :recommended}
+  :references {:repository "https://github.com/michaelklishin/monger"
+               :doc "https://github.com/michaelklishin/monger/blob/master/README.md"}
   :reasons  {:text "MongoDB の Clojure 慣用ラッパ、document を map で扱える"}}
 
- {:purpose  [:db :dynamodb]
+{:purpose  [:db :dynamodb]
   :ids      {:coord com.cognitect.aws/dynamodb}
   :judgment {:status :recommended}
+  :references {:repository "https://github.com/cognitect-labs/aws-api"
+               :doc "https://github.com/cognitect-labs/aws-api/blob/master/README.md"}
   :reasons  {:text "aws-api 系列、全 AWS サービスで同じパターン"}}
 
  ;; === 代替と却下 ===
@@ -1315,18 +1406,22 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
- {:purpose   [:db :document-db]
+{:purpose   [:db :document-db]
   :ids       {:coord com.xtdb/xtdb-api :ns "xtdb.api"}
   :judgment  {:status :recommended :version "2.0.0"}
+  :references {:repository "https://github.com/xtdb/xtdb"
+               :doc "https://docs.xtdb.com"}
   :reasons   {:text "bitemporal document DB、Biff 同梱 / 単体採用いずれも可"}
   :relations {:conflicts-with [[com.datomic/local "document DB は片方に統一、datomic は :acceptable（商用条件要確認）"]]}}
 
  ;; === 代替（許容）===
  ;; Datomic Pro: 商用ライセンス、新規採用時のコスト・ロックインリスク。
  ;; 既存運用プロジェクトは継続可、Clojure コミュニティ実績あり。
- {:purpose   [:db :document-db]
+{:purpose   [:db :document-db]
   :ids       {:coord com.datomic/local :ns "datomic.api"}
   :judgment  {:status :acceptable}
+  :references {:repository "https://github.com/Datomic/local"
+               :doc "https://github.com/Datomic/local/blob/master/README.md"}
   :reasons   {:text "選択肢として許容、商用条件要確認"
               :tags [:license]}
   :relations {:conflicts-with [[com.xtdb/xtdb-api "document DB は片方に統一、xtdb が :recommended（OSS）"]]}}
@@ -1359,9 +1454,11 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
- {:purpose   [:db :migration]
+{:purpose   [:db :migration]
   :ids       {:coord migratus/migratus :ns "migratus.core"}
   :judgment  {:status :recommended}
+  :references {:repository "https://github.com/yogthos/migratus"
+               :doc "https://github.com/yogthos/migratus/blob/master/README.md"}
   :reasons   {:text "SQL ベース、純 Clojure、新規 Clojure プロジェクトの第一選択"}
   :relations {:conflicts-with [[org.flywaydb/flyway-core "マイグレーションは片方に統一、flyway は :conditional（Java 資産保守のみ）"]
                                [org.liquibase/liquibase-core "マイグレーションは片方に統一、liquibase は :conditional（Java 資産保守のみ）"]
@@ -1447,9 +1544,11 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
- {:purpose   [:testing :e2e]
+{:purpose   [:testing :e2e]
   :ids       {:coord etaoin/etaoin :ns "etaoin.api"}
   :judgment  {:status :recommended}
+  :references {:repository "https://github.com/igrishaev/etaoin"
+               :doc "https://github.com/igrishaev/etaoin/blob/master/README.md"}
   :reasons   {:text "100% Clojure、map で driver 設定、data 駆動"}
   :relations {:conflicts-with [[clj-webdriver/clj-webdriver "E2E WebDriver は片方に統一、clj-webdriver はメンテ停止 :deprecated"]]}}
 
@@ -1560,19 +1659,25 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
- {:purpose  [:report :pdf]
+{:purpose  [:report :pdf]
   :ids      {:coord clj-pdf/clj-pdf}
   :judgment {:status :recommended}
+  :references {:repository "https://github.com/yogthos/clj-pdf"
+               :doc "https://github.com/yogthos/clj-pdf/blob/master/README.md"}
   :reasons  {:text "PDF 生成、iText ベース (iText 直接利用は narrative で回避)"}}
 
- {:purpose  [:report :excel]
+{:purpose  [:report :excel]
   :ids      {:coord dk.ative/docjure}
   :judgment {:status :recommended}
+  :references {:repository "https://github.com/mjul/docjure"
+               :doc "https://github.com/mjul/docjure/blob/master/README.md"}
   :reasons  {:text "Apache POI ラッパ、Excel 読み書き"}}
 
- {:purpose  [:csv]
+{:purpose  [:csv]
   :ids      {:coord org.clojure/data.csv :ns "clojure.data.csv"}
   :judgment {:status :recommended}
+  :references {:repository "https://github.com/clojure/data.csv"
+               :doc "https://github.com/clojure/data.csv/blob/master/README.md"}
   :reasons  {:text "CSV の標準"}}
 
  ;; === 代替と却下 ===
@@ -1608,9 +1713,11 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
- {:purpose   [:markdown]
+{:purpose   [:markdown]
   :ids       {:coord markdown-clj/markdown-clj :ns "markdown.core"}
   :judgment  {:status :recommended}
+  :references {:repository "https://github.com/yogthos/markdown-clj"
+               :doc "https://github.com/yogthos/markdown-clj/blob/master/README.md"}
   :reasons   {:text "endophile の代替、メンテ継続中"}
   :relations {:conflicts-with [[endophile/endophile "markdown ライブラリは片方に統一、endophile はメンテ停止 :deprecated"]]}}
 
@@ -1664,6 +1771,8 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 [{:purpose  [:email :smtp]
   :ids      {:coord draines/postal :ns "postal.core"}
   :judgment {:status :recommended}
+  :references {:repository "https://github.com/drewr/postal"
+               :doc "https://github.com/drewr/postal/blob/master/README.md"}
   :reasons  {:text "SMTP メール送信、軽量"}}]
 ```
 
@@ -1692,14 +1801,18 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
- {:purpose  [:aws :core]
+{:purpose  [:aws :core]
   :ids      {:coord com.cognitect.aws/api :ns "cognitect.aws.api"}
   :judgment {:status :recommended}
+  :references {:repository "https://github.com/cognitect-labs/aws-api"
+               :doc "https://github.com/cognitect-labs/aws-api/blob/master/README.md"}
   :reasons  {:text "Cognitect aws-api 本体、SDK v2 ベース・純 Clojure"}}
 
- {:purpose  [:aws :s3]
+{:purpose  [:aws :s3]
   :ids      {:coord com.cognitect.aws/s3}
   :judgment {:status :recommended}
+  :references {:repository "https://github.com/cognitect-labs/aws-api"
+               :doc "https://github.com/cognitect-labs/aws-api/blob/master/README.md"}
   :reasons  {:text "ファイルストレージ、aws-api 系列、サービスごと分割"}}
 
  ;; === 代替と却下 ===
@@ -1735,9 +1848,11 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
- {:purpose   [:search :elasticsearch]
+{:purpose   [:search :elasticsearch]
   :ids       {:coord mpenet/spandex :ns "qbits.spandex"}
   :judgment  {:status :recommended}
+  :references {:repository "https://github.com/mpenet/spandex"
+               :doc "https://github.com/mpenet/spandex/blob/master/README.md"}
   :reasons   {:text "Elasticsearch クライアント、elastisch の代替"}
   :relations {:conflicts-with [[clojurewerkz/elastisch "Elasticsearch クライアントは片方に統一、elastisch はメンテ停止 :deprecated"]]
               :pairs-with     {:json metosin/jsonista}}}
@@ -1786,34 +1901,42 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
- {:purpose  [:ml :dataset]
+{:purpose  [:ml :dataset]
   :ids      {:coord scicloj/tablecloth :ns "tablecloth.api"}
   :judgment {:status :recommended}
+  :references {:repository "https://github.com/scicloj/tablecloth"
+               :doc "https://github.com/scicloj/tablecloth/blob/master/README.md"}
   :reasons  {:text "tech.ml.dataset 上の高レベル API、data 駆動で scicloj 系"}}
 
- {:purpose  [:ml :pipeline]
+{:purpose  [:ml :pipeline]
   :ids      {:coord scicloj/scicloj.ml}
   :judgment {:status :recommended}
+  :references {:repository "https://github.com/scicloj/scicloj.ml"}
   :reasons  {:text "ML pipeline、scicloj エコシステム"}}
 
- {:purpose  [:ml :notebook]
+{:purpose  [:ml :notebook]
   :ids      {:coord scicloj/clay}
   :judgment {:status :recommended}
+  :references {:repository "https://github.com/scicloj/clay"}
   :reasons  {:text "Markdown + Clojure + 結果のノートブック、可視化にも使う"}}
 
- {:purpose  [:ml :integration]
+{:purpose  [:ml :integration]
   :ids      {:coord scicloj/noj}
   :judgment {:status :acceptable}
+  :references {:repository "https://github.com/scicloj/noj"}
   :reasons  {:text "scicloj 系の integration helper、任意"}}
 
- {:purpose  [:data :pipeline-dataset]
+{:purpose  [:data :pipeline-dataset]
   :ids      {:coord techascent/tech.ml.dataset :ns "tech.v3.dataset"}
   :judgment {:status :recommended}
+  :references {:repository "https://github.com/techascent/tech.ml.dataset"}
   :reasons  {:text "表形式データの効率処理、tablecloth の基盤"}}
 
- {:purpose  [:python-interop]
+{:purpose  [:python-interop]
   :ids      {:coord clj-python/libpython-clj :ns "libpython-clj.python"}
   :judgment {:status :recommended}
+  :references {:repository "https://github.com/cnuernber/libpython-clj"
+               :doc "https://github.com/cnuernber/libpython-clj/blob/master/README.md"}
   :reasons  {:text "Python interop、PyTorch/TensorFlow を境界で扱う"}}
 
  ;; === 代替と却下 ===
@@ -1883,14 +2006,18 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
- {:purpose  [:llm :openai]
+{:purpose  [:llm :openai]
   :ids      {:coord wkok/openai-clojure}
   :judgment {:status :acceptable}
+  :references {:repository "https://github.com/wkok/openai-clojure"
+               :doc "https://github.com/wkok/openai-clojure/blob/master/README.md"}
   :reasons  {:text "OpenAI 互換 API 向け wrapper、hato 直接実装も可"}}
 
- {:purpose  [:templating :text]
+{:purpose  [:templating :text]
   :ids      {:coord selmer/selmer :ns "selmer.parser"}
   :judgment {:status :recommended :version "1.12.0"}
+  :references {:repository "https://github.com/yogthos/selmer"
+               :doc "https://github.com/yogthos/selmer/blob/master/README.md"}
   :reasons  {:text "Django 風テンプレート、プロンプト管理等"}}
 
  ;; === 代替と却下 ===
@@ -1928,24 +2055,29 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
- {:purpose  [:media :opencv]
+{:purpose  [:media :opencv]
   :ids      {:coord org.bytedeco/opencv-platform}
   :judgment {:status :recommended}
+  :references {:repository "https://github.com/bytedeco/javacpp"
+               :doc "https://github.com/bytedeco/javacpp#opencv"}
   :reasons  {:text "OpenCV Java wrapper、コンピュータビジョン用途"}}
 
- {:purpose  [:media :svg]
+{:purpose  [:media :svg]
   :ids      {:coord dali/dali}
   :judgment {:status :recommended}
+  :references {:repository "https://github.com/cnuernber/dali"}
   :reasons  {:text "SVG 生成、data 駆動・hiccup 風 DSL"}}
 
- {:purpose  [:media :ffmpeg]
+{:purpose  [:media :ffmpeg]
   :ids      {:coord com.github.kokorin.jaffree/jaffree}
   :judgment {:status :recommended}
+  :references {:repository "https://github.com/kokorin/Jaffree"}
   :reasons  {:text "FFmpeg shell out wrapper、動画トランスコード"}}
 
- {:purpose  [:media :ocr]
+{:purpose  [:media :ocr]
   :ids      {:coord net.sourceforge.tess4j/tess4j}
   :judgment {:status :acceptable}
+  :references {:repository "https://github.com/tesseract-ocr/tess4j"}
   :reasons  {:text "Tesseract、shell out 推奨（インプロセス JNI はクラッシュリスク）"}}]
 ```
 
@@ -1972,23 +2104,28 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
- {:purpose   [:edge :gpio]
+{:purpose   [:edge :gpio]
   :ids       {:coord com.pi4j/pi4j-core}
   :judgment  {:status :recommended :version "2.x"}
+  :references {:repository "https://github.com/pi4j/pi4j-v2"
+               :doc "https://github.com/pi4j/pi4j-v2/blob/master/README.md"}
   :reasons   {:text "Raspberry Pi GPIO の標準、Pi4J v2"}
   :relations {:pairs-with {:backend com.pi4j/pi4j-plugin-pigpio
                            :mqtt    org.eclipse.paho/org.eclipse.paho.client.mqttv3}}}
 
- {:purpose   [:edge :gpio :pigpio]
+{:purpose   [:edge :gpio :pigpio]
   :ids       {:coord com.pi4j/pi4j-plugin-pigpio}
   :judgment  {:status :recommended :version "2.x"}
+  :references {:repository "https://github.com/pi4j/pi4j-v2"}
   :reasons   {:text "pigpio バックエンド、Pi4J v2 のネイティブ実装"}
   :relations {:pairs-with {:core com.pi4j/pi4j-core}}}
 
- {:purpose   [:messaging :mqtt]
+{:purpose   [:messaging :mqtt]
   :ids       {:coord org.eclipse.paho/org.eclipse.paho.client.mqttv3
               :ns    "org.eclipse.paho.client.mqttv3"}
   :judgment  {:status :recommended :version "1.2.5"}
+  :references {:repository "https://github.com/eclipse/paho.mqtt.java"
+               :doc "https://github.com/eclipse/paho.mqtt.java/blob/master/README.md"}
   :reasons   {:text "Paho MQTT Java 公式、machine-head の代替"}
   :relations {:conflicts-with [[clojurewerkz/machine_head "MQTT クライアントは片方に統一、machine-head は :deprecated"]]
               :pairs-with     {:edge com.pi4j/pi4j-core}}}
@@ -2068,6 +2205,9 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
  {:purpose   [:serialization :nippy]
   :ids       {:coord com.taoensso/nippy :ns "taoensso.nippy"}
   :judgment  {:status :recommended}
+  :references {:repository "https://github.com/ptaoussanis/nippy"
+               :doc "https://github.com/ptaoussanis/nippy/blob/master/README.md"
+               :quick-reference "https://cljdoc.org/d/com.taoensso/nippy"}
   :reasons   {:text "高速バイナリシリアライザ、Fressian の代替"}
   :relations {:conflicts-with [[org.clojure/data.fressian "バイナリストレージは片方に統一、fressian は :conditional（既存継続のみ）"]]
               :pairs-with     {:wire-format com.cognitect/transit-clj}}}
@@ -2075,6 +2215,9 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
  {:purpose   [:serialization :transit]
   :ids       {:coord com.cognitect/transit-clj :ns "cognitect.transit"}
   :judgment  {:status :recommended}
+  :references {:repository "https://github.com/cognitect/transit-clj"
+               :doc "https://github.com/cognitect/transit-clj/blob/master/README.md"
+               :quick-reference "https://cljdoc.org/d/com.cognitect/transit-clj"}
   :reasons   {:text "Cognitect Transit、Clojure 標準のバイナリ転送"}
   :relations {:pairs-with {:storage com.taoensso/nippy}}}
 
@@ -2123,16 +2266,25 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 [{:purpose  [:dev :benchmark]
   :ids      {:coord criterium/criterium :ns "criterium.core"}
   :judgment {:status :recommended}
+  :references {:repository "https://github.com/hugoduncan/criterium"
+               :doc "https://github.com/hugoduncan/criterium/blob/master/README.md"
+               :quick-reference "https://cljdoc.org/d/criterium/criterium"}
   :reasons  {:text "JIT warm-up 込み統計計測、測ってから最適化"}}
 
  {:purpose  [:dev :memory-measure]
   :ids      {:coord com.clojure-goes-fast/clj-memory-meter :ns "clj-memory-meter.core"}
   :judgment {:status :recommended}
+  :references {:repository "https://github.com/clojure-goes-fast/clj-memory-meter"
+               :doc "https://github.com/clojure-goes-fast/clj-memory-meter/blob/master/README.md"
+               :quick-reference "https://cljdoc.org/d/com.clojure-goes-fast/clj-memory-meter"}
   :reasons  {:text "オブジェクトサイズ実測、heap profiling を 1 行で"}}
 
  {:purpose  [:data :ordered-map]
   :ids      {:coord org.flatland/ordered :ns "flatland.ordered.map"}
   :judgment {:status :recommended}
+  :references {:repository "https://clojars.org/org.flatland/ordered"
+               :doc "https://github.com/clj-commons/ordered/blob/master/README.md"
+               :quick-reference "https://cljdoc.org/d/org.flatland/ordered"}
   :reasons  {:text "insertion-order を保つ map/set、Clojure 標準 map は順序保証なし"}}]
 ```
 
@@ -2233,11 +2385,17 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
  {:purpose  [:graphql]
   :ids      {:coord com.walmartlabs/lacinia :ns "com.walmartlabs.lacinia"}
   :judgment {:status :recommended :version "1.2.2"}
+  :references {:repository "https://github.com/walmartlabs/lacinia"
+               :doc "https://github.com/walmartlabs/lacinia/blob/master/README.md"
+               :quick-reference "https://cljdoc.org/d/com.walmartlabs/lacinia"}
   :reasons  {:text "Clojure 界デファクト、スキーマを EDN 宣言、Malli 親和性"}}
 
  {:purpose  [:graphql :ring-integration]
   :ids      {:coord com.walmartlabs/lacinia-pedestal}
   :judgment {:status :acceptable :version "1.3"}
+  :references {:repository "https://clojars.org/com.walmartlabs/lacinia-pedestal"
+               :quick-reference "https://cljdoc.org/d/com.walmartlabs/lacinia-pedestal"
+               :doc "https://cljdoc.org/d/com.walmartlabs/lacinia-pedestal/1.3.0/api/com.walmartlabs.lacinia.pedestal"}}
   :reasons  {:text "Lacinia-Ring 統合、または自作 middleware でも可"}}
 
  ;; === 代替と却下 ===
@@ -2268,6 +2426,9 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
  {:purpose   [:desktop :gui]
   :ids       {:coord io.github.humbleui/humbleui}
   :judgment  {:status :recommended :version "0.2.0"}
+  :references {:repository "https://clojars.org/io.github.humbleui/humbleui"
+               :doc "https://cljdoc.org/d/io.github.humbleui/humbleui"
+               :quick-reference "https://cljdoc.org/d/io.github.humbleui/humbleui"}
   :reasons   {:text "Skia ベース、宣言的 API、API 変動リスクあり (暫定採用)"}
   :relations {:conflicts-with [[cljfx/cljfx "デスクトップ GUI は片方に統一、cljfx は :acceptable（安定性優先時）"]
                                [seesaw/seesaw "デスクトップ GUI は片方に統一、seesaw は :conditional（レガシー保守のみ）"]]}}
@@ -2275,6 +2436,9 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
  {:purpose   [:desktop :gui :javafx]
   :ids       {:coord cljfx/cljfx :ns "cljfx.api"}
   :judgment  {:status :acceptable}
+  :references {:repository "https://github.com/cljfx/cljfx"
+               :doc "https://github.com/cljfx/cljfx/blob/master/README.md"
+               :quick-reference "https://cljdoc.org/d/cljfx/cljfx"}
   :reasons   {:text "JavaFX 宣言的ラッパ、成熟。安定性優先なら採用を判断し ADR 記録"}
   :relations {:conflicts-with [[io.github.humbleui/humbleui "デスクトップ GUI は片方に統一、humbleui が :recommended"]
                                [seesaw/seesaw "デスクトップ GUI は片方に統一、seesaw は :conditional"]]}}
@@ -2321,24 +2485,33 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
- {:purpose  [:messaging :queue :sqs]
+{:purpose  [:messaging :queue :sqs]
   :ids      {:coord com.cognitect.aws/sqs}
   :judgment {:status :recommended}
+  :references {:repository "https://github.com/cognitect-labs/aws-api"
+               :doc "https://github.com/cognitect-labs/aws-api/blob/master/README.md"}
   :reasons  {:text "AWS SQS キュー、aws-api 系列"}}
 
- {:purpose  [:messaging :queue :kafka]
+{:purpose  [:messaging :queue :kafka]
   :ids      {:coord fundingcircle/jackdaw}
   :judgment {:status :recommended}
+  :references {:repository "https://github.com/FundingCircle/jackdaw"
+               :doc "https://github.com/FundingCircle/jackdaw/blob/master/README.md"}
   :reasons  {:text "Kafka、Confluent Platform 連携可"}}
 
- {:purpose  [:messaging :queue :rabbitmq]
+{:purpose  [:messaging :queue :rabbitmq]
   :ids      {:coord com.novemberain/langohr}
   :judgment {:status :recommended}
+  :references {:repository "https://github.com/michaelklishin/langohr"
+               :doc "https://github.com/michaelklishin/langohr/blob/master/README.md"}
   :reasons  {:text "RabbitMQ AMQP"}}
 
  {:purpose  [:messaging :queue :redis]
   :ids      {:coord com.taoensso/carmine :ns "taoensso.carmine"}
   :judgment {:status :acceptable}
+  :references {:repository "https://github.com/ptaoussanis/carmine"
+               :doc "https://github.com/ptaoussanis/carmine/blob/master/README.md"
+               :quick-reference "https://cljdoc.org/d/com.taoensso/carmine"}
   :reasons  {:text "Redis Stream / Pub-Sub。cache と同ライブラリ"}}
 
  ;; === 代替と却下 ===
@@ -2367,9 +2540,10 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
- {:purpose  [:bot :discord]
+{:purpose  [:bot :discord]
   :ids      {:coord org.suskalo/discljord}
   :judgment {:status :recommended}
+  :references {:repository "https://github.com/discljord/discljord"}
   :reasons  {:text "Discord Bot 向け、Clojure 特化"}}
 
  ;; === 代替と却下 ===
@@ -2399,21 +2573,26 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
- {:purpose  [:web :ssr]
+{:purpose  [:web :ssr]
   :ids      {:coord rum/rum :ns "rum.core"}
   :judgment {:status :recommended}
+  :references {:repository "https://github.com/tonsky/rum"
+               :doc "https://github.com/tonsky/rum/blob/master/README.md"}
   :reasons  {:text "SSR テンプレート、React 互換の概念"}}
 
- {:purpose  [:web :html-dsl]
+{:purpose  [:web :html-dsl]
   :ids      {:coord hiccup/hiccup :ns "hiccup.core"}
   :judgment {:status :acceptable}
+  :references {:repository "https://github.com/weavejester/hiccup"
+               :doc "https://github.com/weavejester/hiccup/blob/master/README.md"}
   :reasons  {:text "Clojure data として HTML を組み立てる DSL。rum の代替軽量版"}}
 
  ;; enlive: HTML 走査・変換（テンプレーティングというより scraping・selector 駆動）。
  ;; 既存 HTML を CSS selector 風に変換する用途で有効、templating の代替ではない。
- {:purpose  [:web :html-transform]
+{:purpose  [:web :html-transform]
   :ids      {:coord enlive/enlive :ns "net.cgrand.enlive-html"}
   :judgment {:status :acceptable}
+  :references {:repository "https://github.com/cgrand/enlive"}
   :reasons  {:text "HTML 走査・selector 変換、scraping / HTML after-edit 用途"}}
 
  ;; selmer は §3.37 LLM で採用済、本節では重複登録せず narrative のみで言及。
@@ -2441,9 +2620,11 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 [;; === 採用 ===
  ;; core.async: Clojure の CSP チャネル、非同期パイプライン。
  ;; manifold の代替として data-pipeline / web-api / worker で活用。
- {:purpose   [:async]
+{:purpose   [:async]
   :ids       {:coord org.clojure/core.async :ns "clojure.core.async"}
   :judgment  {:status :recommended}
+  :references {:repository "https://github.com/clojure/core.async"
+               :doc "https://github.com/clojure/core.async/blob/master/README.md"}
   :reasons   {:text "CSP チャネル、manifold の代替"}
   :relations {:conflicts-with [[manifold/manifold "非同期抽象は片方に統一、manifold は設計思想不整合"]]
               :pairs-with     {:scheduling jarohen/chime}}}
@@ -2467,9 +2648,11 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 
  ;; instaparse: BNF / PEG ベースのパーサジェネレータ。独自 DSL や設定言語の
  ;; パーサを書くときの第一選択、Clojure で代替少ない。
- {:purpose  [:parser]
+{:purpose  [:parser]
   :ids      {:coord instaparse/instaparse :ns "instaparse.core"}
   :judgment {:status :acceptable}
+  :references {:repository "https://github.com/Engelberg/instaparse"
+               :doc "https://github.com/Engelberg/instaparse/blob/master/README.md"}
   :reasons  {:text "BNF/PEG パーサジェネレータ、独自 DSL / 設定言語用途"}}
 
  ;; === 代替と却下 ===
@@ -2499,16 +2682,20 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
- {:purpose   [:time]
+{:purpose   [:time]
   :ids       {:coord tick/tick :ns "tick.core"}
   :judgment  {:status :recommended :version "1.0"}
+  :references {:repository "https://github.com/juxt/tick"
+               :doc "https://github.com/juxt/tick/blob/master/README.md"}
   :reasons   {:text "data 駆動 java.time ラッパ、Malli 統合容易"}
   :relations {:conflicts-with [[clojure.java-time/clojure.java-time "時刻処理は片方に統一"]
                                [clj-time/clj-time "時刻処理は片方に統一、clj-time は Joda-Time ベースで非推奨"]]}}
 
- {:purpose   [:time :jdk-wrapper]
+{:purpose   [:time :jdk-wrapper]
   :ids       {:coord clojure.java-time/clojure.java-time :ns "java-time.api"}
   :judgment  {:status :acceptable}
+  :references {:repository "https://github.com/clojure/java-time"
+               :doc "https://github.com/clojure/java-time/blob/master/README.md"}
   :reasons   {:text "JDK java.time 薄ラッパ、依存最小・学習コスト低"}
   :relations {:conflicts-with [[tick/tick "時刻処理は片方に統一"]
                                [clj-time/clj-time "時刻処理は片方に統一、clj-time は Joda-Time ベースで非推奨"]]}}
@@ -2745,7 +2932,7 @@ brick deps.edn が必要な用途別機能カテゴリに対応する §3 機能
 §3 の「代替と却下」と §8 の性格:
 
 - **§3 「代替と却下」節**: 特定機能で採用候補として比較・却下した（他機能では有用かもしれない中立的却下）。機能文脈を持つ。
-- **§8 禁止・非推奨**: **どこでも**採用すべきでない（理由が明確）。cross-cutting。本節は理由タグと手順のみ残し、エントリは §3 の機能節内に記載する（採否を機能ごとに一望できる SSOT のため）。
+- **§8 禁止・非推奨**: **どこでも**採用すべきでない（理由が明確）。cross-cutting。本節は理由タグと手順のみ残し、エントリは §3 の機能節内に記載する（採否を機能ごとに一望できる単一の正本のため）。
 
 ### 8.0 理由タグ
 

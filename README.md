@@ -170,7 +170,7 @@ LLM が詰まった時は QUESTIONS に Q を起票して停止する。人間�
 │   ├── repl-eval.sh                  稼働中 nREPL へ eval 送信（LLM 向け、CLAUDE.md §9）
 │   └── repl_eval.clj                 repl-eval.sh の Clojure 実装（clj -X:repl-eval）
 │
-├── .llm/data/                ← gen-lib-catalog が生成する artifact（SSOT 生成物）
+├── .llm/data/                ← gen-lib-catalog が生成する artifact（単一の正本から生成される成果物）
 │   ├── libs.edn                      lib-catalog 全 entry（Malli 検証済）
 │   ├── deprecated-libs.patterns      deps.edn 採用検知用パターン
 │   ├── forbidden-requires.patterns   require 検知用パターン
@@ -206,7 +206,7 @@ LLM が詰まった時は QUESTIONS に Q を起票して停止する。人間�
 
 - **疲労最小化**: LLM の誤りを構造的に封じる（全域性・不変性・副作用の隔離）
 - **機械化 5 層**: 第 1 層 clj-kondo 組込 linter / 第 2 層 `.clj-kondo/polyguard/` custom hook / 第 3 層 Splint / 第 4 層 `.llm/scripts/check-*.sh`（設定・構造検査）+ Polylith `poly check` + Malli instrumentation / 第 5 層 clj-watson（時間軸脆弱性）。規約を人間の注意力ではなくツールで強制（詳細は `MAINTAINERS_GUIDE.md` §5.10）
-- **SSOT 生成**: `.llm/scripts/gen_lib_catalog.clj` が `STACK_GUIDE` の `;; lib-catalog` EDN block 群を検証・合成し `.llm/data/` 配下に artifact を emit。shell script は artifact を読む
+- **単一の正本（SSOT）生成**: `.llm/scripts/gen_lib_catalog.clj` が `STACK_GUIDE` の `;; lib-catalog` EDN block 群を検証・合成し `.llm/data/` 配下に artifact を emit。shell script は artifact を読む
 - **REPL as Primary Workbench**: `.llm/scripts/repl-eval.sh` により LLM が稼働中 nREPL に eval / load-file を送信。永続 session で state 継続、編集から検証までを同一ターンで閉じる
 - **技術選定カタログ**: 必須技術基盤はワークスペースルートで常に採用し、追加ライブラリは必要な brick の `deps.edn` に配置する。推奨カタログは `.llm/guide/STACK_GUIDE.md`
 - **4 種の文書分離**: 仕様（DESIGN）/ 知識（KNOWLEDGE）/ 決定履歴（ADR）/ 判断保留（QUESTIONS）
