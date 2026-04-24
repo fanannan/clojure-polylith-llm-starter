@@ -135,12 +135,18 @@ CLAUDE.md が「日々の作業フロー」を規定するのに対し、本文�
 
 #### 2.1.1 Malli 契約の徹底
 
-- 公開関数（`interface.clj` の関数、および `core.clj` でも他 namespace から呼ばれる可能性のあるもの）には **`m/=>` を必ず付ける**
+- 公開関数（`interface.clj` の `defn`）には **`m/=>` を必ず付ける**（`defn-` は免除、`core.clj` は内部実装のため任意）
+- 契約は境界（`interface.clj`）に集約する（§1.1.1 全域性「境界契約は境界で宣言」）。`core.clj` には置かない。これにより REPL / テスト / 他 brick からの呼び出しは interface 経由で instrumentation が効き、`check-interface-contracts.sh` が interface.clj 内の `(m/=>)` 存在を機械検証する
 - スキーマは関数定義の直後に書く（関数と契約を一体で読めるように）
 
 ```clojure
-(defn find-user [db id] ...)
-(m/=> find-user [:=> [:cat :any :uuid] [:maybe User]])
+;; interface.clj（境界）
+(ns myorg.myapp.user.interface
+  (:require [malli.core :as m]
+            [myorg.myapp.user.core :as core]))
+
+(m/=> find-user [:=> [:cat :any :uuid] [:maybe core/User]])
+(defn find-user [db id] (core/find-user db id))
 ```
 
 #### 2.1.2 境界での `m/validate`

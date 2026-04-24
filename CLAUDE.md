@@ -169,7 +169,7 @@ STACK_GUIDE.md に載っていない領域に遭遇した場合は、§6.3 の�
 
 失敗を契約に持ち上げ、境界で検証する。
 
-- **全公開関数に `m/=>` 契約を付ける**（`interface.clj` の関数は必須、`defn-` は免除）
+- **`interface.clj` の全 `defn` に `m/=>` 契約を付ける**（境界契約は境界に集約。`core.clj` には置かない。`check-interface-contracts.sh` が機械検証）
 - 外部入力（HTTP リクエスト、DB 行、外部 API レスポンス、設定ファイル）は**入口で `m/validate`**
 - 開発時は Malli instrumentation を有効化（`dev/user.clj` の `(malli-on!)` を REPL 起動後に呼ぶ。Integrant を使うプロジェクトでは `(go)` が内部的に呼ぶ）。契約違反は REPL 評価で即座に例外化
 - 関数が失敗し得るなら、戻り値の型を一貫させる（常に `nil` を返すか、`{:error ...}` 形式か、一つに決める）
@@ -446,8 +446,8 @@ LLM のフィードバックループは**編集単位でターン内に閉じ�
 
 1. §8.0 の確認を実施
 2. 対象の `interface.clj` に追加する関数のシグネチャと Malli スキーマを設計し、**ユーザに提示・確認**
-3. `core.clj` に実装、`m/=>` 契約付与
-4. `interface.clj` に委譲
+3. `core.clj` に実装（`m/=>` 契約は置かない）
+4. `interface.clj` に委譲 + `m/=>` 契約付与（境界契約の集約）
 5. `test/.../interface_test.clj` にテスト（単体 + プロパティ）
 6. `clj -M:poly check` → `clj -M:poly test`
 7. **実装中に発見した契約・不変条件・暗黙知**があれば、ユーザに提示して KNOWLEDGE.md への追加を提案（詳細は `KNOWLEDGE.md` §0）

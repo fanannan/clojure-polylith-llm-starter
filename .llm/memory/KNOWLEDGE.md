@@ -126,7 +126,17 @@ KNOWLEDGE.md を含む 4 種文書の編集権限マトリクスは **`.llm/guid
      例：「ドメイン層は I/O ライブラリを require しない（clj-kondo で強制）」
          「Integrant key は `:myorg.myapp.<component>/<key>` の修飾キーワード」 -->
 
-（現在エントリはありません）
+### Malli `m/=>` 契約は `interface.clj` に集約する
+- **追加日**: 2026-04-24
+- **由来**: 実装中の発見（clj-kondo の redefined-var 誤検出をきっかけに配置規約を統一）
+- **内容**: brick の公開 `m/=>` 関数契約は **`interface.clj` に集約して書く**。`core.clj` には置かない。
+  - 理由: §1.1.1 全域性「境界契約は境界で宣言」、Polylith の「interface 経由呼び出し原則」との整合
+  - instrumentation カバレッジ: 外部呼び出しは interface 経由が原則（poly check で強制、テストも §10 で interface 経由）なので、interface.clj 側の契約が入力・出力を検証すれば十分
+  - 機械検証: `.llm/scripts/check-interface-contracts.sh` が interface.clj 内の `(defn)` に対応する `(m/=>)` の存在を grep 検査する
+  - core.clj 内部の相互呼び出しは brick 実装詳細で契約対象外（必須化しない）
+- **関連コード**: `components/<name>/src/**/interface.clj`
+- **関連設定**: `.clj-kondo/config.edn`（`:lint-as {malli.core/=> def-catch-all}` を設定**しない**こと。設定すると同一 ns 内の `(m/=> foo ...)` と `(defn foo ...)` が `:redefined-var` として誤検出される既知の罠。`:unresolved-symbol :exclude` は `.clj-kondo/imports/metosin/malli/config.edn` で既に設定済みのため `lint-as` 不要）
+- **関連ガイド**: CLAUDE.md §4.1, §8.1 / CODING_GUIDE.md §2.1.1 / POLYLITH_GUIDE.md §2
 
 ---
 

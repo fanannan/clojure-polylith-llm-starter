@@ -242,10 +242,15 @@
     clojure.tools.namespace.repl tn}}}
 
  ;; ----------------------------------------------------------------
- ;; Malli の =>: lint-as により typed 関数として扱う
+ ;; Malli の =>: lint-as は設定しない
  ;; ----------------------------------------------------------------
- :lint-as
- {malli.core/=> clj-kondo.lint-as/def-catch-all}
+ ;; 理由: `m/=>` は Var を bind する form ではなく、clj-kondo に def-like
+ ;; semantics を与える本質的理由がない。未解決シンボル回避は
+ ;; `imports/metosin/malli/config.edn` の `:unresolved-symbol :exclude
+ ;; [(malli.core/=>)]` で既に充足。`lint-as` を `def-catch-all` に設定すると、
+ ;; 同一 ns 内の `(m/=> foo ...)` と `(defn foo ...)` が redefined-var
+ ;; として誤検出される（既知の罠）。
+ ;; 配置規約は interface.clj 集約（CLAUDE.md §8.1、POLYLITH_GUIDE.md §2 参照）。
 
  ;; ----------------------------------------------------------------
  ;; custom hook 登録

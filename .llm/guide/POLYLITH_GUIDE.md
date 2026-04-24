@@ -61,13 +61,19 @@ Polylith は **../CLAUDE.md §1.1.3 副作用の隔離 + §1.2.1 機械化** の
 (ns myorg.myapp.<domain>.interface
   "<domain> コンポーネントの公開 API。
    外部からはこの名前空間のみが require 可能。
-   実装は core 以下に配置。"
+   実装は core 以下に配置。`m/=>` 関数契約は境界である
+   ここに集約する（§1.1.1 全域性）。"
   (:require
+   [malli.core :as m]
    [myorg.myapp.<domain>.core :as core]))
 
 ;; --- 型 ---
 (def Entity       core/Entity)
 (def CreateInput  core/CreateInput)
+
+;; --- 関数契約（境界契約の集約）---
+(m/=> create   [:=> [:cat CreateInput] Entity])
+(m/=> validate [:=> [:cat :any] :boolean])
 
 ;; --- API（委譲）---
 (defn create [input] (core/create input))
@@ -79,7 +85,9 @@ Polylith は **../CLAUDE.md §1.1.3 副作用の隔離 + §1.2.1 機械化** の
 ```clojure
 (ns myorg.myapp.<domain>.core
   "<domain> コンポーネントの実装本体。
-   他コンポーネントから require 禁止（poly check で検出）。"
+   他コンポーネントから require 禁止（poly check で検出）。
+   `m/=>` 契約は interface.clj 側に集約するため、本ファイルでは
+   スキーマ定義と純粋関数のみを置く。"
   (:require
    [malli.core :as m]))
 
@@ -106,10 +114,6 @@ Polylith は **../CLAUDE.md §1.1.3 副作用の隔離 + §1.2.1 機械化** の
   "Entity がスキーマに適合するかを返す。"
   [entity]
   (m/validate Entity entity))
-
-;; --- 関数契約 ---
-(m/=> create   [:=> [:cat CreateInput] Entity])
-(m/=> validate [:=> [:cat :any] :boolean])
 
 ;; --- リッチコメント ---
 (comment
@@ -372,8 +376,8 @@ components/<name>/
 
 1. `deps.edn` に必要な依存を追加（**ライブラリ依存はここに書く**、project には書かない）
 2. 本文書 §2.1 component コード例を参照して以下を埋める：
-   - `core.clj`: Malli スキーマ + 純粋関数 + `m/=>` 契約
-   - `interface.clj`: core への薄い委譲（100 行超えたら実装漏れ、core に戻す）
+   - `core.clj`: Malli スキーマ + 純粋関数（`m/=>` 契約は置かない）
+   - `interface.clj`: core への薄い委譲 + `m/=>` 契約集約（境界契約、§1.1.1）（100 行超えたら実装漏れ、core に戻す）
    - `interface_test.clj`: clojure.test + プロパティテスト
 3. Integrant key を提供する場合は entry base の `system.clj`（§2.2 のコード例）の defmethod 集約に追加
 4. project の `deps.edn` に `:local/root` で登録
