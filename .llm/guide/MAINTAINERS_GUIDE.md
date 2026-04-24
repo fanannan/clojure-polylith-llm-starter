@@ -45,7 +45,7 @@
 | **即有効** | どのプロジェクトでも必要、かつ初期コストがゼロ | そのまま配布 | CLAUDE.md、.clj-kondo 必須 linter、Malli の deps |
 | **推奨カタログ（文書配布）** | 選定済だが目的依存で、プロジェクト開始時に採用判断。brick の deps.edn に反映される | STACK_GUIDE.md §3 機能別節 で推奨ライブラリとして文書化。deps.edn には出現しない | Integrant、Ring、next.jdbc、mulog（各 stack の推奨として §3 該当節に記載） |
 | **不配布（文書化）** | 特定ドメイン・架空のサンプル | 配布せず、POLYLITH_GUIDE.md にコード例として埋め込む | user component、api base |
-| **完全排除** | 技術選定で却下されたもの | 名前も出さない（禁止・非推奨として STACK_GUIDE.md §8 に記録） | §8.1 禁止ライブラリの 3 件 |
+| **完全排除** | 技術選定で却下されたもの | 名前も出さない（禁止・非推奨として STACK_GUIDE.md §3 の `;; lib-catalog` block に記録、理由タグは §8） | §8.1 禁止ライブラリの 3 件 |
 
 ### 2.1 判定の原則
 
@@ -54,7 +54,7 @@
 1. **どのプロジェクトでも必ず使うか？** → Yes なら **即有効**
 2. **技術選定として固定されているが、目的依存か？** → Yes なら **推奨カタログ（文書配布）**（どの stack に含めるかは STACK_GUIDE.md §3 機能別節 で判断）
 3. **特定ドメイン・架空のサンプルか？** → Yes なら **不配布**（文書化）
-4. **技術選定で却下されたか？** → Yes なら **完全排除**（名前も出さない、または STACK_GUIDE.md §8 に禁止・非推奨として記録）
+4. **技術選定で却下されたか？** → Yes なら **完全排除**（名前も出さない、または STACK_GUIDE.md §3 の `;; lib-catalog` block に禁止・非推奨として記録。理由タグは §8）
 
 ### 2.2 推奨カタログ配布の運用
 
@@ -106,7 +106,7 @@
 
 | ファイル | 区分 | 備考 |
 |---|---|---|
-| .clj-kondo/config.edn | B | 必須 linter は有効、採用 stack に応じた discouraged-var は該当 stack 採用時に有効化 |
+| .clj-kondo/config.edn | B | 必須 linter は有効、必要機能カテゴリに応じた discouraged-var は該当機能採用時に有効化 |
 | cljfmt.edn | B | フル有効（分岐なし） |
 | .gitignore | B | フル有効 |
 
@@ -116,7 +116,7 @@
 |---|---|---|
 | deps.edn | D | 必須層のみ（正本は STACK_GUIDE.md §2.1）。stack 層のライブラリ依存は brick の deps.edn に配置（選択肢 H、§2.2 参照）。`:dev :extra-deps` には dev-tools stack の開発支援ライブラリを配置 |
 | workspace.edn | D | `:projects` は `development` のみ有効、`:top-namespace` は placeholder |
-| development/src/dev/user.clj | D | tn/set-refresh-dirs は有効、Integrant/Malli-dev/Portal のセクションは採用 stack に応じて有効化 |
+| development/src/dev/user.clj | D | tn/set-refresh-dirs は有効、Integrant/Malli-dev/Portal のセクションは必要機能カテゴリに応じて有効化 |
 
 ### 3.4 .llm/memory（E: プロジェクト固有の継続更新対象）
 
@@ -296,7 +296,7 @@
 
 1. **なぜ削除するか**を本文書 §7（議論の軌跡）に記録
 2. **代替は何か**を明示（なし、別ライブラリ、Clojure 標準）
-3. **完全排除するか、STACK_GUIDE.md §8.2 非推奨に落とすか**を判定
+3. **完全排除するか、STACK_GUIDE.md §3 の該当 `;; lib-catalog` block に非推奨として落とすか**を判定（理由タグは §8）
 4. STACK_GUIDE.md §3 の採用記述を削除、当該 §3.X の `;; lib-catalog` block「代替と却下」節に非推奨エントリを追加（推奨代替ありタグ）
 5. 関連文書（CLAUDE.md / CODING_GUIDE.md / POLYLITH_GUIDE.md）の記述を整合的に更新
 
@@ -374,7 +374,7 @@ STACK_GUIDE.md §3 機能別節 で推奨カタログとして配布されてい
 1. 本文書 §7 議論の軌跡に削除・置換理由を記録
 2. **STACK_GUIDE.md §3 の該当節を更新**（採用理由の書き換え、または採用から却下への移動）
 3. **STACK_GUIDE.md §3 機能別節 該当 stack** の推奨ライブラリ表を更新
-4. **STACK_GUIDE.md §8.2 非推奨ライブラリ**に旧ライブラリを追加（推奨代替ありタグ、移行方針を記載）
+4. **STACK_GUIDE.md §3 の該当 `;; lib-catalog` block**に旧ライブラリを非推奨として追加（推奨代替ありタグ、移行方針を記載。理由タグは §8）
 5. 該当 §3 機能節の**採用時の確認事項**相当を必要に応じて更新
 6. `development/src/dev/user.clj` / `.clj-kondo/config.edn` から該当箇所を削除（使用例があった場合）
 7. POLYLITH_GUIDE.md §2 コード例から該当部分を削除
@@ -546,10 +546,10 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
 [;; === 採用 ===    <- 採用エントリ
  ;; === 代替と却下 ===  <- 却下エントリ (旧「検討した代替」table の情報を保持)
  ]
-**採用 stack**: ... (読みやすさ用のラベル)
+**適用場面**: ... (読みやすさ用のラベル)
 ```
 
-**採用 + 代替の同一 block 集約**: 各 §3.X の block は `;; === 採用 ===` / `;; === 代替と却下 ===` コメントで区切って**その機能領域での採否**を一望できる構成（SSOT 徹底の副次効果: 保守時に同機能で何が採用され何が避けられているかが単一 block 内で確認できる）。下記 2 つの shell script と EDN artifact は `clj -X:gen-lib-catalog` が生成する派生物で、手編集禁止（ヘッダに `GENERATED` コメント付き）。
+**採用 + 代替の同一 block 集約**: 各 §3.X の block は `;; === 採用 ===` / `;; === 代替と却下 ===` コメントで区切って**その機能領域での採否**を一望できる構成（SSOT 徹底の副次効果: 保守時に同機能で何が採用され何が避けられているかが単一 block 内で確認できる）。`.llm/data/` 配下の EDN/pattern artifact と shell script が読む派生物は `clj -X:gen-lib-catalog` が生成し、手編集禁止（ヘッダに `GENERATED` コメント付き）。
 
 - `.llm/data/libs.edn` — 全エントリ（人間可読形式、pretty-print）
 - `.llm/data/deprecated-libs.patterns` — `check-deprecated-libs.sh` が読む `<regex>|<reason>` 行
@@ -584,7 +584,7 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
 
 **生成物の同期保証**: `check-workspace-integrity.sh` が再生成 + diff で drift を検知（完了条件 `CLAUDE.md §5.5` 経由で毎セッション検証）。STACK_GUIDE.md 編集後に `clj -X:gen-lib-catalog` を忘れてコミットした場合、この検査で fail する。
 
-**非 lib エントリ（特定 coord を持たない技術・カテゴリ）**: Keycloak / Memcached / OpenTelemetry / Babashka 本番利用 / iText 直接 / langchain4j 移植 / Java Serialization 直接 等は EDN ではなく STACK_GUIDE.md §8.2 末尾の narrative に記録。data には載せない（schema が `:coord` を必須にするため）。
+**非 lib エントリ（特定 coord を持たない技術・カテゴリ）**: Keycloak / Memcached / OpenTelemetry / Babashka 本番利用 / iText 直接 / langchain4j 移植 / Java Serialization 直接 等は EDN ではなく STACK_GUIDE.md の該当機能節 narrative に記録。data には載せない（schema が `:coord` を必須にするため）。
 
 #### 5.9.9 避けるべき改訂パターン
 
@@ -1505,7 +1505,7 @@ L1〜L5 との関係:
 - **前回の議論の軌跡エントリとの関係**: 前回「設計変更の波及は配布コードだけでは不十分」と書きながら、実は**原則記述の根本である §1.1 にまで波及点検が及んでいなかった**。自己参照的な失敗パターン。原則の記述こそが最優先で整合させるべきだったのに、配布コードと §4 は修正して §1 は忘れていた
 - **判断・対処**:
   - **§1.1 表の副作用隔離行**: 「Integrant で副作用をコンポーネント化」を「I/O は依存注入で境界から注入（Integrant 等の起動管理は採用時のみ）」に修正。Integrant を前提化する表現を除去
-  - CODING_GUIDE.md §2.3.2 は条件節付き（「Integrant を含む stack を採用する場合」）で矛盾していないため維持。ただし「stack を介して Integrant 採用を判定する構造」は、stack をライブラリ分類メモリーに過ぎないとする方針とやや不整合である点を別論点として残す（この整理は次の改修機会で検討）
+  - CODING_GUIDE.md §2.3.2 は、後続の整理で「ライフサイクル管理に Integrant を採用する場合」に修正した。stack ラベルは典型例の説明に留め、Integrant 採否は実際のライフサイクル管理要件で判断する
 - **根拠**:
   - **原則と実装の分離原則（§4 修正時と同じ論理）**: 「副作用を最外層に集約する」は普遍的原則、「Integrant でコンポーネント化する」はその一実装。原則表で実装を断定すると、Integrant 非採用プロジェクトで原則が適用できないかのように誤読されうる
   - **原則記述の優先度**: §1.1 は全文書の中で最も頻繁に参照される基底であり、ここの矛盾は他の全修正を無意味にしかねない。原則表の整合性は最優先で確保されるべき

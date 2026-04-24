@@ -47,7 +47,7 @@ LLM が作業中に判断に迷った事項、設計判断が必要な事項を�
 | **open** | LLM が提起した直後、ユーザ未対応 | in-discussion, blocked, wontfix |
 | **in-discussion** | ユーザが回答・議論中 | resolved, wontfix, superseded |
 | **blocked** | 他 Q や外部事情で対応保留 | open（解消時）、wontfix |
-| **resolved** | 回答が反映された（§0.4 で確認済み）| — |
+| **resolved** | 回答が反映された（§0.4 で処理済み）| — |
 | **wontfix** | 議論の結果、対応しないと決定 | — |
 | **superseded** | 別の Q に統合・代替された | — |
 
@@ -69,17 +69,18 @@ LLM が作業中に判断に迷った事項、設計判断が必要な事項を�
 - **反映先**: <resolved 時のみ記入。§0.5 の昇格先分類を参照>
 ```
 
-### 0.4 解決確認プロセス（LLM が勝手に resolved にしない）
+### 0.4 解決処理（resolved は L2、曖昧時のみ確認）
 
-原則 2（規約だけでは守られない）の適用：
+Q の resolved 化は、解決内容がユーザ回答・承認済み判断・実装反映から明確な場合、LLM が実施して事後報告する（L2）。毎回の「resolved にしてよいか」確認は承認儀式を増やし、疲労最小化に反する。
 
-1. LLM は「解決した」と判定する前に、ユーザに**明示的に確認**する：
-   > 「Q-YYYY-MM-NNN の回答を `<反映先>` に反映しました。`resolved` にしてよいでしょうか？」
-2. ユーザが承認した時点で状態を `resolved` に変更、`更新日` と `反映先` を記入
-3. **§0.5 の昇格先判定**を行い、必要なら KNOWLEDGE.md / ADR へ転記
+1. 解決根拠を確認する（ユーザ回答、ゲート承認済み判断、反映済み差分、実装結果など）
+2. **§0.5 の昇格先判定**を行い、必要なら DESIGN.md / KNOWLEDGE.md / ADR へ反映する
+3. 状態を `resolved` に変更し、`更新日` と `反映先` を記入する
 4. **§0.7 の選別ルールに従って処理**（ADR 昇格時は削除可、他は 3 行要約を §3 に残す）
+5. ユーザへ「Q-YYYY-MM-NNN を `<反映先>` に反映し resolved にしました」と事後報告する
 
-**LLM の独断による resolved 化は禁止**。削除判断もユーザ承認を経る（§0.7 参照）。編集権限の統一マトリクスは `.llm/guide/COLLABORATION_GUIDE.md §2.3` を一次情報源とする。
+**確認が必要な場合**: ユーザ回答が曖昧、反映先が複数あり判断が割れる、または LLM が「解決した」と推定しているだけの場合は、resolved 化せず確認を求める。
+削除判断は §0.7 に従う。編集権限の統一マトリクスは `.llm/guide/COLLABORATION_GUIDE.md §2.3` を一次情報源とする。
 
 ### 0.5 昇格先の判定（原則 13 の適用）
 
@@ -127,7 +128,7 @@ resolved / wontfix / superseded になった Q は、**昇格先によって扱�
 - **推測で実装を進めない**
 - 該当箇所のコードに `;; TODO(Q-YYYY-MM-NNN): <保留している判断>` を残す
 - CI で `grep -rn "TODO(Q-" components bases development` により残存 Q を検出できるようにする（Polylith 構造では `src/` は存在せず、コードは `components/<n>/src`、`bases/<n>/src`、`development/src` に分散する）
-- Q が `resolved` / `wontfix` / `superseded` になったら、対応する TODO コメントを削除する
+- Q が `resolved` / `wontfix` / `superseded` になったら、対応する TODO コメントを削除して事後報告する
 
 ### 0.9 自己停止プロトコル（CLAUDE.md §7）からの連携
 
@@ -166,7 +167,7 @@ resolved / wontfix / superseded になった Q は、**昇格先によって扱�
 
 ### 1.2 技術選定・設計
 
-- brick（base / component）deps.edn へのライブラリ追加・変更（採用 stack の推奨反映、CLAUDE.md §6.2、選定論理は `.llm/guide/STACK_GUIDE.md`）
+- brick（base / component）deps.edn へのライブラリ追加・変更（必要機能カテゴリの推奨反映、CLAUDE.md §6.2、選定論理は `.llm/guide/STACK_GUIDE.md`）
 - 新しいライブラリの採用提案
 - §1 原則（全域性・不変性・副作用隔離）の解釈で迷う場面
 - 原則間の競合（例: 副作用隔離と性能のトレードオフ）

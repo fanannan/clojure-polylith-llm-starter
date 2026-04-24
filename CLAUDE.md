@@ -150,7 +150,7 @@
 - 依存ライブラリの追加
 - **brick（base / component）の deps.edn へのライブラリ追加・変更**（実質的に依存追加。詳細手順は §6.2、選定論理は `.llm/guide/STACK_GUIDE.md`）
 - 既存 API（`interface.clj` の公開関数、Malli スキーマ、DB スキーマ）の破壊的変更
-- 新規 base / project の追加（`poly create base` / `poly create project`）
+- 新規 component / base / project の追加（`poly create component` / `poly create base` / `poly create project`）
 - DB マイグレーションの実行（生成は可、実行は人間が行う）
 - **必須層の入れ替え・削除**（§3 記載の必須層、およびそれぞれの設定ファイル `.clj-kondo/config.edn` / `cljfmt.edn` / `workspace.edn` / `deps.edn` 必須部分）。設定の変更（例: lint 規則の追加・緩和、cljfmt 設定変更）も含む
 - CLAUDE.md / .llm/guide/ 配下の各種ガイドの自動編集（**提案のみ可**。ユーザからの明示的な改修依頼がある場合も、変更内容を提示して承認を得てから編集する。テンプレート保守タスクも同じ規律に従う。詳細な編集権限マトリクスは `.llm/guide/COLLABORATION_GUIDE.md` §2.3）
@@ -305,7 +305,7 @@ Polylith 構造の操作と、技術スタック層（stack）の採用・変更
 | **構造違反の検証**（編集後に必ず実行） | `clj -M:poly check` |
 | **日常作業中のテスト**（変更影響範囲のみ、高速） | `clj -M:poly test` |
 | **完了報告前のテスト**（§5.5 完了条件の一部、全 project 全 brick 実行） | `clj -M:poly test :all` |
-| **新規コンポーネント作成** | `clj -M:poly create component name:<name>` |
+| **新規コンポーネント作成**(承認必須) | `clj -M:poly create component name:<name>` |
 | **新規ベース作成**(承認必須) | `clj -M:poly create base name:<name>` |
 | **新規プロジェクト作成**(承認必須) | `clj -M:poly create project name:<name>` |
 | 依存グラフ表示 | `clj -M:poly deps` |
@@ -431,7 +431,7 @@ STACK_GUIDE.md §3 機能別節の `;; lib-catalog` カタログは、本テン�
 
 新しいタスクに着手する前に、以下を自己確認：
 
-1. **20 分以内に完結するか** → No ならユーザに分割を提案
+1. **同一ターンで編集・検証・報告まで閉じるか** → No ならユーザに分割を提案
 2. **成功判定が明確か** → No ならユーザに基準を確認
 3. **触れるべきファイル数が 3 以下か** → No ならサブタスクに分解
 4. **§2 禁止事項に触れないか** → 触れるなら承認を先に取る
@@ -566,7 +566,7 @@ clj -M:poly create component name:<name>
 3. **DESIGN.md の書き換え**: 該当節を**現在形で新仕様に書き換える**（差分表示・追記形式にしない、過去の記述は残さない）
 4. **関連文書の更新**:
    - KNOWLEDGE.md: 新仕様と整合しないエントリを上書き or 廃止（`.llm/memory/KNOWLEDGE.md` §0.5）
-   - QUESTIONS.md: 関連する open Q を resolved に遷移、新規 Q の起票
+   - QUESTIONS.md: 関連する open Q を resolved に遷移して事後報告、または新規 Q を起票（解決根拠が曖昧な場合のみ確認を求める）
 5. **実装反映**: §8.1〜§8.2 の作業プロトコル適用
 6. **コミット**: ADR 番号をメッセージに含める（例: `Revise DESIGN.md §3 for streaming inference (ADR-0012)`）
 
@@ -605,8 +605,11 @@ clj -M:poly create component name:<name>
 (fs-start!)           ; FlowStorm debugger 起動（未導入時 :flow-storm-not-available）
 (fs-record-ns! 'ns)   ; 対象 ns を FlowStorm で instrument
 (fs-clear!)           ; stale trace を消去
+```
 
-;; Integrant 採用時は追加で（dev/user.clj で `;;` を除去して有効化）:
+Integrant セクションを有効化した場合のみ、以下も利用できる。配布状態のまま評価しない:
+
+```clojure
 (go) (reset) (halt) (system)
 ```
 
@@ -629,7 +632,7 @@ REPL で得た値をテストへ「昇格」するとは、観察した具体値
 ### 9.3 やってはいけない事
 
 - **テスト代替禁止**: REPL で動いたら即 `interface_test.clj` に昇格（§10）
-- `comment` フォーム満足禁止（§9.2 step 10）
+- `comment` フォーム満足禁止。REPL で観察した挙動はテストへ昇格し、CLI gate へ進む（§9.2）
 - 副作用反復（DB insert 等）は冪等性確認後に限る
 - **ターン跨ぎ state 依存禁止**: session 消滅前提で、結果は必ずコード化
 - **`(require ... :reload)` の常用禁止**: ns graph 変更は `(safe-reset!)`（tools.namespace を内包）、`:reload` は単一 namespace の仮説確認に限る。確認後は `safe-reset!` またはテストで再検証する

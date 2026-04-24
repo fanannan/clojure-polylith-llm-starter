@@ -35,7 +35,7 @@ README.md が「**誰が何をするか**」を示すのに対し、本文書は
 
 **真実の一箇所化**: ライブラリ依存の一次情報源は **brick の deps.edn**。ワークスペースルートの deps.edn には stack 層の依存を書かない（二重管理を回避）。
 
-初期化作業は、**プロジェクトの想定を決定し、採用 stack を選び、最初の brick を作成して推奨ライブラリを brick deps.edn に反映する**ことである。
+初期化作業は、**プロジェクトの想定を決定し、説明上の stack ラベルを選び、最初の brick を作成して必要機能カテゴリの推奨ライブラリを brick deps.edn に反映する**ことである。
 
 詳細な設計意図は以下の文書を参照：
 
@@ -66,7 +66,7 @@ README.md のキックオフプロンプトを受信した LLM は、以下の�
 
 | ゲート | 直前で提示する内容（実テキスト / 実操作） | 承認後に実施する節 |
 |---|---|---|
-| ★ゲート 1（仕様 + stack） | `../DESIGN.md` §1-§4,§8 反映案／`workspace.edn` :top-namespace 差分／`../README.md` 冒頭差分／採用 stack 提案（STACK_GUIDE.md §4.2 で記載有無を明示） | §2.1 |
+| ★ゲート 1（仕様 + stack） | `../DESIGN.md` §1-§4,§8 反映案／`workspace.edn` :top-namespace 差分／`../README.md` 冒頭差分／説明上の stack ラベル提案（STACK_GUIDE.md §4.2 で記載有無を明示） | §2.1 |
 | ★ゲート 2（構造 + 依存） | `poly create component/base/project` 3 コマンド／brick `deps.edn` 追加内容（実コード） | §2.3, §2.4 |
 
 ゲート 3 は**縮退**（`COLLABORATION_GUIDE.md` §2.2 で ADR 発行を L2 化済）:
@@ -101,20 +101,20 @@ ADR の発行（§4）は L2 として LLM が自動実施、事後報告。ゲ�
 
 曖昧性検出・自己停止・Q 起票は `../CLAUDE.md` §7, §8, §11 および `COLLABORATION_GUIDE.md` §4 の規定通り。ONE BY ONE 原則は維持。
 
-### 2.1 プロジェクト想定と採用 stack の決定（ユーザ判断必須）
+### 2.1 プロジェクト想定と stack ラベルの決定（ユーザ判断必須）
 
 以下を決定する：
 
-- [ ] **プロジェクトの主たる性格**を決定し、**採用 stack** を選択（STACK_GUIDE.md §4.1 の表を参照）
+- [ ] **プロジェクトの主たる性格**を決定し、**説明上の stack ラベル**を選択（STACK_GUIDE.md §4.1 の表を参照）
   - 例: Web API → web-api stack、バッチ → batch stack、CLI → cli stack、ライブラリ配布 → library stack
-- [ ] **補助的な性格**がある場合、**追加 stack** を併用選択
+- [ ] **補助的な性格**がある場合、**追加 stack ラベル**を併用選択
   - 例: Web API + バッチ併設 → web-api stack + batch stack
 - [ ] **dev-tools stack 併用の可否**（強く推奨）
 - [ ] ドメイン名（例: `billing`、`inventory`、`content`）を決定
 - [ ] デプロイ構成（単一 uberjar / 複数 uberjar / Docker / Lambda）を決定
 - [ ] `workspace.edn` の `:top-namespace` を実プロジェクト名に変更（`myorg.myapp` から）
 - [ ] **`../DESIGN.md` の必須項目（§1 目的、§2 スコープ、§3 主要ユースケース、§4 受入基準、§8 プロジェクト固有情報）を埋める**
-- [ ] **DESIGN.md §8.3 採用 stack 欄に採用 stack を記録**（例: web-api stack + dev-tools stack）
+- [ ] **DESIGN.md §8.3 採用 stack 欄に説明上の stack ラベルを記録**（例: web-api stack + dev-tools stack）
 - [ ] DESIGN.md の推奨項目（§5〜§7）のうち該当するものを埋める
 
 **ここで決めたことを `../.llm/memory/QUESTIONS.md` に `Q` として記録する必要はない**（確定事項として扱う）。
@@ -130,10 +130,10 @@ ADR の発行（§4）は L2 として LLM が自動実施、事後報告。ゲ�
 
 ### 2.3 最初の brick を作成
 
-**§2 禁止事項により、base / project の作成はユーザ承認必須**。
+**§2 禁止事項により、component / base / project の作成はユーザ承認必須**。
 
 ```bash
-# ドメインコンポーネント
+# ドメインコンポーネント（承認必須）
 clj -M:poly create component name:<domain>
 
 # エントリベース（承認必須）
@@ -145,11 +145,11 @@ clj -M:poly create project name:<deploy>
 
 生成された brick に、**POLYLITH_GUIDE.md §2 のコード例を参照して**中身を実装する。独自の流儀を発明しない。
 
-### 2.4 採用 stack の推奨ライブラリを brick deps.edn に反映
+### 2.4 必要機能カテゴリの推奨ライブラリを brick deps.edn に反映
 
 **§2 禁止事項により、依存追加はユーザ承認必須**。
 
-採用 stack ごとに、STACK_GUIDE.md §3 機能別節 の該当節の「推奨ライブラリ」表を **brick の deps.edn** に記述する：
+選択した stack ラベルは説明用であり、deps.edn へ入れるライブラリは必要な機能カテゴリ単位で最小化する。STACK_GUIDE.md §3 機能別節 の該当節の「推奨ライブラリ」表を **brick の deps.edn** に記述する：
 
 - **base の deps.edn**（`bases/<entry>/deps.edn`）: 主たる stack の推奨ライブラリ（HTTP サーバ、ルーティング、JSON、Integrant 等 I/O を含むもの）
 - **component の deps.edn**（`components/<domain>/deps.edn`）: I/O 系ライブラリは書かない（ドメイン純粋性）。Malli は必須層なので common に依存
@@ -202,7 +202,7 @@ clj -M:poly create project name:<deploy>
   djblue/portal                {:mvn/version "0.58.5"}
   org.clojure/test.check       {:mvn/version "1.1.1"}
   nubank/matcher-combinators   {:mvn/version "3.9.1"}
-  ;; Integrant を含む stack 併用時
+  ;; ライフサイクル管理に Integrant を採用する場合
   integrant/repl               {:mvn/version "0.4.0"}
   ```
 
@@ -259,7 +259,7 @@ Integrant を使うプロジェクトでのみ実施する。ライブラリ配�
 
 **workspace 整合性の総合検査**:
 
-- [ ] プレースホルダ残存・brick 登録漏れ・非推奨ライブラリ採用の一括検査（/  /  の統合）:
+- [ ] プレースホルダ残存・brick 登録漏れ・非推奨ライブラリ採用・生成 artifact drift の一括検査:
   ```bash
   ./.llm/scripts/check-workspace-integrity.sh
   ```
@@ -267,8 +267,8 @@ Integrant を使うプロジェクトでのみ実施する。ライブラリ配�
 **workspace 全体の品質確認**:
 
 - [ ] `CLAUDE.md §5.5` 完了条件の全コマンドが通過する（lint / lint-splint / format check / poly check / workspace-integrity / poly test :all / uber ビルド）
-- [ ] `clj -M:dev:nrepl` で REPL 起動、`(go)` が例外なく完走（Integrant を含む stack の場合）
-- [ ] `(reset)` が動作（Integrant を含む stack の場合）
+- [ ] `clj -M:dev:nrepl` で REPL 起動、`(go)` が例外なく完走（ライフサイクル管理に Integrant を採用する場合）
+- [ ] `(reset)` が動作（ライフサイクル管理に Integrant を採用する場合）
 - [ ] 実装した brick の関数を REPL から呼び出して動作確認
 
 > `CLAUDE.md §5.5` がコマンド列の一次情報源。本節では再掲しない（SSOT）。REPL 起動と brick 動作確認はブートストラップ特有の初回確認事項のため、ここに残す。
@@ -278,9 +278,9 @@ Integrant を使うプロジェクトでのみ実施する。ライブラリ配�
 - [ ] `./.llm/scripts/check-vulnerabilities.sh` が通る（clj-watson、詳細は `CLAUDE.md §5.5` release 前追加節を参照）
   - **NVD API key 推奨**: 無料で `https://nvd.nist.gov/developers/request-an-api-key` から取得し、環境変数 `NVD_API_KEY` に設定するとスキャンが高速化される
 
-**採用 stack ごとの確認事項（STACK_GUIDE.md §3 機能別節.X）**:
+**必要機能カテゴリごとの確認事項（STACK_GUIDE.md §3 機能別節.X）**:
 
-- [ ] 採用した各 stack の「採用時の確認事項」をすべて点検（STACK_GUIDE.md §3 機能別節.X 参照）
+- [ ] 採用した各機能カテゴリの「採用時の確認事項」をすべて点検（STACK_GUIDE.md §3 機能別節.X 参照）
 
 ---
 
@@ -289,9 +289,9 @@ Integrant を使うプロジェクトでのみ実施する。ライブラリ配�
 以下すべてを満たしたら初期化完了：
 
 - [ ] **`../DESIGN.md` の必須項目（§1〜§4、§8）が埋まっている**
-- [ ] DESIGN.md §8.3 採用 stack 欄に採用 stack が記録されている
+- [ ] DESIGN.md §8.3 採用 stack 欄に説明上の stack ラベルが記録されている
 - [ ] `workspace.edn` の `:top-namespace` が実プロジェクト名
-- [ ] 採用 stack の推奨ライブラリ（STACK_GUIDE.md §3 機能別節）が brick の deps.edn に反映されている
+- [ ] 必要機能カテゴリの推奨ライブラリ（STACK_GUIDE.md §3 機能別節）が brick の deps.edn に反映されている
 - [ ] STACK_GUIDE.md の推奨から逸脱した場合、ADR が発行されている
 - [ ] 最低 1 組の component + base + project が存在
 - [ ] §2.9 の動作確認がすべて通過
@@ -313,7 +313,7 @@ Integrant を使うプロジェクトでのみ実施する。ライブラリ配�
    - 迷ったら `../DESIGN.md` §1 目的と §3 主要ユースケースをベースに書き起こす
 2. 初期化中に立てた `../.llm/memory/QUESTIONS.md` の `open` Q を点検し、解決したものを `resolved` に
 3. 解決した Q の結果が継続参照されるものは `../.llm/memory/KNOWLEDGE.md` へ昇格（L1、ゲート 3 承認対象、実テキストで提示）
-4. 重要な設計判断（採用 stack の根拠、STACK_GUIDE.md 推奨からの逸脱、技術選定等）は `../.llm/memory/adr/NNNN-topic.md` として ADR を発行（**L2、LLM 独断実施、事後報告**。`COLLABORATION_GUIDE.md` §2.2）。決定内容はゲート 1/2 で既に承認済なので、ADR は形式化に過ぎない。誤記は新 ADR で supersede
+4. 重要な設計判断（stack ラベルと機能カテゴリ選定の根拠、STACK_GUIDE.md 推奨からの逸脱、技術選定等）は `../.llm/memory/adr/NNNN-topic.md` として ADR を発行（**L2、LLM 独断実施、事後報告**。`COLLABORATION_GUIDE.md` §2.2）。決定内容はゲート 1/2 で既に承認済なので、ADR は形式化に過ぎない。誤記は新 ADR で supersede
 5. 初期化完了をコミット（例: `"Complete project bootstrap"`）— **このコマンドは LLM が提示、実行はユーザが行う**
 
 以降は `../CLAUDE.md` §8 作業プロトコルで日常開発に移行する。本文書（BOOTSTRAP_GUIDE.md）は物理的には残るが、CLAUDE.md §0 の参照指示（「初期化が未完了の場合のみ参照」）により、完了後は自動的に読まれない。
@@ -343,12 +343,12 @@ Integrant と Malli の起動順序、`set-refresh-dirs` の対象、`add-tap` �
 
 - **ClassNotFoundException（brick 依存未解決）**: `(require 'gugenkoubou.inventory.api.system)` で `java.lang.ClassNotFoundException: integrant.core` 等が発生する場合、ワークスペースルート `deps.edn` の `:dev :extra-deps` に brick が `:local/root` 登録されていない。tools.deps は `:extra-paths` だけでは brick の deps.edn を自動解決しない。→ §2.5 参照、`poly/<domain> {:local/root "components/<domain>"}` 等を追加
 - **FileNotFoundException: config.edn**: `config.edn` が classpath に含まれていない。開発時は `projects/<deploy>/resources` が `:dev :extra-paths` に追加されているか確認（§2.5）、または dev/user.clj の `config` 関数で `io/file` でファイルパス直接指定する代替手段も可（POLYLITH_GUIDE.md §2.4）
-- **config.edn の未作成**: Integrant を含む stack を採用したのに config.edn が存在しない → §2.7 参照
+- **config.edn の未作成**: ライフサイクル管理に Integrant を採用したのに config.edn が存在しない → §2.7 参照
 - **aero の `#env` 参照先未定義**: 環境変数が未設定、または aero の記法ミス
 - **Integrant key の init-key 未定義**: `defmethod ig/init-key :xxx [_ _] ...` を書き忘れ
 - **dev/user.clj の Integrant セクション未有効化**: `(ig-repl/set-prep! config)` 等が配布時のまま無効化状態
 
-### 5.4 採用 stack の §3 機能別節の採用時の確認事項相当を満たしていない
+### 5.4 必要機能カテゴリの §3 機能別節の採用時の確認事項相当を満たしていない
 
 STACK_GUIDE.md §3 機能別節.X の「採用時の確認事項」リストを点検し、漏れている項目を補完する。特に：
 

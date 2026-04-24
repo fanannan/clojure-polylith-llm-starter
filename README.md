@@ -3,8 +3,8 @@
 **Clojure + Polylith プロジェクト**（LLM と人間の仕様共同開発フレームワーク）
 
 - 必須技術: Clojure + tools.deps + Polylith + Malli 契約 + clj-kondo + cljfmt + Splint + clj-watson + `.llm/scripts/`（ワークスペース整合性検査スクリプト群）（バージョン・JVM LTS は `.llm/guide/STACK_GUIDE.md` §2.1 参照）
-- 目的別の追加ライブラリは **stack**（web-api stack / batch stack / cli stack / library stack / worker stack / data-pipeline stack / dev-tools stack）として構成
-- stack 選定論理と実装マッピングの一次情報源は `.llm/guide/STACK_GUIDE.md`
+- 目的別の追加ライブラリは **機能カテゴリ**で最小選択し、stack（web-api stack / batch stack / cli stack 等）は説明上の分類ラベルとして扱う
+- stack ラベルと実装マッピングの一次情報源は `.llm/guide/STACK_GUIDE.md`
 - 機械化は 5 層で構成（clj-kondo 組込 / polyguard hook / Splint / `.llm/scripts/` shell + gen / clj-watson）。詳細は `.llm/guide/MAINTAINERS_GUIDE.md` §5.10、スクリプト一覧は `.llm/scripts/README.md`
 
 > ⚠️ **このファイルはテンプレート配布時のものです。**
@@ -16,10 +16,10 @@
 
 ## このテンプレートは何か
 
-**Clojure + tools.deps + Polylith + Malli + clj-kondo + cljfmt + Splint + clj-watson + `.llm/scripts/`**（ワークスペース整合性検査スクリプト群）を必須層とし、プロジェクトの性格に応じた **stack 層**（Web API、バッチ、CLI、ライブラリ配布等の目的別推奨構成）を選択できる、**LLM 駆動開発向け**のプロジェクトテンプレート（必須層のバージョンは `STACK_GUIDE.md §2.1` を参照）。Integrant・Ring・DB ドライバ等は採用する stack に応じて brick の deps.edn に追加する（必須層ではない）。
+**Clojure + tools.deps + Polylith + Malli + clj-kondo + cljfmt + Splint + clj-watson + `.llm/scripts/`**（ワークスペース整合性検査スクリプト群）を必須層とし、プロジェクトの性格に応じた **stack ラベル**（Web API、バッチ、CLI、ライブラリ配布等の目的別推奨構成）を選択できる、**LLM 駆動開発向け**のプロジェクトテンプレート（必須層のバージョンは `STACK_GUIDE.md §2.1` を参照）。Integrant・Ring・DB ドライバ等は必要機能カテゴリに応じて brick の deps.edn に追加する（必須層ではない）。
 
 疲労最小化原則（LLM と人間の共同開発における修復コスト最小化）に基づき設計されている。
-詳細思想は `CLAUDE.md` §1、設計原則は `.llm/guide/MAINTAINERS_GUIDE.md`、stack 選定は `.llm/guide/STACK_GUIDE.md`。
+詳細思想は `CLAUDE.md` §1、設計原則は `.llm/guide/MAINTAINERS_GUIDE.md`、stack ラベルと機能カテゴリの対応は `.llm/guide/STACK_GUIDE.md`。
 
 ## 前提ツール
 
@@ -46,7 +46,7 @@
 ```
 このプロジェクトのテンプレートを使ってブートストラップを行う。
 まず以下を読んでから着手してほしい：
- - CLAUDE.md §1-§3（特に §1.2.5 失敗早期検知 > 事前承認）
+ - CLAUDE.md §1-§3（特に §1.2.5 失敗早期検知と承認設計）
  - DESIGN.md §0 本ファイルの埋め方
  - .llm/guide/BOOTSTRAP_GUIDE.md §2（§2.0 オーケストレーション、§2.1-§2.9 手順）
  - .llm/guide/COLLABORATION_GUIDE.md §2-§4（§2.3.1 特別承認・部分承認不採用、§3.1 ブートストラップモード）
@@ -82,7 +82,7 @@ ONE BY ONE 原則で 1 点ずつ確認して。
 ```
 このプロジェクトのテンプレートを使ってブートストラップを行う。
 まず以下を読んでから着手してほしい：
- - CLAUDE.md §1-§3（特に §1.2.5 失敗早期検知 > 事前承認）
+ - CLAUDE.md §1-§3（特に §1.2.5 失敗早期検知と承認設計）
  - DESIGN.md §0 本ファイルの埋め方
  - .llm/guide/BOOTSTRAP_GUIDE.md §2
  - .llm/guide/COLLABORATION_GUIDE.md §2-§4
@@ -104,8 +104,8 @@ COLLABORATION_GUIDE.md §4 の ONE BY ONE 原則で 1 点ずつ確認して。
 
 | ゲート | 承認対象 | 権限根拠 |
 |---|---|---|
-| 1. 仕様 + stack | DESIGN.md §1-§4,§8 反映案／workspace.edn :top-namespace 差分／README.md 冒頭差分／採用 stack 提案（根拠付き） | L1 × DESIGN、**stack は L0/L1 ハイブリッド**（STACK_GUIDE.md §4.2 記載有無を LLM が明示、`COLLABORATION_GUIDE.md` §2.2） |
-| 2. 構造 + 依存 | `poly create component/base/project` 3 コマンド／brick deps.edn 追加内容（実コード） | L0 × base/project 作成・依存追加（CLAUDE.md §2） |
+| 1. 仕様 + stack | DESIGN.md §1-§4,§8 反映案／workspace.edn :top-namespace 差分／README.md 冒頭差分／説明上の stack ラベル提案（根拠付き） | L1 × DESIGN、**記載ありの stack ラベルは L1、未記載領域は L0**（STACK_GUIDE.md §4.2 記載有無を LLM が明示、`COLLABORATION_GUIDE.md` §2.2） |
+| 2. 構造 + 依存 | `poly create component/base/project` 3 コマンド／brick deps.edn 追加内容（実コード） | L1/L0 × component 作成は L1、base/project 作成・依存追加は L0（CLAUDE.md §2） |
 
 **ゲート外の個別 L1 承認**（作成時に個別提示）:
 
@@ -219,8 +219,8 @@ LLM が自己停止プロトコル（`CLAUDE.md` §7）発動時、`.llm/memory/
 
 - **疲労最小化**: LLM の誤りを構造的に封じる（全域性・不変性・副作用の隔離）
 - **機械化 5 層**: L1 clj-kondo 組込 linter / L2 `.clj-kondo/polyguard/` custom hook / L3 Splint / L4 `.llm/scripts/check-*.sh`（設定・構造検査）+ Polylith `poly check` + Malli instrumentation / L5 clj-watson（時間軸脆弱性）。規約を人間の注意力ではなくツールで強制（詳細は `MAINTAINERS_GUIDE.md` §5.10）
-- **SSOT 生成**: `.llm/scripts/gen_lib_catalog.clj` が `STACK_GUIDE.md §3` の `;; lib-catalog` EDN block を Malli で検証し `.llm/data/` 配下に artifact を emit。shell script は artifact を参照して検査、markdown と生成物の drift は `check-workspace-integrity.sh` が diff 検知
-- **REPL as Primary Workbench**: `.llm/scripts/repl-eval.sh` により LLM が稼働中 nREPL に eval / load-file を送信。永続 session で state 継続、`(reset)` 後の段階探索・契約違反再現・FlowStorm trace・mulog 観察を支える。CLAUDE.md §9 Live Workbench Protocol で「人間・CIDER/Calva/Cursive・LLM が同じ long-lived JVM を共有」が既定、§8.0.0 trigger matrix で REPL 必須条件を規定
+- **SSOT 生成**: `.llm/scripts/gen_lib_catalog.clj` が `STACK_GUIDE.md` に埋め込まれた `;; lib-catalog` EDN block 群を Malli で検証・合成し `.llm/data/` 配下に artifact を emit。shell script は artifact を参照して検査、markdown と生成物の drift は `check-workspace-integrity.sh` が diff 検知
+- **REPL as Primary Workbench**: `.llm/scripts/repl-eval.sh` により LLM が稼働中 nREPL に eval / load-file を送信。永続 session で state 継続、`(reset)` 後の段階探索・契約違反再現・FlowStorm trace・mulog 観察を支える。CLAUDE.md §9 REPL 駆動開発で「人間・CIDER/Calva/Cursive・LLM が同じ long-lived JVM を共有」が既定、§8.0.0 REPL eval 必須トリガで REPL 必須条件を規定
 - **stack 方式の技術スタック**: 必須層（Clojure、tools.deps、Polylith、Malli、clj-kondo、cljfmt、Splint、clj-watson、`.llm/scripts/`）はワークスペースルートで常に採用、目的別の stack 層は各 brick の deps.edn に配置。推奨カタログは `.llm/guide/STACK_GUIDE.md`（真実の一箇所化）
 - **4 種の文書分離**: 仕様（DESIGN）/ 知識（KNOWLEDGE）/ 決定履歴（ADR）/ 判断保留（QUESTIONS）
 - **自己停止プロトコル**: LLM が時間感覚なく詰まった時、ターン数閾値で停止し Q を立てる

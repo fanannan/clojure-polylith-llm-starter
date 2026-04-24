@@ -99,7 +99,7 @@ ADR はこれらを**軽量な記述形式**で解決する。1 件あたり 1�
 ### してよいこと
 
 - 初回発行時の記述
-- **status フィールドの更新のみ**（proposed → accepted、accepted → deprecated）。`accepted → superseded-by-NNNN` は により廃止（新 ADR 側の Related だけで supersede 関係を表現）
+- **status フィールドの更新のみ**（proposed → accepted、accepted → deprecated）。accepted ADR の supersede 関係は旧 ADR の status を変えず、新 ADR 側の Related だけで表現する
 
 ### してはいけないこと
 
@@ -133,7 +133,7 @@ ADR はこれらを**軽量な記述形式**で解決する。1 件あたり 1�
 
 ### 既存 ADR の改訂が必要になった時
 
-**ADR 本文を直接編集しない**。以下の手順で（により片方向更新に簡素化）：
+**ADR 本文を直接編集しない**。以下の手順で片方向に記録する：
 
 1. 新しい ADR を発行（次の番号で）
 2. 新 ADR の Context で「`NNNN-old-topic.md` の判断を改訂する必要がある理由」を述べる
@@ -149,10 +149,11 @@ ADR はこれらを**軽量な記述形式**で解決する。1 件あたり 1�
 LLM が ADR を発行できるのは、**以下のいずれかに該当する場合のみ**：
 
 1. ユーザの明示的指示
-2. Q resolved 時の昇格判定で「ADR 発行」が選ばれ、ユーザが承認した場合（QUESTIONS.md §0.4）
+2. ゲートまたは対話で決定内容が承認済みで、ADR が記録の形式化に過ぎない場合
+3. Q resolved 時の昇格判定で「ADR 発行」が選ばれた場合（QUESTIONS.md §0.4）
 
 それ以外は、LLM は ADR 発行を QUESTIONS.md に Q として立て、承認を経てから発行する。
-**LLM の独断による ADR 発行は禁止**。
+**未承認の判断を ADR として独断確定することは禁止**。
 
 ## アンチパターン
 

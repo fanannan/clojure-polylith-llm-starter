@@ -198,7 +198,7 @@ stack は時間とともに増え、選定根拠は詳細化し、機能領域�
 
 | stack 名 | 目的 | 参照先 |
 |---|---|---|
-| **dev-tools stack** | 開発支援 | §3.8 テスト・検証支援（test.check / matcher-combinators）、§3.9 データインスペクション / REPL デバッガ（Portal / flow-storm）。Integrant を含む stack 採用時は §3.1 の `integrant/repl` も |
+| **dev-tools stack** | 開発支援 | §3.8 テスト・検証支援（test.check / matcher-combinators）、§3.9 データインスペクション / REPL デバッガ（Portal / flow-storm）。ライフサイクル管理に Integrant を採用する場合は §3.1 の `integrant/repl` も |
 
 stack 層と組み合わせて使う。開発支援ライブラリは通常 **development project のルート `deps.edn` の `:dev` エイリアスの `:extra-deps`** に追加される（本番ビルドに混入させない）。具体 lib と version は §3.1 / §3.8 / §3.9 の `;; lib-catalog` を SSOT として参照する。
 
@@ -237,7 +237,7 @@ stack 層と組み合わせて使う。開発支援ライブラリは通常 **de
 **要点**:
 
 - **`:reasons :text` は 1 行要約**（grep しやすい）。判定根拠の全文は EDN 直前の `;;` コメントで保持（旧「検討した代替」table の却下理由は完全にここに移植される）
-- **考え方 / 採用理由の全体像**は EDN の外側の prose（**採用理由**、**採用 stack** 等の markdown 節）で表現
+- **考え方 / 採用理由の全体像**は EDN の外側の prose（**採用理由**、**適用場面** 等の markdown 節）で表現
 - **`:purpose` vec**: `[:lifecycle]`, `[:db :jdbc]`, `[:web :routing]` のような階層 keyword。uniqueness key は `[[:ids :coord] :purpose]` pair
 - **`:status`**: `:recommended` / `:acceptable` / `:conditional` / `:deprecated` / `:scope-excluded`（詳細は §8.0 理由タグと Malli schema）
 - **`;; lib-catalog` は完全一致マーカ**。`.llm/scripts/gen_lib_catalog.clj` が本文書を走査、各 block を収集し `.llm/data/libs.edn` / `.patterns` を生成。`check-workspace-integrity.sh` が diff で drift を自動検知
@@ -298,7 +298,7 @@ stack 層と組み合わせて使う。開発支援ライブラリは通常 **de
  ]
 ```
 
-**採用 stack**: web-api stack、batch stack、worker stack、data-pipeline stack、saas stack、llm-app stack、cli stack（ファイル I/O や DB を扱う場合）、bot stack、desktop stack、edge stack
+**適用場面**: 設定ファイルや環境別設定を扱う場合（web-api、batch、worker、data-pipeline、saas、llm-app、CLI、bot、desktop、edge 等）
 
 ### 3.2 設定管理
 
@@ -343,7 +343,7 @@ stack 層と組み合わせて使う。開発支援ライブラリは通常 **de
  ]
 ```
 
-**採用 stack**: Integrant と組で使う stack すべて（web-api, batch, worker, saas, bot, llm-app, edge 等）
+**適用場面**: ライフサイクル管理に Integrant を採用し、環境別設定を Integrant config として読む場合
 
 ### 3.3 検証・契約
 
@@ -383,7 +383,7 @@ stack 層と組み合わせて使う。開発支援ライブラリは通常 **de
  ]
 ```
 
-**採用 stack**: 全 stack（必須層、stack 非依存）
+**適用場面**: 全 stack（必須層、stack 非依存）
 
 ### 3.4 HTTP サーバ・ルーティング
 
@@ -540,7 +540,7 @@ stack 層と組み合わせて使う。開発支援ライブラリは通常 **de
              :tags [:maintenance-stopped]}}]
 ```
 
-**採用 stack**: web-api stack、graphql-api stack、saas stack、bot stack（webhook 受信時）
+**適用場面**: web-api stack、graphql-api stack、saas stack、bot stack（webhook 受信時）
 
 ### 3.5 JSON
 
@@ -592,7 +592,7 @@ stack 層と組み合わせて使う。開発支援ライブラリは通常 **de
              :tags [:security :replacement-available]}}]
 ```
 
-**採用 stack**: web-api stack、graphql-api stack、bot stack、llm-app stack、saas stack（Reitit / content negotiation と連動）
+**適用場面**: web-api stack、graphql-api stack、bot stack、llm-app stack、saas stack（Reitit / content negotiation と連動）
 
 ### 3.6 永続化
 
@@ -652,7 +652,7 @@ stack 層と組み合わせて使う。開発支援ライブラリは通常 **de
  ]
 ```
 
-**採用 stack**: batch stack、worker stack、data-pipeline stack、および web-api stack（DB を扱う場合）
+**適用場面**: batch stack、worker stack、data-pipeline stack、および web-api stack（DB を扱う場合）
 
 ### 3.7 構造化ロギング
 
@@ -708,7 +708,7 @@ stack 層と組み合わせて使う。開発支援ライブラリは通常 **de
  ]
 ```
 
-**採用 stack**: Integrant を採用する stack すべて（web-api stack、batch stack 等）
+**適用場面**: ライフサイクル管理に Integrant を採用し、構造化ログ publisher を起動・停止管理する場合
 
 ### 3.8 テスト・検証支援
 
@@ -741,7 +741,7 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
   :reasons  {:text "部分マッチングで assert の可読性向上"}}]
 ```
 
-**採用 stack**: 全 stack（dev-tools 横断）
+**適用場面**: 全 stack（dev-tools 横断）
 
 ### 3.9 開発時データインスペクション / REPL デバッガ
 
@@ -782,7 +782,7 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
  ]
 ```
 
-**採用 stack**: 全 stack（dev-tools 横断）
+**適用場面**: 全 stack（dev-tools 横断）
 
 ### 3.10 CLI 引数パース
 
@@ -806,7 +806,7 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
  ]
 ```
 
-**採用 stack**: cli stack
+**適用場面**: cli stack
 
 ### 3.11 HTTP クライアント
 
@@ -842,7 +842,7 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
   :relations {:conflicts-with [[hato/hato "HTTP クライアントは片方に統一、hato が :recommended"]]}}]
 ```
 
-**採用 stack**: web-api stack、bot stack、llm-app stack、必要に応じて全 stack
+**適用場面**: web-api stack、bot stack、llm-app stack、必要に応じて全 stack
 
 ### 3.12 認証・認可
 
@@ -888,7 +888,7 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 - 認可（権限判定）は Malli スキーマで資格情報を契約化し、middleware で強制
 - OAuth2 / OIDC が必要な場合は個別判断（buddy-auth + ring-oauth2 等）
 
-**採用 stack**: web-api stack、graphql-api stack（ユーザ認証を扱う場合の typical 追加）
+**適用場面**: web-api stack、graphql-api stack（ユーザ認証を扱う場合の typical 追加）
 
 ### 3.13 キャッシュ
 
@@ -915,7 +915,7 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
  ]
 ```
 
-**採用 stack**: プロファイル横断。必要性が生じた時点で該当 stack（典型的には web-api stack / worker stack / saas stack）に追加
+**適用場面**: プロファイル横断。必要性が生じた時点で該当 stack（典型的には web-api stack / worker stack / saas stack）に追加
 
 **注意**: Malli instrumentation と組み合わせる時、キャッシュヒット時の契約検証をスキップするか判断が必要（KNOWLEDGE.md に運用規約を書く）
 
@@ -962,7 +962,7 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
  ]
 ```
 
-**採用 stack**: Integrant を伴う stack すべて（web-api stack / graphql-api stack / batch stack / worker stack / data-pipeline stack / bot stack）
+**適用場面**: ライフサイクル管理に Integrant を採用し、scheduler を起動・停止管理する場合
 
 **ノウハウ**: `mulog/log` のイベント名（`::http-request`、`::job-executed` 等）を**プロジェクト全体で統一する規約**を KNOWLEDGE.md §アーキテクチャ上の約束に記録することが重要。命名が分散すると集計がバラバラになる
 
@@ -1017,7 +1017,7 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
              :tags [:maintenance-stopped]}}]
 ```
 
-**採用 stack**: batch stack、worker stack、data-pipeline stack（定期実行を含む場合）
+**適用場面**: batch stack、worker stack、data-pipeline stack（定期実行を含む場合）
 
 **ノウハウ**: バッチ処理のスケジュールは**永続層との排他制御**（同時実行禁止、advisory lock 等）とセットで設計する。chime 自体は排他制御しない
 
@@ -1044,7 +1044,7 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
  ]
 ```
 
-**採用 stack**: web-api stack（拡張）、bot stack（webhook サーバ側）
+**適用場面**: web-api stack（拡張）、bot stack（webhook サーバ側）
 
 **適用条件**:
 - リアルタイム更新が必要 → ring-websocket（Jetty）
@@ -1088,7 +1088,7 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
  ]
 ```
 
-**採用 stack**: web-api stack、worker stack、bot stack、llm-app stack（外部 API 呼び出しを伴う全 stack）
+**適用場面**: web-api stack、worker stack、bot stack、llm-app stack（外部 API 呼び出しを伴う全 stack）
 
 **適用条件**:
 - 外部 API 呼び出し → diehard 必須（§1.1.1 全域性: 失敗を契約に持ち上げる）
@@ -1113,7 +1113,7 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 - 自作 CSRF token 管理: 再発明禁止
 - in-memory session store（本番）: スケールアウトで session 消失（設計思想）
 
-**採用 stack**: web-api stack、graphql-api stack、saas stack
+**適用場面**: web-api stack、graphql-api stack、saas stack
 
 **適用条件**:
 - 公開 Web API → ring-anti-forgery + ring-cors を常に適用
@@ -1130,7 +1130,7 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 - 同一イベント源（mulog）から logs / metrics / traces を配信、一貫性保持（§3.14 と整合）
 - 手動計装は境界（HTTP request、DB query、外部 API）に限定可能で副作用が明示
 
-**採用 stack**: Integrant を採用する全 stack（web-api / graphql-api / batch / worker / data-pipeline / bot / saas / llm-app）
+**適用場面**: ライフサイクル管理に Integrant を採用し、観測基盤を起動・停止管理する場合
 
 **適用条件**:
 - 単一サービス → correlation ID（request ID）のみ、trace ID 不要
@@ -1174,7 +1174,7 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
  ]
 ```
 
-**採用 stack**: web-api stack（多言語 UI 時）、bot stack（複数言語サポート時）
+**適用場面**: web-api stack（多言語 UI 時）、bot stack（複数言語サポート時）
 
 **適用条件**:
 - 単一言語 → 採用不要
@@ -1190,7 +1190,7 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 - 静的フラグは aero profile、動的フラグは DB 1 テーブル（`feature_flags`）で十分
 - Malli スキーマで全フラグを契約化、未知フラグは起動時エラー（§1.1.1 全域性）
 
-**採用 stack**: web-api stack、worker stack、saas stack（リリース制御を伴うもの）
+**適用場面**: web-api stack、worker stack、saas stack（リリース制御を伴うもの）
 
 **適用条件**:
 - 静的フラグのみ → aero profile、追加依存ゼロ
@@ -1234,7 +1234,7 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
  ]
 ```
 
-**採用 stack**: saas stack
+**適用場面**: saas stack
 
 **適用条件**:
 - SaaS・社内サービス → saas stack（Biff + XTDB）
@@ -1275,7 +1275,7 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
  ]
 ```
 
-**採用 stack**: web-api / worker / batch / saas（必要性に応じ）
+**適用場面**: web-api / worker / batch / saas（必要性に応じ）
 
 **適用条件**:
 - Primary DB として NoSQL → ADR 必須（RDBMS 比較検討）
@@ -1324,7 +1324,7 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
  ]
 ```
 
-**採用 stack**: saas stack（既定）、web-api stack（RDBMS の代替）、batch stack（イベントソーシング用途）
+**適用場面**: saas stack（既定）、web-api stack（RDBMS の代替）、batch stack（イベントソーシング用途）
 
 **適用条件**:
 - 新規プロジェクトで RDBMS と迷う → XTDB を第一検討
@@ -1391,7 +1391,7 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
  ]
 ```
 
-**採用 stack**: next.jdbc を採用する全 stack（batch / worker / data-pipeline / web-api で DB 使用時）
+**適用場面**: next.jdbc を採用する全 stack（batch / worker / data-pipeline / web-api で DB 使用時）
 
 **適用条件**:
 - RDBMS 採用 → migratus 必須（CLAUDE.md §2: 生成は LLM 可、実行は人間）
@@ -1414,7 +1414,7 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 - EventStoreDB (Kurrent) gRPC クライアント: 純 Clojure wrapper なし、XTDB で代替可
 - 専用時系列 DB 採用: プロジェクト規模で正当化されるケースは稀
 
-**採用 stack**: batch / worker / data-pipeline（時系列要件時）
+**適用場面**: batch / worker / data-pipeline（時系列要件時）
 
 **適用条件**:
 - メトリクス保存 → Prometheus / CloudWatch（mulog 経由、独自時系列 DB 不要）
@@ -1452,7 +1452,7 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
  ]
 ```
 
-**採用 stack**: dev-tools stack 拡張、必要プロジェクトのみ任意
+**適用場面**: dev-tools stack 拡張、必要プロジェクトのみ任意
 
 **適用条件**:
 - ブラウザ UI（SSR or SPA）→ etaoin
@@ -1472,10 +1472,10 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 - JMeter: XML 設定、data 駆動でない
 - 純 Clojure 負荷テスト: 成熟ライブラリなし
 
-**Gatling 本体は JVM（Scala）ライブラリ、`;; lib-catalog` への登録は現時点で見送り（採用 stack なし、プロジェクト個別採用）。**
+**Gatling 本体は JVM（Scala）ライブラリ、`;; lib-catalog` への登録は現時点で見送り（標準 stack ラベルなし、プロジェクト個別採用）。**
 - シナリオが data として書ける（Scala DSL だが構造は map）
 
-**採用 stack**: 負荷要件があるプロジェクトに任意併用（stack 化しない、別 project として追加）
+**適用場面**: 負荷要件があるプロジェクトに任意併用（stack 化しない、別 project として追加）
 
 **適用条件**:
 - パフォーマンス SLO あり → Gatling
@@ -1494,7 +1494,7 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 - 純 Clojure 契約テストライブラリ: 成熟品なし
 - 自作: 契約テストの標準化効果が失われる
 
-**採用 stack**: マイクロサービス構成時のみ（saas stack の兄弟として）
+**適用場面**: マイクロサービス構成時のみ（saas stack の兄弟として）
 
 **適用条件**:
 - サービス 3 つ以上で契約保証が必要 → pact-jvm、ADR 必須
@@ -1519,7 +1519,7 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
              :tags [:conditional]}}]
 ```
 
-**採用 stack**: なし（プロジェクト固有採用、ADR 必須）
+**適用場面**: なし（プロジェクト固有採用、ADR 必須）
 
 **適用条件**:
 - 社内で gRPC 規約がある → protojure、ADR 発行
@@ -1569,7 +1569,7 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
  ]
 ```
 
-**採用 stack**: web-api stack 拡張（帳票機能時）、batch stack（レポート生成時）
+**適用場面**: web-api stack 拡張（帳票機能時）、batch stack（レポート生成時）
 
 **適用条件**:
 - シンプル PDF → clj-pdf
@@ -1630,7 +1630,7 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 - Markdown → markdown-clj（軽量） or Flexmark（拡張必要時）
 - 外部 XML API 連携 → data.xml
 
-**採用 stack**: web-api stack（拡張、Markdown レンダリング等）、外部 XML 連携を持つ stack
+**適用場面**: web-api stack（拡張、Markdown レンダリング等）、外部 XML 連携を持つ stack
 
 ### 3.33 メール / SMS / プッシュ通知
 
@@ -1656,7 +1656,7 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 - 各サービス専用 Clojure wrapper: 多くはメンテ停滞
 - Spring Mail 等 Java フレームワーク: 重い、Clojure 慣用外
 
-**採用 stack**: web-api / worker / batch に通知機能を追加する時
+**適用場面**: web-api / worker / batch に通知機能を追加する時
 
 **適用条件**:
 - 通知送信 → worker stack に配信ジョブとして隔離（web リクエストスレッドで同期送信しない）
@@ -1700,7 +1700,7 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
  ]
 ```
 
-**採用 stack**: web-api / worker / batch に S3 要件が出た時
+**適用場面**: web-api / worker / batch に S3 要件が出た時
 
 **適用条件**:
 - ファイル upload → presigned URL 生成（S3 の場合 aws-api で対応）
@@ -1736,7 +1736,7 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
              :tags [:maintenance-stopped]}}]
 ```
 
-**採用 stack**: web-api stack（検索要件時）
+**適用場面**: web-api stack（検索要件時）
 
 **適用条件**:
 - 数万〜数十万件、日本語形態素解析不要 → PostgreSQL 全文検索
@@ -1843,7 +1843,7 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
  ]
 ```
 
-**採用 stack**: ml stack または data-pipeline stack 拡張
+**適用場面**: ml stack または data-pipeline stack 拡張
 
 **適用条件**:
 - データ分析・特徴量エンジニアリング → tablecloth
@@ -1887,7 +1887,7 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
  ]
 ```
 
-**採用 stack**: llm-app stack
+**適用場面**: llm-app stack
 
 ### 3.38 画像・映像・音声処理
 
@@ -1934,7 +1934,7 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
   :reasons  {:text "Tesseract、shell out 推奨（インプロセス JNI はクラッシュリスク）"}}]
 ```
 
-**採用 stack**: 画像・動画処理を扱うプロジェクトに任意追加（web-api / batch / worker 拡張）
+**適用場面**: 画像・動画処理を扱うプロジェクトに任意追加（web-api / batch / worker 拡張）
 
 **適用条件**:
 - サムネイル生成 → javax.imageio
@@ -1994,7 +1994,7 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
  ]
 ```
 
-**採用 stack**: edge stack
+**適用場面**: edge stack
 
 **適用条件**:
 - Raspberry Pi クラス → edge stack
@@ -2081,7 +2081,7 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
  ]
 ```
 
-**採用 stack**: web-api / worker / batch / saas / llm-app（必要性に応じ）
+**適用場面**: web-api / worker / batch / saas / llm-app（必要性に応じ）
 
 **適用条件**:
 - 設定ファイル、小〜中規模データ → EDN（aero / pr-str / read-string）
@@ -2121,7 +2121,7 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
   :reasons  {:text "insertion-order を保つ map/set、Clojure 標準 map は順序保証なし"}}]
 ```
 
-**採用 stack**: dev-tools stack 拡張（常時併用推奨）
+**適用場面**: dev-tools stack 拡張（常時併用推奨）
 
 **適用条件**:
 - 性能問題発生時 → criterium で計測、JFR で全体プロファイル
@@ -2201,7 +2201,7 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 - **§8.2 条件付き非推奨**として扱い、採用する場合は ADR + `DESIGN.md §8.3` に「Rama 採用の不可避性」を明記
 - 代替可能性: XTDB（DB + bitemporal） + worker stack（queue） + batch stack（streaming 的）の組合せで多くのケースを代替可
 
-**採用 stack**: 代替として採用した場合、既存 stack（web-api 等）を置き換える形。複数 stack 併用はしない（framework の全体性と衝突）。
+**適用場面**: 代替 framework として採用した場合、既存の web-api 等の説明ラベルを置き換える形。複数 framework 併用はしない（framework の全体性と衝突）。
 
 ### 3.44 GraphQL API
 
@@ -2231,7 +2231,7 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
  ]
 ```
 
-**採用 stack**: graphql-api stack（他 stack で REST と併設する場合も本 §3.44 参照）
+**適用場面**: graphql-api stack（他 stack で REST と併設する場合も本 §3.44 参照）
 
 **適用条件**:
 - GraphQL 主体の API → lacinia + lacinia-pedestal
@@ -2284,7 +2284,7 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
  ]
 ```
 
-**採用 stack**: desktop stack
+**適用場面**: desktop stack
 
 **適用条件**:
 - 新規プロジェクト、モダン UI → humbleui（API 変動注意）
@@ -2332,7 +2332,7 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
  ]
 ```
 
-**採用 stack**: worker stack
+**適用場面**: worker stack
 
 **適用条件**:
 - AWS 環境で SQS → com.cognitect.aws/sqs
@@ -2365,7 +2365,7 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
  ]
 ```
 
-**採用 stack**: bot stack
+**適用場面**: bot stack
 
 **適用条件**:
 - Telegram / Slack → hato 直接実装（§3.11 採用）
@@ -2405,7 +2405,7 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
  ]
 ```
 
-**採用 stack**: saas stack（rum）、web-api stack（必要時 hiccup）、llm-app stack（selmer）
+**適用場面**: saas stack（rum）、web-api stack（必要時 hiccup）、llm-app stack（selmer）
 
 **適用条件**:
 - Biff ベース SaaS → rum
@@ -2469,7 +2469,7 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
  ]
 ```
 
-**採用 stack**: 全 stack（cross-cutting / 基盤）
+**適用場面**: 全 stack（cross-cutting / 基盤）
 
 ### 3.50 時刻処理
 
@@ -2512,7 +2512,7 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
  ]
 ```
 
-**採用 stack**: 全 stack（時刻処理は cross-cutting）
+**適用場面**: 全 stack（時刻処理は cross-cutting）
 
 **適用条件**:
 - data 駆動を徹底したい / Malli 統合 → tick
@@ -2544,17 +2544,17 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 | LLM / AI を組み込んだアプリ（RAG、チャット、Agent） | **llm-app stack** |
 | IoT / エッジ（Raspberry Pi 等、GraalVM Native Image） | **edge stack** |
 
-**複数の性格を持つプロジェクト**（例: Web API + バッチ併設）は**複数 stack の併用**で対応する。採用 stack は DESIGN.md §8.3 に記録し、各 brick の deps.edn にそれぞれの推奨ライブラリ（§3 機能別節）を反映する。brick の構造は Polylith の通常通り（components / bases / projects）。
+**複数の性格を持つプロジェクト**（例: Web API + バッチ併設）は**複数 stack ラベルの併用**で説明する。stack ラベルは DESIGN.md §8.3 に記録し、各 brick の deps.edn には必要な機能カテゴリの推奨ライブラリ（§3 機能別節）だけを反映する。brick の構造は Polylith の通常通り（components / bases / projects）。
 
 
 ### 4.2 stack 記載有無の判定
 
-本節は `COLLABORATION_GUIDE.md` §2.2 の「記載あり / 記載なし」判定の参照先である。LLM は stack 選定時に本節で分類してから、承認レベルを決める。
+本節は `COLLABORATION_GUIDE.md` §2.2 の「記載あり / 記載なし」判定の参照先である。stack は設計軸ではなく説明上の分類ラベルであり、実際の依存は必要な機能カテゴリから最小限に選ぶ。LLM はラベルで可否を決めず、§3 の機能カテゴリとライブラリ根拠を引用して承認レベルを決める。
 
 | 状況 | 判定 | 次の行動 |
 |---|---|---|
-| §4.1 の「プロジェクトの性格」に該当し、必要機能が §3 機能別節の推奨カタログにある | **記載あり** | 該当 stack と §3 節を引用して L1 提案。承認後に brick deps.edn へ反映 |
-| §4.1 の stack 名には該当しないが、必要な機能カテゴリが §3 機能別節にある | **記載あり（機能別採用）** | stack 名を新設せず、該当 §3 節の推奨ライブラリを L1 提案。採用 stack 欄には主 stack + 補足として記録 |
+| §4.1 の「プロジェクトの性格」に該当し、必要機能が §3 機能別節の推奨カタログにある | **記載あり** | 該当 stack ラベルと §3 節を引用して L1 提案。deps.edn 反映は別途 CLAUDE.md §2 の依存追加承認を取る |
+| §4.1 の stack 名には該当しないが、必要な機能カテゴリが §3 機能別節にある | **記載あり（機能別採用）** | stack 名を新設せず、該当 §3 節の推奨ライブラリを L1 提案。DESIGN.md §8.3 には主ラベル + 補足機能として記録 |
 | §4.1 にも §3 機能別節にも対応するカテゴリがない | **記載なし（未記載領域）** | `CLAUDE.md` §6.3 に従って第一原理から判断材料を整理。採用可否は人間が決定し、採用後は ADR を発行 |
 | §3 に推奨があるが、プロジェクト固有理由で別ライブラリを使いたい | **推奨からの逸脱** | `STACK_GUIDE.md` §5.4 に従い、逸脱理由を ADR と DESIGN.md §8.3 に記録 |
 | §3 で deprecated / scope-excluded / 採用不可と明示されている | **記載あり（非推奨・対象外）** | 推奨として扱わない。必要なら未記載領域ではなく「非推奨からの逸脱」として人間判断を求める |
@@ -2565,9 +2565,9 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 
 stack は排他的ではなく**タグ的な概念**。複数を組み合わせ可能。Polylith の構造では、組み合わせは以下のように実現する：
 
-- **同一 base が複数 stack の性格を持つ**: 当該 base の deps.edn に、採用する全 stack の推奨ライブラリ（§3 各機能節）をマージして記述
-- **異なる base が異なる stack の性格を持つ**: 各 base が独立した deps.edn を持ち、それぞれに該当 stack の推奨ライブラリを記述。同一プロジェクト内でも base 単位で stack が異なって良い
-- **プロジェクトとして採用する stack の集合**は DESIGN.md §8.3 採用 stack に記録
+- **同一 base が複数 stack の性格を持つ**: 当該 base の deps.edn に、必要な機能カテゴリの推奨ライブラリ（§3 各機能節）をマージして記述
+- **異なる base が異なる stack の性格を持つ**: 各 base が独立した deps.edn を持ち、それぞれに該当する機能カテゴリの推奨ライブラリを記述。同一プロジェクト内でも base 単位で説明ラベルが異なって良い
+- **プロジェクトを説明する stack ラベルの集合**は DESIGN.md §8.3 に記録
 
 **組み合わせ時の重複依存**: 同一 base に複数 stack をマージする場合、重複するライブラリ（例: 両 stack が mulog を要求）は一度だけ書く。tools.deps が base の deps.edn を読んで依存解決するので、base レベルで重複排除する。
 
@@ -2583,27 +2583,27 @@ stack は排他的ではなく**タグ的な概念**。複数を組み合わせ�
 2. **補助的に必要な性格**があるか（例: web-api + batch）
 3. **dev-tools stack** を併用するか（**推奨: はい**）
 
-決定後、DESIGN.md §8.3 採用 stack 欄に記録する。
+決定後、DESIGN.md §8.3 採用 stack 欄に、説明上の stack ラベルとして記録する。
 
 **ワークスペースルートの `deps.edn` は変更不要**（必須層のみなので stack 選択とは無関係）。実ライブラリ依存は brick 作成時に brick の deps.edn に書く（§5.2）。
 
 ### 5.2 brick deps.edn への推奨ライブラリの反映
 
-最初の brick（component / base）を作成したら、採用 stack の推奨ライブラリ（§3 の該当機能節の `;; lib-catalog` block）を **brick の deps.edn** に反映する。LLM はユーザ承認後、CLAUDE.md §2 禁止事項（依存追加）に従って進める：
+最初の brick（component / base）を作成したら、必要な機能カテゴリに対応する推奨ライブラリ（§3 の該当機能節の `;; lib-catalog` block）を **brick の deps.edn** に反映する。stack ラベルの承認と deps.edn 変更の承認は別物であり、LLM はユーザ承認後、CLAUDE.md §2 禁止事項（依存追加）に従って進める：
 
-1. `clj -M:poly create component name:<domain>` でドメイン component を作成
+1. `clj -M:poly create component name:<domain>` でドメイン component を作成（ユーザ承認必須）
 2. `clj -M:poly create base name:<entry>` で entry base を作成（ユーザ承認必須）
-3. 作成された **base の deps.edn**（`bases/<entry>/deps.edn`）に、採用 stack の §3 該当推奨ライブラリを記述
+3. 作成された **base の deps.edn**（`bases/<entry>/deps.edn`）に、必要な機能カテゴリの §3 該当推奨ライブラリを記述
    - 例: web-api stack なら §3.4 HTTP サーバ・ルーティング / §3.5 JSON / §3.6 永続化 / §3.7 構造化ロギング 等の採用エントリを反映
-   - 複数 stack 採用時は、該当 stack の推奨をマージ（重複は一度だけ書く）
+   - 複数の説明上の stack にまたがる時も、実際には必要な機能カテゴリの推奨をマージする（重複は一度だけ書く）
 4. component の deps.edn（`components/<domain>/deps.edn`）には、ドメイン純粋性を保つため **I/O 系ライブラリは書かない**（I/O は base 側）
 5. プロジェクト固有ライブラリ（DB ドライバ等）も同じ brick deps.edn に追加（stack 推奨ライブラリと扱いは対称）
 6. **ワークスペースルート `deps.edn` の `:dev :extra-paths` に brick ソースパスを追加**（`components/<domain>/src` 等）、および `:dev :extra-deps` に **brick を `:local/root` 登録**（`poly/<domain> {:local/root "components/<domain>"}` 等）。後者を忘れると brick deps.edn の依存が REPL で解決されない（`ClassNotFoundException`）
 7. **dev-tools stack 採用時**: 開発支援ライブラリはワークスペースルートの `deps.edn` の `:dev :extra-deps` に追加（本番ビルドに混入させない）
-8. `development/src/dev/user.clj` で採用 stack に応じた `:require` と実装を有効化
-   - Integrant を含む stack 採用 → Integrant REPL セクションを有効化
-   - dev-tools stack 採用 → Portal / matcher-combinators セクションを有効化
-9. `.clj-kondo/config.edn` で該当 stack の `discouraged-var` があれば有効化
+8. `development/src/dev/user.clj` で採用ライブラリに応じた `:require` と実装を有効化
+   - ライフサイクル管理に Integrant を採用 → Integrant REPL セクションを有効化
+   - Portal 等の開発支援を採用 → Portal / matcher-combinators セクションを有効化
+9. `.clj-kondo/config.edn` で採用機能カテゴリに対応する `discouraged-var` があれば有効化
 10. clj-kondo の hook 取り込み（shell で実行、tools.deps の :main-opts はシェル展開されないためエイリアス化できない）: `clj -M:lint --copy-configs --dependencies --lint "$(clojure -A:dev -Spath)"`
 11. §6 整合性チェック実施
 12. 独立したコミット（例: `Adopt web-api stack (base deps.edn + dev/user.clj)`）
@@ -2658,17 +2658,17 @@ clj -M:poly test
 clj -M:dev:nrepl
 ```
 
-### 6.2 採用 stack と brick deps.edn の整合（文書的チェック）
+### 6.2 stack ラベルと brick deps.edn の整合（文書的チェック）
 
 **STACK_GUIDE.md §3 は強制一致ではなく推奨カタログ**。brick の deps.edn が §3 と完全一致している必要はない。ただし以下を確認する：
 
 1. 採用した stack に対応する **§3 機能別節の「採用時の確認事項」相当**を満たしているか（機能カテゴリの充足、設定ファイルの存在等）
 2. 推奨からの逸脱がある場合、ADR が発行されているか（§5.4 参照）
-3. DESIGN.md §8.3 採用 stack 欄の記載と brick の実装が整合しているか
+3. DESIGN.md §8.3 採用 stack 欄の説明ラベルと brick の実装が整合しているか
 
 ### 6.3 dev/user.clj との整合
 
-- 採用 stack が Integrant を含むのに `dev/user.clj` の Integrant REPL セクションが無効化 → 不整合
+- ライフサイクル管理に Integrant を採用したのに `dev/user.clj` の Integrant REPL セクションが無効化 → 不整合
 - dev-tools stack 採用なのに Portal 関連コードが無効化 → 不整合
 
 ### 6.4 CI への組み込み
@@ -2691,7 +2691,7 @@ clj -M:dev:nrepl
 
 ### 6.5 将来の自動検証（継続充実項目）
 
-brick deps.edn が採用 stack に対応する §3 機能別推奨を満たしているかの機械検証は、**将来的にスクリプト化**される予定（MAINTAINERS_GUIDE.md §5.9 継続充実項目）。現時点では文書上の確認事項として運用する。検証の粒度は「機能カテゴリの充足」であり、「具体ライブラリ名の一致」ではない（推奨の強制ではなく、漏れの防止）。
+brick deps.edn が必要機能カテゴリに対応する §3 機能別推奨を満たしているかの機械検証は、**将来的にスクリプト化**される予定（MAINTAINERS_GUIDE.md §5.9 継続充実項目）。現時点では文書上の確認事項として運用する。検証の粒度は「機能カテゴリの充足」であり、「具体ライブラリ名の一致」ではない（推奨の強制ではなく、漏れの防止）。
 
 ---
 
@@ -2723,7 +2723,7 @@ brick deps.edn が採用 stack に対応する §3 機能別推奨を満たし�
 5. **本文書 §3 の該当機能節の `;; lib-catalog` block に採用エントリを追加**
 6. 派生プロジェクトの場合、該当 brick の deps.edn を更新（テンプレート保守の場合、本文書の更新のみで完結）
 7. §6 整合性チェック
-8. DESIGN.md §8.3 の採用 stack 欄を更新（stack 構成が変わった場合）
+8. DESIGN.md §8.3 の採用 stack 欄を更新（説明ラベルが変わった場合）
 
 ---
 

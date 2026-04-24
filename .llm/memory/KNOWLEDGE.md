@@ -45,7 +45,7 @@ QUESTIONS.md §0.5 の判定で「KNOWLEDGE への昇格」が選ばれた場合
 1. 該当 Q の結論を、本ファイルの適切な節（§1〜§5）に**新エントリとして追記**
 2. エントリに **`由来: Q-YYYY-MM-NNN`** を記載（軌跡の紐付け）
 3. 背景が複雑で決定経緯も残すべきなら、ADR も併発し、エントリに `背景: ADR-NNNN-topic` を追記
-4. QUESTIONS.md の Q を `resolved` としてアーカイブ、`反映先` に `KNOWLEDGE.md §X`（+ 必要なら ADR）を記入
+4. QUESTIONS.md §0.4 に従い、Q を `resolved` としてアーカイブ、`反映先` に `KNOWLEDGE.md §X`（+ 必要なら ADR）を記入
 
 ### 0.4 エントリ記載フォーマット
 
@@ -81,7 +81,7 @@ QUESTIONS.md §0.5 の判定で「KNOWLEDGE への昇格」が選ばれた場合
 KNOWLEDGE.md を含む 4 種文書の編集権限マトリクスは **`.llm/guide/COLLABORATION_GUIDE.md` §2.3** が一次情報源。本節はその要約のみ示す。
 
 - **LLM が独断で編集することは禁止**（`CLAUDE.md §2` 禁止事項の対象）
-- LLM が実施してよい典型例: (1) Q resolved 時の昇格（QUESTIONS.md §0.4 でユーザ承認済み）、(2) ユーザの明示的指示、(3) 実装中の発見で事前承認を得た場合
+- LLM が実施してよい典型例: (1) Q resolved 時の昇格（QUESTIONS.md §0.4 に従う）、(2) ユーザの明示的指示、(3) 実装中の発見で事前承認を得た場合
 - それ以外は、LLM は新エントリ案を QUESTIONS.md に Q として立て、承認を経てから追記する
 
 詳細条件と例外（特別承認・部分承認の不採用等）は `COLLABORATION_GUIDE.md §2.3` を参照。
