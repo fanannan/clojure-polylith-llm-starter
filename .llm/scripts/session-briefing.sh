@@ -3,8 +3,8 @@
 #
 # Claude Code の SessionStart hook 経由で毎セッション起動時に呼ばれる状態ブリーフィング。
 # `CLAUDE.md §1.2.1` 機械化 / `§8.0` 実装着手前の確認の機械化バックアップとして、
-# 初回セッションにはブートストラップ未完了の明示を、2 回目以降には前回からの継続点
-# （open Q / 最新 ADR / 直近コミット）を LLM の視界に入れる。
+# 初回セッションには初期化未完了の明示を、2 回目以降には前回からの継続点
+# （未対応(open) Q / 最新 ADR / 直近コミット）を LLM の視界に入れる。
 #
 # 設計規律:
 #   - 副作用なし（stdout のみ、ファイル改変せず）
@@ -82,7 +82,7 @@ describe_bootstrap_gaps() {
 }
 
 # -----------------------------------------------------------------------------
-# open Q 抽出（QUESTIONS.md §2 オープンな質問 ブロック）
+# 未対応(open) Q 抽出（QUESTIONS.md §2 未対応 ブロック）
 # -----------------------------------------------------------------------------
 
 extract_open_questions() {
@@ -106,7 +106,7 @@ extract_open_questions() {
     }
   ' "$file")
   if [ -z "$output" ]; then
-    echo "- （open な Q はありません）"
+    echo "- （未対応(open) の Q はありません）"
   else
     echo "$output"
   fi
@@ -200,7 +200,7 @@ else
 fi
 
 echo ""
-echo "## 未解決の判断（.llm/memory/QUESTIONS.md §2 open）"
+echo "## 未解決の判断（.llm/memory/QUESTIONS.md §2 未対応(open)）"
 echo ""
 extract_open_questions
 echo ""
@@ -263,7 +263,7 @@ echo "## 着手前チェックリスト（CLAUDE.md §8.0）"
 echo ""
 echo "- [ ] DESIGN.md の関連節を確認"
 echo "- [ ] KNOWLEDGE.md の関連節を確認"
-echo "- [ ] QUESTIONS.md の open を確認（上記に同じ）"
+echo "- [ ] QUESTIONS.md の未対応(open) を確認（上記に同じ）"
 echo "- [ ] 関連 ADR を確認"
 echo "- [ ] REPL 状態を確認（起動中なら live workbench として使用開始）"
 

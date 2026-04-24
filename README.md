@@ -4,7 +4,7 @@
 
 - 必須技術: Clojure + tools.deps + Polylith + Malli 契約 + clj-kondo + cljfmt + Splint + clj-watson + `.llm/scripts/`
 - 追加ライブラリは必要な用途別機能カテゴリごとに最小選択し、各 brick の `deps.edn` に記録する
-- 技術選定の推奨カタログは `.llm/guide/STACK_GUIDE.md`
+- 技術選定の判断済み推奨集は `.llm/guide/STACK_GUIDE.md`
 
 > ⚠️ **このファイルはテンプレート配布時のものです。**
 >
@@ -18,7 +18,7 @@
 **Clojure + tools.deps + Polylith + Malli + clj-kondo + cljfmt + Splint + clj-watson + `.llm/scripts/`** を必須技術基盤とする、**LLM 駆動開発向け**のプロジェクトテンプレート。HTTP、永続化、ライフサイクル管理などの追加技術は、必要になった用途別機能カテゴリごとに選び、brick の `deps.edn` に追加する。
 
 疲労最小化原則（LLM と人間の共同開発における修復コスト最小化）に基づき設計されている。
-詳細思想と技術選定の推奨カタログは別紙に置く。
+詳細思想と技術選定の判断済み推奨集は別紙に置く。
 ∵ CLAUDE.md
 ∵ .llm/guide/STACK_GUIDE.md
 
@@ -124,7 +124,7 @@ LLM が詰まった時は QUESTIONS に Q を起票して停止する。人間�
 |---|---|
 | LLM 側の技術手順 | `.llm/guide/BOOTSTRAP_GUIDE.md` |
 | 承認権限・対話ルール | `.llm/guide/COLLABORATION_GUIDE.md` |
-| 技術選定の推奨カタログ | `.llm/guide/STACK_GUIDE.md` |
+| 技術選定の判断済み推奨集 | `.llm/guide/STACK_GUIDE.md` |
 | 作業原則 | `CLAUDE.md` |
 
 ---
@@ -147,7 +147,7 @@ LLM が詰まった時は QUESTIONS に Q を起票して停止する。人間�
 │
 ├── .llm/memory/              ← プロジェクトの記憶（実装中に蓄積）
 │   ├── QUESTIONS.md             判断保留トラッカー
-│   ├── KNOWLEDGE.md             生きた知識（契約・不変条件）
+│   ├── KNOWLEDGE.md             現時点で有効な知識（契約・不変条件）
 │   └── adr/                     アーキテクチャ決定記録
 │       ├── README.md            ADR とは何か、運用ルール
 │       ├── template.md          ADR 雛形
@@ -164,13 +164,13 @@ LLM が詰まった時は QUESTIONS に Q を起票して停止する。人間�
 │   ├── check-interface-contracts.sh  interface.clj の m/=> 契約網羅
 │   ├── check-single-ns-per-file.sh   1 ファイル 1 ns
 │   ├── check-vulnerabilities.sh      clj-watson による脆弱性スキャン（release 前）
-│   ├── gen_lib_catalog.clj           技術選定カタログの EDN block から artifact 生成
+│   ├── gen_lib_catalog.clj           技術選定カタログの EDN block から生成物を生成
 │   ├── lint-import-hooks.sh          依存ライブラリ提供の clj-kondo hook 取込
 │   ├── session-briefing.sh           SessionStart 時の状態ブリーフィング（REPL 状態含む）
 │   ├── repl-eval.sh                  稼働中 nREPL へ eval 送信（LLM 向け、CLAUDE.md §9）
 │   └── repl_eval.clj                 repl-eval.sh の Clojure 実装（clj -X:repl-eval）
 │
-├── .llm/data/                ← gen-lib-catalog が生成する artifact（単一の正本から生成される成果物）
+├── .llm/data/                ← gen-lib-catalog が生成する生成物（単一の正本から生成される成果物）
 │   ├── libs.edn                      lib-catalog 全 entry（Malli 検証済）
 │   ├── deprecated-libs.patterns      deps.edn 採用検知用パターン
 │   ├── forbidden-requires.patterns   require 検知用パターン
@@ -206,9 +206,9 @@ LLM が詰まった時は QUESTIONS に Q を起票して停止する。人間�
 
 - **疲労最小化**: LLM の誤りを構造的に封じる（全域性・不変性・副作用の隔離）
 - **機械化 5 層**: 第 1 層 clj-kondo 組込 linter / 第 2 層 `.clj-kondo/polyguard/` custom hook / 第 3 層 Splint / 第 4 層 `.llm/scripts/check-*.sh`（設定・構造検査）+ Polylith `poly check` + Malli instrumentation / 第 5 層 clj-watson（時間軸脆弱性）。規約を人間の注意力ではなくツールで強制（詳細は `MAINTAINERS_GUIDE.md` §5.10）
-- **単一の正本（SSOT）生成**: `.llm/scripts/gen_lib_catalog.clj` が `STACK_GUIDE` の `;; lib-catalog` EDN block 群を検証・合成し `.llm/data/` 配下に artifact を emit。shell script は artifact を読む
-- **REPL as Primary Workbench**: `.llm/scripts/repl-eval.sh` により LLM が稼働中 nREPL に eval / load-file を送信。永続 session で state 継続、編集から検証までを同一ターンで閉じる
-- **技術選定カタログ**: 必須技術基盤はワークスペースルートで常に採用し、追加ライブラリは必要な brick の `deps.edn` に配置する。推奨カタログは `.llm/guide/STACK_GUIDE.md`
+- **単一の正本（SSOT）生成**: `.llm/scripts/gen_lib_catalog.clj` が `STACK_GUIDE` の `;; lib-catalog` EDN block 群を検証・合成し `.llm/data/` 配下に生成物を出力する。shell script はその生成物を読む
+- **REPL as Primary Workbench**: `.llm/scripts/repl-eval.sh` により LLM が稼働中 nREPL に eval / load-file を送信。永続 session で状態を継続し、編集から検証までを同一ターンで閉じる
+- **技術選定カタログ**: 必須技術基盤はワークスペースルートで常に採用し、追加ライブラリは必要な brick の `deps.edn` に配置する。判断済み推奨集は `.llm/guide/STACK_GUIDE.md`
 - **4 種の文書分離**: 仕様（DESIGN）/ 知識（KNOWLEDGE）/ 決定履歴（ADR）/ 判断保留（QUESTIONS）
 - **自己停止プロトコル**: LLM が時間感覚なく詰まった時、ターン数閾値で停止し Q を立てる
 

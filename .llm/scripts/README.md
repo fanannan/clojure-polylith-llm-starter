@@ -1,9 +1,9 @@
 # .llm/scripts/ — ワークスペース運用スクリプト群
 
-本ディレクトリは、`.clj-kondo/` の custom hook では捕捉できない**設定ファイル・ディレクトリ構造・配布物整合性**の検査と、シェル展開が必要な運用コマンドのラッパー、および markdown 文書から機械可読 artifact を生成する Clojure script を収容する。各スクリプトは単独でも実行できるが、基本は `check-workspace-integrity.sh` が完了条件から一括で起動する。
+本ディレクトリは、`.clj-kondo/` の custom hook では捕捉できない**設定ファイル・ディレクトリ構造・配布物整合性**の検査と、シェル展開が必要な運用コマンドのラッパー、および markdown 文書から機械可読な生成物を生成する Clojure script を収容する。各スクリプトは単独でも実行できるが、基本は `check-workspace-integrity.sh` が完了条件から一括で起動する。
 ∵ CLAUDE.md §5.5
 
-**Convention 拡張**（既存は shell のみ、以降は Clojure script も追加）: `gen_*.clj` は markdown 文書（典型的には `STACK_GUIDE`）から EDN / patterns artifact を生成するための Clojure script。実行は `clj -X:gen-*` alias 経由（`deps.edn` 参照）。shell script と `.llm/data/` 配下の artifact を結ぶ中継層にあたる。
+**Convention 拡張**（既存は shell のみ、以降は Clojure script も追加）: `gen_*.clj` は markdown 文書（典型的には `STACK_GUIDE`）から EDN / patterns 生成物を生成するための Clojure script。実行は `clj -X:gen-*` alias 経由（`deps.edn` 参照）。shell script と `.llm/data/` 配下の生成物を結ぶ中継層にあたる。
 
 hook（`.clj-kondo/polyguard/`）と script（本ディレクトリ）の役割分担は保守者向け文書に置く。
 ∵ MAINTAINERS_GUIDE.md §5.10
@@ -42,7 +42,7 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 | `check-single-ns-per-file.sh` | 1 つの `.clj` / `.cljc` / `.cljs` ファイルに `(ns ...)` が複数ないか検査 |
 | `check-vulnerabilities.sh` | `clj-watson` による依存脆弱性スキャン（release 前必須、完了条件外） |
 | `lint-import-hooks.sh` | 依存ライブラリ提供の `clj-kondo` hook を `.clj-kondo/configs/` に取り込む |
-| `session-briefing.sh` | セッション起動時の状態ブリーフィング（フェーズ判定・open Q・最新 ADR・直近コミット・REPL 状態）を stdout 出力。CLAUDE.md §8.0 実装着手前の確認の機械化バックアップ（状態提示、pass/fail 検査ではない） |
+| `session-briefing.sh` | セッション起動時の状態ブリーフィング（フェーズ判定・未対応(open) Q・最新 ADR・直近コミット・REPL 状態）を stdout 出力。CLAUDE.md §8.0 実装着手前の確認の機械化バックアップ（状態提示、pass/fail 検査ではない） |
 | `repl-eval.sh` | 稼働中 nREPL に eval / load-file を送る LLM 向け client（CLAUDE.md §9 Live Workbench Protocol）。`.nrepl-port` 自動発見、永続 session 再利用（`.nrepl-session`）、`--expr` / `--load-file` / `--interrupt` / `--describe` / `--reset-session` / `--fresh` 対応 |
 | `repl_eval.clj` | repl-eval.sh の Clojure 実装（`clj -X:repl-eval` の exec-fn）。nREPL 標準 op（`eval` / `load-file` / `interrupt` / `describe` / `ls-sessions` / `clone`）を subcommand で提供、bounded printing（10000 chars/response）、file/line metadata 常時付与、process 跨ぎ request-id 永続化で確実な `--interrupt` を実現 |
 
@@ -92,7 +92,7 @@ NVD API key 推奨（`https://nvd.nist.gov/developers/request-an-api-key`）。�
 - **Codex / 他エージェント**: SessionStart hook 機構がないため `AGENTS.md` の指示に従い、LLM が起動直後に `bash .llm/scripts/session-briefing.sh` を手動実行する
 - **手動実行**: 任意のタイミングで `bash .llm/scripts/session-briefing.sh` を実行し、現時点の状態を確認できる
 
-本スクリプトは副作用ゼロ（stdout のみ）、終了コードは常に 0。`check-workspace-integrity.sh` のような重検査は呼ばず、フェーズ判定・open Q 抽出・最新 ADR 抽出・`git log -5` に限定して軽量に保つ。
+本スクリプトは副作用ゼロ（stdout のみ）、終了コードは常に 0。`check-workspace-integrity.sh` のような重検査は呼ばず、フェーズ判定・未対応(open) Q 抽出・最新 ADR 抽出・`git log -5` に限定して軽量に保つ。
 
 ## 実装規律
 
@@ -109,7 +109,7 @@ NVD API key 推奨（`https://nvd.nist.gov/developers/request-an-api-key`）。�
 - 依存は root `:deps` を継承（`-X` の意味論）。追加依存が必要な場合のみ alias 内 `:extra-deps` で最小限に
 - Malli schema で入力を厳格検証、違反は明示的に error 終了
 - 生成物は `.llm/data/` に配置、ヘッダに `;; GENERATED — do not edit by hand` を入れる 
-- `check-workspace-integrity.sh` に「一時領域に再生成 → diff で drift 検知」のステップを追加し、source と artifact の同期を保証
+- `check-workspace-integrity.sh` に「一時領域に再生成 → diff で drift 検知」のステップを追加し、元文書と生成物の同期を保証
 
 ## 新しい検査の追加手順
 

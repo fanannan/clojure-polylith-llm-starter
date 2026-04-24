@@ -1194,7 +1194,7 @@
   :reasons
   {:text "insertion-order を保つ map/set、Clojure 標準 map は順序保証なし"},
   :references
-  {:repository "https://github.com/clj-commons/ordered",
+  {:repository "https://clojars.org/org.flatland/ordered",
    :doc "https://github.com/clj-commons/ordered/blob/master/README.md",
    :quick-reference "https://cljdoc.org/d/org.flatland/ordered"}}
  {:purpose [:platform :framework],
@@ -1241,17 +1241,17 @@
   :judgment {:status :acceptable, :version "1.3"},
   :reasons {:text "Lacinia-Ring 統合、または自作 middleware でも可"},
   :references
-  {:repository "https://github.com/walmartlabs/lacinia",
-   :doc
-   "https://github.com/walmartlabs/lacinia/blob/master/README.md#lacinia-pedestal",
-   :quick-reference "https://cljdoc.org/d/com.walmartlabs/lacinia"}}
+  {:repository "https://clojars.org/com.walmartlabs/lacinia-pedestal",
+   :quick-reference
+   "https://cljdoc.org/d/com.walmartlabs/lacinia-pedestal",
+   :doc "https://cljdoc.org/d/com.walmartlabs/lacinia-pedestal"}}
  {:purpose [:desktop :gui],
   :ids {:coord io.github.humbleui/humbleui},
   :judgment {:status :recommended, :version "0.2.0"},
   :reasons {:text "Skia ベース、宣言的 API、API 変動リスクあり (暫定採用)"},
   :references
-  {:repository "https://github.com/HumbleUI/HumbleUI",
-   :doc "https://github.com/HumbleUI/HumbleUI/blob/main/README.md",
+  {:repository "https://clojars.org/io.github.humbleui/humbleui",
+   :doc "https://cljdoc.org/d/io.github.humbleui/humbleui",
    :quick-reference
    "https://cljdoc.org/d/io.github.humbleui/humbleui"},
   :relations

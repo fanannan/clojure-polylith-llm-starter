@@ -8,7 +8,7 @@
 - **ライブラリ依存を更新・追加・削除する時**
 - **新しい規約や落とし穴を各種ガイドに追記する時**
 - **このテンプレートを別プロジェクトに複製・派生させる時**
-- **配布形態（即有効 / 推奨カタログ / 不配布 / 完全排除）を変更する時**
+- **配布形態（即有効 / 判断済み推奨集 / 不配布 / 完全排除）を変更する時**
 
 **設計判断を表層で真似ず、原則に遡って再導出する**ための基盤として読まれたい。
 
@@ -43,7 +43,7 @@
 | 値 | 定義 | 配布形態 | 例 |
 |---|---|---|---|
 | **即有効** | どのプロジェクトでも必要、かつ初期コストがゼロ | そのまま配布 | CLAUDE.md、.clj-kondo 必須 linter、Malli の deps |
-| **推奨カタログ（文書配布）** | 選定済だが目的依存で、プロジェクト開始時に採用判断。brick の deps.edn に反映される | STACK_GUIDE.md §3 機能別節で推奨ライブラリとして文書化。deps.edn には出現しない | Integrant、Ring、next.jdbc、mulog |
+| **判断済み推奨集（文書配布）** | 選定済だが目的依存で、プロジェクト開始時に採用判断。brick の deps.edn に反映される | STACK_GUIDE.md §3 機能別節で推奨ライブラリとして文書化。deps.edn には出現しない | Integrant、Ring、next.jdbc、mulog |
 | **不配布（文書化）** | 特定ドメイン・架空のサンプル | 配布せず、POLYLITH_GUIDE.md にコード例として埋め込む | user component、api base |
 | **完全排除** | 技術選定で却下されたもの | 名前も出さない（禁止・非推奨として STACK_GUIDE.md §3 の `;; lib-catalog` block に記録、理由タグは §8） | §8.1 禁止ライブラリの 3 件 |
 
@@ -52,16 +52,16 @@
 新規要素をテンプレートに加える提案が来たら、以下の順で判定：
 
 1. **どのプロジェクトでも必ず使うか？** → Yes なら **即有効**
-2. **技術選定として固定されているが、目的依存か？** → Yes なら **推奨カタログ（文書配布）**（どの用途別機能カテゴリで使うかは STACK_GUIDE.md §3 機能別節で判断）
+2. **技術選定として固定されているが、目的依存か？** → Yes なら **判断済み推奨集（文書配布）**（どの用途別機能カテゴリで使うかは STACK_GUIDE.md §3 機能別節で判断）
 3. **特定ドメイン・架空のサンプルか？** → Yes なら **不配布**（文書化）
 4. **技術選定で却下されたか？** → Yes なら **完全排除**（名前も出さない、または STACK_GUIDE.md §3 の `;; lib-catalog` block に禁止・非推奨として記録。理由タグは §8）
 
-### 2.2 推奨カタログ配布の運用
+### 2.2 判断済み推奨集配布の運用
 
-**真実の一箇所化**: ライブラリ依存の一次情報源は **brick の deps.edn**（Polylith の本番ビルドはそこから依存解決する）。テンプレート側はライブラリ依存を実装として持たず、**STACK_GUIDE §3 機能別節で推奨カタログとして文書化**する。各 brick の deps.edn に推奨を書く際のガイドとして機能する。
+**真実の一箇所化**: ライブラリ依存の一次情報源は **brick の deps.edn**（Polylith の本番ビルドはそこから依存解決する）。テンプレート側はライブラリ依存を実装として持たず、**STACK_GUIDE §3 機能別節で判断済み推奨集として文書化**する。各 brick の deps.edn に推奨を書く際のガイドとして機能する。
 ∵ STACK_GUIDE.md §3
 
-推奨カタログとして配布する要素は**動作が保証された標準形**でなければならない。動作不明なものを推奨すると、採用時にハマる。したがって：
+判断済み推奨集として配布する要素は**動作が保証された標準形**でなければならない。動作不明なものを推奨すると、採用時にハマる。したがって：
 
 - 推奨ライブラリは**実在のバージョンで動作確認した後**に STACK_GUIDE §3 機能別節 に掲載する（§5.6.2 動作検証）
 ∵ STACK_GUIDE.md §3
@@ -69,13 +69,13 @@
 - バージョン目安は定期的に更新する（§5.1 参照）
 - 採用時の確認事項を §3 該当節に記載し、用途別機能カテゴリ充足・設定漏れの防止に活用する
 
-**推奨カタログ方式の利点**:
-- **特別扱いなし**: 推奨カタログのライブラリもプロジェクト固有ライブラリも、どちらも brick の deps.edn に書かれ、扱いが対称
+**判断済み推奨集方式の利点**:
+- **特別扱いなし**: 判断済み推奨集のライブラリもプロジェクト固有ライブラリも、どちらも brick の deps.edn に書かれ、扱いが対称
 - **Polylith の brick 独立性と完全整合**: brick の deps.edn が自己完結
 - **二重管理の回避**: ワークスペースルートの deps.edn には必須技術基盤のみ配置し、用途依存ライブラリは brick に集約
 - **推奨の柔軟性**: 推奨からの逸脱は ADR 発行で記録し、文書化で許容（用途別機能カテゴリ充足が確認できれば具体ライブラリ一致は強制しない）
 
-設計根拠の詳細は **STACK_GUIDE.md §1.2 本文書の性格**。推奨カタログの保守規律は **§5.9** で規定。
+設計根拠の詳細は **STACK_GUIDE.md §1.2 本文書の性格**。判断済み推奨集の保守規律は **§5.9** で規定。
 
 ---
 
@@ -168,10 +168,10 @@
 
 ### 原則 3: 配布物の二値判断を避ける
 
-**内容**: 「配布するか、しないか」ではなく、「即有効 / 推奨カタログ（文書配布）/ 不配布 / 完全排除」の **4 値で判断する**。使用頻度・目的依存性・バイアス注入の懸念が要素ごとに違うため、配布形態にグラデーションを設ける。推奨カタログは STACK_GUIDE §3 機能別節 で文書として配布され、実装は各 brick の deps.edn に反映される（真実の一箇所化、§2.2 参照）。
+**内容**: 「配布するか、しないか」ではなく、「即有効 / 判断済み推奨集（文書配布）/ 不配布 / 完全排除」の **4 値で判断する**。使用頻度・目的依存性・バイアス注入の懸念が要素ごとに違うため、配布形態にグラデーションを設ける。判断済み推奨集は STACK_GUIDE §3 機能別節 で文書として配布され、実装は各 brick の deps.edn に反映される（真実の一箇所化、§2.2 参照）。
 ∵ STACK_GUIDE.md §3
 **守らないとどうなるか**: 「全部入りで配布」して余計なバイアスを注入するか、「最小で配布」して毎回判断コストを発生させるかの両極端になる。
-**保守時のチェック**: §2.1 の判定フローで各要素を分類する。推奨カタログの詳細運用は §5.6、選定論理は STACK_GUIDE に置く。
+**保守時のチェック**: §2.1 の判定フローで各要素を分類する。判断済み推奨集の詳細運用は §5.6、選定論理は STACK_GUIDE に置く。
 ∵ STACK_GUIDE.md
 
 ### 原則 4: 「汎用」は相対概念。基準を明示する
@@ -244,9 +244,9 @@
 | 種別 | 性質 | 配置 | ライフサイクル |
 |---|---|---|---|
 | **仕様（DESIGN）** | 何を作るか。合意の起点 | `DESIGN.md`（ルート） | プロジェクト初期に確定、大きな方針転換時のみ改訂 |
-| **生きた知識（KNOWLEDGE）** | 現時点の真実。契約・不変条件・暗黙知 | `.llm/memory/KNOWLEDGE.md` | 実装中に継続更新、常に最新状態を保つ（上書き） |
+| **現時点で有効な知識（KNOWLEDGE）** | 現時点の真実。契約・不変条件・暗黙知 | `.llm/memory/KNOWLEDGE.md` | 実装中に継続更新、常に最新状態を保つ（上書き） |
 | **決定履歴（ADR）** | なぜそう決めたかの不変記録 | `.llm/memory/adr/NNNN-topic.md` | 一度発行したら変更禁止、改訂は新 ADR で supersede |
-| **判断保留（QUESTIONS）** | 未決の判断。一時的 | `.llm/memory/QUESTIONS.md` | open → resolved で閉じる、軌跡はアーカイブ |
+| **判断保留（QUESTIONS）** | 未決の判断。一時的 | `.llm/memory/QUESTIONS.md` | 未対応(open) → 解決済み(resolved) で閉じる、軌跡はアーカイブ |
 
 **守らないとどうなるか**:
 - KNOWLEDGE（現時点の真実）が ADR（不変履歴）に混入 → 後から書き換えられて歴史改変が起きる
@@ -271,10 +271,10 @@
 
 `clj -M:outdated` で更新候補を確認後（用途依存ライブラリは brick の deps.edn 経由で走査される、§5.6.1 参照）：
 
-1. **セキュリティパッチ系**: 即適用（必須技術基盤・推奨カタログ両方。推奨カタログは STACK_GUIDE.md §3 機能別節 のバージョン目安に反映）
+1. **セキュリティパッチ系**: 即適用（必須技術基盤・判断済み推奨集両方。判断済み推奨集は STACK_GUIDE.md §3 機能別節 のバージョン目安に反映）
 2. **メジャーバージョンアップ**:
    - 必須技術基盤の依存は、CI の全テスト通過後に適用
-   - 推奨カタログ内の依存は、該当プロジェクト用途構成の動作検証（§5.6.2）時にまとめて STACK_GUIDE.md §3 機能別節に反映
+   - 判断済み推奨集内の依存は、該当プロジェクト用途構成の動作検証（§5.6.2）時にまとめて STACK_GUIDE.md §3 機能別節に反映
 3. **API 破壊的変更を含む更新**:
    - STACK_GUIDE.md §3 選定根拠・§3 機能別節の `;; lib-catalog` blockを更新
    - 変更影響を CODING_GUIDE.md / POLYLITH_GUIDE.md に反映
@@ -292,8 +292,8 @@
 1. **そもそも必要か？**
    - Clojure 標準（clojure.string, clojure.set, clojure.walk 等）で足りないか
    - 既に採用している Malli や既存の推奨ライブラリで代替できないか
-2. **§2.1 の 4 値判断でどの区分に入るか**（即有効 / 推奨カタログ / 不配布 / 完全排除）
-3. **推奨カタログに入れる場合、どの用途別機能カテゴリに置くか**（STACK_GUIDE.md §3 機能別節で判断）
+2. **§2.1 の 4 値判断でどの区分に入るか**（即有効 / 判断済み推奨集 / 不配布 / 完全排除）
+3. **判断済み推奨集に入れる場合、どの用途別機能カテゴリに置くか**（STACK_GUIDE.md §3 機能別節で判断）
 4. **STACK_GUIDE.md §3 に選定根拠を追記、代替として何を却下するか**を同時に決める
 5. **既存コード・文書への影響範囲**を確認
 
@@ -307,7 +307,7 @@
 4. STACK_GUIDE.md §3 の採用記述を削除、当該 §3.X の `;; lib-catalog` block「代替と却下」節に非推奨エントリを追加（推奨代替ありタグ）
 5. 関連文書（CLAUDE.md / CODING_GUIDE.md / POLYLITH_GUIDE.md）の記述を整合的に更新
 
-詳細は §5.6.4 推奨カタログの削除・置換、§5.9.5 推奨ライブラリの差し替え。
+詳細は §5.6.4 判断済み推奨集の削除・置換、§5.9.5 推奨ライブラリの差し替え。
 
 ### 5.4 新しい規約を追加する場合
 
@@ -326,11 +326,11 @@ CODING_GUIDE.md §1 に追加。フォーマットは既存の項目（§1.1〜�
 
 追加順は時系列でよい（§1.15, §1.16, ...）。
 
-### 5.6 STACK_GUIDE.md §3 機能別節 推奨カタログの保守
+### 5.6 STACK_GUIDE.md §3 機能別節 判断済み推奨集の保守
 
-STACK_GUIDE.md §3 機能別節で推奨カタログとして配布されているライブラリ群は「採用されなくても腐ってよい」わけではない。用途ごとの推奨が実在・動作する状態を保つ。判断とプロセスの対称性に従い、以下のプロセスで保守する。
+STACK_GUIDE.md §3 機能別節で判断済み推奨集として配布されているライブラリ群は「採用されなくても腐ってよい」わけではない。用途ごとの推奨が実在・動作する状態を保つ。判断とプロセスの対称性に従い、以下のプロセスで保守する。
 
-**推奨カタログの一次情報源は `STACK_GUIDE §3` 機能別節**（本ファイルは deps.edn を一次情報源としない、選択肢 H）。本節は推奨カタログの保守（バージョン更新、動作検証、新規採用、削除・置換）を扱う。プロジェクト用途構成そのものの整理や追加は STACK_GUIDE と §5.9 に置く。
+**判断済み推奨集の一次情報源は `STACK_GUIDE §3` 機能別節**（本ファイルは deps.edn を一次情報源としない、選択肢 H）。本節は判断済み推奨集の保守（バージョン更新、動作検証、新規採用、削除・置換）を扱う。プロジェクト用途構成そのものの整理や追加は STACK_GUIDE と §5.9 に置く。
 ∵ STACK_GUIDE.md §3
 
 #### 5.6.1 バージョン更新
@@ -343,7 +343,7 @@ STACK_GUIDE.md §3 機能別節で推奨カタログとして配布されてい�
 
 #### 5.6.2 動作検証（年 1 回）
 
-推奨カタログが経年で壊れていないか定期検証する：
+判断済み推奨集が経年で壊れていないか定期検証する：
 
 1. テンプレートから派生した**検証用プロジェクト**を作成（実プロジェクトとは別）
 2. 用途ごとの代表構成で brick を作成し、STACK_GUIDE.md §3 機能別節の推奨ライブラリを brick deps.edn に反映
@@ -366,7 +366,7 @@ STACK_GUIDE.md §3 機能別節で推奨カタログとして配布されてい�
 
 §5.2 の手順 + 以下を追加：
 
-1. ライブラリが「推奨カタログ」区分なら：
+1. ライブラリが「判断済み推奨集」区分なら：
    - **STACK_GUIDE.md §3 に選定根拠**を追加（採用・検討した代替・採用理由・適用用途）
    - **STACK_GUIDE.md §3 機能別節の該当箇所**の推奨ライブラリ表に追加
    - 該当 §3 機能節の**採用時の確認事項**相当を必要に応じて更新
@@ -375,9 +375,9 @@ STACK_GUIDE.md §3 機能別節で推奨カタログとして配布されてい�
    - **POLYLITH_GUIDE.md §2 のコード例を更新**（使用例が必要な場合）
 2. 配布前に、§5.6.2 の動作検証を該当プロジェクト用途構成について実行
 
-#### 5.6.4 推奨カタログの削除・置換
+#### 5.6.4 判断済み推奨集の削除・置換
 
-推奨カタログからライブラリを削除する、または別ライブラリに置換する場合（§5.9.5 推奨ライブラリの差し替えと連動）：
+判断済み推奨集からライブラリを削除する、または別ライブラリに置換する場合（§5.9.5 推奨ライブラリの差し替えと連動）：
 
 1. ADR または議論アーカイブに削除・置換理由を記録（§7）
 2. **STACK_GUIDE.md §3 の該当節を更新**（採用理由の書き換え、または採用から却下への移動）
@@ -533,7 +533,7 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
 2. ADR を発行（`adr/NNNN-forbid-XXX.md`）、事実根拠を記載
 3. §5.9.6 の判定に従い、該当 §3.X の `;; lib-catalog` block「代替と却下」節にエントリ追加（schema は §5.9.8 参照、`:judgment :status :deprecated :severity :forbidden`）。`;;` コメントで詳細な却下理由を保持する
 4. **`clj -X:gen-lib-catalog` を実行**し、`.llm/data/{libs.edn, deprecated-libs.patterns, forbidden-requires.patterns}` を再生成
-5. 生成 diff を確認の上、STACK_GUIDE 変更と artifact 再生成を**同一コミット**にまとめる
+5. 生成 diff を確認の上、STACK_GUIDE 変更と生成物再生成を**同一コミット**にまとめる
 6. 既存の派生プロジェクトで使用されている可能性がある場合、周知が必要
 
 #### 5.9.7b 非推奨ライブラリへの追加手順（§3.X 代替と却下 節）
@@ -543,12 +543,12 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
 1. **代替の実在を確認**（代替が推奨できる状態にあるか）
 2. ADR を発行（`adr/NNNN-deprecate-XXX.md`）
 3. §5.9.6 の判定に従い、該当 §3.X の `;; lib-catalog` block「代替と却下」節にエントリ追加（schema は §5.9.8 参照）
-4. **`clj -X:gen-lib-catalog` を実行**し、artifact を再生成、同一コミット
+4. **`clj -X:gen-lib-catalog` を実行**し、生成物を再生成、同一コミット
 5. §3.X の採用理由 narrative も必要に応じて更新
 
 #### 5.9.8 lib-catalog EDN block の schema と生成フロー
 
-**単一情報源**: STACK_GUIDE.md **§3.X の各機能節**が narrative と `;; lib-catalog` EDN block を co-locate して lib 情報の唯一の source of truth として機能する。旧構成の lib-catalog 集約節は廃止済みで、§8.1/§8.2 の EDN block も §3.X 該当節へ移行済。cross-cutting lib（mulog / integrant / aero 等）は複数の §3.X に現れうるが、generator は**構造完全一致のエントリのみ dedup** を許容し、矛盾（同じ coord + purpose で異なる judgment/reason）は error。
+**単一情報源**: STACK_GUIDE.md **§3.X の各機能節**が narrative と `;; lib-catalog` EDN block を同居させ、lib 情報の唯一の単一情報源として機能する。旧構成の lib-catalog 集約節は廃止済みで、§8.1/§8.2 の EDN block も §3.X 該当節へ移行済。横断的ライブラリ（mulog / integrant / aero 等）は複数の §3.X に現れうるが、generator は**構造完全一致のエントリのみ dedup** を許容し、矛盾（同じ coord + purpose で異なる judgment/reason）は error。
 
 **§3.X 節の構造**（narrative + EDN の同居）:
 ```
@@ -562,7 +562,7 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
 **適用場面**: ... (読みやすさ用のラベル)
 ```
 
-**採用 + 代替の同一 block 集約**: 各 §3.X の block は `;; === 採用 ===` / `;; === 代替と却下 ===` コメントで区切って**その機能領域での採否**を一望できる構成（単一の正本徹底の副次効果: 保守時に同機能で何が採用され何が避けられているかが単一 block 内で確認できる）。`.llm/data/` 配下の EDN/pattern artifact と shell script が読む派生物は `clj -X:gen-lib-catalog` が生成し、手編集禁止（ヘッダに `GENERATED` コメント付き）。
+**採用 + 代替の同一 block 集約**: 各 §3.X の block は `;; === 採用 ===` / `;; === 代替と却下 ===` コメントで区切って**その機能領域での採否**を一望できる構成（単一の正本徹底の副次効果: 保守時に同機能で何が採用され何が避けられているかが単一 block 内で確認できる）。`.llm/data/` 配下の EDN/pattern 生成物と shell script が読む派生物は `clj -X:gen-lib-catalog` が生成し、手編集禁止（ヘッダに `GENERATED` コメント付き）。
 
 - `.llm/data/libs.edn` — 全エントリ（人間可読形式、pretty-print）
 - `.llm/data/deprecated-libs.patterns` — `check-deprecated-libs.sh` が読む `<regex>|<reason>` 行
@@ -585,11 +585,13 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
             :tags [:security ...]}                 ; 任意、§8.0 の 6 種
  :references                                       ; 任意、主要根拠の map
   {:repository "https://..."                     ; 配布元（任意）
-   :doc "https://..."                           ; 公式 docs（任意）
-   :quick-reference "https://..."               ; 補助資料（任意）
-   :examples ["https://..." "https://..."]}    ; サンプル/補助リンク（任意）
+   :doc "https://..."                           ; 公式 docs / API リファレンス（任意）
+   :quick-reference "https://..."               ; 短時間で確認できる導線（任意）
+   :examples ["https://..." "https://..."]}    ; 検証済み例・チュートリアル等（任意）
  :relations {...}}                                 ; 任意
 ```
+
+`:quick-reference` は 1〜2 本程度の入口を置く短い補助資料で、`:examples` は導入・運用に役立つ具体コードを含む補助資料を複数束ねる想定です。`:doc` は公式 docs 本体です。`:documentation` は定義しない運用です。`:references` 未指定時、生成時に `:recommended` / `:acceptable` で `:repository` を自動補完します。
 
 **`:status` 5 値**:
 - `:deprecated` — 使用禁止 / 新規採用禁止（`:severity :forbidden` / `:superseded` で強度）
@@ -621,7 +623,7 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
 | **L1 構文・型・未使用** | clj-kondo 組み込み linter | AST 解析、命名空間解決、アリティ検査 | `:unresolved-var`、`:invalid-arity`、`:unused-binding`、段階 1 / 2 の 38 linter |
 | **L2 本テンプレート固有パターン** | `.clj-kondo/polyguard/hooks.clj` (custom hook) | form 単体の AST 解析 | 関数行数、top-level mutable、catch Throwable、空 catch（位置引数）、go blocking、destructuring 深さ 近似 |
 | **L3 スタイル・イディオム** | Splint (`clj -M:lint-splint`) | Clojure イディオム違反、リファクタリング提案 | `(= 0 x)` → `(zero? x)`、`(first (filter ...))` → `(some ...)` 等 |
-| **L4 設定ファイル・ディレクトリ構造** | `.llm/scripts/*.sh` + `.llm/scripts/*.clj` | EDN 構造、ファイル実在、採用宣言、file-level 照合、source 文書から artifact 生成、併用禁止関係検知 | brick 登録（hook 取り込み）（プレースホルダ）（総合検査）、非推奨ライブラリ採用、interface 契約、1 ファイル 1 ns、`gen_lib_catalog.clj` による STACK_GUIDE.md §3 からの artifact 生成、**`check-conflicting-libs.sh` による `:conflicts-with` ペア検知** |
+| **L4 設定ファイル・ディレクトリ構造** | `.llm/scripts/*.sh` + `.llm/scripts/*.clj` | EDN 構造、ファイル実在、採用宣言、file-level 照合、source 文書から生成物生成、併用禁止関係検知 | brick 登録（hook 取り込み）（プレースホルダ）（総合検査）、非推奨ライブラリ採用、interface 契約、1 ファイル 1 ns、`gen_lib_catalog.clj` による STACK_GUIDE.md §3 からの生成物生成、**`check-conflicting-libs.sh` による `:conflicts-with` ペア検知** |
 | **L5 依存脆弱性（時間軸）** | clj-watson (`./.llm/scripts/check-vulnerabilities.sh`) | NIST NVD + GitHub Advisory Database 照合 | 承認済み依存が後から脆弱化した場合の検知。release 前必須 |
 
 **補完関係の典型例**: 非推奨ライブラリ `timbre` は、コード内で `timbre/info` を呼び出している使用箇所は `clj-kondo :discouraged-var`が、`deps.edn` に `com.taoensso/timbre` を採用宣言している箇所は `.llm/scripts/check-deprecated-libs.sh`が検知する。両方で二重に防御する。
@@ -631,7 +633,7 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
 1. 検査対象が Clojure コード内のパターンか、設定ファイル・ディレクトリ構造か
 2. コード内パターン → `.clj-kondo/hooks/` に custom hook を追加、`.clj-kondo/config.edn` で登録
 3. 設定・構造 → `.llm/scripts/check-<topic>.sh` を追加、`.llm/scripts/check-workspace-integrity.sh` の `run_step` で起動、`.llm/scripts/README.md` を更新
-4. Markdown 文書からの artifact 生成が必要（単一の正本化による drift 防止）→ `.llm/scripts/gen_<topic>.clj` を追加（`gen_lib_catalog.clj` が雛形）、`deps.edn` に `:gen-<topic>` alias 追加、`check-workspace-integrity.sh` に再生成 + diff 検証を追加
+4. Markdown 文書からの生成物生成が必要（単一の正本化による drift 防止）→ `.llm/scripts/gen_<topic>.clj` を追加（`gen_lib_catalog.clj` が雛形）、`deps.edn` に `:gen-<topic>` alias 追加、`check-workspace-integrity.sh` に再生成 + diff 検証を追加
 4. 完了条件への組み込みは、shell script 側は `check-workspace-integrity.sh` が既に含まれるので個別追加不要。custom hook は `clj -M:lint` に含まれるので個別追加不要
 ∵ ../CLAUDE.md §5.5
 
@@ -644,7 +646,7 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
 | **目的** | `CLAUDE.md §8.0`「実装着手前に DESIGN.md / KNOWLEDGE.md / QUESTIONS.md / adr/ を確認」を規律依存から機械化バックアップへ引き上げる |
 | **実装手段** | `.llm/scripts/session-briefing.sh`（副作用なし、stdout のみ、常に exit 0）|
 | **起動経路** | Claude Code は `SessionStart` hook で自動、Codex 等は `AGENTS.md` 経由で LLM が手動実行 |
-| **出力内容** | フェーズ判定（bootstrap / development）、未完了指標、open Q 一覧、最新 ADR、直近コミット、`§8.0` チェックリスト |
+| **出力内容** | フェーズ判定（initialization / development）、未完了指標、未対応(open) Q 一覧、最新 ADR、直近コミット、`§8.0` チェックリスト |
 
 機械化第 1〜第 5 層との関係:
 
@@ -813,7 +815,7 @@ Markdown 文書どうしの参照は、無印の Markdown 参照を禁止し、�
 | 文書 | 本文書との関係 |
 |---|---|
 | **.llm/memory/QUESTIONS.md** | 判断保留トラッカー + **運用プロセス規定（§0）**。原則 2・10・11・13 の実装 |
-| **.llm/memory/KNOWLEDGE.md** | 生きた知識 + **ライフサイクル規定（§0）**。分類管理の原則（上書き更新）の実装 |
+| **.llm/memory/KNOWLEDGE.md** | 現時点で有効な知識 + **ライフサイクル規定（§0）**。分類管理の原則（上書き更新）の実装 |
 | **.llm/memory/adr/README.md** | ADR 運用ルール。分類管理の原則（不変記録）の実装 |
 | **.llm/memory/adr/template.md** | ADR 雛形 |
 | **.llm/memory/archive/maintainer-discussions/README.md** | 保守議論アーカイブの運用ルール。原則 10 の実装 |

@@ -35,7 +35,7 @@
 - **用途別機能カテゴリライブラリ**: HTTP、永続化、ライフサイクル管理、JSON、ログ等。**各 brick (base / component) の `deps.edn`** で宣言
 - **開発支援ライブラリ**: REPL 補助、テスト補助、データ観察等。開発時だけ必要ならルート `deps.edn` の `:dev :extra-deps` に置く
 
-実ライブラリ依存は brick の deps.edn に書き、本文書は推奨カタログとして機能する。本文書自体が deps.edn を生成するわけではない。
+実ライブラリ依存は brick の deps.edn に書き、本文書は判断済み推奨集として機能する。本文書自体が deps.edn を生成するわけではない。
 
 ### 1.2 本文書の性格
 
@@ -50,7 +50,7 @@
 - 推奨がプロジェクトのゴールと矛盾する場合、逸脱理由を ADR に記録する
 - 本文書は完全である必要はない。網羅ではなく、判断済みの知見を保持する
 
-**推奨カタログとしての機能**  
+**判断済み推奨集としての機能**
 本文書は「**何の機能をどのライブラリで実現するか**」の推奨を集約する。**実際のライブラリ依存は各 brick の `deps.edn` に書かれ、本文書はそれを決める際の判断基準と推奨リストを提供する**。
 
 **真実の一箇所化**  
@@ -238,7 +238,7 @@
 
 ### 3.0 機械可読ライブラリカタログ（lib-catalog）の仕組み
 
-**本節が lib 情報の唯一の source of truth**（narrative + 機械可読 EDN の同居）。各 §3.X に採用 lib の `;; lib-catalog` EDN block を埋め込み、採用エントリと不採用（代替と却下）エントリをまとめて置く。これにより「どの lib を採用し、代替として何を却下したか」が 1 箇所で一望でき、maintainer は narrative と data を同時に更新する。
+**本節が lib 情報の唯一の単一情報源**（narrative + 機械可読 EDN の同居）。各 §3.X に採用 lib の `;; lib-catalog` EDN block を埋め込み、採用エントリと不採用（代替と却下）エントリをまとめて置く。これにより「どの lib を採用し、代替として何を却下したか」が 1 箇所で一望でき、保守者は narrative と data を同時に更新する。
 
 **EDN block 構造**:
 
@@ -269,9 +269,14 @@
 - **`:purpose` vec**: `[:lifecycle]`, `[:db :jdbc]`, `[:web :routing]` のような階層 keyword。uniqueness key は `[[:ids :coord] :purpose]` pair
 - **`:status`**: `:recommended` / `:acceptable` / `:conditional` / `:deprecated` / `:scope-excluded`（詳細は §8.0 理由タグと Malli schema）
 - **`:references`**: `:recommended` / `:acceptable` のエントリには、主要情報源の URL を map で任意追加。未指定時は生成時に `https://clojars.org/<coord>` を `:repository` として自動補完。  
-  想定 key: `:repository`（配布元）, `:doc`（公式 docs）, `:quick-reference`（補助参照）, `:examples`（補助資料 URL 群）
+  想定 key: `:repository`（配布元）, `:doc`（公式 docs/API）, `:quick-reference`（短いチュートリアルや導入メモ等、参照先が絞られた入口）, `:examples`（実運用/検証コードなどの具体的な補助資料 URL 群）
+
+  運用ルール:
+  - `:quick-reference` は 1 ~ 2 本程度の軽い入口を置く前提。
+  - `:examples` は 0 ~ n 本、実装例・コード例・統合ノートを収める目的で使用。
+  - `:doc` を重視し、`:quick-reference` と `:examples` は必須ではない。
 - **`;; lib-catalog` は完全一致マーカ**。`.llm/scripts/gen_lib_catalog.clj` が本文書を走査、各 block を収集し `.llm/data/libs.edn` / `.patterns` を生成。`check-workspace-integrity.sh` が diff で drift を自動検知
-- **cross-cutting lib の多重記述は許容**（構造完全一致時のみ dedup、矛盾は error）。ある lib が複数 §3.X に現れる場合は、全て同一内容で記述する必要がある
+- **横断的ライブラリの多重記述は許容**（構造完全一致時のみ dedup、矛盾は error）。ある lib が複数 §3.X に現れる場合は、全て同一内容で記述する必要がある
 
 **詳細 schema**: `.llm/scripts/gen_lib_catalog.clj` の `entry-schema`、運用規約は `MAINTAINERS_GUIDE.md §5.9`。
 
@@ -1730,7 +1735,7 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
              :tags [:maintenance-stopped]}}
 
  ;; xerces (独立版) / xalan (独立版): XXE 脆弱性、JDK 付属を使う。
- ;; 禁止レベル（cross-cutting security）。
+ ;; 禁止レベル（横断的 security）。
  {:purpose  [:xml]
   :ids      {:coord xerces/xercesImpl :ns "javax.xml.parsers.xerces"}
   :judgment {:status :deprecated :severity :forbidden :replacement org.clojure/data.xml}
@@ -2392,10 +2397,10 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 
  {:purpose  [:graphql :ring-integration]
   :ids      {:coord com.walmartlabs/lacinia-pedestal}
-  :judgment {:status :acceptable :version "1.3"}
+ :judgment {:status :acceptable :version "1.3"}
   :references {:repository "https://clojars.org/com.walmartlabs/lacinia-pedestal"
                :quick-reference "https://cljdoc.org/d/com.walmartlabs/lacinia-pedestal"
-               :doc "https://cljdoc.org/d/com.walmartlabs/lacinia-pedestal/1.3.0/api/com.walmartlabs.lacinia.pedestal"}}
+               :doc "https://cljdoc.org/d/com.walmartlabs/lacinia-pedestal"}
   :reasons  {:text "Lacinia-Ring 統合、または自作 middleware でも可"}}
 
  ;; === 代替と却下 ===
@@ -2608,11 +2613,11 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 
 ### 3.49 その他（未分類）
 
-**採用**: core.async（非同期チャネル、cross-cutting）
+**採用**: core.async（非同期チャネル、横断的用途）
 
 **採用理由**:
 - 明確な機能分類（§3.1〜§3.48）に属さないが、本テンプレートの運用で言及される lib を集約
-- 多くは cross-cutting or 基盤（core.async の CSP、leiningen の非推奨扱い等）
+- 多くは横断的用途または基盤（core.async の CSP、leiningen の非推奨扱い等）
 - 独立節を立てるには個別 lib が少ない・再帰的に分類困難なものを「その他」にまとめる
 
 ```edn
@@ -2667,7 +2672,7 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
  ]
 ```
 
-**適用場面**: 全プロジェクト（cross-cutting / 基盤）
+**適用場面**: 全プロジェクト（横断的用途 / 基盤）
 
 ### 3.50 時刻処理
 
@@ -2714,7 +2719,7 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
  ]
 ```
 
-**適用場面**: 全プロジェクト（時刻処理は cross-cutting）
+**適用場面**: 全プロジェクト（時刻処理は横断的）
 
 **適用条件**:
 - data 駆動を徹底したい / Malli 統合 → tick
@@ -2752,7 +2757,7 @@ LLM はプロジェクト種別ではなく、§3 の用途別機能カテゴリ
 
 | 状況 | 判定 | 次の行動 |
 |---|---|---|
-| 必要機能が §3 機能別節の推奨カタログにある | **記載あり** | 該当 §3 節を引用して L1 提案。deps.edn 反映は別途 CLAUDE.md §2 の依存追加承認を取る |
+| 必要機能が §3 機能別節の判断済み推奨集にある | **記載あり** | 該当 §3 節を引用して L1 提案。deps.edn 反映は別途 CLAUDE.md §2 の依存追加承認を取る |
 | §3 機能別節に対応するカテゴリがない | **記載なし（未記載領域）** | 第一原理から判断材料を整理。採用可否は人間が決定し、採用後は ADR を発行 |
 | §3 に推奨があるが、プロジェクト固有理由で別ライブラリを使いたい | **推奨からの逸脱** | 逸脱理由を ADR と DESIGN.md §8.3 に記録 |
 | §3 で deprecated / scope-excluded / 採用不可と明示されている | **非推奨・対象外** | 推奨として扱わない。必要なら人間判断を求める |
@@ -2857,7 +2862,7 @@ clj -M:dev:nrepl
 
 ### 6.2 技術選定と brick deps.edn の整合（文書的チェック）
 
-**§3 は強制一致ではなく推奨カタログ**。brick の deps.edn が §3 と完全一致している必要はない。ただし以下を確認する：
+**§3 は強制一致ではなく判断済み推奨集**。brick の deps.edn が §3 と完全一致している必要はない。ただし以下を確認する：
 
 1. 採用した用途別機能カテゴリの確認事項を満たしているか（用途別機能カテゴリの充足、設定ファイルの存在等）
 2. 推奨からの逸脱がある場合、ADR が発行されているか（§5.4 参照）
@@ -2932,7 +2937,7 @@ brick deps.edn が必要な用途別機能カテゴリに対応する §3 機能
 §3 の「代替と却下」と §8 の性格:
 
 - **§3 「代替と却下」節**: 特定機能で採用候補として比較・却下した（他機能では有用かもしれない中立的却下）。機能文脈を持つ。
-- **§8 禁止・非推奨**: **どこでも**採用すべきでない（理由が明確）。cross-cutting。本節は理由タグと手順のみ残し、エントリは §3 の機能節内に記載する（採否を機能ごとに一望できる単一の正本のため）。
+- **§8 禁止・非推奨**: **どこでも**採用すべきでない（理由が明確）。横断的な扱い。本節は理由タグと手順のみ残し、エントリは §3 の機能節内に記載する（採否を機能ごとに一望できる単一の正本のため）。
 
 ### 8.0 理由タグ
 

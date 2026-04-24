@@ -63,7 +63,6 @@
     [:map {:closed true}
      [:repository {:optional true} string?]
      [:doc {:optional true} string?]
-     [:documentation {:optional true} string?]
      [:quick-reference {:optional true} string?]
      [:examples {:optional true} [:vector string?]]]]
    [:relations {:optional true}
