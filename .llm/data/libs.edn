@@ -5,15 +5,18 @@
 [{:purpose [:language],
   :ids {:coord org.clojure/clojure},
   :judgment {:status :recommended, :version "1.12.0"},
-  :reasons {:text "本テンプレートの基盤"}}
+  :reasons {:text "本テンプレートの基盤"},
+  :references ["https://clojars.org/org.clojure/clojure"]}
  {:purpose [:workspace],
   :ids {:coord polyfy/polylith},
   :judgment {:status :recommended, :version "c804c2c"},
-  :reasons {:text "brick ベースの再利用性、poly check が構造違反を検知"}}
+  :reasons {:text "brick ベースの再利用性、poly check が構造違反を検知"},
+  :references ["https://clojars.org/polyfy/polylith"]}
  {:purpose [:validation],
   :ids {:coord metosin/malli, :ns "malli.core"},
   :judgment {:status :recommended, :version "0.16.4"},
   :reasons {:text "関数契約 m/=>、instrumentation。§1.1.1 全域性の実装"},
+  :references ["https://clojars.org/metosin/malli"],
   :relations
   {:conflicts-with
    [[org.clojure/spec.alpha
@@ -23,46 +26,58 @@
  {:purpose [:lint :ast],
   :ids {:coord clj-kondo/clj-kondo},
   :judgment {:status :recommended, :version "2024.11.14"},
-  :reasons {:text "構文・型・未使用の検知、LLM の悪手を error で封じる"}}
+  :reasons {:text "構文・型・未使用の検知、LLM の悪手を error で封じる"},
+  :references ["https://clojars.org/clj-kondo/clj-kondo"]}
  {:purpose [:lint :style],
   :ids {:coord io.github.noahtheduke/splint},
   :judgment {:status :recommended, :version "1.19.0"},
-  :reasons {:text "(= 0 x) → (zero? x) 等のイディオム違反検知、clj-kondo 補完"}}
+  :reasons {:text "(= 0 x) → (zero? x) 等のイディオム違反検知、clj-kondo 補完"},
+  :references ["https://clojars.org/io.github.noahtheduke/splint"]}
  {:purpose [:format],
   :ids {:coord dev.weavejester/cljfmt},
   :judgment {:status :recommended, :version "0.13.0"},
-  :reasons {:text "cljfmt.edn 同梱でフォーマット議論を排除"}}
+  :reasons {:text "cljfmt.edn 同梱でフォーマット議論を排除"},
+  :references ["https://clojars.org/dev.weavejester/cljfmt"]}
  {:purpose [:security :deps-scan],
   :ids {:coord io.github.clj-holmes/clj-watson},
   :judgment {:status :recommended, :version "v6.0.1"},
   :reasons
-  {:text "NIST NVD + GitHub Advisory 照合、承認済み依存の脆弱化を検知。release 前必須"}}
+  {:text "NIST NVD + GitHub Advisory 照合、承認済み依存の脆弱化を検知。release 前必須"},
+  :references ["https://clojars.org/io.github.clj-holmes/clj-watson"]}
  {:purpose [:tooling :deps-update],
   :ids {:coord com.github.liquidz/antq},
   :judgment {:status :recommended, :version "2.11.1264"},
-  :reasons {:text "ライブラリ更新検知、定期実行"}}
+  :reasons {:text "ライブラリ更新検知、定期実行"},
+  :references ["https://clojars.org/com.github.liquidz/antq"]}
  {:purpose [:dev :reload],
   :ids
   {:coord org.clojure/tools.namespace,
    :ns "clojure.tools.namespace.repl"},
   :judgment {:status :recommended, :version "1.5.0"},
-  :reasons {:text "(reset) の基盤、REPL 駆動開発の前提"}}
+  :reasons {:text "(reset) の基盤、REPL 駆動開発の前提"},
+  :references ["https://clojars.org/org.clojure/tools.namespace"]}
  {:purpose [:dev :nrepl :server],
   :ids {:coord nrepl/nrepl, :ns "nrepl.server"},
   :judgment {:status :recommended, :version "1.3.0"},
-  :reasons {:text "nREPL サーバ、エディタ接続の基盤"}}
+  :reasons {:text "nREPL サーバ、エディタ接続の基盤"},
+  :references ["https://clojars.org/nrepl/nrepl"]}
  {:purpose [:dev :nrepl :cider],
   :ids {:coord cider/cider-nrepl},
   :judgment {:status :recommended, :version "0.50.2"},
-  :reasons {:text "Cider 統合 middleware"}}
+  :reasons {:text "Cider 統合 middleware"},
+  :references ["https://clojars.org/cider/cider-nrepl"]}
  {:purpose [:dev :nrepl :refactor],
   :ids {:coord refactor-nrepl/refactor-nrepl},
   :judgment {:status :recommended, :version "3.10.0"},
-  :reasons {:text "リファクタリング middleware"}}
+  :reasons {:text "リファクタリング middleware"},
+  :references ["https://clojars.org/refactor-nrepl/refactor-nrepl"]}
  {:purpose [:lifecycle],
   :ids {:coord integrant/integrant, :ns "integrant.core"},
   :judgment {:status :recommended, :version "0.13.1"},
   :reasons {:text "data 駆動 DI、本テンプレート採用"},
+  :references
+  ["https://github.com/weavejester/integrant"
+   "https://github.com/weavejester/integrant/blob/master/README.md"],
   :relations
   {:conflicts-with
    [[com.stuartsierra/component
@@ -76,6 +91,7 @@
   :ids {:coord integrant/repl, :ns "integrant.repl"},
   :judgment {:status :recommended, :version "0.4.0"},
   :reasons {:text "REPL での go/reset/halt サイクル"},
+  :references ["https://clojars.org/integrant/repl"],
   :relations {:pairs-with {:core integrant/integrant}}}
  {:purpose [:lifecycle],
   :ids
@@ -100,6 +116,7 @@
   :ids {:coord aero/aero, :ns "aero.core"},
   :judgment {:status :recommended, :version "1.1.6"},
   :reasons {:text "tagged literal (#env #profile) で環境別設定"},
+  :references ["https://github.com/juxt/aero/blob/master/README.md"],
   :relations
   {:conflicts-with
    [[environ/environ "設定ライブラリは片方に統一、environ は構造化設定に弱く :deprecated"]
@@ -141,6 +158,9 @@
   :ids {:coord ring/ring-core, :ns "ring.core"},
   :judgment {:status :recommended, :version "1.13.0"},
   :reasons {:text "Ring 仕様の標準実装"},
+  :references
+  ["https://github.com/ring-clojure/ring/blob/master/README.md"
+   "https://github.com/ring-clojure/ring/blob/master/CHANGELOG.md"],
   :relations
   {:pairs-with
    {:server ring/ring-jetty-adapter, :routing metosin/reitit-ring}}}
@@ -148,6 +168,9 @@
   :ids {:coord ring/ring-jetty-adapter, :ns "ring.adapter.jetty"},
   :judgment {:status :recommended, :version "1.13.0"},
   :reasons {:text "Jetty ベース、初期推奨。成熟・枯れている"},
+  :references
+  ["https://github.com/ring-clojure/ring/blob/master/README.md"
+   "https://www.eclipse.org/jetty/"],
   :relations
   {:conflicts-with
    [[http-kit/http-kit
@@ -159,6 +182,8 @@
   :ids {:coord http-kit/http-kit, :ns "org.httpkit.server"},
   :judgment {:status :acceptable, :version "2.8.0"},
   :reasons {:text "NIO 軽量、高同時接続性能が要るなら検討"},
+  :references
+  ["https://github.com/http-kit/http-kit/blob/master/README.md"],
   :relations
   {:conflicts-with
    [[ring/ring-jetty-adapter
@@ -170,6 +195,7 @@
   :ids {:coord metosin/reitit, :ns "reitit.core"},
   :judgment {:status :recommended, :version "0.7.2"},
   :reasons {:text "data 駆動ルーティング、Malli 統合"},
+  :references ["https://clojars.org/metosin/reitit"],
   :relations
   {:conflicts-with
    [[compojure/compojure
@@ -185,6 +211,7 @@
   :ids {:coord metosin/reitit-ring, :ns "reitit.ring"},
   :judgment {:status :recommended, :version "0.7.2"},
   :reasons {:text "Ring handler integration、CORS middleware も同梱"},
+  :references ["https://clojars.org/metosin/reitit-ring"],
   :relations
   {:pairs-with
    {:core metosin/reitit,
@@ -195,12 +222,14 @@
   :ids {:coord metosin/reitit-malli, :ns "reitit.coercion.malli"},
   :judgment {:status :recommended, :version "0.7.2"},
   :reasons {:text "Malli coercion for reitit"},
+  :references ["https://clojars.org/metosin/reitit-malli"],
   :relations
   {:pairs-with {:core metosin/reitit, :validation metosin/malli}}}
  {:purpose [:web :content-negotiation],
   :ids {:coord metosin/muuntaja, :ns "muuntaja.core"},
   :judgment {:status :recommended, :version "0.6.10"},
   :reasons {:text "Accept/Content-Type に基づく自動変換"},
+  :references ["https://clojars.org/metosin/muuntaja"],
   :relations
   {:pairs-with {:json metosin/jsonista, :routing metosin/reitit-ring}}}
  {:purpose [:web :csrf],
@@ -208,6 +237,7 @@
   {:coord ring/ring-anti-forgery, :ns "ring.middleware.anti-forgery"},
   :judgment {:status :recommended, :version "1.3.0"},
   :reasons {:text "公開 Web API 必須の CSRF 対策"},
+  :references ["https://clojars.org/ring/ring-anti-forgery"],
   :relations {:pairs-with {:routing metosin/reitit-ring}}}
  {:purpose [:web :routing],
   :ids {:coord compojure/compojure, :ns "compojure.core"},
@@ -284,6 +314,7 @@
   :ids {:coord metosin/jsonista, :ns "jsonista.core"},
   :judgment {:status :recommended, :version "0.3.11"},
   :reasons {:text "Jackson 直叩きで高速、cheshire の代替"},
+  :references ["https://clojars.org/metosin/jsonista"],
   :relations
   {:conflicts-with
    [[cheshire/cheshire
@@ -327,6 +358,8 @@
   :ids {:coord com.github.seancorfield/next.jdbc, :ns "next.jdbc"},
   :judgment {:status :recommended, :version "1.3.967"},
   :reasons {:text "モダン JDBC ラッパ、transducer 対応"},
+  :references
+  ["https://clojars.org/com.github.seancorfield/next.jdbc"],
   :relations
   {:conflicts-with
    [[org.clojure/java.jdbc
@@ -339,11 +372,13 @@
   :ids {:coord com.github.seancorfield/honeysql, :ns "honey.sql"},
   :judgment {:status :recommended, :version "2.6.1230"},
   :reasons {:text "data 駆動 SQL DSL、next.jdbc と組み合わせる"},
+  :references ["https://clojars.org/com.github.seancorfield/honeysql"],
   :relations {:pairs-with {:jdbc com.github.seancorfield/next.jdbc}}}
  {:purpose [:db :connection-pool],
   :ids {:coord com.zaxxer/HikariCP},
   :judgment {:status :recommended, :version "6.2.1"},
   :reasons {:text "最速の JDBC コネクションプール"},
+  :references ["https://clojars.org/com.zaxxer/HikariCP"],
   :relations {:pairs-with {:jdbc com.github.seancorfield/next.jdbc}}}
  {:purpose [:db :jdbc],
   :ids {:coord org.clojure/java.jdbc, :ns "clojure.java.jdbc"},
@@ -369,6 +404,7 @@
   :ids {:coord com.brunobonacci/mulog, :ns "com.brunobonacci.mulog"},
   :judgment {:status :recommended, :version "0.9.0"},
   :reasons {:text "イベント駆動の構造化ログ、publisher 切替可能"},
+  :references ["https://clojars.org/com.brunobonacci/mulog"],
   :relations
   {:conflicts-with
    [[com.taoensso/timbre "ロギングは片方に統一、timbre は構造化表現力劣り :deprecated"]
@@ -381,6 +417,7 @@
   :ids {:coord com.brunobonacci/mulog-json},
   :judgment {:status :recommended, :version "0.9.0"},
   :reasons {:text "mulog の JSON publisher"},
+  :references ["https://clojars.org/com.brunobonacci/mulog-json"],
   :relations {:pairs-with {:core com.brunobonacci/mulog}}}
  {:purpose [:logging],
   :ids {:coord com.taoensso/timbre, :ns "taoensso.timbre"},
@@ -406,17 +443,20 @@
  {:purpose [:dev :property-testing],
   :ids {:coord org.clojure/test.check, :ns "clojure.test.check"},
   :judgment {:status :recommended, :version "1.1.1"},
-  :reasons {:text "Malli generator と組み合わせて最大効果"}}
+  :reasons {:text "Malli generator と組み合わせて最大効果"},
+  :references ["https://clojars.org/org.clojure/test.check"]}
  {:purpose [:dev :assert],
   :ids
   {:coord nubank/matcher-combinators, :ns "matcher-combinators.core"},
   :judgment {:status :recommended, :version "3.9.1"},
-  :reasons {:text "部分マッチングで assert の可読性向上"}}
+  :reasons {:text "部分マッチングで assert の可読性向上"},
+  :references ["https://clojars.org/nubank/matcher-combinators"]}
  {:purpose [:dev :inspect],
   :ids {:coord djblue/portal, :ns "portal.api"},
   :judgment {:status :recommended, :version "0.58.5"},
   :reasons
   {:text "tap> 出力先、data インスペクション。人間向け UI、ワークスペースルート :dev エイリアス専用"},
+  :references ["https://clojars.org/djblue/portal"],
   :relations
   {:pairs-with {:repl-debugger com.github.flow-storm/flow-storm-dbg}}}
  {:purpose [:dev :repl-debugger],
@@ -425,15 +465,19 @@
   :judgment {:status :recommended, :version "4.5.9"},
   :reasons
   {:text "REPL-native trace / step、LLM 協働で evaluation 履歴を追える"},
+  :references
+  ["https://clojars.org/com.github.flow-storm/flow-storm-dbg"],
   :relations {:pairs-with {:inspect djblue/portal}}}
  {:purpose [:cli :arg-parse],
   :ids {:coord org.clojure/tools.cli},
   :judgment {:status :recommended, :version "1.1.230"},
-  :reasons {:text "CLI 引数パースの標準、docopt 系より軽量"}}
+  :reasons {:text "CLI 引数パースの標準、docopt 系より軽量"},
+  :references ["https://clojars.org/org.clojure/tools.cli"]}
  {:purpose [:web :http-client],
   :ids {:coord hato/hato, :ns "hato.client"},
   :judgment {:status :recommended, :version "1.0.0"},
   :reasons {:text "Java 11+ HttpClient ベース、HTTP/2 対応"},
+  :references ["https://clojars.org/hato/hato"],
   :relations
   {:conflicts-with
    [[clj-http/clj-http
@@ -455,11 +499,13 @@
   :ids {:coord buddy/buddy-sign, :ns "buddy.sign.jwt"},
   :judgment {:status :recommended},
   :reasons {:text "JWT / JWS / JWE"},
+  :references ["https://clojars.org/buddy/buddy-sign"],
   :relations {:pairs-with {:password-hashing buddy/buddy-hashers}}}
  {:purpose [:auth :password-hashing],
   :ids {:coord buddy/buddy-hashers, :ns "buddy.hashers"},
   :judgment {:status :recommended},
   :reasons {:text "パスワードハッシュ bcrypt/argon2"},
+  :references ["https://clojars.org/buddy/buddy-hashers"],
   :relations {:pairs-with {:jwt buddy/buddy-sign}}}
  {:purpose [:auth],
   :ids
@@ -475,7 +521,8 @@
  {:purpose [:cache :redis],
   :ids {:coord com.taoensso/carmine, :ns "taoensso.carmine"},
   :judgment {:status :recommended, :version "3.3.2"},
-  :reasons {:text "Redis クライアント、Cookie 認証スケールアウト時の session store 兼用"}}
+  :reasons {:text "Redis クライアント、Cookie 認証スケールアウト時の session store 兼用"},
+  :references ["https://clojars.org/com.taoensso/carmine"]}
  {:purpose [:metrics :dropwizard-ring],
   :ids {:coord metrics-clojure-ring/metrics-clojure-ring},
   :judgment
@@ -504,6 +551,7 @@
   :ids {:coord jarohen/chime, :ns "chime.core"},
   :judgment {:status :recommended, :version "0.3.3"},
   :reasons {:text "core.async ベース、Integrant 統合容易"},
+  :references ["https://clojars.org/jarohen/chime"],
   :relations
   {:conflicts-with
    [[overtone/at-at "スケジューラは片方に統一、at-at は停止制御弱く :deprecated"]
@@ -543,6 +591,7 @@
   :ids {:coord sunng87/diehard, :ns "diehard.core"},
   :judgment {:status :recommended},
   :reasons {:text "Retry / Circuit Breaker、外部 API 呼出時に必須化"},
+  :references ["https://clojars.org/sunng87/diehard"],
   :relations
   {:conflicts-with
    [[robert/robert.bruce
@@ -559,6 +608,7 @@
   :ids {:coord com.taoensso/tempura, :ns "taoensso.tempura"},
   :judgment {:status :recommended},
   :reasons {:text "tower の後継、同作者"},
+  :references ["https://clojars.org/com.taoensso/tempura"],
   :relations
   {:conflicts-with
    [[com.taoensso/tower "i18n は片方に統一、tower はメンテ停止 :deprecated"]],
@@ -575,6 +625,7 @@
   :ids {:coord com.biffweb/biff},
   :judgment {:status :recommended, :version "0.9.0"},
   :reasons {:text "opinionated SaaS framework、XTDB/Rum/HTMX 同梱"},
+  :references ["https://clojars.org/com.biffweb/biff"],
   :relations
   {:bundles [com.xtdb/xtdb-api rum/rum],
    :conflicts-with
@@ -585,15 +636,18 @@
  {:purpose [:db :mongodb],
   :ids {:coord com.novemberain/monger, :ns "monger.core"},
   :judgment {:status :recommended},
-  :reasons {:text "MongoDB の Clojure 慣用ラッパ、document を map で扱える"}}
+  :reasons {:text "MongoDB の Clojure 慣用ラッパ、document を map で扱える"},
+  :references ["https://clojars.org/com.novemberain/monger"]}
  {:purpose [:db :dynamodb],
   :ids {:coord com.cognitect.aws/dynamodb},
   :judgment {:status :recommended},
-  :reasons {:text "aws-api 系列、全 AWS サービスで同じパターン"}}
+  :reasons {:text "aws-api 系列、全 AWS サービスで同じパターン"},
+  :references ["https://clojars.org/com.cognitect.aws/dynamodb"]}
  {:purpose [:db :document-db],
   :ids {:coord com.xtdb/xtdb-api, :ns "xtdb.api"},
   :judgment {:status :recommended, :version "2.0.0"},
   :reasons {:text "bitemporal document DB、Biff 同梱 / 単体採用いずれも可"},
+  :references ["https://clojars.org/com.xtdb/xtdb-api"],
   :relations
   {:conflicts-with
    [[com.datomic/local
@@ -602,6 +656,7 @@
   :ids {:coord com.datomic/local, :ns "datomic.api"},
   :judgment {:status :acceptable},
   :reasons {:text "選択肢として許容、商用条件要確認", :tags [:license]},
+  :references ["https://clojars.org/com.datomic/local"],
   :relations
   {:conflicts-with
    [[com.xtdb/xtdb-api
@@ -610,6 +665,7 @@
   :ids {:coord migratus/migratus, :ns "migratus.core"},
   :judgment {:status :recommended},
   :reasons {:text "SQL ベース、純 Clojure、新規 Clojure プロジェクトの第一選択"},
+  :references ["https://clojars.org/migratus/migratus"],
   :relations
   {:conflicts-with
    [[org.flywaydb/flyway-core
@@ -656,6 +712,7 @@
   :ids {:coord etaoin/etaoin, :ns "etaoin.api"},
   :judgment {:status :recommended},
   :reasons {:text "100% Clojure、map で driver 設定、data 駆動"},
+  :references ["https://clojars.org/etaoin/etaoin"],
   :relations
   {:conflicts-with
    [[clj-webdriver/clj-webdriver
@@ -677,19 +734,23 @@
  {:purpose [:report :pdf],
   :ids {:coord clj-pdf/clj-pdf},
   :judgment {:status :recommended},
-  :reasons {:text "PDF 生成、iText ベース (iText 直接利用は narrative で回避)"}}
+  :reasons {:text "PDF 生成、iText ベース (iText 直接利用は narrative で回避)"},
+  :references ["https://clojars.org/clj-pdf/clj-pdf"]}
  {:purpose [:report :excel],
   :ids {:coord dk.ative/docjure},
   :judgment {:status :recommended},
-  :reasons {:text "Apache POI ラッパ、Excel 読み書き"}}
+  :reasons {:text "Apache POI ラッパ、Excel 読み書き"},
+  :references ["https://clojars.org/dk.ative/docjure"]}
  {:purpose [:csv],
   :ids {:coord org.clojure/data.csv, :ns "clojure.data.csv"},
   :judgment {:status :recommended},
-  :reasons {:text "CSV の標準"}}
+  :reasons {:text "CSV の標準"},
+  :references ["https://clojars.org/org.clojure/data.csv"]}
  {:purpose [:markdown],
   :ids {:coord markdown-clj/markdown-clj, :ns "markdown.core"},
   :judgment {:status :recommended},
   :reasons {:text "endophile の代替、メンテ継続中"},
+  :references ["https://clojars.org/markdown-clj/markdown-clj"],
   :relations
   {:conflicts-with
    [[endophile/endophile
@@ -721,15 +782,18 @@
  {:purpose [:email :smtp],
   :ids {:coord draines/postal, :ns "postal.core"},
   :judgment {:status :recommended},
-  :reasons {:text "SMTP メール送信、軽量"}}
+  :reasons {:text "SMTP メール送信、軽量"},
+  :references ["https://clojars.org/draines/postal"]}
  {:purpose [:aws :core],
   :ids {:coord com.cognitect.aws/api, :ns "cognitect.aws.api"},
   :judgment {:status :recommended},
-  :reasons {:text "Cognitect aws-api 本体、SDK v2 ベース・純 Clojure"}}
+  :reasons {:text "Cognitect aws-api 本体、SDK v2 ベース・純 Clojure"},
+  :references ["https://clojars.org/com.cognitect.aws/api"]}
  {:purpose [:aws :s3],
   :ids {:coord com.cognitect.aws/s3},
   :judgment {:status :recommended},
-  :reasons {:text "ファイルストレージ、aws-api 系列、サービスごと分割"}}
+  :reasons {:text "ファイルストレージ、aws-api 系列、サービスごと分割"},
+  :references ["https://clojars.org/com.cognitect.aws/s3"]}
  {:purpose [:aws],
   :ids {:coord amazonica/amazonica, :ns "amazonica"},
   :judgment
@@ -743,6 +807,7 @@
   :ids {:coord mpenet/spandex, :ns "qbits.spandex"},
   :judgment {:status :recommended},
   :reasons {:text "Elasticsearch クライアント、elastisch の代替"},
+  :references ["https://clojars.org/mpenet/spandex"],
   :relations
   {:conflicts-with
    [[clojurewerkz/elastisch
@@ -760,27 +825,33 @@
  {:purpose [:ml :dataset],
   :ids {:coord scicloj/tablecloth, :ns "tablecloth.api"},
   :judgment {:status :recommended},
-  :reasons {:text "tech.ml.dataset 上の高レベル API、data 駆動で scicloj 系"}}
+  :reasons {:text "tech.ml.dataset 上の高レベル API、data 駆動で scicloj 系"},
+  :references ["https://clojars.org/scicloj/tablecloth"]}
  {:purpose [:ml :pipeline],
   :ids {:coord scicloj/scicloj.ml},
   :judgment {:status :recommended},
-  :reasons {:text "ML pipeline、scicloj エコシステム"}}
+  :reasons {:text "ML pipeline、scicloj エコシステム"},
+  :references ["https://clojars.org/scicloj/scicloj.ml"]}
  {:purpose [:ml :notebook],
   :ids {:coord scicloj/clay},
   :judgment {:status :recommended},
-  :reasons {:text "Markdown + Clojure + 結果のノートブック、可視化にも使う"}}
+  :reasons {:text "Markdown + Clojure + 結果のノートブック、可視化にも使う"},
+  :references ["https://clojars.org/scicloj/clay"]}
  {:purpose [:ml :integration],
   :ids {:coord scicloj/noj},
   :judgment {:status :acceptable},
-  :reasons {:text "scicloj 系の integration helper、任意"}}
+  :reasons {:text "scicloj 系の integration helper、任意"},
+  :references ["https://clojars.org/scicloj/noj"]}
  {:purpose [:data :pipeline-dataset],
   :ids {:coord techascent/tech.ml.dataset, :ns "tech.v3.dataset"},
   :judgment {:status :recommended},
-  :reasons {:text "表形式データの効率処理、tablecloth の基盤"}}
+  :reasons {:text "表形式データの効率処理、tablecloth の基盤"},
+  :references ["https://clojars.org/techascent/tech.ml.dataset"]}
  {:purpose [:python-interop],
   :ids {:coord clj-python/libpython-clj, :ns "libpython-clj.python"},
   :judgment {:status :recommended},
-  :reasons {:text "Python interop、PyTorch/TensorFlow を境界で扱う"}}
+  :reasons {:text "Python interop、PyTorch/TensorFlow を境界で扱う"},
+  :references ["https://clojars.org/clj-python/libpython-clj"]}
  {:purpose [:ml :data],
   :ids {:coord incanter/incanter, :ns "incanter.core"},
   :judgment
@@ -821,31 +892,39 @@
  {:purpose [:llm :openai],
   :ids {:coord wkok/openai-clojure},
   :judgment {:status :acceptable},
-  :reasons {:text "OpenAI 互換 API 向け wrapper、hato 直接実装も可"}}
+  :reasons {:text "OpenAI 互換 API 向け wrapper、hato 直接実装も可"},
+  :references ["https://clojars.org/wkok/openai-clojure"]}
  {:purpose [:templating :text],
   :ids {:coord selmer/selmer, :ns "selmer.parser"},
   :judgment {:status :recommended, :version "1.12.0"},
-  :reasons {:text "Django 風テンプレート、プロンプト管理等"}}
+  :reasons {:text "Django 風テンプレート、プロンプト管理等"},
+  :references ["https://clojars.org/selmer/selmer"]}
  {:purpose [:media :opencv],
   :ids {:coord org.bytedeco/opencv-platform},
   :judgment {:status :recommended},
-  :reasons {:text "OpenCV Java wrapper、コンピュータビジョン用途"}}
+  :reasons {:text "OpenCV Java wrapper、コンピュータビジョン用途"},
+  :references ["https://clojars.org/org.bytedeco/opencv-platform"]}
  {:purpose [:media :svg],
   :ids {:coord dali/dali},
   :judgment {:status :recommended},
-  :reasons {:text "SVG 生成、data 駆動・hiccup 風 DSL"}}
+  :reasons {:text "SVG 生成、data 駆動・hiccup 風 DSL"},
+  :references ["https://clojars.org/dali/dali"]}
  {:purpose [:media :ffmpeg],
   :ids {:coord com.github.kokorin.jaffree/jaffree},
   :judgment {:status :recommended},
-  :reasons {:text "FFmpeg shell out wrapper、動画トランスコード"}}
+  :reasons {:text "FFmpeg shell out wrapper、動画トランスコード"},
+  :references
+  ["https://clojars.org/com.github.kokorin.jaffree/jaffree"]}
  {:purpose [:media :ocr],
   :ids {:coord net.sourceforge.tess4j/tess4j},
   :judgment {:status :acceptable},
-  :reasons {:text "Tesseract、shell out 推奨（インプロセス JNI はクラッシュリスク）"}}
+  :reasons {:text "Tesseract、shell out 推奨（インプロセス JNI はクラッシュリスク）"},
+  :references ["https://clojars.org/net.sourceforge.tess4j/tess4j"]}
  {:purpose [:edge :gpio],
   :ids {:coord com.pi4j/pi4j-core},
   :judgment {:status :recommended, :version "2.x"},
   :reasons {:text "Raspberry Pi GPIO の標準、Pi4J v2"},
+  :references ["https://clojars.org/com.pi4j/pi4j-core"],
   :relations
   {:pairs-with
    {:backend com.pi4j/pi4j-plugin-pigpio,
@@ -854,6 +933,7 @@
   :ids {:coord com.pi4j/pi4j-plugin-pigpio},
   :judgment {:status :recommended, :version "2.x"},
   :reasons {:text "pigpio バックエンド、Pi4J v2 のネイティブ実装"},
+  :references ["https://clojars.org/com.pi4j/pi4j-plugin-pigpio"],
   :relations {:pairs-with {:core com.pi4j/pi4j-core}}}
  {:purpose [:messaging :mqtt],
   :ids
@@ -861,6 +941,8 @@
    :ns "org.eclipse.paho.client.mqttv3"},
   :judgment {:status :recommended, :version "1.2.5"},
   :reasons {:text "Paho MQTT Java 公式、machine-head の代替"},
+  :references
+  ["https://clojars.org/org.eclipse.paho/org.eclipse.paho.client.mqttv3"],
   :relations
   {:conflicts-with
    [[clojurewerkz/machine_head
@@ -891,6 +973,7 @@
   :ids {:coord com.taoensso/nippy, :ns "taoensso.nippy"},
   :judgment {:status :recommended},
   :reasons {:text "高速バイナリシリアライザ、Fressian の代替"},
+  :references ["https://clojars.org/com.taoensso/nippy"],
   :relations
   {:conflicts-with
    [[org.clojure/data.fressian
@@ -900,6 +983,7 @@
   :ids {:coord com.cognitect/transit-clj, :ns "cognitect.transit"},
   :judgment {:status :recommended},
   :reasons {:text "Cognitect Transit、Clojure 標準のバイナリ転送"},
+  :references ["https://clojars.org/com.cognitect/transit-clj"],
   :relations {:pairs-with {:storage com.taoensso/nippy}}}
  {:purpose [:serialization],
   :ids {:coord org.clojure/data.fressian, :ns "clojure.data.fressian"},
@@ -916,18 +1000,22 @@
  {:purpose [:dev :benchmark],
   :ids {:coord criterium/criterium, :ns "criterium.core"},
   :judgment {:status :recommended},
-  :reasons {:text "JIT warm-up 込み統計計測、測ってから最適化"}}
+  :reasons {:text "JIT warm-up 込み統計計測、測ってから最適化"},
+  :references ["https://clojars.org/criterium/criterium"]}
  {:purpose [:dev :memory-measure],
   :ids
   {:coord com.clojure-goes-fast/clj-memory-meter,
    :ns "clj-memory-meter.core"},
   :judgment {:status :recommended},
-  :reasons {:text "オブジェクトサイズ実測、heap profiling を 1 行で"}}
+  :reasons {:text "オブジェクトサイズ実測、heap profiling を 1 行で"},
+  :references
+  ["https://clojars.org/com.clojure-goes-fast/clj-memory-meter"]}
  {:purpose [:data :ordered-map],
   :ids {:coord org.flatland/ordered, :ns "flatland.ordered.map"},
   :judgment {:status :recommended},
   :reasons
-  {:text "insertion-order を保つ map/set、Clojure 標準 map は順序保証なし"}}
+  {:text "insertion-order を保つ map/set、Clojure 標準 map は順序保証なし"},
+  :references ["https://clojars.org/org.flatland/ordered"]}
  {:purpose [:platform :framework],
   :ids {:coord duct/core},
   :judgment
@@ -962,15 +1050,18 @@
  {:purpose [:graphql],
   :ids {:coord com.walmartlabs/lacinia, :ns "com.walmartlabs.lacinia"},
   :judgment {:status :recommended, :version "1.2.2"},
-  :reasons {:text "Clojure 界デファクト、スキーマを EDN 宣言、Malli 親和性"}}
+  :reasons {:text "Clojure 界デファクト、スキーマを EDN 宣言、Malli 親和性"},
+  :references ["https://clojars.org/com.walmartlabs/lacinia"]}
  {:purpose [:graphql :ring-integration],
   :ids {:coord com.walmartlabs/lacinia-pedestal},
   :judgment {:status :acceptable, :version "1.3"},
-  :reasons {:text "Lacinia-Ring 統合、または自作 middleware でも可"}}
+  :reasons {:text "Lacinia-Ring 統合、または自作 middleware でも可"},
+  :references ["https://clojars.org/com.walmartlabs/lacinia-pedestal"]}
  {:purpose [:desktop :gui],
   :ids {:coord io.github.humbleui/humbleui},
   :judgment {:status :recommended, :version "0.2.0"},
   :reasons {:text "Skia ベース、宣言的 API、API 変動リスクあり (暫定採用)"},
+  :references ["https://clojars.org/io.github.humbleui/humbleui"],
   :relations
   {:conflicts-with
    [[cljfx/cljfx "デスクトップ GUI は片方に統一、cljfx は :acceptable（安定性優先時）"]
@@ -980,6 +1071,7 @@
   :ids {:coord cljfx/cljfx, :ns "cljfx.api"},
   :judgment {:status :acceptable},
   :reasons {:text "JavaFX 宣言的ラッパ、成熟。安定性優先なら採用を判断し ADR 記録"},
+  :references ["https://clojars.org/cljfx/cljfx"],
   :relations
   {:conflicts-with
    [[io.github.humbleui/humbleui
@@ -1001,39 +1093,48 @@
  {:purpose [:messaging :queue :sqs],
   :ids {:coord com.cognitect.aws/sqs},
   :judgment {:status :recommended},
-  :reasons {:text "AWS SQS キュー、aws-api 系列"}}
+  :reasons {:text "AWS SQS キュー、aws-api 系列"},
+  :references ["https://clojars.org/com.cognitect.aws/sqs"]}
  {:purpose [:messaging :queue :kafka],
   :ids {:coord fundingcircle/jackdaw},
   :judgment {:status :recommended},
-  :reasons {:text "Kafka、Confluent Platform 連携可"}}
+  :reasons {:text "Kafka、Confluent Platform 連携可"},
+  :references ["https://clojars.org/fundingcircle/jackdaw"]}
  {:purpose [:messaging :queue :rabbitmq],
   :ids {:coord com.novemberain/langohr},
   :judgment {:status :recommended},
-  :reasons {:text "RabbitMQ AMQP"}}
+  :reasons {:text "RabbitMQ AMQP"},
+  :references ["https://clojars.org/com.novemberain/langohr"]}
  {:purpose [:messaging :queue :redis],
   :ids {:coord com.taoensso/carmine, :ns "taoensso.carmine"},
   :judgment {:status :acceptable},
-  :reasons {:text "Redis Stream / Pub-Sub。cache と同ライブラリ"}}
+  :reasons {:text "Redis Stream / Pub-Sub。cache と同ライブラリ"},
+  :references ["https://clojars.org/com.taoensso/carmine"]}
  {:purpose [:bot :discord],
   :ids {:coord org.suskalo/discljord},
   :judgment {:status :recommended},
-  :reasons {:text "Discord Bot 向け、Clojure 特化"}}
+  :reasons {:text "Discord Bot 向け、Clojure 特化"},
+  :references ["https://clojars.org/org.suskalo/discljord"]}
  {:purpose [:web :ssr],
   :ids {:coord rum/rum, :ns "rum.core"},
   :judgment {:status :recommended},
-  :reasons {:text "SSR テンプレート、React 互換の概念"}}
+  :reasons {:text "SSR テンプレート、React 互換の概念"},
+  :references ["https://clojars.org/rum/rum"]}
  {:purpose [:web :html-dsl],
   :ids {:coord hiccup/hiccup, :ns "hiccup.core"},
   :judgment {:status :acceptable},
-  :reasons {:text "Clojure data として HTML を組み立てる DSL。rum の代替軽量版"}}
+  :reasons {:text "Clojure data として HTML を組み立てる DSL。rum の代替軽量版"},
+  :references ["https://clojars.org/hiccup/hiccup"]}
  {:purpose [:web :html-transform],
   :ids {:coord enlive/enlive, :ns "net.cgrand.enlive-html"},
   :judgment {:status :acceptable},
-  :reasons {:text "HTML 走査・selector 変換、scraping / HTML after-edit 用途"}}
+  :reasons {:text "HTML 走査・selector 変換、scraping / HTML after-edit 用途"},
+  :references ["https://clojars.org/enlive/enlive"]}
  {:purpose [:async],
   :ids {:coord org.clojure/core.async, :ns "clojure.core.async"},
   :judgment {:status :recommended},
   :reasons {:text "CSP チャネル、manifold の代替"},
+  :references ["https://clojars.org/org.clojure/core.async"],
   :relations
   {:conflicts-with
    [[manifold/manifold "非同期抽象は片方に統一、manifold は設計思想不整合"]],
@@ -1059,7 +1160,8 @@
  {:purpose [:parser],
   :ids {:coord instaparse/instaparse, :ns "instaparse.core"},
   :judgment {:status :acceptable},
-  :reasons {:text "BNF/PEG パーサジェネレータ、独自 DSL / 設定言語用途"}}
+  :reasons {:text "BNF/PEG パーサジェネレータ、独自 DSL / 設定言語用途"},
+  :references ["https://clojars.org/instaparse/instaparse"]}
  {:purpose [:exception],
   :ids {:coord slingshot/slingshot, :ns "slingshot.slingshot"},
   :judgment
@@ -1073,6 +1175,7 @@
   :ids {:coord tick/tick, :ns "tick.core"},
   :judgment {:status :recommended, :version "1.0"},
   :reasons {:text "data 駆動 java.time ラッパ、Malli 統合容易"},
+  :references ["https://clojars.org/tick/tick"],
   :relations
   {:conflicts-with
    [[clojure.java-time/clojure.java-time "時刻処理は片方に統一"]
@@ -1082,6 +1185,8 @@
   {:coord clojure.java-time/clojure.java-time, :ns "java-time.api"},
   :judgment {:status :acceptable},
   :reasons {:text "JDK java.time 薄ラッパ、依存最小・学習コスト低"},
+  :references
+  ["https://clojars.org/clojure.java-time/clojure.java-time"],
   :relations
   {:conflicts-with
    [[tick/tick "時刻処理は片方に統一"]

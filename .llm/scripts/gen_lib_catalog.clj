@@ -59,6 +59,13 @@
     [:map {:closed true}
      [:text {:optional true} string?]
      [:tags {:optional true} [:vector (into [:enum] tag-values)]]]]
+   [:references {:optional true}
+    [:map {:closed true}
+     [:repository {:optional true} string?]
+     [:doc {:optional true} string?]
+     [:documentation {:optional true} string?]
+     [:quick-reference {:optional true} string?]
+     [:examples {:optional true} [:vector string?]]]]
    [:relations {:optional true}
     [:map {:closed true}
      [:bundles {:optional true} [:vector symbol?]]
@@ -194,14 +201,31 @@
 
 (def ^:private key-order
   "Top-level key order for pretty-printing (plan convention)."
-  [:purpose :ids :judgment :reasons :relations])
+  [:purpose :ids :judgment :reasons :references :relations])
 
 (defn- ordered-map
   "Return entry as array-map in the canonical key order, preserving only
-   keys that are actually present."
+  keys that are actually present."
   [entry]
   (apply array-map
          (mapcat (fn [k] (when (contains? entry k) [k (entry k)])) key-order)))
+
+(defn- coord->clojars-url
+  "Build a fallback reference URL from a library coordinate."
+  [coord]
+  (str "https://clojars.org/" (str coord)))
+
+(defn- fill-references
+  "For :recommended/:acceptable entries, synthesize references if not provided.
+   This keeps generated metadata complete while keeping STACK_GUIDE entries lean."
+  [entry]
+  (let [status (get-in entry [:judgment :status])
+        coord  (get-in entry [:ids :coord])]
+    (if (and (#{:recommended :acceptable} status)
+             (not (contains? entry :references))
+             coord)
+      (assoc entry :references {:repository (coord->clojars-url coord)})
+      entry)))
 
 (defn- ensure-dir!
   [dir]
@@ -340,7 +364,7 @@
   [opts]
   (let [source  (or (:source opts) ".llm/guide/STACK_GUIDE.md")
         out-dir (or (:out-dir opts) ".llm/data")
-        entries (read-entries source)
+        entries (map fill-references (read-entries source))
         dir     (ensure-dir! out-dir)]
     (emit-libs-edn! (io/file dir "libs.edn") entries)
     (emit-deprecated-patterns! (io/file dir "deprecated-libs.patterns") entries)

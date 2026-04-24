@@ -3,7 +3,7 @@
 **Clojure + Polylith プロジェクト**（LLM と人間の仕様共同開発フレームワーク）
 
 - 必須技術: Clojure + tools.deps + Polylith + Malli 契約 + clj-kondo + cljfmt + Splint + clj-watson + `.llm/scripts/`
-- 追加ライブラリは必要な機能カテゴリごとに最小選択し、各 brick の `deps.edn` に記録する
+- 追加ライブラリは必要な用途別機能カテゴリごとに最小選択し、各 brick の `deps.edn` に記録する
 - 技術選定の推奨カタログは `.llm/guide/STACK_GUIDE.md`
 
 > ⚠️ **このファイルはテンプレート配布時のものです。**
@@ -15,7 +15,7 @@
 
 ## このテンプレートは何か
 
-**Clojure + tools.deps + Polylith + Malli + clj-kondo + cljfmt + Splint + clj-watson + `.llm/scripts/`** を必須層とする、**LLM 駆動開発向け**のプロジェクトテンプレート。HTTP、永続化、ライフサイクル管理などの追加技術は、必要になった機能カテゴリごとに選び、brick の `deps.edn` に追加する。
+**Clojure + tools.deps + Polylith + Malli + clj-kondo + cljfmt + Splint + clj-watson + `.llm/scripts/`** を必須技術基盤とする、**LLM 駆動開発向け**のプロジェクトテンプレート。HTTP、永続化、ライフサイクル管理などの追加技術は、必要になった用途別機能カテゴリごとに選び、brick の `deps.edn` に追加する。
 
 疲労最小化原則（LLM と人間の共同開発における修復コスト最小化）に基づき設計されている。
 詳細思想と技術選定の推奨カタログは別紙に置く。
@@ -31,13 +31,13 @@
 
 ---
 
-## 開始手順（LLM 駆動ブートストラップ）
+## 開始手順（LLM 駆動初期化）
 
 ### 1 回のキックオフで始める
 
 以下のいずれかのキックオフプロンプトを LLM エージェントに送信する。以降、LLM は `.llm/guide/BOOTSTRAP_GUIDE.md` に従い、仕様確定・構造作成・依存追加の承認を求めながら進める。
 
-- **完全版**（事前に L0 項目を決めてから送信するタイプ）: 目的・ユースケース・受入基準・エントリ種別・組織名・ドメイン名候補・デプロイ構成・環境別設定を 1 通に収める。往復数最小
+- **完全版**（事前に人間専権 (L0) 項目を決めてから送信するタイプ）: 目的・ユースケース・受入基準・エントリ種別・組織名・ドメイン名候補・デプロイ構成・環境別設定を 1 通に収める。往復数最小
 - **最小版**（対話しながら埋めるタイプ）: 目的 1-2 行のみ記載して送信。残りは LLM が 1 点ずつ確認する
 
 ---
@@ -45,7 +45,7 @@
 #### 完全版キックオフプロンプト
 
 ```
-このプロジェクトのテンプレートを使ってブートストラップを行う。
+このプロジェクトのテンプレートを使って初期化を行う。
 まず CLAUDE.md、DESIGN.md、.llm/guide/BOOTSTRAP_GUIDE.md を読んでから着手してほしい。
 
 【プロジェクト名】<例: billing-service>
@@ -74,13 +74,13 @@
 #### 最小版キックオフプロンプト
 
 ```
-このプロジェクトのテンプレートを使ってブートストラップを行う。
+このプロジェクトのテンプレートを使って初期化を行う。
 まず CLAUDE.md、DESIGN.md、.llm/guide/BOOTSTRAP_GUIDE.md を読んでから着手してほしい。
 
 【目的】<1-2 行で>
 【エントリ種別】<Web API / CLI / バッチ / ライブラリ / ワーカ / bot / GUI>
 
-残りの L0 項目（プロジェクト名・組織名・トップ名前空間・ドメイン名候補・
+残りの人間専権 (L0) 項目（プロジェクト名・組織名・トップ名前空間・ドメイン名候補・
 デプロイ構成・主要ユースケース・受入基準・環境別設定）は 1 点ずつ確認して。
 ```
 
@@ -92,16 +92,16 @@
 
 | ゲート | 承認対象 | 権限根拠 |
 |---|---|---|
-| 1. 仕様 + 技術選定 | DESIGN.md 反映案／workspace.edn :top-namespace 差分／README.md 冒頭差分／必要な機能カテゴリと推奨ライブラリ案 | L1。未記載領域の技術採用は L0 |
-| 2. 構造 + 依存 | `poly create component/base/project` 3 コマンド／brick deps.edn 追加内容（実コード） | L1/L0 × component 作成は L1、base/project 作成・依存追加は L0（CLAUDE.md §2） |
+| 1. 仕様 + 技術選定 | DESIGN.md 反映案／workspace.edn :top-namespace 差分／README.md 冒頭差分／必要な用途別機能カテゴリと推奨ライブラリ案 | 承認必須 (L1)。未記載領域の技術採用は人間専権 (L0) |
+| 2. 構造 + 依存 | `poly create component/base/project` 3 コマンド／brick deps.edn 追加内容（実コード） | 承認必須 (L1) / 人間専権 (L0)。component 作成は承認必須 (L1)、base/project 作成・依存追加は人間専権 (L0) |
 
-**ゲート外の個別 L1 承認**（作成時に個別提示）:
+**ゲート外の個別承認必須 (L1)**（作成時に個別提示）:
 
 | 成果物 | 採用条件 |
 |---|---|
-| config.edn（必要時）／CI 設定／build.clj（uberjar 時）／dev/user.clj 調整／workspace.edn :projects 登録／ルート deps.edn :dev :extra-deps/:extra-paths | いずれも L1、実内容を事前提示して個別承認 |
+| config.edn（必要時）／CI 設定／build.clj（uberjar 時）／dev/user.clj 調整／workspace.edn :projects 登録／ルート deps.edn :dev :extra-deps/:extra-paths | いずれも承認必須 (L1)、実内容を事前提示して個別承認 |
 
-**ゲート 3 の縮退**: 完了処理のうち LLM が L1 として担うのは **KNOWLEDGE 追加エントリ** と **README プロダクト版全文** のみ。ADR は承認済み判断の記録として LLM が発行し、事後報告する。
+**ゲート 3 の縮退**: 完了処理のうち LLM が承認必須 (L1) として担うのは **KNOWLEDGE 追加エントリ** と **README プロダクト版全文** のみ。ADR は承認済み判断の記録として LLM が発行し、事後報告する。
 
 ### 完了時
 
@@ -135,7 +135,7 @@ LLM が詰まった時は QUESTIONS に Q を起票して停止する。人間�
 <project-root>/
 ├── README.md                    ← 本ファイル（書き換え対象）
 ├── CLAUDE.md                    ← LLM 向け作業規約（毎セッション必読）
-├── DESIGN.md                    ← プロダクト仕様（ブートストラップ時に埋める）
+├── DESIGN.md                    ← プロダクト仕様（初期化時に埋める）
 │
 ├── .llm/guide/               ← プロジェクト運営ガイド
 │   ├── CODING_GUIDE.md          Clojure 書き方詳細
@@ -177,10 +177,10 @@ LLM が詰まった時は QUESTIONS に Q を起票して停止する。人間�
 │   └── conflicts.patterns            併用禁止ペアパターン
 │
 ├── .clj-kondo/config.edn        lint 機械化（polyguard hook 同梱）
-├── .clj-kondo/polyguard/        custom hook（L2 本テンプレート固有パターン）
+├── .clj-kondo/polyguard/        custom hook（機械化第 2 層: 本テンプレート固有パターン）
 ├── .gitignore
 ├── cljfmt.edn                   フォーマッタ
-├── deps.edn                     tools.deps（必須層のみ、本番依存は brick deps.edn に）
+├── deps.edn                     tools.deps（必須技術基盤のみ，本番依存は brick deps.edn に）
 ├── workspace.edn                Polylith 設定
 └── development/src/dev/user.clj REPL 駆動開発エントリ
 ```
@@ -205,10 +205,10 @@ LLM が詰まった時は QUESTIONS に Q を起票して停止する。人間�
 ## 設計の基底思想（要約）
 
 - **疲労最小化**: LLM の誤りを構造的に封じる（全域性・不変性・副作用の隔離）
-- **機械化 5 層**: L1 clj-kondo 組込 linter / L2 `.clj-kondo/polyguard/` custom hook / L3 Splint / L4 `.llm/scripts/check-*.sh`（設定・構造検査）+ Polylith `poly check` + Malli instrumentation / L5 clj-watson（時間軸脆弱性）。規約を人間の注意力ではなくツールで強制（詳細は `MAINTAINERS_GUIDE.md` §5.10）
+- **機械化 5 層**: 第 1 層 clj-kondo 組込 linter / 第 2 層 `.clj-kondo/polyguard/` custom hook / 第 3 層 Splint / 第 4 層 `.llm/scripts/check-*.sh`（設定・構造検査）+ Polylith `poly check` + Malli instrumentation / 第 5 層 clj-watson（時間軸脆弱性）。規約を人間の注意力ではなくツールで強制（詳細は `MAINTAINERS_GUIDE.md` §5.10）
 - **SSOT 生成**: `.llm/scripts/gen_lib_catalog.clj` が `STACK_GUIDE` の `;; lib-catalog` EDN block 群を検証・合成し `.llm/data/` 配下に artifact を emit。shell script は artifact を読む
 - **REPL as Primary Workbench**: `.llm/scripts/repl-eval.sh` により LLM が稼働中 nREPL に eval / load-file を送信。永続 session で state 継続、編集から検証までを同一ターンで閉じる
-- **技術選定カタログ**: 必須層はワークスペースルートで常に採用し、追加ライブラリは必要な brick の `deps.edn` に配置する。推奨カタログは `.llm/guide/STACK_GUIDE.md`
+- **技術選定カタログ**: 必須技術基盤はワークスペースルートで常に採用し、追加ライブラリは必要な brick の `deps.edn` に配置する。推奨カタログは `.llm/guide/STACK_GUIDE.md`
 - **4 種の文書分離**: 仕様（DESIGN）/ 知識（KNOWLEDGE）/ 決定履歴（ADR）/ 判断保留（QUESTIONS）
 - **自己停止プロトコル**: LLM が時間感覚なく詰まった時、ターン数閾値で停止し Q を立てる
 

@@ -18,7 +18,7 @@
 
 ## 読むタイミング
 
-- **ブートストラップ時**（必要な機能カテゴリを決める時）
+- **初期化時**（必要な用途別機能カテゴリを決める時）
 - **新ライブラリ採用を検討する時**
 - **既存の技術選定を変更する時**
 - **技術選定の根拠を確認する時**
@@ -31,8 +31,8 @@
 
 本テンプレートは、技術を以下の 3 種に分ける：
 
-- **必須層**: プロジェクト目的に関わらず常に採用されるもの（Clojure、tools.deps、Polylith、Malli、clj-kondo、cljfmt、Splint、clj-watson、`.llm/scripts/`、JVM）。**ワークスペースルートの `deps.edn` の `:deps`** および必須エイリアスで宣言。version 情報の正本は §2.1
-- **機能カテゴリ別ライブラリ**: HTTP、永続化、ライフサイクル管理、JSON、ログ等。**各 brick (base / component) の `deps.edn`** で宣言
+- **必須技術基盤**: プロジェクト目的に関わらず常に採用されるもの（Clojure、tools.deps、Polylith、Malli、clj-kondo、cljfmt、Splint、clj-watson、`.llm/scripts/`、JVM）。**ワークスペースルートの `deps.edn` の `:deps`** および必須エイリアスで宣言。version 情報の正本は §2.1
+- **用途別機能カテゴリライブラリ**: HTTP、永続化、ライフサイクル管理、JSON、ログ等。**各 brick (base / component) の `deps.edn`** で宣言
 - **開発支援ライブラリ**: REPL 補助、テスト補助、データ観察等。開発時だけ必要ならルート `deps.edn` の `:dev :extra-deps` に置く
 
 実ライブラリ依存は brick の deps.edn に書き、本文書は推奨カタログとして機能する。本文書自体が deps.edn を生成するわけではない。
@@ -45,7 +45,7 @@
 本文書は、本テンプレートの第一原理（疲労最小化、CLAUDE.md §1）と三基底原則（全域性・不変性・副作用隔離、CLAUDE.md §1.1）に基づいて**予め技術選定を済ませた結果**を記録する。LLM と人間が未知の選定課題に遭遇するたびに第一原理から導出し直すのは、それ自体が疲労を生む。判断結果をメモリーとして保存することで、以後のプロジェクトでは**毎回複雑な判断をする必要がなくなる**。
 
 **利用規律**:
-- 記載済みの機能カテゴリは、プロジェクト要件と矛盾しない限り信頼して利用してよい
+- 記載済みの用途別機能カテゴリは、プロジェクト要件と矛盾しない限り信頼して利用してよい
 - 未記載領域に遭遇した場合、第一原理から判断材料を整理し、人間判断に渡す
 - 推奨がプロジェクトのゴールと矛盾する場合、逸脱理由を ADR に記録する
 - 本文書は完全である必要はない。網羅ではなく、判断済みの知見を保持する
@@ -54,7 +54,7 @@
 本文書は「**何の機能をどのライブラリで実現するか**」の推奨を集約する。**実際のライブラリ依存は各 brick の `deps.edn` に書かれ、本文書はそれを決める際の判断基準と推奨リストを提供する**。
 
 **真実の一箇所化**  
-ライブラリ依存の一次情報源は **brick の deps.edn**（Polylith の本番ビルドはここから依存を解決する）。ワークスペースルートの deps.edn には必須層のみ配置し、追加ライブラリは brick に集約する。
+ライブラリ依存の一次情報源は **brick の deps.edn**（Polylith の本番ビルドはここから依存を解決する）。ワークスペースルートの deps.edn には必須技術基盤のみ配置し、追加ライブラリは brick に集約する。
 
 **継続的な充実の場**  
 選定根拠は時間とともに詳細化し、機能領域も拡張される。ただし、**網羅を目的化しない**。必要になった領域が原則からの導出を経てユーザ合意に至った時、その判断結果をメモリーに記録する。
@@ -77,11 +77,11 @@
 
 ## 2. 技術選定の階層
 
-**本節は必須層と機能カテゴリ別ライブラリの正本**。CLAUDE と BOOTSTRAP は日常参照のための抜粋であり、**version 情報は本節のみに記載**する。
+**本節は必須技術基盤と用途別機能カテゴリライブラリの正本**。CLAUDE と BOOTSTRAP は日常参照のための抜粋であり、**version 情報は本節のみに記載**する。
 ∵ ../CLAUDE.md
 ∵ BOOTSTRAP_GUIDE.md
 
-### 2.1 必須層（常に採用）
+### 2.1 必須技術基盤（常に採用）
 
 **version 情報の SSOT は下記 `;; lib-catalog` EDN block**（deps.edn の実体はこれを参照して記述される）。version 値が複数箇所に分散すると drift するため、本 block の値が一次情報源。
 
@@ -167,17 +167,17 @@
   :reasons  {:text "リファクタリング middleware"}}]
 ```
 
-配布物として `.clj-kondo/polyguard/hooks.clj`（AST 解析型の custom hook）と `.llm/scripts/*.sh`（設定ファイル・ディレクトリ構造の機械的検査）も必須層の一部。役割分担は `MAINTAINERS_GUIDE.md §5.10`。
+配布物として `.clj-kondo/polyguard/hooks.clj`（AST 解析型の custom hook）と `.llm/scripts/*.sh`（設定ファイル・ディレクトリ構造の機械的検査）も必須技術基盤の一部。役割分担は `MAINTAINERS_GUIDE.md §5.10`。
 
 これらは `deps.edn` の `:deps` および必須エイリアス（`:dev`、`:nrepl`、`:poly`、`:lint`、`:format`、`:outdated`）で常に有効。
 
 テスト実行は Polylith の `poly test`（`clj -M:poly test` / `clj -M:poly test :all`）で行う。Polylith は組み込みの clojure.test ランナーで brick テストを実行し、stable タグからの diff で影響範囲を自動判定する。kaocha 等の追加テストランナーは本テンプレートでは採用しない（詳細は §3.8）。
 
-### 2.2 機能カテゴリ別ライブラリ（brick deps.edn に反映）
+### 2.2 用途別機能カテゴリライブラリ（brick deps.edn に反映）
 
 | プロジェクト種別 | 必要になりやすい機能 |
 |---|---|---|
-| ライブラリ配布 | 必須層のみで十分 |
+| ライブラリ配布 | 必須技術基盤のみで十分 |
 | CLI ツール | 引数パース、ログ、終了コード管理 |
 | HTTP API サーバ | ライフサイクル、HTTP、ルーティング、JSON、検証、ログ |
 | GraphQL API サーバ | ライフサイクル、HTTP、GraphQL スキーマ・解決、検証、ログ |
@@ -241,6 +241,8 @@
 - **考え方 / 採用理由の全体像**は EDN の外側の prose（**採用理由**、**適用場面** 等の markdown 節）で表現
 - **`:purpose` vec**: `[:lifecycle]`, `[:db :jdbc]`, `[:web :routing]` のような階層 keyword。uniqueness key は `[[:ids :coord] :purpose]` pair
 - **`:status`**: `:recommended` / `:acceptable` / `:conditional` / `:deprecated` / `:scope-excluded`（詳細は §8.0 理由タグと Malli schema）
+- **`:references`**: `:recommended` / `:acceptable` のエントリには、主要情報源の URL を map で任意追加。未指定時は生成時に `https://clojars.org/<coord>` を `:repository` として自動補完。  
+  想定 key: `:repository`（配布元）, `:doc`（公式 docs）, `:quick-reference`（補助参照）, `:examples`（補助資料 URL 群）
 - **`;; lib-catalog` は完全一致マーカ**。`.llm/scripts/gen_lib_catalog.clj` が本文書を走査、各 block を収集し `.llm/data/libs.edn` / `.patterns` を生成。`check-workspace-integrity.sh` が diff で drift を自動検知
 - **cross-cutting lib の多重記述は許容**（構造完全一致時のみ dedup、矛盾は error）。ある lib が複数 §3.X に現れる場合は、全て同一内容で記述する必要がある
 
@@ -259,10 +261,12 @@
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
- {:purpose   [:lifecycle]
+{:purpose   [:lifecycle]
   :ids       {:coord integrant/integrant :ns "integrant.core"}
   :judgment  {:status :recommended :version "0.13.1"}
   :reasons   {:text "data 駆動 DI、本テンプレート採用"}
+  :references {:repository "https://github.com/weavejester/integrant"
+               :doc "https://github.com/weavejester/integrant/blob/master/README.md"}
   :relations {:conflicts-with [[com.stuartsierra/component "lifecycle 管理は片方に統一、component は defrecord 依存で :deprecated"]
                                [mount/mount "lifecycle 管理は片方に統一、mount はグローバル状態で :deprecated"]]
               :pairs-with     {:repl    integrant/repl
@@ -313,10 +317,12 @@
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
- {:purpose   [:config]
+{:purpose   [:config]
   :ids       {:coord aero/aero :ns "aero.core"}
   :judgment  {:status :recommended :version "1.1.6"}
   :reasons   {:text "tagged literal (#env #profile) で環境別設定"}
+  :references {:doc "https://github.com/juxt/aero/blob/master/README.md"
+               :repository "https://github.com/juxt/aero"}
   :relations {:conflicts-with [[environ/environ "設定ライブラリは片方に統一、environ は構造化設定に弱く :deprecated"]
                                [immuconf/immuconf "設定ライブラリは片方に統一、immuconf は aero より普及度劣り :deprecated"]]
               :pairs-with     {:lifecycle integrant/integrant}}}
@@ -348,7 +354,7 @@
 
 ### 3.3 検証・契約
 
-**採用**: Malli（必須層、機能カテゴリ非依存）
+**採用**: Malli（必須技術基盤、用途別機能カテゴリ非依存）
 
 **採用理由**:
 - `m/=>` による関数契約（引数・返り値の双方向検証）
@@ -358,7 +364,7 @@
 
 ```edn
 ;; lib-catalog
-[;; === 採用（Malli は必須層、§2.1 で登録済） ===
+[;; === 採用（Malli は必須技術基盤、§2.1 で登録済） ===
  ;; 本節では :validation :recommended の採用エントリは §2.1 Malli を参照。
  ;; ここでは :validation の代替と却下のみを記録。
 
@@ -384,7 +390,7 @@
  ]
 ```
 
-**適用場面**: 全プロジェクト（必須層）
+**適用場面**: 全プロジェクト（必須技術基盤）
 
 ### 3.4 HTTP サーバ・ルーティング
 
@@ -402,10 +408,13 @@
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
- {:purpose   [:web :http-core]
+{:purpose   [:web :http-core]
   :ids       {:coord ring/ring-core :ns "ring.core"}
   :judgment  {:status :recommended :version "1.13.0"}
   :reasons   {:text "Ring 仕様の標準実装"}
+  :references {:repository "https://github.com/ring-clojure/ring"
+               :doc "https://github.com/ring-clojure/ring/blob/master/README.md"
+               :quick-reference "https://github.com/ring-clojure/ring/blob/master/CHANGELOG.md"}
   :relations {:pairs-with {:server  ring/ring-jetty-adapter
                            :routing metosin/reitit-ring}}}
 
@@ -413,6 +422,9 @@
   :ids       {:coord ring/ring-jetty-adapter :ns "ring.adapter.jetty"}
   :judgment  {:status :recommended :version "1.13.0"}
   :reasons   {:text "Jetty ベース、初期推奨。成熟・枯れている"}
+  :references {:repository "https://github.com/ring-clojure/ring"
+               :doc "https://github.com/ring-clojure/ring/blob/master/README.md"
+               :quick-reference "https://www.eclipse.org/jetty/"}
   :relations {:conflicts-with [[http-kit/http-kit "HTTP サーバは片方に統一、http-kit は :acceptable（高同時接続時のみ）"]
                                [aleph/aleph "HTTP サーバは片方に統一、aleph は Netty 依存重く :deprecated"]
                                [org.immutant/web "HTTP サーバは片方に統一、immutant はメンテ停止 :deprecated"]]
@@ -425,6 +437,8 @@
   :ids       {:coord http-kit/http-kit :ns "org.httpkit.server"}
   :judgment  {:status :acceptable :version "2.8.0"}
   :reasons   {:text "NIO 軽量、高同時接続性能が要るなら検討"}
+  :references {:repository "https://github.com/http-kit/http-kit"
+               :doc "https://github.com/http-kit/http-kit/blob/master/README.md"}
   :relations {:conflicts-with [[ring/ring-jetty-adapter "HTTP サーバは片方に統一、jetty が :recommended（初期推奨）"]
                                [aleph/aleph "HTTP サーバは片方に統一、aleph は :deprecated"]
                                [org.immutant/web "HTTP サーバは片方に統一、immutant は :deprecated"]]
@@ -817,7 +831,7 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 - JVM 11+ の java.net.http をラップ
 - Ring 風の data 駆動 API
 
-**位置づけ**: 必須層には含めない。外部 API 呼び出しが必要になった時点で個別プロジェクトで採用判断。
+**位置づけ**: 必須技術基盤には含めない。外部 API 呼び出しが必要になった時点で個別プロジェクトで採用判断。
 
 ```edn
 ;; lib-catalog
@@ -1481,7 +1495,7 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 **適用条件**:
 - パフォーマンス SLO あり → Gatling
 - 単純スループット計測 → wrk 等（外部ツール）
-- **必須層には含めない**。DESIGN.md §8 に「パフォーマンス要件」を明記したプロジェクトのみ
+- **必須技術基盤には含めない**。DESIGN.md §8 に「パフォーマンス要件」を明記したプロジェクトのみ
 
 ### 3.29 契約テスト
 
@@ -2523,13 +2537,13 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 
 ---
 
-## 4. プロジェクト種別と機能カテゴリ
+## 4. プロジェクト種別と用途別機能カテゴリ
 
-プロジェクト種別は、必要な機能カテゴリを洗い出すための入口である。種別名そのものを設計軸にしない。
+プロジェクト種別は、必要な用途別機能カテゴリを洗い出すための入口である。種別名そのものを設計軸にしない。
 
-| プロジェクトの性格 | 主な機能カテゴリ |
+| プロジェクトの性格 | 主な用途別機能カテゴリ |
 |---|---|
-| 他プロジェクトから依存される配布物 | 必須層のみ |
+| 他プロジェクトから依存される配布物 | 必須技術基盤のみ |
 | コマンドライン実行ツール | CLI、ログ、終了コード |
 | HTTP API サーバ | HTTP、ルーティング、JSON、検証、ログ、必要なら永続化 |
 | GraphQL API サーバ | HTTP、GraphQL、検証、ログ、必要なら永続化 |
@@ -2543,11 +2557,11 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 | LLM / AI 組込アプリ | LLM API、embedding、ベクトルストア、プロンプト管理 |
 | IoT / エッジ | Native Image、GPIO、MQTT、軽量ログ |
 
-複数の性格を持つプロジェクトは、必要な機能カテゴリを併記する。各 brick の deps.edn には、実際に必要なライブラリだけを反映する。
+複数の性格を持つプロジェクトは、必要な用途別機能カテゴリを併記する。各 brick の deps.edn には、実際に必要なライブラリだけを反映する。
 
 ### 4.1 カタログ記載有無の判定
 
-LLM はプロジェクト種別ではなく、§3 の機能カテゴリとライブラリ根拠を引用して承認レベルを決める。
+LLM はプロジェクト種別ではなく、§3 の用途別機能カテゴリとライブラリ根拠を引用して承認レベルを決める。
 
 | 状況 | 判定 | 次の行動 |
 |---|---|---|
@@ -2556,21 +2570,21 @@ LLM はプロジェクト種別ではなく、§3 の機能カテゴリとライ
 | §3 に推奨があるが、プロジェクト固有理由で別ライブラリを使いたい | **推奨からの逸脱** | 逸脱理由を ADR と DESIGN.md §8.3 に記録 |
 | §3 で deprecated / scope-excluded / 採用不可と明示されている | **非推奨・対象外** | 推奨として扱わない。必要なら人間判断を求める |
 
-「記載なし」は「LLM が自由に決めてよい」という意味ではない。本文書のメモリーが未整備な領域なので、判断材料を整理して人間の L0 判断に渡す。
+「記載なし」は「LLM が自由に決めてよい」という意味ではない。本文書のメモリーが未整備な領域なので、判断材料を整理して人間専権 (L0) の判断に渡す。
 
-### 4.2 複数機能カテゴリの組み合わせ
+### 4.2 複数用途別機能カテゴリの組み合わせ
 
-複数の機能カテゴリは組み合わせ可能。Polylith の構造では、組み合わせは以下のように実現する：
+複数の用途別機能カテゴリは組み合わせ可能。Polylith の構造では、組み合わせは以下のように実現する：
 
-- **同一 base が複数機能を持つ**: 当該 base の deps.edn に、必要な機能カテゴリの推奨ライブラリをマージして記述
-- **異なる base が異なる機能を持つ**: 各 base が独立した deps.edn を持ち、それぞれに該当する機能カテゴリの推奨ライブラリを記述
+- **同一 base が複数機能を持つ**: 当該 base の deps.edn に、必要な用途別機能カテゴリの推奨ライブラリをマージして記述
+- **異なる base が異なる機能を持つ**: 各 base が独立した deps.edn を持ち、それぞれに該当する用途別機能カテゴリの推奨ライブラリを記述
 - **プロジェクト全体の技術選定**は DESIGN.md §8.3 に記録
 
 同一 base に複数機能をマージする場合、重複するライブラリは一度だけ書く。
 
 ---
 
-## 5. ブートストラップでの使い方
+## 5. 初期化での使い方
 
 ### 5.1 技術選定の手順
 
@@ -2586,20 +2600,20 @@ LLM はプロジェクト種別ではなく、§3 の機能カテゴリとライ
 
 ### 5.2 brick deps.edn への推奨ライブラリの反映
 
-最初の brick（component / base）を作成したら、必要な機能カテゴリに対応する推奨ライブラリを **brick の deps.edn** に反映する。技術選定の承認と deps.edn 変更の承認は別物であり、LLM はユーザ承認後、CLAUDE.md §2 禁止事項（依存追加）に従って進める：
+最初の brick（component / base）を作成したら、必要な用途別機能カテゴリに対応する推奨ライブラリを **brick の deps.edn** に反映する。技術選定の承認と deps.edn 変更の承認は別物であり、LLM はユーザ承認後、CLAUDE.md §2 禁止事項（依存追加）に従って進める：
 
 1. `clj -M:poly create component name:<domain>` でドメイン component を作成（ユーザ承認必須）
 2. `clj -M:poly create base name:<entry>` で entry base を作成（ユーザ承認必須）
-3. 作成された **base の deps.edn**（`bases/<entry>/deps.edn`）に、必要な機能カテゴリの §3 該当推奨ライブラリを記述
+3. 作成された **base の deps.edn**（`bases/<entry>/deps.edn`）に、必要な用途別機能カテゴリの §3 該当推奨ライブラリを記述
    - 例: HTTP API なら HTTP サーバ・ルーティング / JSON / 永続化 / 構造化ロギング 等の採用エントリを必要に応じて反映
-   - 複数の機能カテゴリにまたがる時も、実際には必要な推奨をマージする（重複は一度だけ書く）
+   - 複数の用途別機能カテゴリにまたがる時も、実際には必要な推奨をマージする（重複は一度だけ書く）
 4. component の deps.edn（`components/<domain>/deps.edn`）には、ドメイン純粋性を保つため **I/O 系ライブラリは書かない**（I/O は base 側）
 5. プロジェクト固有ライブラリも同じ brick deps.edn に追加する
 6. **ワークスペースルート `deps.edn` の `:dev :extra-paths` に brick ソースパスを追加**（`components/<domain>/src` 等）、および `:dev :extra-deps` に **brick を `:local/root` 登録**（`poly/<domain> {:local/root "components/<domain>"}` 等）。後者を忘れると brick deps.edn の依存が REPL で解決されない（`ClassNotFoundException`）
 7. **開発支援ライブラリ採用時**: 開発支援ライブラリはワークスペースルートの `deps.edn` の `:dev :extra-deps` に追加（本番ビルドに混入させない）
 8. `development/src/dev/user.clj` で採用ライブラリに応じた `:require` と実装を有効化
    - 採用した任意ライブラリに対応するセクションだけを有効化
-9. `.clj-kondo/config.edn` で採用機能カテゴリに対応する `discouraged-var` があれば有効化
+9. `.clj-kondo/config.edn` で採用した用途別機能カテゴリに対応する `discouraged-var` があれば有効化
 10. clj-kondo の hook 取り込み（shell で実行、tools.deps の :main-opts はシェル展開されないためエイリアス化できない）: `clj -M:lint --copy-configs --dependencies --lint "$(clojure -A:dev -Spath)"`
 11. §6 整合性チェック実施
 12. 独立したコミット
@@ -2658,7 +2672,7 @@ clj -M:dev:nrepl
 
 **§3 は強制一致ではなく推奨カタログ**。brick の deps.edn が §3 と完全一致している必要はない。ただし以下を確認する：
 
-1. 採用した機能カテゴリの確認事項を満たしているか（機能カテゴリの充足、設定ファイルの存在等）
+1. 採用した用途別機能カテゴリの確認事項を満たしているか（用途別機能カテゴリの充足、設定ファイルの存在等）
 2. 推奨からの逸脱がある場合、ADR が発行されているか（§5.4 参照）
 3. DESIGN.md §8.3 技術選定欄と brick の実装が整合しているか
 
@@ -2669,7 +2683,7 @@ clj -M:dev:nrepl
 
 ### 6.4 CI への組み込み
 
-ブートストラップ完了時に、以下を CI 対象にする：
+初期化完了時に、以下を CI 対象にする：
 
 ```yaml
 # 例: GitHub Actions
@@ -2687,7 +2701,7 @@ clj -M:dev:nrepl
 
 ### 6.5 将来の自動検証（継続充実項目）
 
-brick deps.edn が必要機能カテゴリに対応する §3 機能別推奨を満たしているかの機械検証は、**将来的にスクリプト化**される予定である。現時点では文書上の確認事項として運用する。検証の粒度は「機能カテゴリの充足」であり、「具体ライブラリ名の一致」ではない（推奨の強制ではなく、漏れの防止）。
+brick deps.edn が必要な用途別機能カテゴリに対応する §3 機能別推奨を満たしているかの機械検証は、**将来的にスクリプト化**される予定である。現時点では文書上の確認事項として運用する。検証の粒度は「用途別機能カテゴリの充足」であり、「具体ライブラリ名の一致」ではない（推奨の強制ではなく、漏れの防止）。
 ∵ MAINTAINERS_GUIDE.md §5.9
 
 ---
@@ -2698,7 +2712,7 @@ brick deps.edn が必要機能カテゴリに対応する §3 機能別推奨を
 
 ### 7.1 採用検討の契機
 
-- 既存の機能カテゴリで実現困難な機能が必要になった
+- 既存の用途別機能カテゴリで実現困難な機能が必要になった
 - 既存採用ライブラリに重大な問題（メンテナンス停止、脆弱性）
 - プロダクト要件で新しい機能領域が発生（例: 初めてメッセージキューを扱う）
 
@@ -2807,7 +2821,7 @@ brick deps.edn が必要機能カテゴリに対応する §3 機能別推奨を
 
 | 文書 | 本文書との関係 |
 |---|---|
-| `../CLAUDE.md` | 必須層と依存追加の承認規律 |
+| `../CLAUDE.md` | 必須技術基盤と依存追加の承認規律 |
 | `BOOTSTRAP_GUIDE.md` | 初期化時の具体的ファイル操作 |
 | `COLLABORATION_GUIDE.md` | 編集権限マトリクス |
 | `MAINTAINERS_GUIDE.md` | 本文書の保守規律 |
