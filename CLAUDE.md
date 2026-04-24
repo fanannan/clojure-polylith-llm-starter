@@ -364,12 +364,12 @@ LLM が独自判断で brick deps.edn にライブラリを追加・削除・変
 
 ### 6.3 判断済み推奨集の利用と原則からの導出の関係
 
-STACK_GUIDE.md の `;; lib-catalog` カタログは、本テンプレートの第一原理と三基底原則に基づき**予め判断を済ませた結果のメモリー**である。毎回同じ判断を繰り返すのは疲労を生むため、予め記録して再利用する。
+STACK_GUIDE.md の `;; lib-catalog` カタログは、本テンプレートの第一原理と三基底原則に基づき**予め判断を済ませた結果の記録**である。毎回同じ判断を繰り返すのは疲労を生むため、予め記録して再利用する。
 
 **利用規律**:
 
 - カタログに記載された領域は、これを信頼して利用する(プロジェクトのゴールと矛盾しない限り)
-- カタログに**未記載の領域**(該当機能節が無い技術分野、例: 特殊な科学技術計算、ゲーム、独自の用途等)に遭遇した場合、**第一原理から判断材料を整理してユーザ判断へ渡す**。これはテンプレートの欠陥ではなく、メモリーが未カバーなだけ
+- カタログに**未記載の領域**(該当機能節が無い技術分野、例: 特殊な科学技術計算、ゲーム、独自の用途等)に遭遇した場合、**第一原理から判断材料を整理してユーザ判断へ渡す**。これはテンプレートの欠陥ではなく、判断記録が未整備なだけ
 - 原則からの導出で候補・代替・リスクを整理し、**採用可否は人間が決定**する（未記載領域は人間専権 (L0)）
 - カタログにないことは思考停止の理由にならないが、LLM が独断採用する理由にもならない
 
@@ -381,7 +381,7 @@ STACK_GUIDE.md の `;; lib-catalog` カタログは、本テンプレートの�
 4. プロジェクト固有要件で判断が分かれる部分と、LLM だけでは決定できない価値判断をユーザに提示
 5. 採用決定後、判断経緯を ADR として記録する。テンプレート保守者側で一般化できる知見なら、STACK_GUIDE.md に追記する
 
-カタログの網羅追求は疲労最小化原則と自己矛盾する(網羅は永久に達成不可能)。メモリーは「知っていることを記録する」ものであり、「すべてを記録しようとする」ものではない。
+カタログの網羅追求は疲労最小化原則と自己矛盾する(網羅は永久に達成不可能)。判断記録は「知っていることを記録する」ものであり、「すべてを記録しようとする」ものではない。
 
 ---
 
@@ -453,7 +453,7 @@ STACK_GUIDE.md の `;; lib-catalog` カタログは、本テンプレートの�
 選択肢 D（人間による設計判断を求める）を選んだ場合、報告内容を **QUESTIONS に新規 Q として記録**する。
 ¤ .llm/memory/QUESTIONS.md §0.9
 
-1. ID を採番（`Q-YYYY-MM-NNN`）、状態 `open`
+1. ID を採番（`Q-YYYY-MM-NNN`）、状態 `未対応(open)`
 2. 本節の報告フォーマット（試みた内容・残障害・仮説）を Q の `文脈` と `選択肢` に転記
 3. ユーザへの報告で「Q-YYYY-MM-NNN として記録しました」と言及
 4. 以降、該当コードに `;; TODO(Q-YYYY-MM-NNN): ...` を残し、解決まで自走しない
@@ -620,7 +620,7 @@ clj -M:poly create component name:<name>
 5. **実装反映**: §8.1〜§8.2 の作業プロトコル適用
 6. **コミット**: ADR 番号をメッセージに含める（例: `Revise DESIGN.md §3 for streaming inference (ADR-0012)`）
 
-**DESIGN は「現在の仕様」の一次情報源**であり、変更履歴は ADR・git・QUESTIONS アーカイブで保全される（分類管理の原則による 4 種文書分離）。DESIGN 内に差分表記・追記・変更履歴を残さない（原則 7 文書の自己整合性、疲労最小化原則）。同じ原則は KNOWLEDGE にも適用される。
+**DESIGN は「現在の仕様」の一次情報源**であり、変更履歴は ADR・git・QUESTIONS アーカイブで保全される（分類管理の原則による 4 種文書分離）。DESIGN 内に差分表記・追記・変更履歴を残さない（「文書の自己整合性」、疲労最小化原則）。同じ原則は KNOWLEDGE にも適用される。
 
 詳細:
 - 権限階層: COLLABORATION_GUIDE
@@ -785,23 +785,23 @@ Exit codes: `0` 成功 / `1` eval-error・namespace-not-found・:ex / `2` 接続
 
 ```mermaid
 flowchart TD
-  IMPL[実装中の発見・判断の必要] --> Q_NEW[QUESTIONS.md に Q 起票<br>status=open]
+  IMPL[実装中の発見・判断の必要] --> Q_NEW[QUESTIONS.md に Q 起票<br>状態=未対応(open)]
   SPEC_AMBIG[DESIGN.md の曖昧性発見] --> Q_NEW
   STOP[自己停止プロトコル §7.3 D] --> Q_NEW
 
-  Q_NEW --> DISCUSS[ユーザと議論<br>status=in-discussion]
+  Q_NEW --> DISCUSS[ユーザと議論<br>状態=議論中(in-discussion)]
   DISCUSS --> DECIDE{判断確定}
 
-  DECIDE -->|却下| WONTFIX[wontfix として記録]
-  DECIDE -->|統合| SUPERSEDED[superseded として他 Q に集約]
+  DECIDE -->|却下| WONTFIX[却下(wontfix) として記録]
+  DECIDE -->|統合| SUPERSEDED[統合済み(superseded) として他 Q に集約]
   DECIDE -->|採用| PROMOTE{反映先判定}
 
   PROMOTE -->|現時点の契約・不変条件・暗黙知| K_ADD[KNOWLEDGE.md に追記<br>上書き更新]
-  PROMOTE -->|なぜそう決めたかの不変記録| A_NEW[adr/NNNN-topic.md 新規発行<br>status=accepted]
+  PROMOTE -->|なぜそう決めたかの不変記録| A_NEW[adr/NNNN-topic.md 新規発行<br>状態=accepted]
   PROMOTE -->|プロダクト仕様への影響| D_UPDATE[DESIGN.md 改訂提案]
   PROMOTE -->|一度きりの判断| NONE[追加反映なし<br>アーカイブのみ]
 
-  K_ADD --> ARCHIVE[QUESTIONS.md §3 に resolved として移動]
+  K_ADD --> ARCHIVE[QUESTIONS.md §3 に 解決済み(resolved) として移動]
   A_NEW --> ARCHIVE
   D_UPDATE --> ARCHIVE
   NONE --> ARCHIVE

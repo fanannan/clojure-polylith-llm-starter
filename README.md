@@ -140,7 +140,7 @@ LLM が詰まった時は QUESTIONS に Q を起票して停止する。人間�
 ├── .llm/guide/               ← プロジェクト運営ガイド
 │   ├── CODING_GUIDE.md          Clojure 書き方詳細
 │   ├── POLYLITH_GUIDE.md        Polylith 運用・brick コード例
-│   ├── STACK_GUIDE.md           技術選定カタログ（判断結果のメモリー）
+│   ├── STACK_GUIDE.md           技術選定の判断済み推奨集（判断結果の記録）
 │   ├── COLLABORATION_GUIDE.md   LLM と人間の協働プロトコル
 │   ├── BOOTSTRAP_GUIDE.md       初期化手順詳細（LLM 向け、完了後は CLAUDE.md §0 の参照指示で自然にスキップ）
 │   └── MAINTAINERS_GUIDE.md     テンプレート自体の保守・設計原則
@@ -164,7 +164,7 @@ LLM が詰まった時は QUESTIONS に Q を起票して停止する。人間�
 │   ├── check-interface-contracts.sh  interface.clj の m/=> 契約網羅
 │   ├── check-single-ns-per-file.sh   1 ファイル 1 ns
 │   ├── check-vulnerabilities.sh      clj-watson による脆弱性スキャン（release 前）
-│   ├── gen_lib_catalog.clj           技術選定カタログの EDN block から生成物を生成
+│   ├── gen_lib_catalog.clj           技術選定の判断済み推奨集の EDN block から生成物を生成
 │   ├── lint-import-hooks.sh          依存ライブラリ提供の clj-kondo hook 取込
 │   ├── session-briefing.sh           SessionStart 時の状態ブリーフィング（REPL 状態含む）
 │   ├── repl-eval.sh                  稼働中 nREPL へ eval 送信（LLM 向け、CLAUDE.md §9）
@@ -208,7 +208,7 @@ LLM が詰まった時は QUESTIONS に Q を起票して停止する。人間�
 - **機械化 5 層**: 第 1 層 clj-kondo 組込 linter / 第 2 層 `.clj-kondo/polyguard/` custom hook / 第 3 層 Splint / 第 4 層 `.llm/scripts/check-*.sh`（設定・構造検査）+ Polylith `poly check` + Malli instrumentation / 第 5 層 clj-watson（時間軸脆弱性）。規約を人間の注意力ではなくツールで強制（詳細は `MAINTAINERS_GUIDE.md` §5.10）
 - **単一の正本（SSOT）生成**: `.llm/scripts/gen_lib_catalog.clj` が `STACK_GUIDE` の `;; lib-catalog` EDN block 群を検証・合成し `.llm/data/` 配下に生成物を出力する。shell script はその生成物を読む
 - **REPL as Primary Workbench**: `.llm/scripts/repl-eval.sh` により LLM が稼働中 nREPL に eval / load-file を送信。永続 session で状態を継続し、編集から検証までを同一ターンで閉じる
-- **技術選定カタログ**: 必須技術基盤はワークスペースルートで常に採用し、追加ライブラリは必要な brick の `deps.edn` に配置する。判断済み推奨集は `.llm/guide/STACK_GUIDE.md`
+- **技術選定の判断済み推奨集**: 必須技術基盤はワークスペースルートで常に採用し、追加ライブラリは必要な brick の `deps.edn` に配置する。判断済み推奨集は `.llm/guide/STACK_GUIDE.md`
 - **4 種の文書分離**: 仕様（DESIGN）/ 知識（KNOWLEDGE）/ 決定履歴（ADR）/ 判断保留（QUESTIONS）
 - **自己停止プロトコル**: LLM が時間感覚なく詰まった時、ターン数閾値で停止し Q を立てる
 

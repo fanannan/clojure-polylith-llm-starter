@@ -68,7 +68,7 @@ LLM は本ファイルを読むたびに、以下の観点で**能動的に曖�
 
 - **判断の経緯・根拠**: `.llm/memory/adr/NNNN-topic.md`（不変、supersede で改訂）
 - **ファイルレベルの差分**: git コミット履歴
-- **変更過程の未決事項**: `.llm/memory/QUESTIONS.md`（open → resolved）
+- **変更過程の未決事項**: `.llm/memory/QUESTIONS.md`（未対応(open) → 解決済み(resolved)）
 
 これらが揃っているため、本ファイル内に追記・差分表記・変更履歴節を持つ必要はない。本ファイルは常に**現在形で上書き更新**する（KNOWLEDGE.md §0.5 と同じ運用）。
 
