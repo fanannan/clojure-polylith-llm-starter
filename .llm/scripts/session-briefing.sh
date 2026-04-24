@@ -204,28 +204,49 @@ recent_commits
 echo ""
 echo "## REPL 状態（CLAUDE.md §9 Live Workbench Protocol）"
 echo ""
+# .nrepl-port 存在 + 実際の TCP 接続可否で判定（crash 後の stale file を見誤らない）
+nrepl_status="not-running"
+nrepl_port=""
 if [ -f ".nrepl-port" ]; then
-  nrepl_port="$(tr -d '[:space:]' < .nrepl-port 2>/dev/null || echo '?')"
-  echo "- nREPL サーバ: 起動中 (port $nrepl_port)"
-  if [ -f ".nrepl-session" ]; then
-    echo "- 永続 session (.nrepl-session): 存在"
-  else
-    echo "- 永続 session (.nrepl-session): 未作成（初回 eval 時に clone）"
+  nrepl_port="$(tr -d '[:space:]' < .nrepl-port 2>/dev/null)"
+  if [ -n "$nrepl_port" ] && (echo > "/dev/tcp/127.0.0.1/$nrepl_port") 2>/dev/null; then
+    nrepl_status="running"
+  elif [ -n "$nrepl_port" ]; then
+    nrepl_status="stale"   # file あるが接続不能（crash 等）
   fi
-  echo ""
-  echo "**LLM への指示**: **REPL を primary workbench として自発的に使用する**。"
-  echo "  ./.llm/scripts/repl-eval.sh --expr '(dev.user/status)'   # 最初の状態確認"
-  echo "  ./.llm/scripts/repl-eval.sh --load-file <編集したファイル>  # 即反映"
-  echo "  ./.llm/scripts/repl-eval.sh --ns <ns> --expr '(<fn> <args>)'  # 評価"
-  echo "  CLAUDE.md §8.0.0 trigger matrix で REPL 必須条件を確認、§9 Live Diagnosis Loop に従う。"
-else
-  echo "- nREPL サーバ: 未起動"
-  echo ""
-  echo "**LLM への指示**: REPL 駆動開発（CLAUDE.md §9）の前提として、ユーザに"
-  echo "次の起動を依頼する（1 度だけ）:"
-  echo "  別ターミナルで: clj -M:dev:nrepl"
-  echo "  起動後は ./.llm/scripts/repl-eval.sh が自動で .nrepl-port を読む。"
 fi
+
+case "$nrepl_status" in
+  running)
+    echo "- nREPL サーバ: 起動中 (port $nrepl_port、TCP 接続確認済)"
+    if [ -f ".nrepl-session" ]; then
+      echo "- 永続 session (.nrepl-session): 存在"
+    else
+      echo "- 永続 session (.nrepl-session): 未作成（初回 eval 時に clone）"
+    fi
+    echo ""
+    echo "**LLM への指示**: **REPL を primary workbench として自発的に使用する**。"
+    echo "  ./.llm/scripts/repl-eval.sh --expr '(dev.user/status)'   # 最初の状態確認"
+    echo "  ./.llm/scripts/repl-eval.sh --load-file <編集したファイル>  # 即反映"
+    echo "  ./.llm/scripts/repl-eval.sh --ns <ns> --expr '(<fn> <args>)'  # 評価"
+    echo "  CLAUDE.md §8.0.0 trigger matrix で REPL 必須条件を確認、§9 Live Diagnosis Loop に従う。"
+    ;;
+  stale)
+    echo "- nREPL サーバ: **stale** (.nrepl-port は port $nrepl_port を示すが TCP 接続不能)"
+    echo ""
+    echo "**LLM への指示**: nREPL プロセスが終了している可能性。以下をユーザに依頼:"
+    echo "  1. 残存 .nrepl-port を削除: rm .nrepl-port"
+    echo "  2. 別ターミナルで再起動: clj -M:dev:nrepl"
+    ;;
+  *)
+    echo "- nREPL サーバ: 未起動"
+    echo ""
+    echo "**LLM への指示**: REPL 駆動開発（CLAUDE.md §9）の前提として、ユーザに"
+    echo "次の起動を依頼する（1 度だけ）:"
+    echo "  別ターミナルで: clj -M:dev:nrepl"
+    echo "  起動後は ./.llm/scripts/repl-eval.sh が自動で .nrepl-port を読む。"
+    ;;
+esac
 
 echo ""
 echo "## 着手前チェックリスト（CLAUDE.md §8.0）"

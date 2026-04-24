@@ -588,17 +588,19 @@ clj -M:poly create component name:<name>
 - `comment` フォーム満足禁止（§9.2 step 10）
 - 副作用反復（DB insert 等）は冪等性確認後に限る
 - **ターン跨ぎ state 依存禁止**: session 消滅前提で、結果は必ずコード化
-- **`(require ... :reload)` の常用禁止**: ns graph 変更は `tools.namespace` / `(safe-reset!)` / `(reset)`、`:reload` は narrow experiment のみ
+- **`(require ... :reload)` の常用禁止**: ns graph 変更は `(safe-reset!)`（tools.namespace を内包）、`:reload` は narrow experiment のみ
 - **defrecord shape / protocol method 変更時**: `(hard-reset!)` または fresh JVM。stale class instance による沈黙バグを避ける
 - 多エージェント並走時は `--fresh` か `--reset-session` で session 汚染を回避
 - bounded output（10KB/response）を超える探索は `(take 50 ...)` / `(keys m)` で絞る
 
 ### 9.4 Reload 規律（stale state を避ける表）
 
+**`(safe-reset!)` を universal helper として使う**（Integrant 採用時は `ig-repl/reset` に、非採用時は `tn/refresh` に dispatch）。直接 `(reset)` を呼ぶのは Integrant 採用時の low-level primitive で、コメント解除後のみ利用可能。
+
 | 変更種別 | 正しい対処 |
 |---|---|
 | 関数追加・変更（純粋） | `--load-file` or `(safe-reset!)` |
-| ns 追加・削除・rename | `(safe-reset!)` / `(reset)`（tools.namespace が graph を解決） |
+| ns 追加・削除・rename | `(safe-reset!)`（tools.namespace が graph を解決） |
 | 依存追加（deps.edn 変更） | fresh JVM 再起動（ClassLoader 再構築必要）|
 | Integrant key の defmethod 変更 | `(safe-reset!)` で新 defmethod 反映 |
 | defrecord shape / protocol method 追加 | `(hard-reset!)` or fresh JVM |

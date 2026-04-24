@@ -28,13 +28,14 @@
      - Malli instrumentation セクションは全プロジェクトで有効化したまま使う（必須層、削除不可）
 
    主要コマンド:
-     (malli-on!)   Malli instrumentation を起動（全プロジェクト共通、必須層の活用）
-     (malli-off!)  Malli instrumentation を停止
-     (go)          システム起動 + Malli instrumentation（Integrant を使う場合、解除後）
-     (reset)       リロード + 再起動（Integrant を使う場合、解除後）
-     (halt)        停止（Integrant を使う場合、解除後）
-     (system)      起動中システム参照（Integrant を使う場合、解除後）
-     (portal)      Portal 起動（Portal を使う場合、解除後）"
+     (status)          REPL 環境の状態確認（CLAUDE.md §9）
+     (malli-on!)       Malli instrumentation を起動（停止は (malli.dev/stop!)）
+     (probe x)         tap> + 値保持（println の代わり）
+     (safe-reset!)     reset を構造化エラー返却で包む
+     (hard-reset!)     stale-state recovery
+     (go)/(reset)/(halt)/(system)  Integrant 採用時（コメント解除後）
+     (portal)          Portal 起動（コメント解除後）
+     (fs-start!)/(fs-record-ns! 'ns)/(fs-clear!)  FlowStorm 利用時"
   (:require
    [clojure.tools.namespace.repl :as tn]
    [malli.dev :as mdev]
@@ -48,10 +49,11 @@
 ;;
 ;; cljfmt の :sort-ns-references? により、コピー後も自動的にアルファベット順に並ぶ。
 
-;; tools.namespace の refresh 対象
+;; tools.namespace の refresh 対象（SSOT）
 ;; dev は対象から外す（ここをリロードすると user が消える事故を防ぐ）
-;; 新規 brick 種別を追加したらここにも追加
-(tn/set-refresh-dirs "components" "bases")
+;; 新規 brick 種別を追加したらここに追加（set-refresh-dirs と `(status)` の両方に反映される）
+(def ^:private refresh-dirs ["components" "bases"])
+(apply tn/set-refresh-dirs refresh-dirs)
 
 ;; ---------------------------------------------------------------------------
 ;; Malli instrumentation — §1.1.1 全域性の動的検証
@@ -132,12 +134,16 @@
 
 (defn- safe-system-keys
   "Integrant system が起動中なら key 一覧を返す。未起動・未採用時は nil。
-   IllegalStateException は (go) 未実行時の signal のみ catch。"
+   integrant.repl.state/system は Var で root value が nil か map。
+   非 map（バージョン差で shape が変わった場合）は nil にして壊さない。"
   []
-  (try (some-> (resolve 'integrant.repl.state/system) deref keys)
-       (catch IllegalStateException _
-         (tap> {:workbench/integrant-not-running true})
-         nil)))
+  (try
+    (let [v   (resolve 'integrant.repl.state/system)
+          sys (when v @v)]
+      (when (map? sys) (keys sys)))
+    (catch IllegalStateException _
+      (tap> {:workbench/integrant-not-running true})
+      nil)))
 
 (defn status
   "接続時に最初に実行する。Malli on/off、Integrant system keys、
@@ -149,7 +155,7 @@
      :integrant-sys (when (:integrant cap) (safe-system-keys))
      :portal       (:portal cap)
      :flow-storm   (:flow-storm cap)
-     :refresh-dirs ["components" "bases"]  ; set-refresh-dirs で指定したもの
+     :refresh-dirs refresh-dirs
      :current-ns   (ns-name *ns*)}))
 
 (defn- do-reset
@@ -194,14 +200,27 @@
       ((resolve 'integrant.repl/go)))
     :hard-reset-done))
 
+(defn- resolve-first
+  "FlowStorm は major version で起動関数名が異なる（4.x: local-connect、古:
+   start-debugger、新: connect）。採用バージョンを問わず動くよう順に probe する。"
+  [syms]
+  (some resolve syms))
+
 (defn fs-start!
-  "FlowStorm debugger を起動（local-connect）。未導入時は :flow-storm-not-available。
-   起動後は fs-record-ns! で個別 ns を instrument する。
-   API はバージョンで異なる: 4.x は flow-storm.api/local-connect。"
+  "FlowStorm debugger を起動。未導入時は :flow-storm-not-available、
+   採用バージョンで start 関数が見つからない時は :flow-storm-api-unknown。
+   起動後は fs-record-ns! で個別 ns を instrument する。"
   []
-  (if (:flow-storm (ensure-dev-tools!))
-    (do ((resolve 'flow-storm.api/local-connect)) :started)
-    :flow-storm-not-available))
+  (cond
+    (not (:flow-storm (ensure-dev-tools!)))
+    :flow-storm-not-available
+
+    :else
+    (if-let [start-fn (resolve-first '[flow-storm.api/local-connect
+                                       flow-storm.api/connect
+                                       flow-storm.api/start-debugger])]
+      (do (start-fn) :started)
+      :flow-storm-api-unknown)))
 
 (defn fs-record-ns!
   "(fs-record-ns! 'poly.user.core) — load-file 直後に instrument。

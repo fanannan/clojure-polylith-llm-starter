@@ -30,6 +30,7 @@ CMD="eval"
 NS="dev.user"
 NS_EXPLICIT=0
 EXPR=""
+EXPR_SET=0       # --expr / 位置引数 / stdin のいずれでセットされたら 1
 LOAD=""
 FRESH=""
 
@@ -39,7 +40,7 @@ usage() {
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --expr)          EXPR="$2"; shift 2 ;;
+    --expr)          EXPR="$2"; EXPR_SET=1; shift 2 ;;
     --load-file)     LOAD="$2"; CMD="load"; shift 2 ;;
     --ns)            NS="$2"; NS_EXPLICIT=1; shift 2 ;;
     --interrupt)     CMD="interrupt"; shift ;;
@@ -49,8 +50,8 @@ while [[ $# -gt 0 ]]; do
     -h|--help)       usage; exit 0 ;;
     --*)             echo "ERROR: unknown option: $1" >&2; usage >&2; exit 2 ;;
     *)
-      if [[ -z "$EXPR" && "$CMD" == "eval" ]]; then
-        EXPR="$1"; shift
+      if [[ "$EXPR_SET" -eq 0 && "$CMD" == "eval" ]]; then
+        EXPR="$1"; EXPR_SET=1; shift
       else
         echo "ERROR: unexpected argument: $1" >&2; usage >&2; exit 2
       fi
@@ -63,14 +64,15 @@ if [[ "$CMD" == "load" && "$NS_EXPLICIT" -eq 1 ]]; then
   echo "WARNING: --ns は --load-file では無視されます (nREPL load-file op は ns を取らない)" >&2
 fi
 
-# stdin fallback
-if [[ "$CMD" == "eval" && -z "$EXPR" && -z "$LOAD" ]]; then
+# stdin fallback（--expr '' のような明示的空文字指定は EXPR_SET=1 で区別される）
+if [[ "$CMD" == "eval" && "$EXPR_SET" -eq 0 && -z "$LOAD" ]]; then
   if [[ -t 0 ]]; then
     echo "ERROR: --expr / --load-file / stdin のいずれか必須" >&2
     usage >&2
     exit 2
   fi
   EXPR="$(cat)"
+  EXPR_SET=1
 fi
 
 # exec-args を構築

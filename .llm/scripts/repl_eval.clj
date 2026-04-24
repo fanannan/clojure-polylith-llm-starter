@@ -49,13 +49,22 @@
     (flush))
   (System/exit 2))
 
+(defn- parse-port-file []
+  (try (-> ".nrepl-port" slurp str/trim Integer/parseInt)
+       (catch NumberFormatException _
+         (fatal! "FATAL: .nrepl-port の内容が整数でない（malformed）"
+                 (str "  内容: " (pr-str (slurp ".nrepl-port")))
+                 "HINT: `.nrepl-port` を削除して nREPL を再起動してください"))))
+
 (defn- discover-port []
-  (or (some-> (System/getenv "NREPL_PORT") Integer/parseInt)
-      (when (.exists (io/file ".nrepl-port"))
-        (try (-> ".nrepl-port" slurp str/trim Integer/parseInt)
-             (catch Exception _ nil)))
-      (fatal! "FATAL: nREPL 未起動 (.nrepl-port なし、NREPL_PORT 未設定)"
-              "HINT: 別ターミナルで `clj -M:dev:nrepl` を起動してください")))
+  (let [env-port     (some-> (System/getenv "NREPL_PORT") Integer/parseInt)
+        file-exists? (.exists (io/file ".nrepl-port"))]
+    (cond
+      env-port     env-port
+      file-exists? (parse-port-file)
+      :else
+      (fatal! "FATAL: nREPL 未起動 (.nrepl-port 不在、NREPL_PORT 未設定)"
+              "HINT: 別ターミナルで `clj -M:dev:nrepl` を起動してください"))))
 
 (defn- load-persistent []
   (when (.exists (io/file session-file))
@@ -120,9 +129,11 @@
       {:conn conn :client client :session-id (:session-id prior) :port port :prior prior}
 
       :else
+      ;; 新 clone の場合 last-request-id は旧 session のものなので引き継がない。
+      ;; interrupt は新 session で発行された最初の eval 以降にのみ意味を持つ。
       (let [sid (clone-session client)]
         (when-not fresh?
-          (save-persistent port sid (:last-request-id prior)))
+          (save-persistent port sid nil))
         {:conn conn :client client :session-id sid :port port}))))
 
 ;; ---------------------------------------------------------------------------
