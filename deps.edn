@@ -1,22 +1,21 @@
 ;; deps.edn (workspace ルート = development project)
 ;;
-;; 技術スタックの構成:
+;; 技術構成:
 ;;   - 必須層（本ファイルの :deps および必須エイリアス）: Clojure + tools.deps + Polylith + Malli + clj-kondo + cljfmt。
 ;;     全プロジェクトで常に採用、入れ替え不可
-;;   - stack 層のライブラリ: 各 brick (base / component) の deps.edn に書く
+;;   - 追加ライブラリ: 各 brick (base / component) の deps.edn に書く
 ;;     （Polylith の構造: 本番ビルドは brick の deps.edn から依存解決される）
 ;;
-;; stack 概念:
-;;   目的別の推奨構成（web-api / batch / cli / library / graphql-api / worker /
-;;   data-pipeline / bot / desktop / dev-tools）として文書的に整理されている。
-;;   選定論理と推奨ライブラリカタログは project-guide/STACK_GUIDE.md を参照。
+;; 技術選定:
+;;   HTTP、永続化、ライフサイクル管理など、必要な機能カテゴリごとに選ぶ。
+;;   選定論理と推奨ライブラリカタログは .llm/guide/STACK_GUIDE.md を参照。
 ;;
 ;; 本ファイルの役割:
 ;;   - 必須層の依存宣言
 ;;   - REPL 駆動開発（:dev）、Polylith（:poly）、lint（:lint）、format（:format）、
 ;;     依存更新確認（:outdated）、nREPL（:nrepl）の運用エイリアス
 ;;   - テスト実行は Polylith の `clj -M:poly test` / `clj -M:poly test :all` で行う
-;;   - 本ファイルには stack 別ライブラリ依存は書かない（brick の deps.edn が一次情報源）
+;;   - 本ファイルには本番ライブラリ依存は書かない（brick の deps.edn が一次情報源）
 ;;
 ;; 依存追加・変更は CLAUDE.md §2 により人間承認必須。
 ;;
@@ -37,7 +36,7 @@
  :paths []
 
  ;; -----------------------------------------------------------------
- ;; 必須層（全プロジェクトで採用、stack 非依存）
+ ;; 必須層（全プロジェクトで採用）
  ;; -----------------------------------------------------------------
  :deps
  {org.clojure/clojure {:mvn/version "1.12.0"}
@@ -51,7 +50,7 @@
   ;;   全 brick を統合 REPL に取り込む構成。以下の 2 つが必要:
   ;;     1. :extra-paths に brick のソースパスを追加 → REPL で namespace を読める
   ;;     2. :extra-deps に brick を :local/root で登録 → brick deps.edn の依存を解決
-  ;;   brick deps.edn が一次情報源（選択肢 H、STACK_GUIDE.md §1.2 真実の一箇所化）。
+  ;;   brick deps.edn が一次情報源。
   ;;   tools.deps は :extra-paths からソースを読むが各 brick の deps.edn を自動解決しない。
   ;;   :local/root で brick を依存登録して初めて推移的解決が動く。
   ;; ----------------------------------------------------------------
@@ -74,11 +73,11 @@
     ;;   poly/<entry>  {:local/root "bases/<entry>"}
     ;; これにより brick deps.edn の :deps が推移的解決される。
     ;;
-    ;; dev-tools stack を採用する場合、以下も追加（STACK_GUIDE.md §4.2.10）:
+    ;; 開発支援ライブラリを採用する場合、以下も追加:
     ;;   djblue/portal                {:mvn/version "0.58.5"}
     ;;   org.clojure/test.check       {:mvn/version "1.1.1"}
     ;;   nubank/matcher-combinators   {:mvn/version "3.9.1"}
-    ;; ライフサイクル管理に Integrant を採用する場合:
+    ;; ライフサイクル管理の REPL 補助を採用する場合:
     ;;   integrant/repl               {:mvn/version "0.4.0"}
     }
 
@@ -179,7 +178,7 @@
   ;;
   ;; nREPL server 側は :nrepl alias で起動、client は .nrepl-port を自動発見して接続。
   ;; 永続 session (.nrepl-session) を再利用し、(reset) 後の段階探索・契約違反再現・
-  ;; mulog 観察・flow-storm trace 等の stateful な REPL 駆動作業を支える。
+  ;; 構造化ログ観察・trace 等の stateful な REPL 駆動作業を支える。
   ;;
   ;; 使用例（shell wrapper 経由）:
   ;;   ./.llm/scripts/repl-eval.sh --expr '(+ 1 2)'
@@ -193,7 +192,7 @@
    :exec-fn     repl-eval/run}
 
   ;; ----------------------------------------------------------------
-  ;; :gen-lib-catalog — STACK_GUIDE.md から lib catalog artifact を生成
+  ;; :gen-lib-catalog — 技術選定カタログから artifact を生成
   ;;   `;; lib-catalog` マーカ付き EDN block を抽出 → Malli 検証 →
   ;;   .llm/data/{libs.edn, deprecated-libs.patterns, forbidden-requires.patterns}
   ;;   を出力。shell スクリプト（check-deprecated-libs.sh /

@@ -51,18 +51,18 @@ LLM 駆動開発では、**LLM の能力と同じくらい「人間との連携�
 | 判断内容 | 階層 | 備考 |
 |---|---|---|
 | プロダクトの目的・スコープ・主要ユースケース | L0 | DESIGN.md §1-§3。LLM は決定しない。ユーザが骨子を示した後の文章化は L1 |
-| 技術スタックへの新ライブラリ追加 | L0 | CLAUDE.md §2 禁止事項 |
+| 新ライブラリ追加 | L0 | CLAUDE.md §2 禁止事項 |
 | 新規 base / project の追加 | L0 | CLAUDE.md §2 禁止事項 |
 | コンポーネントの統合・分割 | L0 | 影響甚大 |
-| brick（base / component）deps.edn へのライブラリ追加・変更 | L0 | CLAUDE.md §2 禁止事項、§6.2、詳細論理は `STACK_GUIDE.md` |
+| brick（base / component）deps.edn へのライブラリ追加・変更 | L0 | CLAUDE.md §2 禁止事項。推奨カタログは `STACK_GUIDE.md` |
 | 新規 component の追加 | L1 | `poly create component` の実行は承認後 |
 | `interface.clj` の関数追加 | L1 | シグネチャと Malli スキーマを提示して承認 |
 | DESIGN.md の改訂提案 | L1 | 編集は承認後、LLM 独断禁止 |
 | KNOWLEDGE.md へのエントリ追加提案 | L1 | §6.1 参照 |
 | ADR の発行（決定内容がゲートまたは対話で承認済の場合） | **L2** | 決定は既に承認済なので ADR は記録の形式化に過ぎない。誤記は新 ADR で supersede（CLAUDE.md §1.2.5 失敗早期検知と承認設計）。§6.2 参照 |
 | ADR の発行（決定内容が未承認の場合） | L1 | 通常この状況は発生しない（決定は必ず先行する）。発生時は Q を立てて決定自体を先行確定する |
-| stack ラベル選定（STACK_GUIDE.md §4.2 で「記載あり」と判定） | L1 | ゲート 1 承認。LLM は該当する STACK_GUIDE.md §3 機能別節または §4.1 stack ラベルを引用して「記載あり」と明示。依存追加承認とは別 |
-| stack ラベル選定（STACK_GUIDE.md §4.2 で「記載なし」と判定＝未記載領域、CLAUDE.md §6.3） | L0 | LLM は「未記載領域」と明示して判断材料を整理する。採用可否は人間が決定し、採用後の ADR 発行は L2 |
+| 推奨カタログ記載済みの技術選定 | L1 | ゲート 1 承認。LLM は該当する機能カテゴリと推奨理由を示す。依存追加承認とは別 |
+| 推奨カタログ未記載の技術選定 | L0 | LLM は「未記載領域」と明示して判断材料を整理する。採用可否は人間が決定し、採用後の ADR 発行は L2 |
 | Q の起票 | L2 | 起票自体は LLM が判断、内容は人間が検討 |
 | Q の状態変更（open → in-discussion） | L2 | ユーザが議論を始めた時点で LLM が変更 |
 | Q を resolved にする | L2 | 解決根拠が明示されている場合は事後報告。曖昧な場合のみ確認（QUESTIONS.md §0.4） |
@@ -129,7 +129,7 @@ LLM 駆動開発では、**LLM の能力と同じくらい「人間との連携�
   - 曖昧性は §4 ONE BY ONE で 1 点ずつ解消
 - **人間の姿勢**:
   - README.md のキックオフプロンプト（完全版 or 最小版）を 1 回送信
-  - 主要バッチゲート（2 箇所：仕様+stack、構造+依存）で承認または修正指示
+  - 主要バッチゲート（2 箇所：仕様+技術選定、構造+依存）で承認または修正指示
   - 個別 L1 成果物（config.edn / CI / build.clj / dev/user.clj / workspace.edn / ルート deps.edn）の提示に応答
   - ONE BY ONE 質問に応答
   - 最終コミットのみ実行（ファイル編集操作は無し、§2.3.1 参照）
@@ -223,7 +223,7 @@ DESIGN.md・人間の指示・既存コードを読んだ時、以下の曖昧�
 
 [ASSUMPTION-1] 「未払い検知」は最終支払日から 30 日経過を基準とする
 [ASSUMPTION-2] 通貨は JPY 固定、小数点以下は扱わない
-[ASSUMPTION-3] エラー時は mulog に :level :error でログ、ユーザーには汎用エラーメッセージを返す
+[ASSUMPTION-3] エラー時は構造化ログに記録し、ユーザーには汎用エラーメッセージを返す
 
 これらを前提に `invoice.interface/detect-unpaid` を実装します。
 ```
@@ -308,9 +308,9 @@ DESIGN.md §3.UC-2「未払い検知」の実装に着手しようとしてい�
 技術選定・設計判断の際、**ADR 発行を能動的に提案**する：
 
 ```
-ログライブラリとして mulog を採用したので、ADR として記録を残すことを提案します：
+構造化ログライブラリを採用したので、ADR として記録を残すことを提案します：
 
-- ファイル名: adr/0004-adopt-mulog-for-structured-logging.md
+- ファイル名: adr/0004-adopt-structured-logging.md
 - 内容: Context / Decision / Considered Alternatives / Consequences
 
 発行してよろしいですか？

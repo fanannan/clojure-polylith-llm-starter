@@ -71,7 +71,7 @@ NVD API key 推奨（`https://nvd.nist.gov/developers/request-an-api-key`）。�
 
 - 初回セットアップ（`BOOTSTRAP_GUIDE.md §2.9`）
 - brick `deps.edn` に新ライブラリ追加後
-- `STACK_GUIDE.md §4.2` 推奨ライブラリ採用後
+- 推奨ライブラリ採用後
 - `clj -M:outdated` による最新化後
 
 ```bash

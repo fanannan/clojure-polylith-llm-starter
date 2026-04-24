@@ -210,15 +210,14 @@ LLM は本ファイルを読むたびに、以下の観点で**能動的に曖�
 
 <!-- 変更する場合は ADR を発行して理由を記録 -->
 
-### 8.3 採用 stack
+### 8.3 技術選定
 
-本プロジェクトで採用する技術スタック構成を記録する。選定論理と詳細は `.llm/guide/STACK_GUIDE.md` を参照。
+本プロジェクトで必須層以外に採用する技術を、機能カテゴリ単位で記録する。必要になったものだけを書く。
 
-- **主 stack**: ＜TODO: 例 web-api stack、batch stack、library stack 等＞
-- **補助 stack**: ＜TODO: なし / batch stack 等（複数目的を持つプロジェクトの場合）＞
-- **横断 stack**: ＜TODO: dev-tools stack（強く推奨）＞
-- **STACK_GUIDE.md 推奨からの逸脱**: ＜TODO: なし / あり（ADR-NNNN 参照）＞
-- **プロジェクト固有の追加ライブラリ**: ＜TODO: 例 `org.postgresql/postgresql`（DB ドライバ）、`com.cognitect.aws/sqs`（AWS SQS クライアント）等＞
+- **エントリ種別**: ＜TODO: Web API / CLI / バッチ / ライブラリ / ワーカ / bot / GUI 等＞
+- **追加する機能カテゴリ**: ＜TODO: HTTP / 永続化 / ジョブ実行 / 外部 API クライアント / 開発支援 等＞
+- **採用ライブラリ**: ＜TODO: 機能カテゴリごとに coord と用途を記録＞
+- **推奨カタログからの逸脱**: ＜TODO: なし / あり（ADR-NNNN 参照）＞
 
 ### 8.4 配布形態
 

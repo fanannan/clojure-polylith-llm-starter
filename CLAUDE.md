@@ -1,8 +1,8 @@
 # CLAUDE.md — LLM 作業ガイド
 
 **このプロジェクトは Clojure + Polylith ワークスペースです**。
-必須技術は **Clojure + tools.deps + Polylith + Malli + clj-kondo + cljfmt + Splint + clj-watson**（バージョン・JVM LTS は `.llm/guide/STACK_GUIDE.md` §2.1 を参照）。
-目的別の追加ライブラリ（HTTP、DB、ライフサイクル管理等）は **stack** として構成され、詳細は `.llm/guide/STACK_GUIDE.md` を参照。
+必須技術は **Clojure + tools.deps + Polylith + Malli + clj-kondo + cljfmt + Splint + clj-watson**。
+追加ライブラリ（HTTP、DB、ライフサイクル管理等）は必要な機能カテゴリごとに選び、各 brick の `deps.edn` に記録する。推奨カタログは `.llm/guide/STACK_GUIDE.md`。
 本ファイルは、本リポジトリで作業する LLM エージェント（Claude Code を主想定）への指示書である。
 人間向けの説明ではない。**LLM はこのファイルを毎セッション必ず最初に読み、ここに書かれた規約から外れない**。
 
@@ -22,7 +22,7 @@
 |---|---|---|
 | `.llm/guide/CODING_GUIDE.md` | Clojure の書き方詳細、LLM 特有の落とし穴 | コーディング判断に迷った時 |
 | `.llm/guide/POLYLITH_GUIDE.md` | Polylith 構造の詳細運用、brick 追加手順、境界判断 | brick 追加時・`poly check` で詰まった時 |
-| `.llm/guide/STACK_GUIDE.md` | 技術スタック選定の論理と実装（必須層 / stack 層 / 横断層） | stack 選択時、新ライブラリ採用検討時、技術選定根拠の確認時 |
+| `.llm/guide/STACK_GUIDE.md` | 技術選定の推奨カタログ（必須層、機能カテゴリ、禁止・非推奨ライブラリ） | ライブラリ採用検討時、技術選定根拠の確認時 |
 | `.llm/guide/COLLABORATION_GUIDE.md` | LLM と人間の協働プロトコル（役割分担・曖昧性解消・対話） | 協働方針・質問粒度・役割優先順位で迷った時 |
 | `.llm/guide/BOOTSTRAP_GUIDE.md` | プロジェクト初期化手順 | **初期化期のみ**（完了後は §0 の参照指示で自然にスキップされる） |
 | `.llm/guide/MAINTAINERS_GUIDE.md` | テンプレート自体の設計原則・保守者向け | テンプレート改修・ライブラリ更新・規約追加時 |
@@ -43,14 +43,14 @@
 
 | 状況 | 主に読むべき文書 |
 |---|---|
-| **プロジェクト初期化中** | `.llm/guide/BOOTSTRAP_GUIDE.md`（CLAUDE.md §1 原理・§6.2 stack の採用・変更・`STACK_GUIDE.md`・DESIGN.md 埋め込みを随時参照） |
+| **プロジェクト初期化中** | `.llm/guide/BOOTSTRAP_GUIDE.md` |
 | **日常開発** | CLAUDE.md（本文書） |
 | **仕様確認** | DESIGN.md |
 | **契約・不変条件の確認** | `.llm/memory/KNOWLEDGE.md` |
 | **過去の設計判断の確認** | `.llm/memory/adr/` |
 | **Clojure 書き方判断** | `.llm/guide/CODING_GUIDE.md` |
 | **Polylith 構造判断** | `.llm/guide/POLYLITH_GUIDE.md` |
-| **技術選定・stack 判断** | `.llm/guide/STACK_GUIDE.md` |
+| **技術選定** | `.llm/guide/STACK_GUIDE.md` |
 | **協働方針・質問粒度の判断** | `.llm/guide/COLLABORATION_GUIDE.md` |
 | **判断に迷った時** | `.llm/memory/QUESTIONS.md` に Q を立てる |
 | **テンプレート自体の改修** | `.llm/guide/MAINTAINERS_GUIDE.md` |
@@ -82,7 +82,7 @@
 |---|---|---|
 | **全域性** | 失敗を契約に持ち上げ、`nil` punning や例外握り潰しなどの逃げ道を封じる | **Malli** による `m/=>` 関数契約と境界検証 |
 | **不変性** | 変更可能性を限定し、ほとんどの値を不変に | Clojure 標準の**持続データ構造**、値中心設計、`defrecord` 限定使用 |
-| **副作用の隔離** | 副作用を最外層に集約し、内側は純粋に保つ | **純粋関数コア / 副作用シェル**、I/O は依存注入で境界から注入（Integrant 等の起動管理は採用時のみ） |
+| **副作用の隔離** | 副作用を最外層に集約し、内側は純粋に保つ | **純粋関数コア / 副作用シェル**、I/O は依存注入で境界から注入 |
 
 これら三つは**相互に強化する**。一つ緩めると他二つの効果も目減りする。
 
@@ -148,7 +148,7 @@
 以下は L0/L1 相当として扱う。提案可否・実行可否で迷った場合は上位階層に倒す。
 
 - 依存ライブラリの追加
-- **brick（base / component）の deps.edn へのライブラリ追加・変更**（実質的に依存追加。詳細手順は §6.2、選定論理は `.llm/guide/STACK_GUIDE.md`）
+- **brick（base / component）の deps.edn へのライブラリ追加・変更**（実質的に依存追加）
 - 既存 API（`interface.clj` の公開関数、Malli スキーマ、DB スキーマ）の破壊的変更
 - 新規 component / base / project の追加（`poly create component` / `poly create base` / `poly create project`）
 - DB マイグレーションの実行（生成は可、実行は人間が行う）
@@ -160,9 +160,9 @@
 
 ---
 
-## 3. 技術スタック
+## 3. 技術構成
 
-本テンプレートの**必須層**は以下。入れ替え不可（バージョンと階層定義の正本は `STACK_GUIDE.md §2.1`）：
+本テンプレートの**必須層**は以下。入れ替え不可：
 
 - **Clojure**（言語）
 - **tools.deps**（`deps.edn` による依存管理。Polylith の前提）
@@ -176,9 +176,9 @@
 
 必須層が固定される理由は、これらが本テンプレートの機械化・構造検証・境界契約・整形規律の前提だからである。入れ替えると個別ライブラリの変更ではなく、§1 の実装手段そのものを変更することになる。変更が必要な場合はテンプレート保守タスクとして扱い、`.llm/guide/MAINTAINERS_GUIDE.md` の手順に従う。
 
-必須層以外の技術選定（テストランナー、HTTP サーバ、DB 接続、ロギング、コンポーネント管理、JSON 変換など）は、プロジェクトの性格に応じて選ぶ **stack 層**に属する。選定の論理と推奨カタログは `.llm/guide/STACK_GUIDE.md` に一元化されている。採用した stack は `DESIGN.md` §8.3 に記録する。
+必須層以外の技術選定（HTTP、永続化、ロギング、ライフサイクル管理、JSON 変換など）は、必要な機能カテゴリごとに選ぶ。選定の論理と推奨カタログは `.llm/guide/STACK_GUIDE.md` に一元化されている。採用した技術は `DESIGN.md` §8.3 に記録する。
 
-STACK_GUIDE.md に載っていない領域に遭遇した場合は、§6.3 の手順に従って第一原理から判断材料を整理し、人間判断へ渡す。必須層が固定される点は変わらない。
+推奨カタログに載っていない領域に遭遇した場合は、§6.3 の手順に従って第一原理から判断材料を整理し、人間判断へ渡す。必須層が固定される点は変わらない。
 
 ---
 
@@ -192,7 +192,7 @@ STACK_GUIDE.md に載っていない領域に遭遇した場合は、§6.3 の�
 
 - **`interface.clj` の公開 `defn` に `m/=>` 契約を付ける**（境界契約は境界に集約。`core.clj` には置かない。`check-interface-contracts.sh` が機械検証）。`defn-` / `^:private` は原則として `interface.clj` に置かない。マクロ生成関数や可変長引数など契約表現で迷う場合は、`.llm/memory/QUESTIONS.md` に Q を立てる
 - 外部入力（HTTP リクエスト、DB 行、外部 API レスポンス、設定ファイル）は**入口で `m/validate`**
-- 開発時は Malli instrumentation を有効化（`dev/user.clj` の `(malli-on!)` を REPL 起動後に呼ぶ。Integrant を使うプロジェクトでは `(go)` が内部的に呼ぶ）。契約違反は REPL 評価で即座に例外化
+- 開発時は Malli instrumentation を有効化（`dev/user.clj` の `(malli-on!)` を REPL 起動後に呼ぶ。ライフサイクル管理を使うプロジェクトでは起動 helper が内部的に呼ぶ）。契約違反は REPL 評価で即座に例外化
 - 関数が失敗し得るなら、戻り値の型を一貫させる（常に `nil` を返すか、`{:error ...}` 形式か、一つに決める）
 - コード例は `.llm/guide/POLYLITH_GUIDE.md` §2 を参照（本テンプレートには brick サンプルは配布されない）
 
@@ -202,7 +202,7 @@ STACK_GUIDE.md に載っていない領域に遭遇した場合は、§6.3 の�
 
 - **素のマップ・ベクタ・セット・キーワード優先**。`defrecord` は次のいずれかのみ: (1) プロトコル多態、(2) ホットパス性能、(3) Java 相互運用
 - **外部境界・コンポーネント境界・永続化境界を跨ぐマップのキーは名前空間付き**（`:user/id`、`:order/total`）。完全にローカルな一時マップは例外可。修飾子はドメイン / コンポーネント名に揃える
-- **可変状態（`atom` / `ref` / `agent`）は最上位層に限定**。ここでの最上位層とは、ライフサイクルを開始・停止できる境界（Integrant component、`-main`、test fixture、REPL の dev helper）を指す。ドメイン関数内で `atom` を作らない
+- **可変状態（`atom` / `ref` / `agent`）は最上位層に限定**。ここでの最上位層とは、ライフサイクルを開始・停止できる境界（`-main`、test fixture、REPL の dev helper 等）を指す。ドメイン関数内で `atom` を作らない
 - 蓄積は `reduce` / `into`。ローカル `atom` で回さない
 - 詳細: `.llm/guide/CODING_GUIDE.md` §2〜§7
 
@@ -211,8 +211,8 @@ STACK_GUIDE.md に載っていない領域に遭遇した場合は、§6.3 の�
 純粋コア / 副作用シェル。
 
 - **ドメイン系コンポーネント**（user, order, …）は I/O ライブラリを `require` しない（clj-kondo で警告化）
-- I/O 系は**依存注入**で受け取る。Integrant を採用するプロジェクトでは Integrant key として提供、採用しないプロジェクトでは起動エントリで構築して関数引数として渡す（いずれも「ドメインは I/O を知らない」という原則は共通）
-- `println` / `prn` はアプリケーションコード（components / bases）で禁止（代わりに `mulog/log` または `tap>`）。**例外**: ビルドスクリプト（`projects/<deploy>/build.clj` 等）や `development/src/` 配下の一時デバッグコードでは、mulog 依存を引き込むこと自体が疲労増になるため `println` 使用を許容する。この例外は lint 設定 `.clj-kondo/config.edn` でも前提として扱われる（`--lint` 対象が `components bases development/src` で、build.clj は lint 対象外）
+- I/O 系は**依存注入**で受け取る。ライフサイクル管理を採用する場合も、採用しない場合も、「ドメインは I/O を知らない」という原則は共通
+- `println` / `prn` はアプリケーションコード（components / bases）で禁止。**例外**: ビルドスクリプトや `development/src/` 配下の一時デバッグコードでは許容する
 - `with-redefs` は §1.1 全域性を破るので原則禁止（`clj-kondo` の `:discouraged-var` で警告化済）。例外的に使用する場合は **ADR で理由付け必須**（「なぜ依存注入で置き換えられなかったか」を記録）
 
 ---
@@ -245,8 +245,8 @@ STACK_GUIDE.md に載っていない領域に遭遇した場合は、§6.3 の�
 
 Malli は必須層。`dev/user.clj` で `(malli-on!)` / `(malli-off!)` helper を提供する：
 
-- **Integrant を使うプロジェクト**: `(go)` が内部で `(malli-on!)` を呼んでから `(ig-repl/go)` を呼ぶ
-- **Integrant を使わないプロジェクト**（ライブラリ配布・単発 CLI 等）: REPL 起動後に明示的に `(malli-on!)` を呼ぶ
+- **ライフサイクル管理を使うプロジェクト**: 起動 helper が内部で `(malli-on!)` を呼ぶ
+- **ライフサイクル管理を使わないプロジェクト**（ライブラリ配布・単発 CLI 等）: REPL 起動後に明示的に `(malli-on!)` を呼ぶ
 
 `m/=>` 契約付き関数を REPL で呼び出した瞬間に契約違反が例外として顕在化。詳細は `.llm/guide/POLYLITH_GUIDE.md` §7.1。
 
@@ -291,9 +291,9 @@ Clojure CLI の呼び出しは `clj` に統一する。`clojure` は使用しな
 
 ---
 
-## 6. Polylith と stack の運用
+## 6. Polylith と技術選定の運用
 
-Polylith 構造の操作と、技術スタック層（stack）の採用・変更手順を扱う。§1.2.1 機械化の作業ツールである `poly` CLI と、STACK_GUIDE.md §3 機能別節 推奨カタログを併用する。
+Polylith 構造の操作と、追加ライブラリの採用・変更手順を扱う。`poly` CLI と推奨カタログを併用する。
 
 ### 6.1 poly コマンド早見表
 
@@ -319,20 +319,19 @@ Polylith 構造の操作と、技術スタック層（stack）の採用・変更
 **brick の書き方は `.llm/guide/POLYLITH_GUIDE.md` §2 のコード例を参照**(本テンプレートには brick サンプルは配布されない)。
 詳細手順・境界判断も **`.llm/guide/POLYLITH_GUIDE.md`**。
 
-### 6.2 stack の採用・変更
+### 6.2 ライブラリの採用・変更
 
-本テンプレートは技術スタックを**必須層**(ワークスペースルートの deps.edn の `:deps`)と**stack 層**(各 brick の deps.edn に書かれる、STACK_GUIDE.md §3 機能別節 の推奨カタログが参照先)として配布する。stack の採用・変更は**依存ライブラリの追加・削除に該当**するため、§2 禁止事項の対象であり、ユーザ承認が必須。
+必須層以外のライブラリは、必要な機能カテゴリに応じて各 brick の `deps.edn` に書く。これは**依存ライブラリの追加・削除**に該当するため、§2 禁止事項の対象であり、ユーザ承認が必須。
 
-- **選定根拠・各 stack の定義・禁止非推奨ライブラリ**: `.llm/guide/STACK_GUIDE.md`(一次情報源、推奨カタログ)
-- **ブートストラップ時の stack 選択手順**: `STACK_GUIDE.md` §5 および `.llm/guide/BOOTSTRAP_GUIDE.md` §2
-- **brick deps.edn への反映**: STACK_GUIDE.md §5.2、BOOTSTRAP_GUIDE.md §2.4
-- **整合性チェック**: `STACK_GUIDE.md` §6(brick 単位の依存解決、§3 機能別節の採用時の確認事項相当)
+- **選定根拠・禁止非推奨ライブラリ**: `.llm/guide/STACK_GUIDE.md`
+- **初期化時の具体手順**: `.llm/guide/BOOTSTRAP_GUIDE.md`
+- **brick deps.edn への反映**: 必要な brick にのみ追加し、ルート deps.edn に二重管理しない
 
-LLM が独自判断で brick deps.edn にライブラリを追加・削除・変更することは禁止。新 stack の提案や既存 stack の構成変更は ADR 発行を伴う判断として扱う(`MAINTAINERS_GUIDE.md` §5.9)。
+LLM が独自判断で brick deps.edn にライブラリを追加・削除・変更することは禁止。推奨カタログにない技術採用や推奨からの逸脱は、人間判断と ADR 記録を伴う。
 
 ### 6.3 推奨カタログの利用と原則からの導出の関係
 
-STACK_GUIDE.md §3 機能別節の `;; lib-catalog` カタログは、本テンプレートの第一原理(§1 疲労最小化)と三基底原則(§1.1 全域性・不変性・副作用隔離)に基づき**予め判断を済ませた結果のメモリー**である。毎回同じ判断を繰り返すのは疲労を生むため、予め記録して再利用する。
+STACK_GUIDE.md の `;; lib-catalog` カタログは、本テンプレートの第一原理と三基底原則に基づき**予め判断を済ませた結果のメモリー**である。毎回同じ判断を繰り返すのは疲労を生むため、予め記録して再利用する。
 
 **利用規律**:
 
@@ -347,7 +346,7 @@ STACK_GUIDE.md §3 機能別節の `;; lib-catalog` カタログは、本テン�
 2. 各機能カテゴリについて、疲労最小化・三基底原則・data 駆動・Malli 統合容易性・メンテナンス活動・Clojure 慣用との整合を評価基準に候補を整理
 3. 候補の選定根拠と却下した代替を明示化
 4. プロジェクト固有要件で判断が分かれる部分と、LLM だけでは決定できない価値判断をユーザに提示
-5. 採用決定後、判断経緯を ADR として記録(派生プロジェクト側)。テンプレート保守者側で一般化できる知見なら、STACK_GUIDE.md §3 機能別節 にメモリーとして追記(MAINTAINERS_GUIDE.md §5.9)
+5. 採用決定後、判断経緯を ADR として記録する。テンプレート保守者側で一般化できる知見なら、STACK_GUIDE.md に追記する
 
 カタログの網羅追求は疲労最小化原則と自己矛盾する(網羅は永久に達成不可能)。メモリーは「知っていることを記録する」ものであり、「すべてを記録しようとする」ものではない。
 
@@ -478,7 +477,7 @@ LLM のフィードバックループは**編集単位でターン内に閉じ�
 | 調査・文書確認のみでファイル編集なし | §8.0 の確認のみ | 実行可能な検証がなければ不要 |
 | typo、コメント、純粋関数、テストのみ | `clj -M:poly test` または対象テスト | REPL 稼働中なら eval 併用可 |
 | `interface.clj` / `m/=>` 契約 / 外部入力 schema の変更 | REPL eval 必須 → `clj -M:poly test` | instrumentation で境界を即確認 |
-| Integrant key、runtime wiring、mulog publisher、defrecord / protocol、ns graph 変更 | REPL eval 必須。必要に応じて `(safe-reset!)` / `(hard-reset!)` | 起動中 JVM の状態に依存するため |
+| runtime wiring、publisher、defrecord / protocol、ns graph 変更 | REPL eval 必須。必要に応じて `(safe-reset!)` / `(hard-reset!)` | 起動中 JVM の状態に依存するため |
 | deps.edn、brick 構造、workspace.edn 変更 | `clj -M:poly check` + 依存解決確認 + fresh JVM 判断 | REPL の既存 classpath では確認不足 |
 | 完了報告前 | §5.5 完了条件 | `poly test :all` で全体検証 |
 
@@ -490,12 +489,12 @@ LLM のフィードバックループは**編集単位でターン内に閉じ�
 
 | トリガ | 代表的な eval |
 |---|---|
-| Integrant key の defmethod 追加・変更 | `(safe-reset!)` → `(keys (system))` / `(get (system) ::my-key)` |
+| ライフサイクル定義の追加・変更 | `(safe-reset!)` → system map がある場合は対象 key を確認 |
 | tools.namespace refresh を伴う ns 再構成 | `(safe-reset!)` → `(myapp.new-ns/some-fn)` |
 | `m/=>` 契約の新規付与・変更 | 対象関数を正・不正引数で呼び contract violation を観察 |
-| mulog publisher / event 名の変更 | `(mulog/log ::probe :data {:k 1})` で publisher 経路を確認 |
+| ログ publisher / event 名の変更 | 小さな probe event で publisher 経路を確認 |
 | 外部 API / DB レスポンスの map 形状を使う処理 | `(probe (fetch-row db id))` で tap> + 値保持 |
-| 例外発生箇所の binding を観察するデバッグ | `(fs-start!)` → `(fs-record-ns! 'ns)` → 再現 |
+| 例外発生箇所の binding を観察するデバッグ | 導入済みの trace helper があれば使い、なければ通常 eval で再現 |
 | defrecord shape / protocol method 変更 | `(hard-reset!)` 後に対象関数評価 |
 
 **検出された失敗の振り分け**:
@@ -533,7 +532,7 @@ clj -M:poly create component name:<name>
 
 **重要**: `poly create` は brick ディレクトリしか作らない。ルート `deps.edn` の `:dev :extra-paths` / `:extra-deps` とワークスペース構成の追従は手動で、`.llm/guide/BOOTSTRAP_GUIDE.md §2.5` の brick 追加チェックリストに従う。作業後は完了条件（§5.5）の `./.llm/scripts/check-workspace-integrity.sh` が登録漏れを検知する。
 
-雛形は `.llm/guide/POLYLITH_GUIDE.md` §2 のコード例を参照。Integrant key を提供する場合は entry base の `system.clj`（POLYLITH_GUIDE.md §2.2）の defmethod 集約に追加。
+雛形は `.llm/guide/POLYLITH_GUIDE.md` §2 のコード例を参照。ライフサイクル定義を提供する場合は entry base の `system.clj` に集約する。
 詳細手順は `.llm/guide/POLYLITH_GUIDE.md` と `.llm/guide/BOOTSTRAP_GUIDE.md §2.5`。
 
 ### 8.3 コミット
@@ -550,8 +549,8 @@ clj -M:poly create component name:<name>
 
 派生プロジェクトでの適用上の違い：
 
-- **更新対象の範囲**: 必須層（ルート deps.edn）+ 自プロジェクトの brick deps.edn（STACK_GUIDE.md 自体の更新は行わない、§5.4 逸脱として ADR で記録）
-- **STACK_GUIDE.md の推奨との整合**: 更新で推奨バージョンと乖離する場合、ADR 発行 + DESIGN.md §8.3 に記録（STACK_GUIDE.md §5.4）
+- **更新対象の範囲**: 必須層（ルート deps.edn）+ 自プロジェクトの brick deps.edn（推奨カタログ自体は更新しない。逸脱は ADR で記録）
+- **推奨カタログとの整合**: 更新で推奨バージョンと乖離する場合、ADR 発行 + DESIGN.md §8.3 に記録
 - **新ライブラリ採用**: CLAUDE.md §2 禁止事項（brick deps.edn 変更は L0）、承認後に MAINTAINERS_GUIDE.md §5.2 手順適用
 
 ### 8.5 仕様変更・追加への対処
@@ -594,20 +593,17 @@ clj -M:poly create component name:<name>
 
 ### 9.1 `dev.user` — stable command surface（LLM と人間の共通 API）
 
-`development/src/dev/user.clj` で以下を提供（配布時 active、optional 依存は resilient）:
+`development/src/dev/user.clj` で以下を提供する:
 
 ```clojure
-(status)              ; 最初に呼ぶ: Malli / Integrant / Portal / FlowStorm / refresh-dirs / current-ns
+(status)              ; 最初に呼ぶ: instrumentation / optional helpers / refresh-dirs / current-ns
 (malli-on!)           ; Malli instrumentation ON
 (probe x)             ; tap> + 値をそのまま返す diagnosis primitive（println の代わり）
-(safe-reset!)         ; Integrant or tools.namespace reset を try/catch で包む
+(safe-reset!)         ; lifecycle helper or tools.namespace reset を try/catch で包む
 (hard-reset!)         ; stale-state recovery: halt → refresh-all → go
-(fs-start!)           ; FlowStorm debugger 起動（未導入時 :flow-storm-not-available）
-(fs-record-ns! 'ns)   ; 対象 ns を FlowStorm で instrument
-(fs-clear!)           ; stale trace を消去
 ```
 
-Integrant セクションを有効化した場合のみ、以下も利用できる。配布状態のまま評価しない:
+任意のライフサイクル管理セクションを有効化した場合のみ、以下も利用できる。配布状態のまま評価しない:
 
 ```clojure
 (go) (reset) (halt) (system)
@@ -621,9 +617,9 @@ Integrant セクションを有効化した場合のみ、以下も利用でき�
 |---|---|
 | REPL 接続の初回確認 | `session-briefing.sh` の REPL 状態節を読む。未起動なら 1 度だけ `clj -M:dev:nrepl` 起動をユーザに依頼。起動済みなら `./.llm/scripts/repl-eval.sh --expr '(dev.user/status)'` |
 | 通常の関数・契約確認 | 必要なら `(malli-on!)` → `--load-file <path>` → `--ns <ns> --expr '(<fn> <args>)'` |
-| runtime wiring / Integrant 変更 | `--load-file` 後に `(safe-reset!)` → `(keys (system))`。system map の対象 key を確認 |
-| 値の形状探索 | `(probe x)` / Portal を使う。raw `println` は使わない |
-| state / 時系列 / 制御フローのバグ | FlowStorm 導入時のみ `(fs-start!)` → `(fs-clear!)` → `(fs-record-ns! '<ns>)` → 再現。未導入なら `:flow-storm-not-available` を確認して通常 eval に戻る |
+| runtime wiring 変更 | `--load-file` 後に `(safe-reset!)`。system map がある場合は対象 key を確認 |
+| 値の形状探索 | `(probe x)` を使う。raw `println` は使わない |
+| state / 時系列 / 制御フローのバグ | 導入済みの trace helper があれば使う。未導入なら通常 eval に戻る |
 | refresh が壊れた感触 | `(hard-reset!)`。stale class / 半 reload 復旧を目的にする |
 | live 挙動を確認済み | REPL 結果を `interface_test.clj` 等へテスト化し、CLI gate（`poly check` / `poly test` / `lint`）へ進む |
 
@@ -642,14 +638,14 @@ REPL で得た値をテストへ「昇格」するとは、観察した具体値
 
 ### 9.4 Reload 規律（stale state を避ける表）
 
-**`(safe-reset!)` を universal helper として使う**（Integrant 採用時は `ig-repl/reset` に、非採用時は `tn/refresh` に dispatch）。直接 `(reset)` を呼ぶのは Integrant 採用時の low-level primitive で、コメント解除後のみ利用可能。
+**`(safe-reset!)` を universal helper として使う**（ライフサイクル管理採用時はその reset に、非採用時は `tn/refresh` に dispatch）。直接 `(reset)` を呼ぶのはコメント解除後のみ利用可能。
 
 | 変更種別 | 正しい対処 |
 |---|---|
 | 関数追加・変更（純粋。I/O・global state・class shape に触れない） | `--load-file` or `(safe-reset!)` |
 | ns 追加・削除・rename | `(safe-reset!)`（tools.namespace が graph を解決） |
 | 依存追加（deps.edn 変更） | fresh JVM 再起動（ClassLoader 再構築必要）|
-| Integrant key の defmethod 変更 | `(safe-reset!)` で新 defmethod 反映 |
+| ライフサイクル定義の変更 | `(safe-reset!)` で反映 |
 | defrecord shape / protocol method 追加・削除・シグネチャ変更 | `(hard-reset!)` or fresh JVM |
 | multimethod 再定義 | `(hard-reset!)` 推奨（stale dispatch 回避） |
 | `m/=>` 契約追加・変更 | `--load-file` で reload、その後 `(malli-on!)` 再実行 |

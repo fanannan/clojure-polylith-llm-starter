@@ -1,29 +1,27 @@
 (ns dev.user
   "Polylith development project の REPL エントリ。
 
-   本ファイルは REPL 駆動開発の補助を提供する。Integrant によるライフサイクル管理と
-   Portal によるデータ可視化を使う構成を想定した完成例として、3 セクション（Malli
-   instrumentation、Integrant、Portal）を同梱している。Integrant や Portal を使わない
-   プロジェクトでも配布状態のまま壊れないよう、Integrant / Portal セクションは
+   本ファイルは REPL 駆動開発の補助を提供する。必須の Malli instrumentation と、
+   任意のライフサイクル管理・データ可視化 helper を同梱している。任意セクションは
    行コメント `;;` で無効化されている。採用時に `;;` を一括除去して有効化する。
 
    含まれるもの:
      - Malli instrumentation セットアップ（必須層、全プロジェクトで有効化したまま使う）
-     - Integrant ライフサイクル制御 (go / reset / halt)（コメントアウト配布、採用時に解除）
-     - Portal ヘルパー (portal / portal-clear / portal-close)（コメントアウト配布、採用時に解除）
+     - ライフサイクル制御 (go / reset / halt)（コメントアウト配布、採用時に解除）
+     - データ可視化 helper（コメントアウト配布、採用時に解除）
 
    扱い指針:
-     - 配布時点では Malli instrumentation のみが有効。Integrant / Portal セクションは
+     - 配布時点では Malli instrumentation のみが有効。任意セクションは
        セクションヘッダごと `;;` で無効化されている。
-     - **Integrant を使うプロジェクト**: Integrant セクションを有効化する。
+     - **ライフサイクル管理を使うプロジェクト**: 対応セクションを有効化する。
        1. ns :require の `[integrant.core :as ig]` などの `;;` を除去
        2. `config` / `go` / `halt` / `reset` / `reset-all` / `system` の各 defn の
           `;;` を除去（IDE で複数行選択 → `;;` 一括除去）
        3. `config` 関数の中身を実装（必要機能カテゴリに応じた読み込みロジック）
-     - **Portal を使うプロジェクト**: Portal セクションを同様に有効化する。
+     - **データ可視化 helper を使うプロジェクト**: 対応セクションを同様に有効化する。
        1. `portal-instance` / `portal-tap-fn` の atom 定義の `;;` を除去
        2. `portal` / `portal-clear` / `portal-close` の defn の `;;` を除去
-     - Integrant や Portal を使わないプロジェクト: そのまま放置してよい。
+     - 任意 helper を使わないプロジェクト: そのまま放置してよい。
        コメントアウトされているため評価されず、依存が未解決でも REPL は壊れない。
      - Malli instrumentation セクションは全プロジェクトで有効化したまま使う（必須層、削除不可）
 
@@ -33,15 +31,15 @@
      (probe x)         tap> + 値保持（println の代わり）
      (safe-reset!)     reset を構造化エラー返却で包む
      (hard-reset!)     stale-state recovery
-     (go)/(reset)/(halt)/(system)  Integrant 採用時（コメント解除後）
-     (portal)          Portal 起動（コメント解除後）
-     (fs-start!)/(fs-record-ns! 'ns)/(fs-clear!)  FlowStorm 利用時"
+     (go)/(reset)/(halt)/(system)  ライフサイクル管理採用時（コメント解除後）
+     (portal)          データ可視化 helper 起動（コメント解除後）
+     (fs-start!)/(fs-record-ns! 'ns)/(fs-clear!)  trace helper 利用時"
   (:require
    [clojure.tools.namespace.repl :as tn]
    [malli.dev :as mdev]
    [malli.dev.pretty :as mpretty]))
 
-;; Integrant 採用時に追加する :require（上記 ns 宣言の :require 内にコピー）:
+;; ライフサイクル管理採用時に追加する :require（上記 ns 宣言の :require 内にコピー）:
 ;;
 ;;   [integrant.core :as ig]
 ;;   [integrant.repl :as ig-repl]
@@ -61,7 +59,7 @@
 ;; 【このセクションの扱い】
 ;;   - Malli は必須層。全プロジェクトで有効化したまま使う（削除不可）
 ;;   - REPL 起動後に (malli-on!) を呼ぶ、または (go) 内で自動的に呼ばれる
-;;     （Integrant を使う場合）
+;;     （ライフサイクル管理を使う場合）
 ;; ---------------------------------------------------------------------------
 
 (defonce ^:private malli-running? (atom false))
@@ -78,23 +76,23 @@
 ;; REPL Workbench Helpers（LLM と人間の共通 primary 面、CLAUDE.md §9）
 ;;
 ;; 【このセクションの扱い】
-;;   - 配布時点で active（削除不要）。optional 依存（Integrant / Portal /
-;;     flow-storm）は try/require で遅延検査、未導入でも壊れない
+;;   - 配布時点で active（削除不要）。optional 依存は try/require で遅延検査、
+;;     未導入でも壊れない
 ;;   - 接続時に最初に `(status)` を呼んで環境確認、以降は helper で操作
 ;;   - LLM は `.llm/scripts/repl-eval.sh` 経由で同じ helper を叩く
 ;;
 ;; 提供する helper:
 ;;   (status)           環境状態を 1 map で返す（最初に呼ぶ）
 ;;   (probe x)          tap> + 戻り値保持（println の代わり）
-;;   (safe-reset!)      Integrant / tools.namespace reset を try/catch で包む
+;;   (safe-reset!)      lifecycle / tools.namespace reset を try/catch で包む
 ;;   (hard-reset!)      stale-state recovery: halt → refresh-all → go
-;;   (fs-start!) / (fs-record-ns! 'ns) / (fs-clear!)   FlowStorm 導入時のみ動作
+;;   (fs-start!) / (fs-record-ns! 'ns) / (fs-clear!)   trace helper 導入時のみ動作
 ;;
 ;; Reload 規律（CLAUDE.md §9.4）:
 ;;   - 関数追加・変更: --load-file or (reset)
 ;;   - ns graph 変更 (追加・削除・rename): (reset) で tools.namespace が解決
 ;;   - 依存追加 (deps.edn 変更): fresh JVM 再起動必須
-;;   - Integrant defmethod 変更: (reset) で反映
+;;   - lifecycle 定義変更: (reset) で反映
 ;;   - defrecord shape / protocol method 追加: (hard-reset!) or fresh JVM
 ;;   - multimethod 再定義: (hard-reset!) 推奨
 ;;   - m/=> 契約追加: --load-file 後に (malli-on!) 再実行
@@ -252,7 +250,7 @@
 ;; ---------------------------------------------------------------------------
 
 ;; (defn config
-;;   "Integrant 設定を返す。採用 stack と用途に応じて実装する。
+;;   "ライフサイクル設定を返す。用途に応じて実装する。
 ;;
 ;;    Web サービス（aero + #profile）:
 ;;      (aero/read-config (io/resource \"config.edn\") {:profile :dev})
@@ -380,7 +378,7 @@
   ;; (system)
   ;; (keys (system))
 
-  ;; --- Portal（dev-tools stack 採用時）---
+  ;; --- データ可視化（採用時）---
   ;; (portal)
   ;; (tap> {:check :hello})
   ;; (portal-clear)
