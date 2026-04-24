@@ -179,7 +179,9 @@ LLM が自己停止プロトコル（`CLAUDE.md` §7）発動時、`.llm/memory/
 │   ├── check-vulnerabilities.sh      clj-watson による脆弱性スキャン（release 前）
 │   ├── gen_lib_catalog.clj           STACK_GUIDE.md §3 の EDN block から artifact 生成
 │   ├── lint-import-hooks.sh          依存ライブラリ提供の clj-kondo hook 取込
-│   └── session-briefing.sh           SessionStart 時の状態ブリーフィング
+│   ├── session-briefing.sh           SessionStart 時の状態ブリーフィング（REPL 状態含む）
+│   ├── repl-eval.sh                  稼働中 nREPL へ eval 送信（LLM 向け、CLAUDE.md §9）
+│   └── repl_eval.clj                 repl-eval.sh の Clojure 実装（clj -X:repl-eval）
 │
 ├── .llm/data/                ← gen-lib-catalog が生成する artifact（SSOT 生成物）
 │   ├── libs.edn                      lib-catalog 全 entry（Malli 検証済）
@@ -218,6 +220,7 @@ LLM が自己停止プロトコル（`CLAUDE.md` §7）発動時、`.llm/memory/
 - **疲労最小化**: LLM の誤りを構造的に封じる（全域性・不変性・副作用の隔離）
 - **機械化 5 層**: L1 clj-kondo 組込 linter / L2 `.clj-kondo/polyguard/` custom hook / L3 Splint / L4 `.llm/scripts/check-*.sh`（設定・構造検査）+ Polylith `poly check` + Malli instrumentation / L5 clj-watson（時間軸脆弱性）。規約を人間の注意力ではなくツールで強制（詳細は `MAINTAINERS_GUIDE.md` §5.10）
 - **SSOT 生成**: `.llm/scripts/gen_lib_catalog.clj` が `STACK_GUIDE.md §3` の `;; lib-catalog` EDN block を Malli で検証し `.llm/data/` 配下に artifact を emit。shell script は artifact を参照して検査、markdown と生成物の drift は `check-workspace-integrity.sh` が diff 検知
+- **REPL as Primary Workbench**: `.llm/scripts/repl-eval.sh` により LLM が稼働中 nREPL に eval / load-file を送信。永続 session で state 継続、`(reset)` 後の段階探索・契約違反再現・FlowStorm trace・mulog 観察を支える。CLAUDE.md §9 Live Workbench Protocol で「人間・CIDER/Calva/Cursive・LLM が同じ long-lived JVM を共有」が既定、§8.0.0 trigger matrix で REPL 必須条件を規定
 - **stack 方式の技術スタック**: 必須層（Clojure、tools.deps、Polylith、Malli、clj-kondo、cljfmt、Splint、clj-watson、`.llm/scripts/`）はワークスペースルートで常に採用、目的別の stack 層は各 brick の deps.edn に配置。推奨カタログは `.llm/guide/STACK_GUIDE.md`（真実の一箇所化）
 - **4 種の文書分離**: 仕様（DESIGN）/ 知識（KNOWLEDGE）/ 決定履歴（ADR）/ 判断保留（QUESTIONS）
 - **自己停止プロトコル**: LLM が時間感覚なく詰まった時、ターン数閾値で停止し Q を立てる

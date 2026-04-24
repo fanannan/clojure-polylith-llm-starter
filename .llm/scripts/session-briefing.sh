@@ -202,11 +202,38 @@ echo "## 直近のコミット（git log -5 --oneline）"
 echo ""
 recent_commits
 echo ""
+echo "## REPL 状態（CLAUDE.md §9 Live Workbench Protocol）"
+echo ""
+if [ -f ".nrepl-port" ]; then
+  nrepl_port="$(tr -d '[:space:]' < .nrepl-port 2>/dev/null || echo '?')"
+  echo "- nREPL サーバ: 起動中 (port $nrepl_port)"
+  if [ -f ".nrepl-session" ]; then
+    echo "- 永続 session (.nrepl-session): 存在"
+  else
+    echo "- 永続 session (.nrepl-session): 未作成（初回 eval 時に clone）"
+  fi
+  echo ""
+  echo "**LLM への指示**: **REPL を primary workbench として自発的に使用する**。"
+  echo "  ./.llm/scripts/repl-eval.sh --expr '(dev.user/status)'   # 最初の状態確認"
+  echo "  ./.llm/scripts/repl-eval.sh --load-file <編集したファイル>  # 即反映"
+  echo "  ./.llm/scripts/repl-eval.sh --ns <ns> --expr '(<fn> <args>)'  # 評価"
+  echo "  CLAUDE.md §8.0.0 trigger matrix で REPL 必須条件を確認、§9 Live Diagnosis Loop に従う。"
+else
+  echo "- nREPL サーバ: 未起動"
+  echo ""
+  echo "**LLM への指示**: REPL 駆動開発（CLAUDE.md §9）の前提として、ユーザに"
+  echo "次の起動を依頼する（1 度だけ）:"
+  echo "  別ターミナルで: clj -M:dev:nrepl"
+  echo "  起動後は ./.llm/scripts/repl-eval.sh が自動で .nrepl-port を読む。"
+fi
+
+echo ""
 echo "## 着手前チェックリスト（CLAUDE.md §8.0）"
 echo ""
 echo "- [ ] DESIGN.md の関連節を確認"
 echo "- [ ] KNOWLEDGE.md の関連節を確認"
 echo "- [ ] QUESTIONS.md の open を確認（上記に同じ）"
 echo "- [ ] 関連 ADR を確認"
+echo "- [ ] REPL 状態を確認（起動中なら live workbench として使用開始）"
 
 exit 0

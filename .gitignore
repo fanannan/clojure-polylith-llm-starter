@@ -47,3 +47,6 @@ Thumbs.db
 node_modules/
 /.claude/*
 !/.claude/settings.json
+
+# --- clj-kondo runtime lock ---
+.clj-kondo/.lock

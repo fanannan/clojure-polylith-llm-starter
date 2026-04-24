@@ -409,17 +409,41 @@ LLM のフィードバックループは**編集単位でターン内に閉じ�
 **サイクル**:
 
 1. 編集（brick のコード、deps.edn、interface、テスト等）
-2. 影響範囲の検証をターン内で実行（`clj -M:poly check`、`clj -M:lint`、`clj -M:poly test`）
+2. 影響範囲の検証をターン内で実行（以下から**適切な粒度**で選ぶ、複数組合せ可）:
+   - **REPL eval**（稼働中なら第一選択、下記 trigger matrix 該当時は必須）: `./.llm/scripts/repl-eval.sh`
+     - 既定で永続 session 再利用（`.nrepl-session`）、`--fresh` で ephemeral
+     - `--expr '(...)'` / `--load-file path.clj` が主界面、stdin は fallback
+     - hang した eval は `--interrupt`、session 再作成は `--reset-session`
+     - CLAUDE.md §9 Live Workbench Protocol 参照
+   - 静的: `clj -M:poly check`、`clj -M:lint`、`clj -M:format check`
+   - 単発 JVM: `clj -M:poly test`（影響範囲、高速）
 3. 結果を読む
 4. 失敗があれば下記の振り分け判断に従って対処
 
 `poly test` は stable タグからの diff で**影響範囲を自動判定**するため、LLM が毎回「どこまで走らせるか」を考える必要はない。完了条件（§5.5）では `poly test :all` で全体検証する。
+
+#### REPL eval 必須トリガ（mandatory）
+
+編集内容が以下のいずれかに該当したら、**`poly test` より先に** REPL eval で確認する。nREPL 未起動ならユーザに `clj -M:dev:nrepl` 起動を 1 度依頼し、起動後に実施する（§9.0 共有モデル）:
+
+| トリガ | なぜ REPL が必須か | 代表的な eval |
+|---|---|---|
+| Integrant key の defmethod 追加・変更 | 起動中 system map の内容が変わる、独立 JVM では再現しない | `(keys (system))` / `(get (system) ::my-key)` |
+| tools.namespace `(reset)` を伴う ns 再構成 | ロード順依存のバグは起動 JVM 単発では見えない | `(safe-reset!)` → `(myapp.new-ns/some-fn)` |
+| `m/=>` 契約の新規付与・変更 | instrumentation で即例外化、境界確認 | 対象関数を不正引数で呼び contract violation を観察 |
+| mulog publisher / event 名の変更 | publisher chain は起動中のみ観察可能 | `(mulog/log ::probe :data {:k 1})` で tail |
+| 外部 API / DB レスポンスの map 形状を使う処理 | 実形状を見ずに実装は §1.1.1 全域性違反 | `(probe (fetch-row db id))` で tap> + 値保持 |
+| 例外発生箇所の binding を観察するデバッグ | 予め context 再現、flow-storm で変遷観察 | `(fs-start!)` → `(fs-record-ns! 'ns)` → 再現 |
+| defrecord shape / protocol method 変更 | stale class instance による沈黙バグ検知 | `(hard-reset!)` 後に対象関数評価 |
+
+**該当しない編集**（純粋関数の追加、新 namespace で既存 state に触れない等）は `poly test` のみで良い。
 
 **検出された失敗の振り分け**:
 
 | 失敗の性格 | 対処 |
 |---|---|
 | 自分の編集が原因で原因が明確（typo、契約変更の波及漏れ等） | ターン内で修正（記録不要） |
+| 起動中 system state / 関数挙動の確認が必要 | REPL eval で即検証、再現したら修正（trigger matrix 該当時は必須） |
 | 修正方針に判断が必要（契約変更 vs 実装変更、影響範囲の広さ等） | `.llm/memory/QUESTIONS.md` に Q を起票 |
 | 将来の同種問題防止に価値ある知見 | `.llm/memory/KNOWLEDGE.md` に追記（ユーザに提示） |
 | 設計判断に関わる（新規原則導入、既存原則変更等） | ADR 発行（`.llm/memory/adr/`） |
@@ -444,13 +468,17 @@ LLM のフィードバックループは**編集単位でターン内に閉じ�
 
 ### 8.1 既存コンポーネントへの機能追加
 
-1. §8.0 の確認を実施
+1. §8.0 の確認を実施（REPL 稼働中なら `./.llm/scripts/repl-eval.sh --expr '(dev.user/status)'` で環境把握）
 2. 対象の `interface.clj` に追加する関数のシグネチャと Malli スキーマを設計し、**ユーザに提示・確認**
 3. `core.clj` に実装（`m/=>` 契約は置かない）
 4. `interface.clj` に委譲 + `m/=>` 契約付与（境界契約の集約）
-5. `test/.../interface_test.clj` にテスト（単体 + プロパティ）
-6. `clj -M:poly check` → `clj -M:poly test`
-7. **実装中に発見した契約・不変条件・暗黙知**があれば、ユーザに提示して KNOWLEDGE.md への追加を提案（詳細は `KNOWLEDGE.md` §0）
+5. **REPL eval で境界挙動確認**（§8.0.0 trigger matrix 該当時は必須、§9 Live Diagnosis Loop）:
+   - 編集ファイルを即反映: `./.llm/scripts/repl-eval.sh --load-file components/<c>/src/poly/<c>/interface.clj`
+   - 対象関数を評価: `./.llm/scripts/repl-eval.sh --ns poly.<c>.interface --expr '(<new-fn> <sample-args>)'`
+   - `m/=>` 契約違反は instrumentation で即例外化して観察、flow-storm 導入時は `(fs-record-ns! 'poly.<c>.core)` で trace も取れる
+6. `test/.../interface_test.clj` にテストとして REPL で見た挙動を昇格（単体 + プロパティ）
+7. `clj -M:poly check` → `clj -M:poly test`（REPL で動いても CLI gate は必ず通す）
+8. **実装中に発見した契約・不変条件・暗黙知**があれば、ユーザに提示して KNOWLEDGE.md への追加を提案（詳細は `KNOWLEDGE.md` §0）
 
 ### 8.2 新規コンポーネント追加（承認必須）
 
@@ -507,26 +535,90 @@ clj -M:poly create component name:<name>
 
 ---
 
-## 9. REPL 駆動開発（§1.2.2 ループ短縮の実装）
+## 9. REPL 駆動開発（Primary Workbench、§1.2.2 ループ短縮の実装）
 
-```bash
-clj -M:dev:nrepl
-```
+**本節は REPL を「検証手段の一つ」ではなく「primary 開発面」として位置づける**。CLI 検査（`poly check` / `poly test` / `lint`）は最終 gate であり、編集直後の動作確認・契約違反再現・state inspection は REPL で行う。
 
-`dev.user` 名前空間で（**Integrant を採用している場合**。§5.4 の二分岐と整合）：
+### 9.0 共有モデル
+
+- 人間が 1 つの `clj -M:dev:nrepl` を起動（long-lived JVM）
+- CIDER / Calva / Cursive **と** LLM が**同じ nREPL に attach**する
+- どのクライアントも session を独占しない。LLM は `--fresh` / `--reset-session` で session 分離可能だが、既定は人間と共有
+- port は nREPL が `.nrepl-port` に自動書き出し、session は `.nrepl-session` に永続化
+- LLM は `./.llm/scripts/repl-eval.sh` 経由で eval する。直接 `clj` を叩かない（shell quoting・port 発見の複雑化回避）
+
+### 9.1 `dev.user` — stable command surface（LLM と人間の共通 API）
+
+`development/src/dev/user.clj` で以下を提供（配布時 active、optional 依存は resilient）:
 
 ```clojure
-(go)     ; Integrant 起動 + Malli instrumentation ON
-(reset)  ; リロード + 再起動
-(halt)   ; 停止
-(system) ; 起動中システム参照
+(status)              ; 最初に呼ぶ: Malli / Integrant / Portal / FlowStorm / refresh-dirs / current-ns
+(malli-on!)           ; Malli instrumentation ON
+(probe x)             ; tap> + 値をそのまま返す diagnosis primitive（println の代わり）
+(safe-reset!)         ; Integrant or tools.namespace reset を try/catch で包む
+(hard-reset!)         ; stale-state recovery: halt → refresh-all → go
+(fs-start!)           ; FlowStorm debugger 起動（未導入時 :flow-storm-not-available）
+(fs-record-ns! 'ns)   ; 対象 ns を FlowStorm で instrument
+(fs-clear!)           ; stale trace を消去
+
+;; Integrant 採用時は追加で（dev/user.clj で `;;` を除去して有効化）:
+(go) (reset) (halt) (system)
 ```
 
-**Integrant を採用していない場合**（ライブラリ配布・単発 CLI 等）は、REPL 起動後に `(malli-on!)` のみを明示的に呼ぶ。`(go)` 等は `development/src/dev/user.clj` でコメントアウトされたままにする（§5.4、POLYLITH_GUIDE.md §7.1 と同じ規律）。
+### 9.2 LLM Live Diagnosis Loop（必須）
 
-development project から**全 brick が単一 REPL で触れる**。境界は明確化しつつ、開発時はモノリシック。
+**LLM は編集の前後で以下のループを回す**。ユーザからの指示を待たない:
 
-REPL で確認した挙動は**その場でテストに昇格**する。`comment` フォームで満足してはならない。
+1. 接続確認: `session-briefing.sh` の REPL 状態節を読む。未起動なら 1 度だけ `clj -M:dev:nrepl` 起動をユーザに依頼
+2. `./.llm/scripts/repl-eval.sh --expr '(dev.user/status)'` で環境把握
+3. `(malli-on!)` 未実行なら `./.llm/scripts/repl-eval.sh --expr '(malli-on!)'`
+4. Integrant プロジェクトで runtime wiring を変える編集の場合: `(safe-reset!)` で state 再起動、`(keys (system))` で確認
+5. 編集したら `./.llm/scripts/repl-eval.sh --load-file <path>` で即反映
+6. 対象式を live JVM で eval: `./.llm/scripts/repl-eval.sh --ns <ns> --expr '(<fn> <args>)'`
+7. 値の形状探索は `(probe x)` / Portal、raw `println` は使わない
+8. state / 時系列 / 制御フローのバグは FlowStorm: `(fs-start!)` → `(fs-clear!)` → `(fs-record-ns! '<ns>)` → 再現
+9. refresh が壊れた感触なら `(hard-reset!)`（stale class / 半 reload 復旧）
+10. live 挙動が正しいことを確認したら**テストに昇格**、CLI gate（`poly check` / `poly test` / `lint`）へ
+
+この 10 ステップが **REPL-capable から REPL-primary への移行**の実装。
+
+### 9.3 やってはいけない事
+
+- **テスト代替禁止**: REPL で動いたら即 `interface_test.clj` に昇格（§10）
+- `comment` フォーム満足禁止（§9.2 step 10）
+- 副作用反復（DB insert 等）は冪等性確認後に限る
+- **ターン跨ぎ state 依存禁止**: session 消滅前提で、結果は必ずコード化
+- **`(require ... :reload)` の常用禁止**: ns graph 変更は `tools.namespace` / `(safe-reset!)` / `(reset)`、`:reload` は narrow experiment のみ
+- **defrecord shape / protocol method 変更時**: `(hard-reset!)` または fresh JVM。stale class instance による沈黙バグを避ける
+- 多エージェント並走時は `--fresh` か `--reset-session` で session 汚染を回避
+- bounded output（10KB/response）を超える探索は `(take 50 ...)` / `(keys m)` で絞る
+
+### 9.4 Reload 規律（stale state を避ける表）
+
+| 変更種別 | 正しい対処 |
+|---|---|
+| 関数追加・変更（純粋） | `--load-file` or `(safe-reset!)` |
+| ns 追加・削除・rename | `(safe-reset!)` / `(reset)`（tools.namespace が graph を解決） |
+| 依存追加（deps.edn 変更） | fresh JVM 再起動（ClassLoader 再構築必要）|
+| Integrant key の defmethod 変更 | `(safe-reset!)` で新 defmethod 反映 |
+| defrecord shape / protocol method 追加 | `(hard-reset!)` or fresh JVM |
+| multimethod 再定義 | `(hard-reset!)` 推奨（stale dispatch 回避） |
+| `m/=>` 契約追加・変更 | `--load-file` で reload、その後 `(malli-on!)` 再実行 |
+
+### 9.5 repl-eval.sh リファレンス
+
+```bash
+./.llm/scripts/repl-eval.sh --expr '(+ 1 2)'                      # eval
+./.llm/scripts/repl-eval.sh --load-file path/to/file.clj          # load-file (file/line metadata 付き)
+./.llm/scripts/repl-eval.sh --ns poly.user.interface --expr '(...)' # ns 指定 eval
+echo '(+ 1 2)' | ./.llm/scripts/repl-eval.sh                       # stdin fallback
+./.llm/scripts/repl-eval.sh --interrupt                           # 直近 eval を中断
+./.llm/scripts/repl-eval.sh --describe                            # server ops / versions
+./.llm/scripts/repl-eval.sh --reset-session                       # 永続 session 破棄
+./.llm/scripts/repl-eval.sh --fresh --expr '(pure-check)'          # ephemeral session
+```
+
+Exit codes: `0` 成功 / `1` eval-error・namespace-not-found・:ex / `2` 接続・必須 op 欠落・引数不正 / `130` interrupted。
 
 ---
 

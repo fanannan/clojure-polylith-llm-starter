@@ -39,7 +39,9 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 | `check-single-ns-per-file.sh` | 1 つの `.clj` / `.cljc` / `.cljs` ファイルに `(ns ...)` が複数ないか検査 |
 | `check-vulnerabilities.sh` | `clj-watson` による依存脆弱性スキャン（release 前必須、完了条件外） |
 | `lint-import-hooks.sh` | 依存ライブラリ提供の `clj-kondo` hook を `.clj-kondo/configs/` に取り込む |
-| `session-briefing.sh` | セッション起動時の状態ブリーフィング（フェーズ判定・open Q・最新 ADR・直近コミット）を stdout 出力。CLAUDE.md §8.0 実装着手前の確認の機械化バックアップ（状態提示、pass/fail 検査ではない） |
+| `session-briefing.sh` | セッション起動時の状態ブリーフィング（フェーズ判定・open Q・最新 ADR・直近コミット・REPL 状態）を stdout 出力。CLAUDE.md §8.0 実装着手前の確認の機械化バックアップ（状態提示、pass/fail 検査ではない） |
+| `repl-eval.sh` | 稼働中 nREPL に eval / load-file を送る LLM 向け client（CLAUDE.md §9 Live Workbench Protocol）。`.nrepl-port` 自動発見、永続 session 再利用（`.nrepl-session`）、`--expr` / `--load-file` / `--interrupt` / `--describe` / `--reset-session` / `--fresh` 対応 |
+| `repl_eval.clj` | repl-eval.sh の Clojure 実装（`clj -X:repl-eval` の exec-fn）。nREPL 標準 op（`eval` / `load-file` / `interrupt` / `describe` / `ls-sessions` / `clone`）を subcommand で提供、bounded printing（10KB/response）、file/line metadata 常時付与、process 跨ぎ request-id 永続化で確実な `--interrupt` を実現 |
 
 ## 運用タイミング
 

@@ -62,12 +62,163 @@
 ;;     （Integrant を使う場合）
 ;; ---------------------------------------------------------------------------
 
+(defonce ^:private malli-running? (atom false))
+
 (defn malli-on!
   "Malli instrumentation を起動。全 m/=> 契約が REPL 評価時にチェックされる。
    停止する必要が生じた場合は `(malli.dev/stop!)` を直接呼ぶ
    （の B-1 に伴う `malli-off!` 削除）。"
   []
-  (mdev/start! {:report (mpretty/reporter)}))
+  (mdev/start! {:report (mpretty/reporter)})
+  (reset! malli-running? true))
+
+;; ---------------------------------------------------------------------------
+;; REPL Workbench Helpers（LLM と人間の共通 primary 面、CLAUDE.md §9）
+;;
+;; 【このセクションの扱い】
+;;   - 配布時点で active（削除不要）。optional 依存（Integrant / Portal /
+;;     flow-storm）は try/require で遅延検査、未導入でも壊れない
+;;   - 接続時に最初に `(status)` を呼んで環境確認、以降は helper で操作
+;;   - LLM は `.llm/scripts/repl-eval.sh` 経由で同じ helper を叩く
+;;
+;; 提供する helper:
+;;   (status)           環境状態を 1 map で返す（最初に呼ぶ）
+;;   (probe x)          tap> + 戻り値保持（println の代わり）
+;;   (safe-reset!)      Integrant / tools.namespace reset を try/catch で包む
+;;   (hard-reset!)      stale-state recovery: halt → refresh-all → go
+;;   (fs-start!) / (fs-record-ns! 'ns) / (fs-clear!)   FlowStorm 導入時のみ動作
+;;
+;; Reload 規律（CLAUDE.md §9.4）:
+;;   - 関数追加・変更: --load-file or (reset)
+;;   - ns graph 変更 (追加・削除・rename): (reset) で tools.namespace が解決
+;;   - 依存追加 (deps.edn 変更): fresh JVM 再起動必須
+;;   - Integrant defmethod 変更: (reset) で反映
+;;   - defrecord shape / protocol method 追加: (hard-reset!) or fresh JVM
+;;   - multimethod 再定義: (hard-reset!) 推奨
+;;   - m/=> 契約追加: --load-file 後に (malli-on!) 再実行
+;; ---------------------------------------------------------------------------
+
+(defonce ^:private dev-tools-cap (atom nil))
+
+(defn- try-require
+  "optional dependency probe。require が成功したら true、classpath 非在は false。
+   意図: optional 依存は不在が正常系（未採用プロジェクトで fail fast にしない）。
+   FileNotFoundException のみ catch（classpath missing の signal）。コンパイル
+   エラー等の他例外は上位に re-throw して露出させる（silent 握り潰し回避）。"
+  [ns-sym]
+  (try (require ns-sym) true
+       (catch java.io.FileNotFoundException _
+         (tap> {:workbench/probe-miss ns-sym})
+         false)))
+
+(defn ensure-dev-tools!
+  "optional 依存を lazy require し、capability map を返す。キャッシュ済み。
+   初回 status 呼び出し時に自動実行される。"
+  []
+  (or @dev-tools-cap
+      (reset! dev-tools-cap
+              {:integrant  (and (try-require 'integrant.repl)
+                                (try-require 'integrant.repl.state))
+               :portal     (try-require 'portal.api)
+               :flow-storm (try-require 'flow-storm.api)})))
+
+(defn probe
+  "(tap> x) + x をそのまま返す diagnosis primitive。
+   Portal 起動中なら UI に値が流れる。`->` の中間挿入で値を観察できる。
+   println の代わりに使う。"
+  [x]
+  (tap> x)
+  x)
+
+(defn- safe-system-keys
+  "Integrant system が起動中なら key 一覧を返す。未起動・未採用時は nil。
+   IllegalStateException は (go) 未実行時の signal のみ catch。"
+  []
+  (try (some-> (resolve 'integrant.repl.state/system) deref keys)
+       (catch IllegalStateException _
+         (tap> {:workbench/integrant-not-running true})
+         nil)))
+
+(defn status
+  "接続時に最初に実行する。Malli on/off、Integrant system keys、
+   Portal / FlowStorm 利用可否、refresh dirs、current ns を 1 map で返す。"
+  []
+  (let [cap (ensure-dev-tools!)]
+    {:malli-on?    @malli-running?
+     :integrant    (:integrant cap)
+     :integrant-sys (when (:integrant cap) (safe-system-keys))
+     :portal       (:portal cap)
+     :flow-storm   (:flow-storm cap)
+     :refresh-dirs ["components" "bases"]  ; set-refresh-dirs で指定したもの
+     :current-ns   (ns-name *ns*)}))
+
+(defn- do-reset
+  "Integrant 採用時は (ig-repl/reset)、非採用時は (tn/refresh)。"
+  []
+  (if (:integrant (ensure-dev-tools!))
+    ((resolve 'integrant.repl/reset))
+    (tn/refresh)))
+
+(defn safe-reset!
+  "Integrant 採用時は (ig-repl/reset)、非採用時は (tn/refresh) を呼ぶ。
+   失敗時は raw stacktrace を投げず、構造化 map を返す。"
+  []
+  (try (do-reset)
+       (catch clojure.lang.ExceptionInfo t
+         {:status :refresh-failed :ex (ex-message t) :data (ex-data t)})
+       (catch java.io.FileNotFoundException t
+         {:status :refresh-failed :ex (ex-message t)
+          :hint "namespace file が見つかりません（set-refresh-dirs / extra-paths を確認）"})
+       (catch RuntimeException t
+         {:status :refresh-failed :ex (ex-message t)
+          :root (some-> t Throwable->map :cause)})))
+
+(defn- try-halt
+  "halt は既に停止中なら IllegalStateException を投げる。hard-reset の文脈では
+   これは期待通りで、どのみち次の go で再起動するため tap> で signal のみ残す。"
+  []
+  (try ((resolve 'integrant.repl/halt))
+       (catch IllegalStateException _
+         (tap> {:workbench/halt-noop "not running"})
+         :already-halted)))
+
+(defn hard-reset!
+  "stale-state recovery の sanctioned 手順。
+   halt → refresh-all → go (Integrant 採用時)、または refresh-all のみ (非採用時)。
+   phantom vars / 半 reload / defrecord shape 変更時に使う。"
+  []
+  (let [cap (ensure-dev-tools!)]
+    (when (:integrant cap) (try-halt))
+    (tn/refresh-all)
+    (when (:integrant cap)
+      ((resolve 'integrant.repl/go)))
+    :hard-reset-done))
+
+(defn fs-start!
+  "FlowStorm debugger を起動（local-connect）。未導入時は :flow-storm-not-available。
+   起動後は fs-record-ns! で個別 ns を instrument する。
+   API はバージョンで異なる: 4.x は flow-storm.api/local-connect。"
+  []
+  (if (:flow-storm (ensure-dev-tools!))
+    (do ((resolve 'flow-storm.api/local-connect)) :started)
+    :flow-storm-not-available))
+
+(defn fs-record-ns!
+  "(fs-record-ns! 'poly.user.core) — load-file 直後に instrument。
+   変更した ns の forms を FlowStorm trace 対象にして、挙動・binding 変遷を観察。"
+  [ns-sym]
+  (if (:flow-storm (ensure-dev-tools!))
+    (do ((resolve 'flow-storm.api/instrument-forms-for-namespaces)
+         #{(str ns-sym)} {})
+        :instrumented)
+    :flow-storm-not-available))
+
+(defn fs-clear!
+  "過去の FlowStorm trace を消去、stale trace による誤読を防ぐ。"
+  []
+  (if (:flow-storm (ensure-dev-tools!))
+    (do ((resolve 'flow-storm.api/clear-recordings)) :cleared)
+    :flow-storm-not-available))
 
 ;; ---------------------------------------------------------------------------
 ;; Integrant ライフサイクル — §1.1.3 副作用の隔離

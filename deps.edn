@@ -171,6 +171,28 @@
                   "--fail-on-result"]}
 
   ;; ----------------------------------------------------------------
+  ;; :repl-eval — 稼働中の nREPL に eval を送るクライアント（LLM 向け、CLAUDE.md §9）
+  ;;
+  ;; 本 alias は `.llm/scripts/repl_eval.clj` を exec-fn として呼び出す。
+  ;; LLM は直接 clj を叩くのではなく shell wrapper `.llm/scripts/repl-eval.sh`
+  ;; 経由で利用する（port 発見、stdin fallback、shell quoting 回避のため）。
+  ;;
+  ;; nREPL server 側は :nrepl alias で起動、client は .nrepl-port を自動発見して接続。
+  ;; 永続 session (.nrepl-session) を再利用し、(reset) 後の段階探索・契約違反再現・
+  ;; mulog 観察・flow-storm trace 等の stateful な REPL 駆動作業を支える。
+  ;;
+  ;; 使用例（shell wrapper 経由）:
+  ;;   ./.llm/scripts/repl-eval.sh --expr '(+ 1 2)'
+  ;;   ./.llm/scripts/repl-eval.sh --load-file components/user/src/poly/user/core.clj
+  ;;   ./.llm/scripts/repl-eval.sh --ns poly.user.interface --expr '(create-user {:name "t"})'
+  ;;   ./.llm/scripts/repl-eval.sh --interrupt
+  ;; ----------------------------------------------------------------
+  :repl-eval
+  {:extra-deps  {nrepl/nrepl {:mvn/version "1.3.0"}}
+   :extra-paths [".llm/scripts"]
+   :exec-fn     repl-eval/run}
+
+  ;; ----------------------------------------------------------------
   ;; :gen-lib-catalog — STACK_GUIDE.md から lib catalog artifact を生成
   ;;   `;; lib-catalog` マーカ付き EDN block を抽出 → Malli 検証 →
   ;;   .llm/data/{libs.edn, deprecated-libs.patterns, forbidden-requires.patterns}
