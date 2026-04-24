@@ -1456,13 +1456,13 @@ L1〜L5 との関係:
 #### Malli を必須層として実体化する対応（宣言と実装の最終整合）
 - **背景**: 外部レビューで「docstring は Malli instrumentation を全プロジェクト有効化と宣言しているが、実体は require も helper も両方コメントアウト状態」という指摘。前回の棚卸しで「Malli は必須層」と位置づけを明文化したが、**配布コードの実体がそれに追従していなかった**
 - **問題の構造**: 設計上の宣言（Malli 必須層化）と配布コードの実体（コメントアウト）が乖離。これは `(go)` の説明でも顕在化し、POLYLITH_GUIDE.md §7.1 は「(go) で Integrant + Malli instrumentation 起動」と書きつつ、dev/user.clj の実体では `malli-on!` 自体が存在しない状態だった
-- **判断**: Malli の require と helper 関数（malli-on! / malli-off!）をコメントアウト解除してデフォルト有効化する。理由：
+- **判断**: Malli の require と helper 関数をコメントアウト解除してデフォルト有効化する。理由：
   - Malli は必須層であり、ワークスペースルート deps.edn で常に依存に入っているため、require しても壊れない
   - 全プロジェクトで使うことが確定している層について、コメントアウト状態を残す理由がない（YAGNI の逆 — 「使わないかもしれない」ではなく「必ず使う」なのだから、使える状態で配布すべき）
   - 「必須層は有効化された状態で配布、stack 層の Integrant/Portal は扱い指針とともに配布（使わない場合は削除）」という**層の扱い分け**が明確になる
 - **対処**:
-  - **dev/user.clj**: malli.dev と malli.dev.pretty の require をコメントアウト解除、malli-on! / malli-off! 関数の定義もコメントアウト解除。Malli セクションヘッダで「必須層。削除不可」と明示
-  - **dev/user.clj docstring**: 主要コマンドに `(malli-on!)` / `(malli-off!)` を追加。扱い指針で「Integrant を使わないプロジェクトでは (malli-on!) を明示的に呼ぶ」と明記
+  - **dev/user.clj**: malli.dev と malli.dev.pretty の require をコメントアウト解除、`malli-on!` 関数の定義もコメントアウト解除。Malli セクションヘッダで「必須層。削除不可」と明示
+  - **dev/user.clj docstring**: 主要コマンドに `(malli-on!)` を追加。扱い指針で「Integrant を使わないプロジェクトでは (malli-on!) を明示的に呼ぶ」と明記
   - **dev/user.clj §2.3 参照修正**: config 関数実装例の参照先を POLYLITH_GUIDE.md §2.3 → §2.4 に訂正（§2.3 は project、§2.4 が config 関数）
   - **README.md**: `clj -M:poly test` を `clj -M:poly test :all` に統一（初期ブートストラップ時は stable タグが存在しないため `:all` 必要）。関連する `poly test` 言及も統一
   - **POLYLITH_GUIDE.md §7.1**: `(go)` の説明を精確化。「Integrant を使うプロジェクトでは (go) で Integrant + Malli 一括起動、使わないプロジェクトでは (malli-on!) を明示的に呼ぶ」という両ケース対応の記述に

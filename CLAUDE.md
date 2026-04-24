@@ -243,7 +243,7 @@
 
 ### 5.4 Malli instrumentation
 
-Malli は必須層。`dev/user.clj` で `(malli-on!)` / `(malli-off!)` helper を提供する：
+Malli は必須層。`dev/user.clj` で `(malli-on!)` helper を提供する：
 
 - **ライフサイクル管理を使うプロジェクト**: 起動 helper が内部で `(malli-on!)` を呼ぶ
 - **ライフサイクル管理を使わないプロジェクト**（ライブラリ配布・単発 CLI 等）: REPL 起動後に明示的に `(malli-on!)` を呼ぶ
@@ -617,7 +617,7 @@ clj -M:poly create component name:<name>
 |---|---|
 | REPL 接続の初回確認 | `session-briefing.sh` の REPL 状態節を読む。未起動なら 1 度だけ `clj -M:dev:nrepl` 起動をユーザに依頼。起動済みなら `./.llm/scripts/repl-eval.sh --expr '(dev.user/status)'` |
 | 通常の関数・契約確認 | 必要なら `(malli-on!)` → `--load-file <path>` → `--ns <ns> --expr '(<fn> <args>)'` |
-| runtime wiring 変更 | `--load-file` 後に `(safe-reset!)`。system map がある場合は対象 key を確認 |
+| runtime wiring 変更 | `(safe-reset!)` で refresh + 再起動。system map がある場合は対象 key を確認 |
 | 値の形状探索 | `(probe x)` を使う。raw `println` は使わない |
 | state / 時系列 / 制御フローのバグ | 導入済みの trace helper があれば使う。未導入なら通常 eval に戻る |
 | refresh が壊れた感触 | `(hard-reset!)`。stale class / 半 reload 復旧を目的にする |
@@ -634,7 +634,7 @@ REPL で得た値をテストへ「昇格」するとは、観察した具体値
 - **`(require ... :reload)` の常用禁止**: ns graph 変更は `(safe-reset!)`（tools.namespace を内包）、`:reload` は単一 namespace の仮説確認に限る。確認後は `safe-reset!` またはテストで再検証する
 - **defrecord shape / protocol method 変更時**: `(hard-reset!)` または fresh JVM。stale class instance による沈黙バグを避ける
 - 多エージェント並走時は `--fresh` か `--reset-session` で session 汚染を回避
-- bounded output（目安 10KB/response）を超える探索は `(take 50 ...)` / `(keys m)` で絞る。これは repl-eval.sh の制限ではなく、LLM が結果を読み切れる粒度に保つための運用上の上限
+- bounded output（目安 10000 chars/response）を超える探索は `(take 50 ...)` / `(keys m)` で絞る。repl-eval.sh も同じ目安で切るが、切られる前に LLM が読み切れる粒度へ狭める
 
 ### 9.4 Reload 規律（stale state を避ける表）
 
@@ -642,7 +642,7 @@ REPL で得た値をテストへ「昇格」するとは、観察した具体値
 
 | 変更種別 | 正しい対処 |
 |---|---|
-| 関数追加・変更（純粋。I/O・global state・class shape に触れない） | `--load-file` or `(safe-reset!)` |
+| 関数追加・変更（純粋。I/O・global state・class shape に触れない） | 通常は `--load-file`。refresh が必要な場合だけ `(safe-reset!)` |
 | ns 追加・削除・rename | `(safe-reset!)`（tools.namespace が graph を解決） |
 | 依存追加（deps.edn 変更） | fresh JVM 再起動（ClassLoader 再構築必要）|
 | ライフサイクル定義の変更 | `(safe-reset!)` で反映 |

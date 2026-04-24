@@ -166,7 +166,7 @@ CLAUDE.md が「日々の作業フロー」を規定するのに対し、本文�
 
 #### 2.1.4 instrumentation の活用
 
-- `dev/user.clj` で `(malli-on!)` / `(malli-off!)` ヘルパが提供される。起動方法はプロジェクト構成で 2 分岐:
+- `dev/user.clj` で `(malli-on!)` ヘルパが提供される。起動方法はプロジェクト構成で 2 分岐:
   - **Integrant を採用**: `(go)` が内部で `(malli-on!)` を呼ぶ
   - **Integrant 非採用**（ライブラリ配布・単発 CLI 等）: REPL 起動後に明示的に `(malli-on!)` を呼ぶ
 - 契約違反は REPL 呼び出し即時に例外。LLM は例外メッセージから自己修正できる

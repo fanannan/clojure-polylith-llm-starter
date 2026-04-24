@@ -67,7 +67,7 @@
 (defn malli-on!
   "Malli instrumentation を起動。全 m/=> 契約が REPL 評価時にチェックされる。
    停止する必要が生じた場合は `(malli.dev/stop!)` を直接呼ぶ
-   （の B-1 に伴う `malli-off!` 削除）。"
+   （停止 helper は持たない）。"
   []
   (mdev/start! {:report (mpretty/reporter)})
   (reset! malli-running? true))
@@ -199,8 +199,7 @@
     :hard-reset-done))
 
 (defn- resolve-first
-  "FlowStorm は major version で起動関数名が異なる（4.x: local-connect、古:
-   start-debugger、新: connect）。採用バージョンを問わず動くよう順に probe する。"
+  "optional API のバージョン差を吸収するため、候補 symbol を順に probe する。"
   [syms]
   (some resolve syms))
 
@@ -217,7 +216,11 @@
     (if-let [start-fn (resolve-first '[flow-storm.api/local-connect
                                        flow-storm.api/connect
                                        flow-storm.api/start-debugger])]
-      (do (start-fn) :started)
+      (try
+        (start-fn)
+        :started
+        (catch clojure.lang.ArityException _
+          :flow-storm-api-unknown))
       :flow-storm-api-unknown)))
 
 (defn fs-record-ns!
@@ -225,16 +228,28 @@
    変更した ns の forms を FlowStorm trace 対象にして、挙動・binding 変遷を観察。"
   [ns-sym]
   (if (:flow-storm (ensure-dev-tools!))
-    (do ((resolve 'flow-storm.api/instrument-forms-for-namespaces)
-         #{(str ns-sym)} {})
-        :instrumented)
+    (if-let [instrument-fn (resolve-first '[flow-storm.api/instrument-forms-for-namespaces
+                                            flow-storm.api/instrument-namespaces])]
+      (try
+        (instrument-fn #{(str ns-sym)} {})
+        :instrumented
+        (catch clojure.lang.ArityException _
+          :flow-storm-api-unknown))
+      :flow-storm-api-unknown)
     :flow-storm-not-available))
 
 (defn fs-clear!
   "過去の FlowStorm trace を消去、stale trace による誤読を防ぐ。"
   []
   (if (:flow-storm (ensure-dev-tools!))
-    (do ((resolve 'flow-storm.api/clear-recordings)) :cleared)
+    (if-let [clear-fn (resolve-first '[flow-storm.api/clear-recordings
+                                       flow-storm.api/clear])]
+      (try
+        (clear-fn)
+        :cleared
+        (catch clojure.lang.ArityException _
+          :flow-storm-api-unknown))
+      :flow-storm-api-unknown)
     :flow-storm-not-available))
 
 ;; ---------------------------------------------------------------------------
@@ -272,10 +287,11 @@
 ;;   (ig-repl/go))
 
 ;; (defn halt
-;;   "システム停止 + Malli instrumentation OFF。"
+;;   "システム停止。"
 ;;   []
 ;;   (ig-repl/halt)
-;;   (malli-off!))
+;;   (mdev/stop!)
+;;   (reset! malli-running? false))
 
 ;; (defn reset
 ;;   "名前空間リロード + システム再起動。"

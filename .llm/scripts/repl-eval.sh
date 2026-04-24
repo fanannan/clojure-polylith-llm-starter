@@ -100,4 +100,4 @@ case "$CMD" in
 esac
 
 # shellcheck disable=SC2086
-exec clj -X:repl-eval $args
+clj -X:repl-eval $args

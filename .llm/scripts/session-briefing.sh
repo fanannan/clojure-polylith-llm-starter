@@ -160,6 +160,16 @@ recent_commits() {
   echo "$log" | sed 's/^/- /'
 }
 
+tcp_port_open() {
+  local host="$1"
+  local port="$2"
+  if command -v nc >/dev/null 2>&1; then
+    nc -z -w 1 "$host" "$port" >/dev/null 2>&1
+    return $?
+  fi
+  (echo > "/dev/tcp/$host/$port") >/dev/null 2>&1
+}
+
 # -----------------------------------------------------------------------------
 # 出力
 # -----------------------------------------------------------------------------
@@ -209,7 +219,7 @@ nrepl_status="not-running"
 nrepl_port=""
 if [ -f ".nrepl-port" ]; then
   nrepl_port="$(tr -d '[:space:]' < .nrepl-port 2>/dev/null)"
-  if [ -n "$nrepl_port" ] && (echo > "/dev/tcp/127.0.0.1/$nrepl_port") 2>/dev/null; then
+  if [ -n "$nrepl_port" ] && tcp_port_open "127.0.0.1" "$nrepl_port"; then
     nrepl_status="running"
   elif [ -n "$nrepl_port" ]; then
     nrepl_status="stale"   # file あるが接続不能（crash 等）

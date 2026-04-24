@@ -15,7 +15,7 @@
    実装上の重要点:
      - process 跨ぎ request-id 永続化 (T1): .nrepl-session に last-request-id を
        記録、--interrupt で直近 eval を正確に中断
-     - bounded printing (10KB/response): LLM context 保護のため truncate
+     - bounded printing (10000 chars/response): LLM context 保護のため truncate
      - 必須 op 検証: describe で eval/clone/ls-sessions/interrupt/load-file が
        揃うことを確認、cider-nrepl middleware 無効時は明確にエラー終了
      - file/line metadata 常時付与: stack trace が source location を指す
@@ -29,25 +29,35 @@
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [nrepl.core :as nrepl]))
+   [nrepl.core :as nrepl])
+  (:import
+   [java.nio.file AtomicMoveNotSupportedException CopyOption Files StandardCopyOption]
+   [java.nio.file.attribute FileAttribute]))
 
 ;; ---------------------------------------------------------------------------
 ;; Constants
 ;; ---------------------------------------------------------------------------
 
 (def ^:private session-file ".nrepl-session")
-(def ^:private max-chunk-bytes 10000)
+(def ^:private max-chunk-chars 10000)
+(def ^:private client-timeout-ms 30000)
 (def ^:private required-ops #{"eval" "clone" "ls-sessions" "interrupt" "load-file" "describe"})
 
 ;; ---------------------------------------------------------------------------
 ;; Port / session 発見と永続化
 ;; ---------------------------------------------------------------------------
 
-(defn- fatal! [& msgs]
+(defn- exit! [code msgs]
   (binding [*out* *err*]
     (doseq [m msgs] (println m))
     (flush))
-  (System/exit 2))
+  (System/exit code))
+
+(defn- fatal! [& msgs]
+  (throw (ex-info "fatal"
+                  {:repl-eval/fatal? true
+                   :exit-code 2
+                   :messages (vec msgs)})))
 
 (defn- parse-port-file []
   (try (-> ".nrepl-port" slurp str/trim Integer/parseInt)
@@ -72,7 +82,23 @@
          (catch Exception _ nil))))
 
 (defn- save-persistent [port sid last-req-id]
-  (spit session-file (pr-str {:port port :session-id sid :last-request-id last-req-id})))
+  (let [target-path (.toPath (io/file session-file))
+        tmp-path    (Files/createTempFile (.toPath (io/file "."))
+                                          ".nrepl-session."
+                                          ".tmp"
+                                          (make-array FileAttribute 0))
+        content     (pr-str {:port port :session-id sid :last-request-id last-req-id})]
+    (try
+      (spit (.toFile tmp-path) content)
+      (try
+        (Files/move tmp-path target-path
+                    (into-array CopyOption [StandardCopyOption/REPLACE_EXISTING
+                                            StandardCopyOption/ATOMIC_MOVE]))
+        (catch AtomicMoveNotSupportedException _
+          (Files/move tmp-path target-path
+                      (into-array CopyOption [StandardCopyOption/REPLACE_EXISTING]))))
+      (finally
+        (io/delete-file (.toFile tmp-path) true)))))
 
 ;; ---------------------------------------------------------------------------
 ;; nREPL protocol helpers (全 response 消費 + 必須 op 検証)
@@ -83,6 +109,11 @@
   [client msg]
   (let [resps (doall (nrepl/message client msg))
         statuses (set (mapcat :status resps))]
+    (when-not (statuses "done")
+      (fatal! (str "FATAL: nREPL op timed out before :done: " (pr-str (:op msg)))
+              (str "  timeout-ms: " client-timeout-ms)
+              (str "  statuses: " (pr-str statuses))
+              (str "  responses: " (pr-str resps))))
     (when (statuses "error")
       (fatal! (str "FATAL: nREPL op failed: " (pr-str (:op msg)))
               (str "  statuses: " (pr-str statuses))
@@ -90,7 +121,7 @@
     resps))
 
 (defn- verify-ops! [client]
-  (let [resps (doall (nrepl/message client {:op "describe"}))
+  (let [resps (consume client {:op "describe"})
         ops   (-> resps first :ops keys set)
         missing (remove ops required-ops)]
     (when (seq missing)
@@ -120,21 +151,25 @@
   (let [port   (discover-port)
         prior  (when-not fresh? (load-persistent))
         conn   (nrepl/connect :port port)
-        client (nrepl/client conn 30000)]
-    (verify-ops! client)
-    (cond
-      (and prior
-           (= port (:port prior))
-           (contains? (existing-sessions client) (:session-id prior)))
-      {:conn conn :client client :session-id (:session-id prior) :port port :prior prior}
+        client (nrepl/client conn client-timeout-ms)]
+    (try
+      (verify-ops! client)
+      (cond
+        (and prior
+             (= port (:port prior))
+             (contains? (existing-sessions client) (:session-id prior)))
+        {:conn conn :client client :session-id (:session-id prior) :port port :prior prior}
 
-      :else
-      ;; 新 clone の場合 last-request-id は旧 session のものなので引き継がない。
-      ;; interrupt は新 session で発行された最初の eval 以降にのみ意味を持つ。
-      (let [sid (clone-session client)]
-        (when-not fresh?
-          (save-persistent port sid nil))
-        {:conn conn :client client :session-id sid :port port}))))
+        :else
+        ;; 新 clone の場合 last-request-id は旧 session のものなので引き継がない。
+        ;; interrupt は新 session で発行された最初の eval 以降にのみ意味を持つ。
+        (let [sid (clone-session client)]
+          (when-not fresh?
+            (save-persistent port sid nil))
+          {:conn conn :client client :session-id sid :port port}))
+      (catch Throwable t
+        (.close conn)
+        (throw t)))))
 
 ;; ---------------------------------------------------------------------------
 ;; Bounded output
@@ -143,9 +178,9 @@
 (defn- bounded-print [s stream]
   (let [s (str s)]
     (binding [*out* stream]
-      (if (> (count s) max-chunk-bytes)
-        (do (print (subs s 0 max-chunk-bytes))
-            (print "\n…<truncated at 10KB>\n"))
+      (if (> (count s) max-chunk-chars)
+        (do (print (subs s 0 max-chunk-chars))
+            (print "\n…<truncated at 10000 chars>\n"))
         (print s))
       (flush))))
 
@@ -172,6 +207,16 @@
       (binding [*out* *err*]
         (println "HINT: 名前空間が読み込まれていません。--load-file で先に読み込むか (require '[...]) を実行してください。")))
     exit))
+
+(defn- ensure-eval-done! [op-name req-id resps]
+  (let [statuses (set (mapcat :status resps))]
+    (when-not (statuses "done")
+      (fatal! (str "FATAL: nREPL " op-name " did not finish before client timeout")
+              (str "  timeout-ms: " client-timeout-ms)
+              (str "  request-id: " req-id)
+              (str "  statuses: " (pr-str statuses))
+              "HINT: サーバ側の eval/load-file が継続している可能性があります。"
+              "HINT: 必要なら `./.llm/scripts/repl-eval.sh --interrupt` で直近 request を中断してください。"))))
 
 ;; ---------------------------------------------------------------------------
 ;; Dispatch
@@ -200,8 +245,10 @@
   (let [req-id (str (random-uuid))
         op (-> (build-eval-op session-id opts) (assoc :id req-id))
         _  (save-persistent port session-id req-id)  ; T1: 送信前に永続化
-        resps (doall (nrepl/message client op))]
-    (report-response resps)))
+        resps (doall (nrepl/message client op))
+        rc (report-response resps)]
+    (ensure-eval-done! "eval" req-id resps)
+    rc))
 
 (defn- dispatch-load [{:keys [session-id client port]} {lf :load-file}]
   (let [f (io/file lf)
@@ -213,8 +260,10 @@
             :file-name (.getName f)
             :file-path (.getAbsolutePath f)}
         _  (save-persistent port session-id req-id)
-        resps (doall (nrepl/message client op))]
-    (report-response resps)))
+        resps (doall (nrepl/message client op))
+        rc (report-response resps)]
+    (ensure-eval-done! "load-file" req-id resps)
+    rc))
 
 (defn- dispatch-interrupt [{:keys [session-id client]}]
   (let [{:keys [last-request-id]} (load-persistent)]
@@ -224,7 +273,7 @@
     0))
 
 (defn- dispatch-describe [{:keys [client]}]
-  (let [d (first (nrepl/message client {:op "describe"}))]
+  (let [d (first (consume client {:op "describe"}))]
     (println (pr-str {:versions (:versions d)
                       :ops      (-> d :ops keys sort)}))
     0))
@@ -244,7 +293,14 @@
 (defn- handle-reset-session []
   (io/delete-file session-file true)
   (println "session reset")
-  (System/exit 0))
+  0)
+
+(defn- run-with-session [fresh command opts]
+  (let [ctx (ensure-session (boolean fresh))]
+    (try
+      (run-command command ctx opts)
+      (finally
+        (.close (:conn ctx))))))
 
 (defn run
   "exec-fn entry. opts keys:
@@ -256,15 +312,20 @@
      :ns       — eval の context namespace (default: dev.user)"
   [{:keys [command fresh] :or {command :eval} :as opts}]
   (try
-    (if (= command :reset-session)
-      (handle-reset-session)
-      (let [ctx (ensure-session (boolean fresh))
-            rc  (run-command command ctx opts)]
-        (.close (:conn ctx))
-        (System/exit rc)))
+    (let [rc (if (= command :reset-session)
+               (handle-reset-session)
+               (run-with-session fresh command opts))]
+      (System/exit rc))
     (catch clojure.lang.ExceptionInfo e
-      (fatal! (str "ERROR: " (ex-message e)) (str "  data: " (pr-str (ex-data e)))))
+      (let [data (ex-data e)
+            fatal? (:repl-eval/fatal? data)
+            exit-code (or (:exit-code data) 2)
+            messages (:messages data)]
+        (if fatal?
+          (exit! exit-code messages)
+          (exit! 2 [(str "ERROR: " (ex-message e))
+                    (str "  data: " (pr-str (ex-data e)))]))))
     (catch java.io.IOException e
-      (fatal! (str "ERROR: I/O 失敗: " (ex-message e))))
+      (exit! 2 [(str "ERROR: I/O 失敗: " (ex-message e))]))
     (catch RuntimeException e
-      (fatal! (str "ERROR: " (ex-message e))))))
+      (exit! 2 [(str "ERROR: " (ex-message e))]))))
