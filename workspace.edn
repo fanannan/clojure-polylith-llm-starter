@@ -22,7 +22,7 @@
 
  :vcs
  {:name "git"
-  :auto-add false}
+  :auto-add true}
 
  :tag-patterns
  {:stable  "^stable-.*"    ; CI 通過時に打つ安定タグ（poly test の影響範囲判定に使われる）
