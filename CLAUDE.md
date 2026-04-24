@@ -178,6 +178,8 @@
 
 必須層以外の技術選定（HTTP、永続化、ロギング、ライフサイクル管理、JSON 変換など）は、必要な機能カテゴリごとに選ぶ。選定の論理と推奨カタログは `.llm/guide/STACK_GUIDE.md` に一元化されている。採用した技術は `DESIGN.md` §8.3 に記録する。
 
+Integrant・FlowStorm・Portal は必須層ではない。前者はプロジェクトが採用したライフサイクル管理の実装例、後二者は診断補助であり、依存追加やセクション有効化を行うまで機能しない。
+
 推奨カタログに載っていない領域に遭遇した場合は、§6.3 の手順に従って第一原理から判断材料を整理し、人間判断へ渡す。必須層が固定される点は変わらない。
 
 ---
@@ -591,26 +593,41 @@ clj -M:poly create component name:<name>
 - port は nREPL が `.nrepl-port` に自動書き出し、session は `.nrepl-session` に永続化
 - LLM は `./.llm/scripts/repl-eval.sh` 経由で eval する。直接 `clj` を叩かない（shell quoting・port 発見の複雑化回避）
 
-### 9.1 `dev.user` — stable command surface（LLM と人間の共通 API）
+### 9.1 `dev.user` — capability surface（LLM と人間の共通 API）
 
 `development/src/dev/user.clj` で以下を提供する:
 
+常時使用可能:
+
 ```clojure
-(status)              ; 最初に呼ぶ: instrumentation / optional helpers / refresh-dirs / current-ns
+(status)              ; 最初に呼ぶ: capability / instrumentation / refresh-dirs / current-ns
 (malli-on!)           ; Malli instrumentation ON
 (probe x)             ; tap> + 値をそのまま返す diagnosis primitive（println の代わり）
-(safe-reset!)         ; lifecycle helper or tools.namespace reset を try/catch で包む
-(hard-reset!)         ; stale-state recovery: halt → refresh-all → go
+(safe-reset!)         ; lifecycle helper or tools.namespace refresh を try/catch で包む
+(hard-reset!)         ; stale-state recovery: halt → refresh-all → restart
+```
+
+プロジェクトが有効化した lifecycle helper がある場合のみ使用可能:
+
+```clojure
+(go) (reset) (halt) (system)
+```
+
+LLM 向け trace helper として、導入時のみ使用可能:
+
+```clojure
 (fs-start!)           ; trace helper 導入時のみ有効
 (fs-record-ns! 'ns)   ; trace helper 導入時のみ有効
 (fs-clear!)           ; trace helper 導入時のみ有効
 ```
 
-任意のライフサイクル管理セクションを有効化した場合のみ、以下も利用できる。配布状態のまま評価しない:
+人間向け GUI helper として、導入時のみ使用可能:
 
 ```clojure
-(go) (reset) (halt) (system)
+(portal-open!) (portal-clear!) (portal-close!)
 ```
+
+`(status)` は `:capabilities` に有効な helper 群と有効化状態を返す。文書より先に REPL で「今何が使えるか」を確認する。
 
 ### 9.2 LLM Live Diagnosis Loop（必須）
 
@@ -622,7 +639,8 @@ clj -M:poly create component name:<name>
 | 通常の関数・契約確認 | 必要なら `(malli-on!)` → `--load-file <path>` → `--ns <ns> --expr '(<fn> <args>)'` |
 | runtime wiring 変更 | `(safe-reset!)` で refresh + 再起動。system map がある場合は対象 key を確認 |
 | 値の形状探索 | `(probe x)` を使う。raw `println` は使わない |
-| state / 時系列 / 制御フローのバグ | 導入済みの trace helper があれば使う。未導入なら通常 eval に戻る |
+| state / 時系列 / 制御フローのバグ | 導入済みの trace helper があれば優先して使う。未導入なら通常 eval に戻る |
+| 人間が GUI で値を観察したい | 導入済みの GUI helper があれば `(probe x)` と組み合わせて使う。LLM はこれを標準経路にしない |
 | refresh が壊れた感触 | `(hard-reset!)`。stale class / 半 reload 復旧を目的にする |
 | live 挙動を確認済み | REPL 結果を `interface_test.clj` 等へテスト化し、CLI gate（`poly check` / `poly test` / `lint`）へ進む |
 
@@ -641,7 +659,7 @@ REPL で得た値をテストへ「昇格」するとは、観察した具体値
 
 ### 9.4 Reload 規律（stale state を避ける表）
 
-**`(safe-reset!)` を universal helper として使う**（ライフサイクル管理採用時はその reset に、非採用時は `tn/refresh` に dispatch）。直接 `(reset)` を呼ぶのはコメント解除後のみ利用可能。
+**`(safe-reset!)` を universal helper として使う**（lifecycle helper 採用時はその reset に、非採用時は `tn/refresh` に dispatch）。直接 `(reset)` を呼ぶのは helper を有効化した場合のみ利用可能。
 
 | 変更種別 | 正しい対処 |
 |---|---|

@@ -2,25 +2,26 @@
   "Polylith development project の REPL エントリ。
 
    本ファイルは REPL 駆動開発の補助を提供する。必須の Malli instrumentation と、
-   任意のライフサイクル管理・データ可視化 helper を同梱している。任意セクションは
+   任意の lifecycle helper・trace helper・GUI helper を同梱している。任意セクションは
    行コメント `;;` で無効化されている。採用時に `;;` を一括除去して有効化する。
 
    含まれるもの:
      - Malli instrumentation セットアップ（必須層、全プロジェクトで有効化したまま使う）
-     - ライフサイクル制御 (go / reset / halt)（コメントアウト配布、採用時に解除）
-     - データ可視化 helper（コメントアウト配布、採用時に解除）
+     - lifecycle helper (go / reset / halt)（コメントアウト配布、採用時に解除）
+     - trace helper（FlowStorm 導入時のみ）
+     - GUI helper（Portal 導入時のみ）
 
    扱い指針:
      - 配布時点では Malli instrumentation のみが有効。任意セクションは
        セクションヘッダごと `;;` で無効化されている。
-     - **ライフサイクル管理を使うプロジェクト**: 対応セクションを有効化する。
+     - **lifecycle helper を使うプロジェクト**: 対応セクションを有効化する。
        1. ns :require の `[integrant.core :as ig]` などの `;;` を除去
        2. `config` / `go` / `halt` / `reset` / `reset-all` / `system` の各 defn の
           `;;` を除去（IDE で複数行選択 → `;;` 一括除去）
        3. `config` 関数の中身を実装（必要機能カテゴリに応じた読み込みロジック）
-     - **データ可視化 helper を使うプロジェクト**: 対応セクションを同様に有効化する。
+     - **GUI helper を使うプロジェクト**: 対応セクションを同様に有効化する。
        1. `portal-instance` / `portal-tap-fn` の atom 定義の `;;` を除去
-       2. `portal` / `portal-clear` / `portal-close` の defn の `;;` を除去
+       2. `portal-open!` / `portal-clear!` / `portal-close!` の defn の `;;` を除去
      - 任意 helper を使わないプロジェクト: そのまま放置してよい。
        コメントアウトされているため評価されず、依存が未解決でも REPL は壊れない。
      - Malli instrumentation セクションは全プロジェクトで有効化したまま使う（必須層、削除不可）
@@ -32,10 +33,14 @@
      (safe-reset!)     reset を構造化エラー返却で包む
      (hard-reset!)     stale-state recovery
 
-   任意 helper 有効化後に利用できるコマンド:
-     (go)/(reset)/(halt)/(system)  ライフサイクル管理採用時（コメント解除後）
-     (portal)          データ可視化 helper 起動（コメント解除後）
-     (fs-start!)/(fs-record-ns! 'ns)/(fs-clear!)  trace helper 利用時"
+   プロジェクトが有効化した lifecycle helper:
+     (go)/(reset)/(halt)/(system)
+
+   LLM 向け trace helper:
+     (fs-start!)/(fs-record-ns! 'ns)/(fs-clear!)
+
+   人間向け GUI helper:
+     (portal-open!)/(portal-clear!)/(portal-close!)"
   (:require
    [clojure.tools.namespace.repl :as tn]
    [malli.dev :as mdev]
@@ -84,17 +89,17 @@
 ;;   - LLM は `.llm/scripts/repl-eval.sh` 経由で同じ helper を叩く
 ;;
 ;; 提供する helper:
-;;   (status)           環境状態を 1 map で返す（最初に呼ぶ）
+;;   (status)           capability と環境状態を 1 map で返す（最初に呼ぶ）
 ;;   (probe x)          tap> + 戻り値保持（println の代わり）
-;;   (safe-reset!)      lifecycle / tools.namespace reset を try/catch で包む
-;;   (hard-reset!)      stale-state recovery: halt → refresh-all → go
+;;   (safe-reset!)      lifecycle helper / tools.namespace refresh を try/catch で包む
+;;   (hard-reset!)      stale-state recovery: halt → refresh-all → restart
 ;;   (fs-start!) / (fs-record-ns! 'ns) / (fs-clear!)   trace helper 導入時のみ動作
 ;;
 ;; Reload 規律（CLAUDE.md §9.4）:
-;;   - 関数追加・変更: --load-file or (reset)
-;;   - ns graph 変更 (追加・削除・rename): (reset) で tools.namespace が解決
+;;   - 関数追加・変更: --load-file or (safe-reset!)
+;;   - ns graph 変更 (追加・削除・rename): (safe-reset!) で tools.namespace が解決
 ;;   - 依存追加 (deps.edn 変更): fresh JVM 再起動必須
-;;   - lifecycle 定義変更: (reset) で反映
+;;   - lifecycle 定義変更: (safe-reset!) で反映
 ;;   - defrecord shape / protocol method 追加: (hard-reset!) or fresh JVM
 ;;   - multimethod 再定義: (hard-reset!) 推奨
 ;;   - m/=> 契約追加: --load-file 後に (malli-on!) 再実行
@@ -145,16 +150,31 @@
       (tap> {:workbench/integrant-not-running true})
       nil)))
 
-(defn status
-  "接続時に最初に実行する。Malli on/off、Integrant system keys、
-   Portal / FlowStorm 利用可否、refresh dirs、current ns を 1 map で返す。"
+(defn- lifecycle-helper-state
+  "lifecycle helper が導入済みなら状態 map を返す。未導入なら nil。
+   現行テンプレートでは Integrant ベースの helper を想定するが、
+   呼び出し側には capability としてのみ露出する。"
   []
-  (let [cap (ensure-dev-tools!)]
+  (when (:integrant (ensure-dev-tools!))
+    {:available? true
+     :impl       :integrant
+     :system-keys (safe-system-keys)}))
+
+(defn status
+  "接続時に最初に実行する。helper capability と環境状態を 1 map で返す。"
+  []
+  (let [cap             (ensure-dev-tools!)
+        lifecycle-state (lifecycle-helper-state)]
     {:malli-on?    @malli-running?
-     :integrant    (:integrant cap)
-     :integrant-sys (when (:integrant cap) (safe-system-keys))
-     :portal       (:portal cap)
-     :flow-storm   (:flow-storm cap)
+     :capabilities {:always    '[status malli-on! probe safe-reset! hard-reset!]
+                    :lifecycle {:available? (boolean lifecycle-state)
+                                :impl       (:impl lifecycle-state)
+                                :commands   '[go reset halt system]}
+                    :trace     {:available? (:flow-storm cap)
+                                :commands   '[fs-start! fs-record-ns! fs-clear!]}
+                    :gui       {:available? (:portal cap)
+                                :commands   '[portal-open! portal-clear! portal-close!]}}
+     :lifecycle    lifecycle-state
      :refresh-dirs refresh-dirs
      :current-ns   (ns-name *ns*)}))
 
@@ -324,14 +344,14 @@
 ;; 中間データ構造やトランザクション内容を可視化する用途に強い。
 ;;
 ;; tap> ハンドラの増殖と残存を防ぐため、submit 関数を atom で保持し、
-;; portal 呼び出し時は前回 submit があれば remove-tap してから新たに add-tap、
-;; portal-close 時も必ず remove-tap してから atom をクリアする。
+;; portal-open! 呼び出し時は前回 submit があれば remove-tap してから新たに add-tap、
+;; portal-close! 時も必ず remove-tap してから atom をクリアする。
 ;; ---------------------------------------------------------------------------
 
 ;; (def ^:private portal-instance (atom nil))
 ;; (def ^:private portal-tap-fn   (atom nil))
 
-;; (defn portal
+;; (defn portal-open!
 ;;   "Portal を起動し、tap> の出力先として登録する。
 ;;    既に起動済みなら再起動せず、tap ハンドラも重複登録しない。
 ;;    Portal 依存が存在しない環境では :portal-not-available を返す。"
@@ -351,7 +371,7 @@
 ;;     (catch Exception _
 ;;       :portal-not-available)))
 
-;; (defn portal-clear
+;; (defn portal-clear!
 ;;   "Portal ウィンドウの表示を消去する。成功時 :cleared、未接続時 :portal-not-available。"
 ;;   []
 ;;   (try
@@ -360,7 +380,7 @@
 ;;     :cleared
 ;;     (catch Exception _ :portal-not-available)))
 
-;; (defn portal-close
+;; (defn portal-close!
 ;;   "Portal を閉じ、tap> への登録も解除する。
 ;;    成功時 :closed、Portal 依存が存在しない等で呼び出せない時は :portal-not-available を返す。"
 ;;   []
@@ -378,8 +398,8 @@
 ;; ---------------------------------------------------------------------------
 ;; リッチコメント — 典型操作
 ;;
-;; 以下は Integrant / Portal セクションのコメントを解除した後に使える例。
-;; 配布状態のままでは (go) / (portal) 等は未定義のため評価するとエラーになる。
+;; 以下は lifecycle helper / GUI helper セクションのコメントを解除した後に使える例。
+;; 配布状態のままでは (go) / (portal-open!) 等は未定義のため評価するとエラーになる。
 ;; clj-kondo の :skip-comments true により lint 対象外。
 ;; ---------------------------------------------------------------------------
 
@@ -396,10 +416,10 @@
   ;; (system)
   ;; (keys (system))
 
-  ;; --- データ可視化（採用時）---
-  ;; (portal)
+  ;; --- GUI helper（採用時）---
+  ;; (portal-open!)
   ;; (tap> {:check :hello})
-  ;; (portal-clear)
+  ;; (portal-clear!)
 
   ;; --- 終了 ---
   ;; (halt)
