@@ -39,6 +39,21 @@
 
 困った時はまず **§1 原理**に立ち返り、必要なら上記詳細ファイルを引く。
 
+### 参照マーカー規約
+
+Markdown 文書から別の Markdown 文書を指す時は、本文中に裸で埋め込まず、独立行に分離して次の 3 種で型付けする。
+
+- `¤`: 実行前に読む必須参照
+- `∵`: 根拠・背景参照
+- `⚠`: 問題発生時のみ参照
+
+運用規則:
+
+- 行頭 1 文字 + 半角スペース 1 個で始める
+- 1 行 1 参照だけを書く
+- 本文中の無印 `FOO.md §X` を禁止する
+- 監査は `./.llm/scripts/check-doc-references.sh` が行う
+
 ### フェーズ別の参照マップ
 
 | 状況 | 主に読むべき文書 |
@@ -59,13 +74,17 @@
 
 ## 0. プロジェクトについて
 
-プロダクトの目的・スコープ・仕様・プロジェクト固有情報（識別子・ランタイム・配布形態）はすべて **`DESIGN.md`** を参照。
+プロダクトの目的・スコープ・仕様・プロジェクト固有情報（識別子・ランタイム・配布形態）はすべて **DESIGN.md** に置く。
+¤ DESIGN.md
 本ファイル（CLAUDE.md）は**どう作るかの規約**のみを扱う（原則 13）。
 
-**LLM は実装に着手する前に、必ず DESIGN.md の関連セクションを確認する**。
-仕様が曖昧・矛盾を含む場合は `.llm/memory/QUESTIONS.md` に Q を立てる（自己解釈で進めない）。
+**LLM は実装に着手する前に、必ず DESIGN の関連セクションを確認する**。
+¤ DESIGN.md
+仕様が曖昧・矛盾を含む場合は QUESTIONS に Q を立てる（自己解釈で進めない）。
+¤ .llm/memory/QUESTIONS.md
 
-> **プロジェクト初期化が未完了の場合、`.llm/guide/BOOTSTRAP_GUIDE.md` を参照して完了させる**。
+> **プロジェクト初期化が未完了の場合、BOOTSTRAP_GUIDE に従って完了させる**。
+> ¤ .llm/guide/BOOTSTRAP_GUIDE.md
 > 初期化完了後は BOOTSTRAP_GUIDE.md を参照する必要はない（DESIGN.md §1-§4, §8 の埋まり具合・brick の存在等から完了状態は判定可能）。ファイル移動は行わない。
 ---
 
@@ -118,17 +137,20 @@
 |---|---|---|
 | 外部世界・本番データ・公開 API・依存関係・プロジェクト構造を変える | DB マイグレーション実行、brick deps.edn 変更、新規 base/project、公開関数の破壊的変更 | L0/L1。事前承認が必要 |
 | git や文書履歴で明確に回復できる | 実装コード、テスト、ADR の新規発行、Q 起票 | L2/L3。検証と事後報告を優先 |
-| 迷う | 影響範囲が広い、回復手順が不明、判断主体が不明 | 上位階層に倒し、`.llm/guide/COLLABORATION_GUIDE.md` §2 を参照 |
+| 迷う | 影響範囲が広い、回復手順が不明、判断主体が不明 | 上位階層に倒す |
 
-承認階層との対応は `.llm/guide/COLLABORATION_GUIDE.md` §2 を参照。本書 §2 は日常作業で見落としてはならない高リスク項目の入口であり、詳細マッピングは同ガイドに置く。
+承認階層との対応は COLLABORATION_GUIDE が正本である。本書 §2 は日常作業で見落としてはならない高リスク項目の入口だけを置く。
+∵ .llm/guide/COLLABORATION_GUIDE.md §2
 
 ### 1.3 原則の使い方（LLM への指示）
 
 - **判断に迷ったら §1.1 の三原則に照らせ**。規約に書かれていない状況でも原則から導出できる
 - **新しい規約や手順を提案する前に §1.2.1〜§1.2.4 の四戦略、または §1.2.5 の承認設計のどれに該当するかを明示せよ**
 - **「規約で縛れば守られる」は誤り**。§1.2.1 機械化、または §7 の自己停止プロトコルのように、**守る手段**を同時に設計する
-- **生きた知識の活用で再発見の疲労を避ける**: 実装中に判明した契約・不変条件・暗黙知は `.llm/memory/KNOWLEDGE.md` に集約される。LLM は実装着手前に関連する KNOWLEDGE 節を必ず確認し、同じ判断を繰り返さないこと（詳細は §8, §11）
+- **生きた知識の活用で再発見の疲労を避ける**: 実装中に判明した契約・不変条件・暗黙知は KNOWLEDGE に集約される。LLM は実装着手前に関連節を必ず確認し、同じ判断を繰り返さないこと（詳細は §8, §11）
+¤ .llm/memory/KNOWLEDGE.md
 - **「前提の明示」で解空間を早期に収束させる**: LLM との協働では、ユーザーが価値判断・運用制約・採否の向きを**早期に明示**するほど、LLM の提案解空間が適切に狭まり、設計コストが下がる。例: 「Babashka は使わない、shell script で書く」「サンプルコードはコメントで残す」のように採否の向きを与えると、LLM は条件付き生成・動的削除のような複雑な方向を自発的に閉じる。これは §1.3「生きた知識の活用」の延長で、**前提の言語化自体が協働の知識**になる。判断根拠が不明な時はユーザーに前提を訊くのが効率的（`.llm/guide/COLLABORATION_GUIDE.md` §4）
+∵ .llm/guide/COLLABORATION_GUIDE.md §4
 
 ---
 
@@ -136,7 +158,8 @@
 
 §1 からの帰結：**自動検証では防げない**かつ**影響が大きい**操作は、LLM が勝手に実行してはならない。
 
-意思決定階層は次の 4 値で判定する。詳細な項目別マッピングと 4 種文書の編集権限は `.llm/guide/COLLABORATION_GUIDE.md` §2 が正本。本節は、日常作業で先に見る高リスク項目の抜粋である。
+意思決定階層は次の 4 値で判定する。詳細な項目別マッピングと 4 種文書の編集権限は COLLABORATION_GUIDE が正本であり、本節は日常作業で先に見る高リスク項目の抜粋である。
+∵ .llm/guide/COLLABORATION_GUIDE.md §2
 
 | 階層 | LLM がしてよいこと | 代表例 |
 |---|---|---|
@@ -153,7 +176,8 @@
 - 新規 component / base / project の追加（`poly create component` / `poly create base` / `poly create project`）
 - DB マイグレーションの実行（生成は可、実行は人間が行う）
 - **必須層の入れ替え・削除**（§3 記載の必須層、およびそれぞれの設定ファイル `.clj-kondo/config.edn` / `cljfmt.edn` / `workspace.edn` / `deps.edn` 必須部分）。設定の変更（例: lint 規則の追加・緩和、cljfmt 設定変更）も含む
-- CLAUDE.md / .llm/guide/ 配下の各種ガイドの自動編集（**提案のみ可**。ユーザからの明示的な改修依頼がある場合も、変更内容を提示して承認を得てから編集する。テンプレート保守タスクも同じ規律に従う。詳細な編集権限マトリクスは `.llm/guide/COLLABORATION_GUIDE.md` §2.3）
+- 本文書 / `.llm/guide/` 配下の各種ガイドの自動編集（**提案のみ可**。ユーザからの明示的な改修依頼がある場合も、変更内容を提示して承認を得てから編集する。テンプレート保守タスクも同じ規律に従う）
+∵ .llm/guide/COLLABORATION_GUIDE.md §2.3
 - **コンポーネントの統合・分割**（境界変更は影響甚大）
 - `components/`、`bases/`、`projects/` 配下のファイル/ディレクトリを手作業で作成（必ず `poly create`）
 - **4 種文書（DESIGN.md / KNOWLEDGE.md / adr/ / QUESTIONS.md）の独断編集・状態変更**（詳細な編集権限マトリクスは `.llm/guide/COLLABORATION_GUIDE.md` §2.3）
@@ -174,7 +198,8 @@
 - **clj-watson**（依存脆弱性スキャン、時間軸を跨いだ機械化。`./.llm/scripts/check-vulnerabilities.sh` で起動、release 前必須。NVD API key 推奨）
 - **`.llm/scripts/` ディレクトリ**（`check-workspace-integrity.sh` / `check-*.sh` / `lint-import-hooks.sh`、設定ファイル・ディレクトリ構造の機械的検査を担う）
 
-必須層が固定される理由は、これらが本テンプレートの機械化・構造検証・境界契約・整形規律の前提だからである。入れ替えると個別ライブラリの変更ではなく、§1 の実装手段そのものを変更することになる。変更が必要な場合はテンプレート保守タスクとして扱い、`.llm/guide/MAINTAINERS_GUIDE.md` の手順に従う。
+必須層が固定される理由は、これらが本テンプレートの機械化・構造検証・境界契約・整形規律の前提だからである。入れ替えると個別ライブラリの変更ではなく、§1 の実装手段そのものを変更することになる。変更が必要な場合はテンプレート保守タスクとして扱う。
+¤ .llm/guide/MAINTAINERS_GUIDE.md
 
 必須層以外の技術選定（HTTP、永続化、ロギング、ライフサイクル管理、JSON 変換など）は、必要な機能カテゴリごとに選ぶ。選定の論理と推奨カタログは `.llm/guide/STACK_GUIDE.md` に一元化されている。採用した技術は `DESIGN.md` §8.3 に記録する。
 
@@ -196,7 +221,8 @@ Integrant・FlowStorm・Portal は必須層ではない。前者はプロジェ�
 - 外部入力（HTTP リクエスト、DB 行、外部 API レスポンス、設定ファイル）は**入口で `m/validate`**
 - 開発時は Malli instrumentation を有効化（`dev/user.clj` の `(malli-on!)` を REPL 起動後に呼ぶ。ライフサイクル管理を使うプロジェクトでは起動 helper が内部的に呼ぶ）。契約違反は REPL 評価で即座に例外化
 - 関数が失敗し得るなら、戻り値の型を一貫させる（常に `nil` を返すか、`{:error ...}` 形式か、一つに決める）
-- コード例は `.llm/guide/POLYLITH_GUIDE.md` §2 を参照（本テンプレートには brick サンプルは配布されない）
+- コード例は別紙に置く（本テンプレートには brick サンプルは配布されない）
+∵ .llm/guide/POLYLITH_GUIDE.md §2
 
 ### 4.2 不変性の活用（§1.1.2 の実装）
 
@@ -281,7 +307,9 @@ release 前・週次 CI では追加で以下を実行:
 ./.llm/scripts/check-vulnerabilities.sh             # clj-watson（時間軸を跨いだ脆弱性検知、release 前必須）
 ```
 
-`./.llm/scripts/check-workspace-integrity.sh` の内訳と役割分担は `.llm/scripts/README.md` を参照。機械化された検査群（clj-kondo 組み込み / polyguard hook / Splint / scripts / Polylith / Malli / clj-watson）は `MAINTAINERS_GUIDE.md §5.10` で体系化されている。
+`./.llm/scripts/check-workspace-integrity.sh` の内訳と役割分担は scripts README にまとめる。機械化された検査群（clj-kondo 組み込み / polyguard hook / Splint / scripts / Polylith / Malli / clj-watson）は保守者向け文書で体系化する。
+∵ .llm/scripts/README.md
+∵ .llm/guide/MAINTAINERS_GUIDE.md §5.10
 
 ### 5.6 CLI 呼び出しの統一
 
@@ -318,15 +346,18 @@ Polylith 構造の操作と、追加ライブラリの採用・変更手順を�
 | **依存脆弱性スキャン（clj-watson、release 前）** | `./.llm/scripts/check-vulnerabilities.sh` |
 | **ワークスペース整合性検査** | `./.llm/scripts/check-workspace-integrity.sh` |
 
-**brick の書き方は `.llm/guide/POLYLITH_GUIDE.md` §2 のコード例を参照**(本テンプレートには brick サンプルは配布されない)。
-詳細手順・境界判断も **`.llm/guide/POLYLITH_GUIDE.md`**。
+**brick の書き方は別紙のコード例に従う**（本テンプレートには brick サンプルは配布されない）。
+詳細手順・境界判断も別紙に置く。
+∵ .llm/guide/POLYLITH_GUIDE.md §2
 
 ### 6.2 ライブラリの採用・変更
 
 必須層以外のライブラリは、必要な機能カテゴリに応じて各 brick の `deps.edn` に書く。これは**依存ライブラリの追加・削除**に該当するため、§2 禁止事項の対象であり、ユーザ承認が必須。
 
-- **選定根拠・禁止非推奨ライブラリ**: `.llm/guide/STACK_GUIDE.md`
-- **初期化時の具体手順**: `.llm/guide/BOOTSTRAP_GUIDE.md`
+- **選定根拠・禁止非推奨ライブラリ**: STACK_GUIDE
+∵ .llm/guide/STACK_GUIDE.md
+- **初期化時の具体手順**: BOOTSTRAP_GUIDE
+∵ .llm/guide/BOOTSTRAP_GUIDE.md
 - **brick deps.edn への反映**: 必要な brick にのみ追加し、ルート deps.edn に二重管理しない
 
 LLM が独自判断で brick deps.edn にライブラリを追加・削除・変更することは禁止。推奨カタログにない技術採用や推奨からの逸脱は、人間判断と ADR 記録を伴う。
@@ -419,12 +450,14 @@ STACK_GUIDE.md の `;; lib-catalog` カタログは、本テンプレートの�
 
 #### 選択肢 D を選んだ場合の処理
 
-選択肢 D（人間による設計判断を求める）を選んだ場合、報告内容を **`.llm/memory/QUESTIONS.md` に新規 Q として記録**する。詳細手順は `.llm/memory/QUESTIONS.md` §0.9 に従う：
+選択肢 D（人間による設計判断を求める）を選んだ場合、報告内容を **QUESTIONS に新規 Q として記録**する。
+¤ .llm/memory/QUESTIONS.md §0.9
 
 1. ID を採番（`Q-YYYY-MM-NNN`）、状態 `open`
 2. 本節の報告フォーマット（試みた内容・残障害・仮説）を Q の `文脈` と `選択肢` に転記
 3. ユーザへの報告で「Q-YYYY-MM-NNN として記録しました」と言及
-4. 以降、該当コードに `;; TODO(Q-YYYY-MM-NNN): ...` を残し、解決まで自走しない（`.llm/memory/QUESTIONS.md` §0.8）
+4. 以降、該当コードに `;; TODO(Q-YYYY-MM-NNN): ...` を残し、解決まで自走しない
+∵ .llm/memory/QUESTIONS.md §0.8
 
 **Q を記録せずにユーザに聞きっぱなしで放置しない**。軌跡が残らない。
 
@@ -447,18 +480,29 @@ STACK_GUIDE.md の `;; lib-catalog` カタログは、本テンプレートの�
 
 どの作業を行う時も、着手前に以下を確認する。これは §1.3「生きた知識の活用で再発見の疲労を避ける」の具体実装：
 
-1. **仕様の確認**: `DESIGN.md` の関連節（特に §3 主要ユースケース、§4 受入基準）を読む
-2. **既存知識の確認**: `.llm/memory/KNOWLEDGE.md` の関連節（対象ドメイン・境界契約・運用制約）を読む。運用プロセスの詳細は同ファイル §0（エントリのライフサイクル、昇格先判定等）
-3. **未決判断の確認**: `.llm/memory/QUESTIONS.md` の `open` / `in-discussion` に関連する Q がないか確認。関連 Q があれば、その解決を待つか、Q のコンテキストで作業する。状態遷移と昇格先判定は同ファイル §0
-4. **過去の決定の確認**: `.llm/memory/adr/` で関連する ADR があれば読む。発行・改訂手順は `.llm/memory/adr/README.md`
+1. **仕様の確認**: DESIGN の関連節（特に §3 主要ユースケース、§4 受入基準）を読む
+¤ DESIGN.md
+2. **既存知識の確認**: KNOWLEDGE の関連節（対象ドメイン・境界契約・運用制約）を読む
+¤ .llm/memory/KNOWLEDGE.md
+∵ .llm/memory/KNOWLEDGE.md
+3. **未決判断の確認**: QUESTIONS の `open` / `in-discussion` に関連する Q がないか確認する。関連 Q があれば、その解決を待つか、Q のコンテキストで作業する
+¤ .llm/memory/QUESTIONS.md
+∵ .llm/memory/QUESTIONS.md
+4. **過去の決定の確認**: 関連する ADR があれば読む
+¤ .llm/memory/adr/README.md
 
 **空スキャン規約**: 上記 4 つの確認は、該当文書が空（初期状態・該当エントリなし）の場合、**空スキャンで完了**とみなす。空を確認する行為自体が §1.3 の実装であり、スキップしてよい対象ではない。ただし、空であることを確認した後は次のステップに進む。
 
-空スキャンの目的は「読む価値があるか」を毎回推測しないことにある。空であっても確認済みなら、以後の判断で「見落としたかもしれない」という再確認を避けられる。`KNOWLEDGE.md` / `QUESTIONS.md` の §0 と `adr/README.md` の運用手順は、この §8.0 から呼び出されるプロセスを定義する。
+空スキャンの目的は「読む価値があるか」を毎回推測しないことにある。空であっても確認済みなら、以後の判断で「見落としたかもしれない」という再確認を避けられる。各文書の運用手順は、この §8.0 から呼び出されるプロセスを定義する。
+∵ .llm/memory/KNOWLEDGE.md
+∵ .llm/memory/QUESTIONS.md
+∵ .llm/memory/adr/README.md
 
 仕様・知識・未決に**実装判断へ影響する曖昧さ・矛盾・欠落**を発見したら、`.llm/memory/QUESTIONS.md` に Q を立てて**自己解釈で進めない**。誤字、言い回し、実装判断に影響しない表現揺れは Q ではなく通常のドキュメント改善候補として扱う。
+¤ .llm/memory/QUESTIONS.md
 
-**仕様曖昧性の点検項目**（用語定義・例外条件・数値基準・境界条件・受入基準整合・KNOWLEDGE との矛盾）と**質問の出し方**は `.llm/guide/COLLABORATION_GUIDE.md` §4 に一元化されている。
+**仕様曖昧性の点検項目**（用語定義・例外条件・数値基準・境界条件・受入基準整合・KNOWLEDGE との矛盾）と**質問の出し方**は別紙に一元化されている。
+∵ .llm/guide/COLLABORATION_GUIDE.md §4
 
 ### 8.0.0 ターン内で閉じる検証フィードバック
 
@@ -532,10 +576,11 @@ LLM のフィードバックループは**編集単位でターン内に閉じ�
 clj -M:poly create component name:<name>
 ```
 
-**重要**: `poly create` は brick ディレクトリしか作らない。ルート `deps.edn` の `:dev :extra-paths` / `:extra-deps` とワークスペース構成の追従は手動で、`.llm/guide/BOOTSTRAP_GUIDE.md §2.5` の brick 追加チェックリストに従う。作業後は完了条件（§5.5）の `./.llm/scripts/check-workspace-integrity.sh` が登録漏れを検知する。
+**重要**: `poly create` は brick ディレクトリしか作らない。ルート `deps.edn` の `:dev :extra-paths` / `:extra-deps` とワークスペース構成の追従は手動で行う。作業後は完了条件（§5.5）の `./.llm/scripts/check-workspace-integrity.sh` が登録漏れを検知する。
+¤ .llm/guide/BOOTSTRAP_GUIDE.md §2.5
 
-雛形は `.llm/guide/POLYLITH_GUIDE.md` §2 のコード例を参照。ライフサイクル定義を提供する場合は entry base の `system.clj` に集約する。
-詳細手順は `.llm/guide/POLYLITH_GUIDE.md` と `.llm/guide/BOOTSTRAP_GUIDE.md §2.5`。
+雛形は別紙のコード例を使う。ライフサイクル定義を提供する場合は entry base の `system.clj` に集約する。
+∵ .llm/guide/POLYLITH_GUIDE.md §2
 
 ### 8.3 コミット
 
@@ -547,7 +592,8 @@ clj -M:poly create component name:<name>
 
 ### 8.4 継続的な保守（依存更新、ライブラリ差替）
 
-プロジェクト継続運用時の依存更新、ライブラリ差替、バージョンアップの手順は、テンプレート保守者向けとして `.llm/guide/MAINTAINERS_GUIDE.md` §5.1〜§5.3 に記載されているが、**派生プロジェクトでも同じ手順が適用できる**。`clj -M:outdated` による更新候補確認、セキュリティパッチの即時適用、メジャーアップ時の CI 通過確認、API 破壊的変更時の ADR 発行などは、テンプレート保守と派生プロジェクト保守で共通する。
+プロジェクト継続運用時の依存更新、ライブラリ差替、バージョンアップの手順は保守者向け文書にまとめる。**派生プロジェクトでも同じ手順が適用できる**。`clj -M:outdated` による更新候補確認、セキュリティパッチの即時適用、メジャーアップ時の CI 通過確認、API 破壊的変更時の ADR 発行などは、テンプレート保守と派生プロジェクト保守で共通する。
+¤ .llm/guide/MAINTAINERS_GUIDE.md §5.1
 
 派生プロジェクトでの適用上の違い：
 
@@ -559,25 +605,32 @@ clj -M:poly create component name:<name>
 
 実装中または実装後に仕様変更・追加が生じた場合の基本フロー：
 
-1. **変更内容の合意**: ユーザと変更方針を合意（権限 L1、LLM 独断禁止。LLM 起因の発見の場合は `.llm/memory/QUESTIONS.md` に Q を起票してユーザ判断を仰ぐ）
+1. **変更内容の合意**: ユーザと変更方針を合意（権限 L1、LLM 独断禁止。LLM 起因の発見の場合は QUESTIONS に Q を起票してユーザ判断を仰ぐ）
+¤ .llm/memory/QUESTIONS.md
 2. **規模に応じた ADR 発行**:
    - L0 相当（目的・スコープ・主要ユースケースの根本改訂）→ ADR 必須
    - L1 相当（ユースケース追加・受入基準改訂）→ ADR 推奨
    - L2・L3 相当（記述の明確化、誤字修正）→ ADR 不要
 3. **DESIGN.md の書き換え**: 該当節を**現在形で新仕様に書き換える**（差分表示・追記形式にしない、過去の記述は残さない）
 4. **関連文書の更新**:
-   - KNOWLEDGE.md: 新仕様と整合しないエントリを上書き or 廃止（`.llm/memory/KNOWLEDGE.md` §0.5）
-   - QUESTIONS.md: 関連する open Q を resolved に遷移して事後報告、または新規 Q を起票（解決根拠が曖昧な場合のみ確認を求める）
+   - KNOWLEDGE: 新仕様と整合しないエントリを上書き or 廃止
+   ∵ .llm/memory/KNOWLEDGE.md §0.5
+   - QUESTIONS: 関連する open Q を resolved に遷移して事後報告、または新規 Q を起票（解決根拠が曖昧な場合のみ確認を求める）
+   ∵ .llm/memory/QUESTIONS.md
 5. **実装反映**: §8.1〜§8.2 の作業プロトコル適用
 6. **コミット**: ADR 番号をメッセージに含める（例: `Revise DESIGN.md §3 for streaming inference (ADR-0012)`）
 
-**DESIGN.md は「現在の仕様」の一次情報源**であり、変更履歴は ADR・git・QUESTIONS.md アーカイブで保全される（原則 13 の 4 種文書分離）。DESIGN.md 内に差分表記・追記・変更履歴を残さない（原則 7 文書の自己整合性、疲労最小化原則）。同じ原則は KNOWLEDGE.md にも適用される（KNOWLEDGE.md §0.5 上書きを恐れない）。
+**DESIGN は「現在の仕様」の一次情報源**であり、変更履歴は ADR・git・QUESTIONS アーカイブで保全される（原則 13 の 4 種文書分離）。DESIGN 内に差分表記・追記・変更履歴を残さない（原則 7 文書の自己整合性、疲労最小化原則）。同じ原則は KNOWLEDGE にも適用される。
 
 詳細:
-- 権限階層: `.llm/guide/COLLABORATION_GUIDE.md` §2.2
-- ADR 運用: `.llm/memory/adr/README.md`
-- KNOWLEDGE.md 更新: `.llm/memory/KNOWLEDGE.md` §0.5
-- QUESTIONS.md 運用: `.llm/memory/QUESTIONS.md` §0
+- 権限階層: COLLABORATION_GUIDE
+∵ .llm/guide/COLLABORATION_GUIDE.md §2.2
+- ADR 運用
+∵ .llm/memory/adr/README.md
+- KNOWLEDGE 更新
+∵ .llm/memory/KNOWLEDGE.md §0.5
+- QUESTIONS 運用
+∵ .llm/memory/QUESTIONS.md
 
 ---
 
@@ -704,9 +757,11 @@ Exit codes: `0` 成功 / `1` eval-error・namespace-not-found・:ex / `2` 接続
 
 ## 11. プロジェクト記憶の運用
 
-プロジェクトに関わる情報は、**原則 13（MAINTAINERS_GUIDE.md §4）に基づき 4 種類の文書に分離**される。役割が対照的なので混同しない。
+プロジェクトに関わる情報は、**原則 13 に基づき 4 種類の文書に分離**される。役割が対照的なので混同しない。
+∵ .llm/guide/MAINTAINERS_GUIDE.md §4
 
-CLAUDE.md では日常判断に必要な短縮定義だけを置く。原則 13 の本定義は `.llm/guide/MAINTAINERS_GUIDE.md` §4、各文書の運用手順は各 §0 が正本。
+本文書では日常判断に必要な短縮定義だけを置く。原則 13 の本定義は保守者向け文書に置き、各文書の運用手順は各 §0 を正本とする。
+∵ .llm/guide/MAINTAINERS_GUIDE.md §4
 
 ### 11.1 4 種類の文書と参照先
 
@@ -717,9 +772,12 @@ CLAUDE.md では日常判断に必要な短縮定義だけを置く。原則 13 
 | **決定履歴（ADR）** | `.llm/memory/adr/NNNN-topic.md` | なぜそう決めたか、却下した代替案 | 発行後不変。改訂は新 ADR | `.llm/memory/adr/README.md` |
 | **判断保留（QUESTIONS）** | `.llm/memory/QUESTIONS.md` | 未決の判断、自己停止 D の受け皿 | open → resolved / wontfix / superseded | `QUESTIONS.md` §0 |
 
-編集権限・協働プロトコルは **`.llm/guide/COLLABORATION_GUIDE.md`** に一元化されている。**Q を立てるべき場面の一覧は `QUESTIONS.md` §1**、LLM の仕様書開発者としての複数役割は §11.3。
+編集権限・協働プロトコルは別紙に一元化されている。**Q を立てるべき場面の一覧**も別紙に置く。LLM の仕様書開発者としての複数役割は §11.3。
+∵ .llm/guide/COLLABORATION_GUIDE.md
+∵ .llm/memory/QUESTIONS.md §1
 
-分類に迷う場合は、先に `.llm/memory/QUESTIONS.md` に Q を立てる。分類自体を自己解釈しない。
+分類に迷う場合は、先に QUESTIONS に Q を立てる。分類自体を自己解釈しない。
+¤ .llm/memory/QUESTIONS.md
 
 ### 11.2 サイクル全体図（羅針盤）
 
@@ -761,7 +819,9 @@ flowchart TD
 - **シナリオ B**（境界判断 → Q 経由で ADR 発行）: コンポーネント境界の議論を Q として起票、採用案を ADR として記録
 - **シナリオ C**（技術選定 → Q 経由で ADR + KNOWLEDGE 両方）: 決定経緯は ADR（不変）、運用規約は KNOWLEDGE（上書き更新）
 
-各シナリオの詳細手順は **`COLLABORATION_GUIDE.md` §6**、昇格先判定の基準は **`QUESTIONS.md` §0.5** を参照。
+各シナリオの詳細手順と昇格先判定の基準は別紙に置く。
+∵ .llm/guide/COLLABORATION_GUIDE.md §6
+∵ .llm/memory/QUESTIONS.md §0.5
 
 ### 11.3 LLM の仕様書開発者としての役割
 
@@ -775,4 +835,6 @@ flowchart TD
 | **決定履歴保全者** | 重要判断の ADR 発行提案 |
 | **未決判断管理者** | 自己解釈できない判断を Q として起票 |
 
-**LLM は受け身で実装するだけではない**。ただし編集権限は限定される（4 種文書の編集・状態変更はすべてユーザ承認必須）。協働の詳細プロトコルは **`.llm/guide/COLLABORATION_GUIDE.md`**、Q を立てるべき場面は **`QUESTIONS.md` §1** を参照。
+**LLM は受け身で実装するだけではない**。ただし編集権限は限定される（4 種文書の編集・状態変更はすべてユーザ承認必須）。協働の詳細プロトコルと、Q を立てるべき場面は別紙に置く。
+∵ .llm/guide/COLLABORATION_GUIDE.md
+∵ .llm/memory/QUESTIONS.md §1

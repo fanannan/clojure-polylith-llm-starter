@@ -1,10 +1,12 @@
 # .llm/scripts/ — ワークスペース運用スクリプト群
 
-本ディレクトリは、`.clj-kondo/` の custom hook では捕捉できない**設定ファイル・ディレクトリ構造・配布物整合性**の検査と、シェル展開が必要な運用コマンドのラッパー、および markdown 文書から機械可読 artifact を生成する Clojure script を収容する。各スクリプトは単独でも実行できるが、基本は `check-workspace-integrity.sh` が完了条件（`CLAUDE.md §5.5`）から一括で起動する。
+本ディレクトリは、`.clj-kondo/` の custom hook では捕捉できない**設定ファイル・ディレクトリ構造・配布物整合性**の検査と、シェル展開が必要な運用コマンドのラッパー、および markdown 文書から機械可読 artifact を生成する Clojure script を収容する。各スクリプトは単独でも実行できるが、基本は `check-workspace-integrity.sh` が完了条件から一括で起動する。
+∵ CLAUDE.md §5.5
 
-**Convention 拡張**（既存は shell のみ、以降は Clojure script も追加）: `gen_*.clj` は markdown 文書（典型的には `STACK_GUIDE.md`）から EDN / patterns artifact を生成するための Clojure script。実行は `clj -X:gen-*` alias 経由（`deps.edn` 参照）。shell script と `.llm/data/` 配下の artifact を結ぶ中継層にあたる。
+**Convention 拡張**（既存は shell のみ、以降は Clojure script も追加）: `gen_*.clj` は markdown 文書（典型的には `STACK_GUIDE`）から EDN / patterns artifact を生成するための Clojure script。実行は `clj -X:gen-*` alias 経由（`deps.edn` 参照）。shell script と `.llm/data/` 配下の artifact を結ぶ中継層にあたる。
 
-hook（`.clj-kondo/polyguard/`）と script（本ディレクトリ）の役割分担は `MAINTAINERS_GUIDE.md §5.10` を参照。
+hook（`.clj-kondo/polyguard/`）と script（本ディレクトリ）の役割分担は保守者向け文書に置く。
+∵ MAINTAINERS_GUIDE.md §5.10
 
 ## 機械化の 5 層構造（`MAINTAINERS_GUIDE.md §5.10` の要約）
 
@@ -34,6 +36,7 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 | `check-deprecated-libs.sh` | `STACK_GUIDE.md` に埋め込まれた `;; lib-catalog` EDN block 由来の非推奨ライブラリを検知（`.llm/data/deprecated-libs.patterns` を読む） |
 | `check-forbidden-requires.sh` | `STACK_GUIDE.md` に埋め込まれた `;; lib-catalog` EDN block 由来の非推奨 namespace を検知（`.llm/data/forbidden-requires.patterns` を読む） |
 | `check-conflicting-libs.sh` | `STACK_GUIDE.md` に埋め込まれた `;; lib-catalog` EDN block 由来の併用禁止ペアを検知（`.llm/data/conflicts.patterns` を読む） |
+| `check-doc-references.sh` | Markdown 間参照が `¤ / ∵ / ⚠` で型付けされているか検査。通常は default scope、保守監査では `--all` |
 | `gen_lib_catalog.clj` | `STACK_GUIDE.md` に埋め込まれた `;; lib-catalog` EDN block 群を合成し `.llm/data/{libs.edn, deprecated-libs.patterns, forbidden-requires.patterns, conflicts.patterns}` を生成（`clj -X:gen-lib-catalog`）。schema 検証 + uniqueness 検査付き |
 | `check-interface-contracts.sh` | `interface.clj` の全公開 `defn` に対応する `m/=>` 契約があるか検査 |
 | `check-single-ns-per-file.sh` | 1 つの `.clj` / `.cljc` / `.cljs` ファイルに `(ns ...)` が複数ないか検査 |
@@ -82,7 +85,8 @@ NVD API key 推奨（`https://nvd.nist.gov/developers/request-an-api-key`）。�
 
 ### セッション起動時のブリーフィング（`session-briefing.sh`）
 
-`session-briefing.sh` は pass/fail 系の検査とは役割が異なる**状態提示スクリプト**。CLAUDE.md §8.0 で定めた「実装着手前に DESIGN.md / KNOWLEDGE.md / QUESTIONS.md / adr/ を確認する」運用を機械化バックアップする。
+`session-briefing.sh` は pass/fail 系の検査とは役割が異なる**状態提示スクリプト**。CLAUDE §8.0 で定めた「実装着手前に DESIGN / KNOWLEDGE / QUESTIONS / ADR を確認する」運用を機械化バックアップする。
+∵ CLAUDE.md §8.0
 
 - **Claude Code**: `.claude/settings.json` の `SessionStart` hook で起動時に自動実行、出力は system-reminder として LLM の文脈に注入される
 - **Codex / 他エージェント**: SessionStart hook 機構がないため `AGENTS.md` の指示に従い、LLM が起動直後に `bash .llm/scripts/session-briefing.sh` を手動実行する
@@ -113,6 +117,26 @@ NVD API key 推奨（`https://nvd.nist.gov/developers/request-an-api-key`）。�
 2. `check-workspace-integrity.sh` の `run_step` に 1 行追加
 3. 本 README の「スクリプト一覧」表を更新
 4. 新しい観点・判断根拠は `MAINTAINERS_GUIDE.md §5.12`（linter 継続点検規律）または ADR として記録
+
+## Markdown 参照監査
+
+`check-doc-references.sh` は、Markdown から別の Markdown を指す参照が marker 付き独立行になっているかを検査する。
+
+- `¤`: 実行前に読む必須参照
+- `∵`: 根拠・背景参照
+- `⚠`: 問題発生時のみ参照
+
+通常運用では default scope を検査する。
+
+```bash
+./.llm/scripts/check-doc-references.sh
+```
+
+保守時の全体監査では `--all` を使う。
+
+```bash
+./.llm/scripts/check-doc-references.sh --all
+```
 
 ## 非採用事項
 

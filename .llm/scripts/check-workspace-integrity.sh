@@ -91,6 +91,10 @@ run_step "併用禁止ライブラリペア検査" \
 run_step "interface 契約検査" \
   "$SCRIPT_DIR/check-interface-contracts.sh"
 
+# --- Markdown 参照マーカー検査 ---
+run_step "Markdown 参照マーカー検査" \
+  "$SCRIPT_DIR/check-doc-references.sh"
+
 # --- 1 ファイル 1 ns ---
 run_step "1 ファイル 1 ns 検査" \
   "$SCRIPT_DIR/check-single-ns-per-file.sh"

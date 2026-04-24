@@ -12,14 +12,17 @@
 | `../.llm/guide/BOOTSTRAP_GUIDE.md`（本文書） | **LLM の技術手順**（ファイル編集・コマンド実行・整合性確認） | LLM |
 
 README.md が「**誰が何をするか**」を示すのに対し、本文書は「**LLM がどうファイルを操作するか**」を示す。
-**人間は通常 README.md のプロンプト例を使えば済む**。本文書は LLM が詳細手順を参照する際に使う。
+**人間は通常 README のプロンプト例を使えば済む**。本文書は LLM が詳細手順を確認する時だけ使う。
 
 ## 本文書の位置づけ
 
 - **対象読者**: プロジェクト立ち上げ期の LLM（人間向け手順は README.md）
 - **使用期間**: 初期化作業中のみ（数時間〜数日）
-- **参照原則**: `../CLAUDE.md` §1 の疲労最小化原則、MAINTAINERS_GUIDE.md 原則 11（判断とプロセスの対称性）
-- **完了後の扱い**: 物理移動や CLAUDE.md 参照削除は不要。CLAUDE.md §0 のフェーズ判定で自然に読まれなくなる
+- **参照原則**: 疲労最小化原則、判断とプロセスの対称性
+∵ ../CLAUDE.md §1
+∵ MAINTAINERS_GUIDE.md
+- **完了後の扱い**: 物理移動や CLAUDE の参照削除は不要。フェーズ判定で自然に読まれなくなる
+∵ ../CLAUDE.md §0
 
 **§2 禁止事項（CLAUDE.md）に基づき、各ステップでユーザの明示承認が必要**。LLM が勝手に進めない。
 
@@ -51,12 +54,16 @@ README.md が「**誰が何をするか**」を示すのに対し、本文書は
 
 ### 2.0 自律オーケストレーションの流れ（ゲート位置マップ）
 
-README.md のキックオフプロンプトを受信した LLM は、以下のゲート位置で人間の承認を求めつつ、実手順は §2.1〜§2.9 および §4 に従う。権限階層は `COLLABORATION_GUIDE.md` を一次情報源とする。本節はフロー順序の指針であり、権限階層の再定義ではない。
+README のキックオフプロンプトを受信した LLM は、以下のゲート位置で人間の承認を求めつつ、実手順は §2.1〜§2.9 および §4 に従う。権限階層は COLLABORATION_GUIDE を一次情報源とする。本節はフロー順序の指針であり、権限階層の再定義ではない。
+∵ COLLABORATION_GUIDE.md
 
 #### 前提読解
 
-- `../CLAUDE.md`、`../DESIGN.md`、本文書を読む
-- ライブラリ選定が必要な時だけ `STACK_GUIDE.md` を読む
+- CLAUDE、DESIGN、本文書を読む
+¤ ../CLAUDE.md
+¤ ../DESIGN.md
+- ライブラリ選定が必要な時だけ STACK_GUIDE を読む
+¤ STACK_GUIDE.md
 - キックオフから人間が記入済の L0 コンテンツ（目的・ユースケース・受入基準・エントリ種別・組織名・ドメイン名候補・デプロイ構成・環境別設定）を抽出
 - 不足・矛盾は 1 点ずつ確認する
 
@@ -95,7 +102,7 @@ ADR の発行（§4）は L2 として LLM が自動実施、事後報告。ゲ�
 - §4 のうち LLM が実施: ADR 自動発行（L2）、KNOWLEDGE 追加・README プロダクト版書き換え（最終提示の承認後）
 - §4 のうち人間が実行: **最終コミットのみ**
 
-**CLAUDE.md §2 禁止事項は例外なく維持する**。本文書 §4 は BOOTSTRAP_GUIDE.md の移動・CLAUDE.md 文書参照表編集を**指示しない**。
+**CLAUDE §2 の禁止事項は例外なく維持する**。本文書 §4 は BOOTSTRAP_GUIDE の移動・CLAUDE 文書参照表編集を**指示しない**。
 
 曖昧性検出・自己停止・Q 起票は `../CLAUDE.md` §7, §8, §11 および `COLLABORATION_GUIDE.md` §4 の規定通り。ONE BY ONE 原則は維持。
 
@@ -139,7 +146,8 @@ clj -M:poly create base name:<entry>
 clj -M:poly create project name:<deploy>
 ```
 
-生成された brick に、**POLYLITH_GUIDE.md §2 のコード例を参照して**中身を実装する。独自の流儀を発明しない。
+生成された brick は、**POLYLITH_GUIDE のコード例に従って**中身を実装する。独自の流儀を発明しない。
+¤ POLYLITH_GUIDE.md §2
 
 ### 2.4 必要機能カテゴリの推奨ライブラリを brick deps.edn に反映
 
@@ -149,7 +157,8 @@ deps.edn へ入れるライブラリは必要な機能カテゴリ単位で最�
 
 - **base の deps.edn**（`bases/<entry>/deps.edn`）: I/O、ルーティング、永続化、設定、ログ等の境界ライブラリ
 - **component の deps.edn**（`components/<domain>/deps.edn`）: I/O 系ライブラリは書かない（ドメイン純粋性）。Malli は必須層なので common に依存
-- **projects/<deploy>/deps.edn**: `:local/root` で brick を参照するのみ（POLYLITH_GUIDE.md §2.3）
+- **projects/<deploy>/deps.edn**: `:local/root` で brick を参照するのみ
+∵ POLYLITH_GUIDE.md §2.3
 
 **deps.edn の形**:
 
@@ -196,13 +205,15 @@ Malli instrumentation セクションはすべてのプロジェクトで有効�
 
 「削除」は単純な不要コードの除去であり、承認 L1。dev/user.clj は派生プロジェクトに応じた調整が前提のファイル。
 
-dev/user.clj の具体例は POLYLITH_GUIDE.md §2.4 参照。
+dev/user.clj の具体例は別紙に置く。
+∵ POLYLITH_GUIDE.md §2.4
 
 ### 2.7 ライフサイクル設定ファイル作成（必要な場合のみ）
 
 I/O リソースの起動・停止管理が必要な場合のみ実施する。ライブラリ配布や単発 CLI などでは本節をスキップ：
 
-- [ ] `projects/<deploy>/resources/config.edn` を作成（POLYLITH_GUIDE.md §2.3 のコード例参照）
+- [ ] `projects/<deploy>/resources/config.edn` を作成
+∵ POLYLITH_GUIDE.md §2.3
 - [ ] aero の `#profile` / `#env` で環境別設定を記述
 - [ ] `development/src/dev/user.clj` の `config` 関数を実装
 - [ ] `bases/<entry>/src/.../system.clj` で起動・停止処理を実装
@@ -241,15 +252,18 @@ I/O リソースの起動・停止管理が必要な場合のみ実施する。�
 
 **workspace 全体の品質確認**:
 
-- [ ] `CLAUDE.md §5.5` 完了条件の全コマンドが通過する（lint / lint-splint / format check / poly check / workspace-integrity / poly test :all / uber ビルド）
+- [ ] 完了条件の全コマンドが通過する（lint / lint-splint / format check / poly check / workspace-integrity / poly test :all / uber ビルド）
+¤ ../CLAUDE.md §5.5
 - [ ] `clj -M:dev:nrepl` で REPL 起動、ライフサイクル管理を使う場合は起動・再起動 helper が動作
 - [ ] 実装した brick の関数を REPL から呼び出して動作確認
 
-> `CLAUDE.md §5.5` がコマンド列の一次情報源。本節では再掲しない（SSOT）。REPL 起動と brick 動作確認はブートストラップ特有の初回確認事項のため、ここに残す。
+> コマンド列の一次情報源は CLAUDE に置く。本節では再掲しない（SSOT）。REPL 起動と brick 動作確認はブートストラップ特有の初回確認事項のため、ここに残す。
+> ¤ ../CLAUDE.md §5.5
 
 **依存脆弱性スキャン**（release 前必須、ブートストラップ時は任意）:
 
-- [ ] `./.llm/scripts/check-vulnerabilities.sh` が通る（clj-watson、詳細は `CLAUDE.md §5.5` release 前追加節を参照）
+- [ ] `./.llm/scripts/check-vulnerabilities.sh` が通る（clj-watson）
+∵ ../CLAUDE.md §5.5
   - **NVD API key 推奨**: 無料で `https://nvd.nist.gov/developers/request-an-api-key` から取得し、環境変数 `NVD_API_KEY` に設定するとスキャンが高速化される
 
 **必要機能カテゴリごとの確認事項**:
@@ -279,18 +293,21 @@ I/O リソースの起動・停止管理が必要な場合のみ実施する。�
 
 ## 4. 完了後の作業
 
-初期化が完了したら、以下を実施する。**BOOTSTRAP_GUIDE.md の移動や CLAUDE.md 文書参照表の編集は不要**。
+初期化が完了したら、以下を実施する。**BOOTSTRAP_GUIDE の移動や CLAUDE 文書参照表の編集は不要**。
 
 1. **`../README.md` をプロダクト向け README として完全に書き換える**（L1、ゲート 3 承認対象）
    - テンプレート配布時の README.md は本テンプレートの説明に特化している
    - プロダクト README には、プロダクトの機能紹介・利用者向けビルド手順・API 紹介等を記述
    - 迷ったら `../DESIGN.md` §1 目的と §3 主要ユースケースをベースに書き起こす
 2. 初期化中に立てた `../.llm/memory/QUESTIONS.md` の `open` Q を点検し、解決したものを `resolved` に
-3. 解決した Q の結果が継続参照されるものは `../.llm/memory/KNOWLEDGE.md` へ昇格（L1、ゲート 3 承認対象、実テキストで提示）
+3. 解決した Q の結果が継続参照されるものは KNOWLEDGE へ昇格（L1、ゲート 3 承認対象、実テキストで提示）
+¤ ../.llm/memory/KNOWLEDGE.md
 4. 重要な設計判断（技術選定、推奨からの逸脱等）は `../.llm/memory/adr/NNNN-topic.md` として ADR を発行し、事後報告する
 5. 初期化完了をコミット（例: `"Complete project bootstrap"`）— **このコマンドは LLM が提示、実行はユーザが行う**
 
-以降は `../CLAUDE.md` §8 作業プロトコルで日常開発に移行する。本文書（BOOTSTRAP_GUIDE.md）は物理的には残るが、CLAUDE.md §0 の参照指示（「初期化が未完了の場合のみ参照」）により、完了後は自動的に読まれない。
+以降は CLAUDE の作業プロトコルで日常開発に移行する。本文書（BOOTSTRAP_GUIDE）は物理的には残るが、フェーズ判定により、完了後は自動的に読まれない。
+¤ ../CLAUDE.md §8
+∵ ../CLAUDE.md §0
 
 ---
 
@@ -304,12 +321,14 @@ I/O リソースの起動・停止管理が必要な場合のみ実施する。�
 - バージョンの組合せが Maven Central / Clojars に実在するか確認
 - プロジェクト固有で追加したライブラリ（DB ドライバ等）のバージョン整合性を確認
 - component の deps.edn で I/O ライブラリを誤って書いていないか確認（ドメイン純粋性）
-- 解消できない場合は、CLAUDE.md §7 自己停止プロトコルに従って停止し、ユーザに復旧方針を確認する。`git revert` やブランチ破棄は同一ではないため、どちらを使うかは状況に応じて明示する
+- 解消できない場合は、自己停止プロトコルに従って停止し、ユーザに復旧方針を確認する。`git revert` やブランチ破棄は同一ではないため、どちらを使うかは状況に応じて明示する
+¤ ../CLAUDE.md §7
 
 ### 5.2 `poly check` が通らない
 
 手作業で brick を作成していないか確認。`poly create` 経由でないと構造が認識されない。
-POLYLITH_GUIDE.md §5 「Polylith 特有の頻出誤りと対処」も参照。
+Polylith 特有の頻出誤りと対処は別紙に置く。
+⚠ POLYLITH_GUIDE.md §5
 
 ### 5.3 `(go)` が未定義、`(go)` で例外、または REPL 起動時に ClassNotFoundException
 
@@ -317,7 +336,8 @@ Malli の起動順序、`set-refresh-dirs` の対象、任意の開発補助配�
 
 - **Unable to resolve symbol: go**: ライフサイクル管理セクションがコメントアウトされたまま。ライフサイクル管理を採用するなら `development/src/dev/user.clj` の該当セクションを有効化する。採用しないなら `(go)` は使わず `(malli-on!)` と通常 eval で確認する
 - **ClassNotFoundException（brick 依存未解決）**: ワークスペースルート `deps.edn` の `:dev :extra-deps` に brick が `:local/root` 登録されていない。tools.deps は `:extra-paths` だけでは brick の deps.edn を自動解決しない
-- **FileNotFoundException: config.edn**: `config.edn` が classpath に含まれていない。開発時は `projects/<deploy>/resources` が `:dev :extra-paths` に追加されているか確認（§2.5）、または dev/user.clj の `config` 関数で `io/file` でファイルパス直接指定する代替手段も可（POLYLITH_GUIDE.md §2.4）
+- **FileNotFoundException: config.edn**: `config.edn` が classpath に含まれていない。開発時は `projects/<deploy>/resources` が `:dev :extra-paths` に追加されているか確認（§2.5）、または dev/user.clj の `config` 関数で `io/file` でファイルパス直接指定する代替手段も可
+⚠ POLYLITH_GUIDE.md §2.4
 - **config.edn の未作成**: ライフサイクル管理を採用したのに設定ファイルが存在しない
 - **aero の `#env` 参照先未定義**: 環境変数が未設定、または aero の記法ミス
 - **起動・停止定義の不足**: ライフサイクル管理の init / halt 相当を書き忘れ

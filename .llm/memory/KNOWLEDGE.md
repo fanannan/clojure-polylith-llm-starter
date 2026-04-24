@@ -78,13 +78,16 @@ QUESTIONS.md §0.5 の判定で「KNOWLEDGE への昇格」が選ばれた場合
 
 ### 0.7 LLM による更新の承認
 
-KNOWLEDGE.md を含む 4 種文書の編集権限マトリクスは **`.llm/guide/COLLABORATION_GUIDE.md` §2.3** が一次情報源。本節はその要約のみ示す。
+KNOWLEDGE を含む 4 種文書の編集権限マトリクスは COLLABORATION_GUIDE が一次情報源。本節はその要約のみ示す。
+∵ .llm/guide/COLLABORATION_GUIDE.md §2.3
 
 - **LLM が独断で編集することは禁止**（`CLAUDE.md §2` 禁止事項の対象）
-- LLM が実施してよい典型例: (1) Q resolved 時の昇格（QUESTIONS.md §0.4 に従う）、(2) ユーザの明示的指示、(3) 実装中の発見で事前承認を得た場合
+- LLM が実施してよい典型例: (1) Q resolved 時の昇格、(2) ユーザの明示的指示、(3) 実装中の発見で事前承認を得た場合
+∵ .llm/memory/QUESTIONS.md §0.4
 - それ以外は、LLM は新エントリ案を QUESTIONS.md に Q として立て、承認を経てから追記する
 
-詳細条件と例外（特別承認・部分承認の不採用等）は `COLLABORATION_GUIDE.md §2.3` を参照。
+詳細条件と例外（特別承認・部分承認の不採用等）は別紙に置く。
+∵ .llm/guide/COLLABORATION_GUIDE.md §2.3
 
 ### 0.8 節構成の原則
 

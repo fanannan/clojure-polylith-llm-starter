@@ -9,7 +9,7 @@
 > ⚠️ **このファイルはテンプレート配布時のものです。**
 >
 > プロジェクト初期化完了時に、**プロダクト README として完全に書き換えてください**。
-> 書き換え手順は `.llm/guide/BOOTSTRAP_GUIDE.md` §4 を参照。
+¤ .llm/guide/BOOTSTRAP_GUIDE.md §4
 
 ---
 
@@ -18,7 +18,9 @@
 **Clojure + tools.deps + Polylith + Malli + clj-kondo + cljfmt + Splint + clj-watson + `.llm/scripts/`** を必須層とする、**LLM 駆動開発向け**のプロジェクトテンプレート。HTTP、永続化、ライフサイクル管理などの追加技術は、必要になった機能カテゴリごとに選び、brick の `deps.edn` に追加する。
 
 疲労最小化原則（LLM と人間の共同開発における修復コスト最小化）に基づき設計されている。
-詳細思想は `CLAUDE.md`、技術選定の推奨カタログは `.llm/guide/STACK_GUIDE.md` を参照。
+詳細思想と技術選定の推奨カタログは別紙に置く。
+∵ CLAUDE.md
+∵ .llm/guide/STACK_GUIDE.md
 
 ## 前提ツール
 
@@ -105,7 +107,7 @@
 
 LLM が最終コミットコマンド（例: `git commit -m "Complete project bootstrap"`）を提示する。ユーザが実行して完了。
 
-**BOOTSTRAP_GUIDE.md の移動や CLAUDE.md 参照表編集は行わない**。初期化完了後は通常開発フローに移る。
+**BOOTSTRAP_GUIDE の移動や CLAUDE の参照表編集は行わない**。初期化完了後は通常開発フローに移る。
 
 ### 曖昧点が見つかったとき
 
@@ -113,7 +115,8 @@ LLM は 1 点ずつ人間に確認する。自己解釈で進めない。
 
 ### 詰まったとき
 
-LLM が詰まった時は `.llm/memory/QUESTIONS.md` に Q を起票して停止する。人間は Q の内容を読んで判断を提示する。
+LLM が詰まった時は QUESTIONS に Q を起票して停止する。人間は Q の内容を読んで判断を提示する。
+¤ .llm/memory/QUESTIONS.md
 
 ### 詳細を追いたい場合
 
@@ -203,7 +206,7 @@ LLM が詰まった時は `.llm/memory/QUESTIONS.md` に Q を起票して停止
 
 - **疲労最小化**: LLM の誤りを構造的に封じる（全域性・不変性・副作用の隔離）
 - **機械化 5 層**: L1 clj-kondo 組込 linter / L2 `.clj-kondo/polyguard/` custom hook / L3 Splint / L4 `.llm/scripts/check-*.sh`（設定・構造検査）+ Polylith `poly check` + Malli instrumentation / L5 clj-watson（時間軸脆弱性）。規約を人間の注意力ではなくツールで強制（詳細は `MAINTAINERS_GUIDE.md` §5.10）
-- **SSOT 生成**: `.llm/scripts/gen_lib_catalog.clj` が `STACK_GUIDE.md` の `;; lib-catalog` EDN block 群を検証・合成し `.llm/data/` 配下に artifact を emit。shell script は artifact を参照して検査する
+- **SSOT 生成**: `.llm/scripts/gen_lib_catalog.clj` が `STACK_GUIDE` の `;; lib-catalog` EDN block 群を検証・合成し `.llm/data/` 配下に artifact を emit。shell script は artifact を読む
 - **REPL as Primary Workbench**: `.llm/scripts/repl-eval.sh` により LLM が稼働中 nREPL に eval / load-file を送信。永続 session で state 継続、編集から検証までを同一ターンで閉じる
 - **技術選定カタログ**: 必須層はワークスペースルートで常に採用し、追加ライブラリは必要な brick の `deps.edn` に配置する。推奨カタログは `.llm/guide/STACK_GUIDE.md`
 - **4 種の文書分離**: 仕様（DESIGN）/ 知識（KNOWLEDGE）/ 決定履歴（ADR）/ 判断保留（QUESTIONS）

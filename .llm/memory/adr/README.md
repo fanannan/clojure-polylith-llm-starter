@@ -77,7 +77,7 @@ ADR はこれらを**軽量な記述形式**で解決する。1 件あたり 1�
 4. **外部サービス連携の方針変更**（例: 認証を自前から Auth0 へ移行）
 5. **却下された大きな設計案**（同じ提案の再発を防ぐため）
 6. **KNOWLEDGE.md の大きな変更**（変更経緯の記録のため）
-7. **QUESTIONS.md の Q が resolved になり、その決定経緯が将来参照されうる時**
+7. **Q が resolved になり、その決定経緯が将来参照されうる時**
 
 以下は ADR を発行しない：
 
@@ -85,7 +85,7 @@ ADR はこれらを**軽量な記述形式**で解決する。1 件あたり 1�
 - Malli スキーマの細部調整
 - フォーマット・lint 修正
 - バグ修正（通常のコミットログで十分）
-- 単発の判断で、将来参照されない事項（QUESTIONS.md で resolved → アーカイブで十分）
+- 単発の判断で、将来参照されない事項（Q が resolved → アーカイブで十分）
 
 ## 採番規則
 
@@ -129,7 +129,7 @@ ADR はこれらを**軽量な記述形式**で解決する。1 件あたり 1�
 2. `cp .llm/memory/adr/template.md .llm/memory/adr/NNNN-topic.md`
 3. 本文を記述
 4. Status を `proposed` で開始、チームレビュー後に `accepted` に変更
-5. 関連文書（KNOWLEDGE.md、DESIGN.md、QUESTIONS.md）への参照を追記
+5. 関連文書（KNOWLEDGE、DESIGN、QUESTIONS）への参照を追記
 
 ### 既存 ADR の改訂が必要になった時
 

@@ -684,6 +684,21 @@ L1〜L5 との関係:
 
 - `.clj-kondo/config.edn` の追加は `.llm/scripts/lint-import-hooks.sh` の再実行が必要ない（組み込み linter のため）。custom hook 追加時のみ再取り込みを要する
 - 新 linter 追加で既存コードが失敗するようになった場合、**原則として既存コードを直す**（規約を緩める側に倒さない）。機械化充実姿勢と整合
+
+### 5.13 Markdown 参照マーカー監査
+
+Markdown 文書どうしの参照は、無印 `FOO.md §X` を禁止し、独立行の marker 付き参照だけを許可する。
+
+- `¤`: 実行前に読む必須参照
+- `∵`: 根拠・背景参照
+- `⚠`: 問題発生時のみ参照
+
+保守規律:
+
+1. 新規に Markdown 間参照を追加する時は、本文に埋め込まず marker 行へ分離する
+2. default scope の整合は `./.llm/scripts/check-doc-references.sh` で常時検査する
+3. 文書保守時は `./.llm/scripts/check-doc-references.sh --all` を実行し、全体監査を行う
+4. 例外は機械判定できるものだけに限定する。コードブロック、外部 URL、同一文書内参照、規約説明の例示ブロック以外を意味論で免除しない
 - false positive の許容は「一括 error で導入、問題が出たら個別に `:config-in-ns` で除外」の順（��断 2）
 
 ---
