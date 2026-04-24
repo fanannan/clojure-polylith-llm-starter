@@ -102,7 +102,7 @@ NVD API key 推奨（`https://nvd.nist.gov/developers/request-an-api-key`）。�
 - `deps.edn` に `:gen-<topic>` alias を追加し、`:exec-fn <ns>/generate` で `clj -X` から起動
 - 依存は root `:deps` を継承（`-X` の意味論）。追加依存が必要な場合のみ alias 内 `:extra-deps` で最小限に
 - Malli schema で入力を厳格検証、違反は明示的に error 終了
-- 生成物は `.llm/data/` に配置、ヘッダに `;; GENERATED — do not edit by hand` を入れる
+- 生成物は `.llm/data/` に配置、ヘッダに `;; GENERATED — do not edit by hand` を入れる 
 - `check-workspace-integrity.sh` に「一時領域に再生成 → diff で drift 検知」のステップを追加し、source と artifact の同期を保証
 
 ## 新しい検査の追加手順
