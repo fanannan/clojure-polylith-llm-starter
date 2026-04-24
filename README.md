@@ -95,11 +95,11 @@
 | 1. 仕様 + 技術選定 | DESIGN.md 反映案／workspace.edn :top-namespace 差分／README.md 冒頭差分／必要な用途別機能カテゴリと推奨ライブラリ案 | 承認必須 (L1)。未記載領域の技術採用は人間専権 (L0) |
 | 2. 構造 + 依存 | `poly create component/base/project` 3 コマンド／brick deps.edn 追加内容（実コード） | 承認必須 (L1) / 人間専権 (L0)。component 作成は承認必須 (L1)、base/project 作成・依存追加は人間専権 (L0) |
 
-**ゲート外の個別承認必須 (L1)**（作成時に個別提示）:
+**条件付き承認必須 (L1) 成果物**（まとめて提示し、全承認または全修正指示で受ける）:
 
 | 成果物 | 採用条件 |
 |---|---|
-| config.edn（必要時）／CI 設定／build.clj（uberjar 時）／dev/user.clj 調整／workspace.edn :projects 登録／ルート deps.edn :dev :extra-deps/:extra-paths | いずれも承認必須 (L1)、実内容を事前提示して個別承認 |
+| config.edn（必要時）／CI 設定／build.clj（uberjar 時）／dev/user.clj 調整／workspace.edn :projects 登録／ルート deps.edn :dev :extra-deps/:extra-paths | いずれも承認必須 (L1)。実内容をまとめて提示し、全承認または全修正指示で受ける |
 
 **ゲート 3 の縮退**: 完了処理のうち LLM が承認必須 (L1) として担うのは **KNOWLEDGE 追加エントリ** と **README プロダクト版全文** のみ。ADR は承認済み判断の記録として LLM が発行し、事後報告する。
 

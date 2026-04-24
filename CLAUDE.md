@@ -180,7 +180,8 @@ Markdown 文書から別の Markdown 文書を指す時は、本文中に裸で�
 ∵ .llm/guide/COLLABORATION_GUIDE.md §2.3
 - **コンポーネントの統合・分割**（境界変更は影響甚大）
 - `components/`、`bases/`、`projects/` 配下のファイル/ディレクトリを手作業で作成（必ず `poly create`）
-- **4 種文書（DESIGN.md / KNOWLEDGE.md / adr/ / QUESTIONS.md）の独断編集・状態変更**（詳細な編集権限マトリクスは `.llm/guide/COLLABORATION_GUIDE.md` §2.3）
+- **4 種文書の編集・状態変更**は、文書種別と操作種別で権限が異なる。**詳細な編集権限マトリクスを正本とし、本節では一律再定義しない**
+∵ .llm/guide/COLLABORATION_GUIDE.md §2.3
 
 ---
 
@@ -336,8 +337,8 @@ Polylith 構造の操作と、追加ライブラリの採用・変更手順を�
 | **日常作業中のテスト**（変更影響範囲のみ、高速） | `clj -M:poly test` |
 | **完了報告前のテスト**（§5.5 完了条件の一部、全 project 全 brick 実行） | `clj -M:poly test :all` |
 | **新規コンポーネント作成**(承認必須) | `clj -M:poly create component name:<name>` |
-| **新規ベース作成**(承認必須) | `clj -M:poly create base name:<name>` |
-| **新規プロジェクト作成**(承認必須) | `clj -M:poly create project name:<name>` |
+| **新規ベース作成**(人間専権) | `clj -M:poly create base name:<name>` |
+| **新規プロジェクト作成**(人間専権) | `clj -M:poly create project name:<name>` |
 | 依存グラフ表示 | `clj -M:poly deps` |
 | ヘルプ | `clj -M:poly help` / `clj -M:poly help <cmd>` |
 | **静的解析（clj-kondo）** | `clj -M:lint` |
@@ -835,6 +836,7 @@ flowchart TD
 | **決定履歴保全者** | 重要判断の ADR 発行提案 |
 | **未決判断管理者** | 自己解釈できない判断を Q として起票 |
 
-**LLM は受け身で実装するだけではない**。ただし編集権限は限定される（4 種文書の編集・状態変更はすべてユーザ承認必須）。協働の詳細プロトコルと、Q を立てるべき場面は別紙に置く。
+**LLM は受け身で実装するだけではない**。ただし編集権限は限定され、4 種文書の編集・状態変更は**文書種別と操作種別ごとに異なる**。本節では再定義しない。協働の詳細プロトコルと、Q を立てるべき場面は別紙に置く。
+∵ .llm/guide/COLLABORATION_GUIDE.md §2.3
 ∵ .llm/guide/COLLABORATION_GUIDE.md
 ∵ .llm/memory/QUESTIONS.md §1

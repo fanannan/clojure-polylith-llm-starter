@@ -356,6 +356,8 @@ Polylith は **../CLAUDE.md §1.1.3 副作用の隔離 + §1.2.1 機械化** の
 
 ### 3.1 新規コンポーネント追加（**ユーザ承認必須**）
 
+**根拠**: component はドメイン境界または再利用境界を 1 単位追加する操作であり、局所的ではあるが公開境界と依存方向に影響する。base / project ほど配備構成全体へは波及しないため、権限は承認必須 (L1) に置く。
+
 ```bash
 clj -M:poly create component name:<name>
 ```
@@ -387,7 +389,9 @@ components/<name>/
 7. `clj -M:poly check` で構造検証
 8. `clj -M:poly test project:<project-name>` で特定 project 配下の brick テストを実行（全 project・全 brick を流すなら `clj -M:poly test :all`）
 
-### 3.2 新規ベース追加（**ユーザ承認必須**）
+### 3.2 新規ベース追加（**人間専権**）
+
+**根拠**: base の追加は entrypoint・起動経路・I/O 配線の単位を増やす操作であり、component 追加より構造影響が大きい。実装追加ではなく配備・運用構成の判断を含むため、人間専権 (L0) とする。
 
 ```bash
 clj -M:poly create base name:<name>
@@ -397,7 +401,9 @@ clj -M:poly create base name:<name>
 
 その後、`bases/<name>/deps.edn` に必要なライブラリを追加、本文書 §2.2 base コード例を雛形として `core.clj`/`system.clj` などを実装。
 
-### 3.3 新規プロジェクト追加（**ユーザ承認必須**）
+### 3.3 新規プロジェクト追加（**人間専権**）
+
+**根拠**: project の追加はデプロイ単位・ビルド単位・CI 単位を新設する操作であり、ワークスペース全体の配備構成を変える。不可逆性と波及範囲が大きいため、人間専権 (L0) とする。
 
 ```bash
 clj -M:poly create project name:<name>
