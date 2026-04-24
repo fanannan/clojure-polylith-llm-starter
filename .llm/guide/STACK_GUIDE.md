@@ -31,7 +31,7 @@
 
 **stack** は、**特定の目的に対応する技術構成の一まとまり**を指す。本テンプレートでは**文書上の分類概念**として定義され、実ライブラリ依存は各 brick の deps.edn に書かれる（§1.2 参照）。
 
-- **必須層**: プロジェクト目的に関わらず常に採用されるもの（Clojure、tools.deps、Polylith、Malli、clj-kondo、cljfmt、JVM）。**ワークスペースルートの `deps.edn` の `:deps`** および必須エイリアスで宣言
+- **必須層**: プロジェクト目的に関わらず常に採用されるもの（Clojure、tools.deps、Polylith、Malli、clj-kondo、cljfmt、Splint、clj-watson、`.llm/scripts/`、JVM）。**ワークスペースルートの `deps.edn` の `:deps`** および必須エイリアスで宣言。version 情報の正本は §2.1
 - **stack 層**: 目的別の推奨構成（Web API stack、batch stack など）。**各 brick (base / component) の `deps.edn`** で宣言
 - **横断層**: 任意の stack と組み合わせて使う補助的構成（dev-tools stack など）
 
@@ -2546,6 +2546,20 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 
 **複数の性格を持つプロジェクト**（例: Web API + バッチ併設）は**複数 stack の併用**で対応する。採用 stack は DESIGN.md §8.3 に記録し、各 brick の deps.edn にそれぞれの推奨ライブラリ（§3 機能別節）を反映する。brick の構造は Polylith の通常通り（components / bases / projects）。
 
+
+### 4.2 stack 記載有無の判定
+
+本節は `COLLABORATION_GUIDE.md` §2.2 の「記載あり / 記載なし」判定の参照先である。LLM は stack 選定時に本節で分類してから、承認レベルを決める。
+
+| 状況 | 判定 | 次の行動 |
+|---|---|---|
+| §4.1 の「プロジェクトの性格」に該当し、必要機能が §3 機能別節の推奨カタログにある | **記載あり** | 該当 stack と §3 節を引用して L1 提案。承認後に brick deps.edn へ反映 |
+| §4.1 の stack 名には該当しないが、必要な機能カテゴリが §3 機能別節にある | **記載あり（機能別採用）** | stack 名を新設せず、該当 §3 節の推奨ライブラリを L1 提案。採用 stack 欄には主 stack + 補足として記録 |
+| §4.1 にも §3 機能別節にも対応するカテゴリがない | **記載なし（未記載領域）** | `CLAUDE.md` §6.3 に従って第一原理から判断材料を整理。採用可否は人間が決定し、採用後は ADR を発行 |
+| §3 に推奨があるが、プロジェクト固有理由で別ライブラリを使いたい | **推奨からの逸脱** | `STACK_GUIDE.md` §5.4 に従い、逸脱理由を ADR と DESIGN.md §8.3 に記録 |
+| §3 で deprecated / scope-excluded / 採用不可と明示されている | **記載あり（非推奨・対象外）** | 推奨として扱わない。必要なら未記載領域ではなく「非推奨からの逸脱」として人間判断を求める |
+
+「記載なし」は「LLM が自由に決めてよい」という意味ではない。本文書のメモリーが未整備な領域なので、LLM は判断材料・代替・疲労最小化との関係を整理し、人間の L0 判断に渡す。
 
 ### 4.3 複数 stack の組み合わせ
 

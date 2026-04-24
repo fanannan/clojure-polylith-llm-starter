@@ -19,7 +19,7 @@ README.md が「**誰が何をするか**」を示すのに対し、本文書は
 - **対象読者**: プロジェクト立ち上げ期の LLM（人間向け手順は README.md）
 - **使用期間**: 初期化作業中のみ（数時間〜数日）
 - **参照原則**: `../CLAUDE.md` §1 の疲労最小化原則、MAINTAINERS_GUIDE.md 原則 11（判断とプロセスの対称性）
-- **完了後の扱い**: `archived/BOOTSTRAP_GUIDE.md` に移動、CLAUDE.md 冒頭の参照も削除
+- **完了後の扱い**: 物理移動や CLAUDE.md 参照削除は不要。CLAUDE.md §0 のフェーズ判定で自然に読まれなくなる
 
 **§2 禁止事項（CLAUDE.md）に基づき、各ステップでユーザの明示承認が必要**。LLM が勝手に進めない。
 
@@ -29,7 +29,7 @@ README.md が「**誰が何をするか**」を示すのに対し、本文書は
 
 本テンプレートは技術スタックを**必須層 + stack 層**として配布する：
 
-- **必須層**（ワークスペースルートの `deps.edn` の `:deps` および必須エイリアス）: Clojure + tools.deps + Polylith + Malli + clj-kondo + cljfmt。全プロジェクトで常に採用、入れ替え不可
+- **必須層**（ワークスペースルートの `deps.edn` の `:deps` および必須エイリアス）: Clojure + tools.deps + Polylith + Malli + clj-kondo + cljfmt + Splint + clj-watson + `.llm/scripts/`。全プロジェクトで常に採用、入れ替え不可。version 情報の正本は STACK_GUIDE.md §2.1
 - **stack 層**: 目的別の推奨構成（web-api stack / batch stack / cli stack / library stack 等）。**STACK_GUIDE.md §3 機能別節 は推奨カタログであり、実ライブラリ依存は各 brick の `deps.edn` に書かれる**（Polylith の本番ビルドはそこから依存解決する）
 - **横断層**（dev-tools stack）: 開発支援。ワークスペースルートの `deps.edn` の `:dev :extra-deps` に配置（本番ビルドに混入させない）
 
@@ -58,7 +58,7 @@ README.md のキックオフプロンプトを受信した LLM は、以下の�
 
 #### 前提読解
 
-- `../CLAUDE.md` §1-§3（特に §1.2.5 失敗早期検知 > 事前承認）、`../DESIGN.md` §0、本文書 §2.1-§2.9、`STACK_GUIDE.md` §4.1、**`COLLABORATION_GUIDE.md` §2-§4（§2.2 マッピング、§2.3 マトリクス、§2.3.1 特別承認・部分承認不採用、§3.1 ブートストラップモード）** を読む
+- `../CLAUDE.md` §1-§3（特に §1.2.5 承認設計）、`../DESIGN.md` §0、本文書 §2.1-§2.9、`STACK_GUIDE.md` §4.1-§4.2、**`COLLABORATION_GUIDE.md` §2-§4（§2.2 マッピング、§2.3 マトリクス、§2.3.1 特別承認・部分承認不採用、§3.1 ブートストラップモード）** を読む
 - キックオフから人間が記入済の L0 コンテンツ（目的・ユースケース・受入基準・エントリ種別・組織名・ドメイン名候補・デプロイ構成・環境別設定）を抽出
 - 不足・矛盾は `COLLABORATION_GUIDE.md` §4 ONE BY ONE で解消
 
@@ -66,7 +66,7 @@ README.md のキックオフプロンプトを受信した LLM は、以下の�
 
 | ゲート | 直前で提示する内容（実テキスト / 実操作） | 承認後に実施する節 |
 |---|---|---|
-| ★ゲート 1（仕様 + stack） | `../DESIGN.md` §1-§4,§8 反映案／`workspace.edn` :top-namespace 差分／`../README.md` 冒頭差分／採用 stack 提案（STACK_GUIDE.md §3 機能別節 記載有無を明示） | §2.1 |
+| ★ゲート 1（仕様 + stack） | `../DESIGN.md` §1-§4,§8 反映案／`workspace.edn` :top-namespace 差分／`../README.md` 冒頭差分／採用 stack 提案（STACK_GUIDE.md §4.2 で記載有無を明示） | §2.1 |
 | ★ゲート 2（構造 + 依存） | `poly create component/base/project` 3 コマンド／brick `deps.edn` 追加内容（実コード） | §2.3, §2.4 |
 
 ゲート 3 は**縮退**（`COLLABORATION_GUIDE.md` §2.2 で ADR 発行を L2 化済）:
@@ -120,7 +120,7 @@ ADR の発行（§4）は L2 として LLM が自動実施、事後報告。ゲ�
 **ここで決めたことを `../.llm/memory/QUESTIONS.md` に `Q` として記録する必要はない**（確定事項として扱う）。
 ただし、決定できずに保留した事項があれば Q として記録し、ブロッカーとして明示する。
 
-**stack 選択に迷う場合**: STACK_GUIDE.md §4.1 選定基準を参照。それでも迷う場合は **Q を立ててユーザに相談**（自己判断禁止）。
+**stack 選択に迷う場合**: STACK_GUIDE.md §4.1 選定基準と §4.2 記載有無の判定を参照。それでも迷う場合は **Q を立ててユーザに相談**（自己判断禁止）。
 
 **DESIGN.md の必須項目が埋まっていない状態で §2.2 以降に進まない**。仕様が曖昧だと実装判断が迷走する（原則 13）。
 

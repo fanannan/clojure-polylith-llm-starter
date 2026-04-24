@@ -152,14 +152,14 @@ Polylith は **../CLAUDE.md §1.1.3 副作用の隔離 + §1.2.1 機械化** の
 
 ### 2.2 base — HTTP API エントリの例
 
-以下は **web-api stack 採用時の具体例**（STACK_GUIDE.md §4.2.3）。他 stack（batch stack / cli stack 等）採用時は該当 stack の構成に合わせて読み替える。library stack のみの場合は Integrant 不要、`-main` 直列起動で構成する。
+以下は **web-api stack 採用時の具体例**（stack 判定は STACK_GUIDE.md §4.1、採用ライブラリは §3 機能別節）。他 stack（batch stack / cli stack 等）採用時は該当 stack の構成に合わせて読み替える。library stack のみの場合は Integrant 不要、`-main` 直列起動で構成する。
 
 #### `bases/<entry>/deps.edn`
 
 ```clojure
 ;; HTTP エントリ base の deps.edn
 ;; web-api stack 採用時の構成（Ring + Reitit + Integrant + Malli + mulog を束ねる）
-;; ※ バージョンは参考値。正本は STACK_GUIDE.md §2.1 / §4.2.3（コピペ時に要確認）
+;; ※ バージョンは参考値。正本は STACK_GUIDE.md §2.1 / §3 機能別節（コピペ時に要確認）
 {:paths ["src" "resources"]
  :deps  {org.clojure/clojure         {:mvn/version "1.12.0"}
          metosin/malli               {:mvn/version "0.16.4"}
@@ -485,7 +485,7 @@ Polylith の例題は教育目的で粒度が細かい傾向がある。それ�
 {:top-namespace "myorg.myapp"            ; 全 brick の名前空間プレフィックス
  :interface-ns  "interface"              ; interface ファイル名（固定）
  :projects      {"development" {:alias "dev"}
-                 "<deploy>"    {:alias "<deploy>"}}  ; DESIGN.md §8.2 で定めた project 名
+                 "<deploy>"    {:alias "<deploy>"}}  ; DESIGN.md §8.4 で定めた project / deploy 名
  :vcs           {:name "git" :auto-add false}
  :tag-patterns  {:stable  "^stable-.*"     ; CI 通過時に打つ安定タグ
                  :release "^v[0-9].*"}}    ; 本番リリースタグ
@@ -562,7 +562,7 @@ clj -M:lint                                          # clj-kondo
 clj -M:format check                                  # cljfmt
 clj -M:poly check                                    # Polylith 構造
 clj -M:poly test :all                                # 全テスト
-cd projects/<deploy> && clj -T:build uber            # ビルド（<deploy> は DESIGN.md §8.2 で定めた project 名）
+cd projects/<deploy> && clj -T:build uber            # ビルド（<deploy> は DESIGN.md §8.4 で定めた project / deploy 名）
 ```
 
 通過したら `stable-<timestamp>` タグを打つ（§6.2）。

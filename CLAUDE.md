@@ -97,22 +97,30 @@
 | **小単位分解** | 大きな塊を一気に生成させない。生成→検証→次を繰り返す | 1 関数 20 行以内、コミット細分化、タスク分解判断（§7.4） |
 | **早期破棄** | 詰まったらアプローチごと捨てる。完遂にこだわらない | 自己停止プロトコル（§7）、ブランチ破棄を悪としない |
 
-**機械化充実の運用姿勢**: 機械化は「実装可能なら採用、コスト高すぎる場合のみ保留」の方針で積極的に充実させる。新しい機械化候補を発見した時の判断基準は「実装コストとトレードオフ」ではなく「機械化できるか否か」に寄せる。これは §1.2.5「失敗早期検知 > 事前承認」と同じ思想（可逆な静的検査を厚くして、不可逆な本番障害を減らす）。機械化の実装手段は 2 種（`.clj-kondo/polyguard/` = Clojure コード解析、`.llm/scripts/*.sh` = 設定ファイル・構造検査）で役割分担する（`MAINTAINERS_GUIDE.md §5.10`）。
+**機械化充実の運用姿勢**: 機械化は「実装可能なら採用、コスト高すぎる場合のみ保留」の方針で積極的に充実させる。新しい機械化候補を発見した時の判断基準は「実装コストとトレードオフ」ではなく「機械化できるか否か」に寄せる。これは §1.2.5「失敗早期検知と承認設計」と同じ思想（可逆な静的検査を厚くして、不可逆な本番障害を減らす）。機械化の実装手段は 2 種（`.clj-kondo/polyguard/` = Clojure コード解析、`.llm/scripts/*.sh` = 設定ファイル・構造検査）で役割分担する（`MAINTAINERS_GUIDE.md §5.10`）。
 
-### 1.2.5 失敗早期検知 > 事前承認（§1.2.4 の承認設計への拡張）
+### 1.2.5 失敗早期検知と承認設計（§1.2.4 の承認プロセスへの適用）
 
 **原則**: 不要な承認プロセスよりも失敗を早く検知し、違うアプローチで成功させることを優先する。
 
+§1.2.4 は LLM の編集試行を早く止める規律である。本節は同じ「早期ピボット」思想を、人間承認の置き方に適用する。承認を増やすこと自体は安全ではない。承認待ちで検証サイクルが伸びるなら、可逆な失敗の発見はむしろ遅くなる。
+
 **帰結**:
 
-- 承認は「不可逆な失敗」を防ぐためにのみ置く（§2 禁止事項はこの定義に合致）
+- 承認は「不可逆な失敗」を防ぐためにのみ置く（§2 禁止事項はこの定義に基づく）
 - 可逆・修復可能な操作（ADR 発行、実装コード生成、文書記述など）は L2（LLM 実施 + 事後報告）で運用し、誤りは supersede / 新規発行 / 修正コミットで回復する
 - 承認の粒度を細かくすればするほど、失敗時のサイクル（提示→却下→再提示）が長大化し、**かえって失敗の早期検知を阻害する**。承認は粗い単位で、判定は早く行うことを優先する
 - 「念のため承認を入れる」は本原則に反する。承認の付加は**不可逆性の根拠**を明示して初めて正当化される
 
-**本原則と §1.2.4 早期破棄の関係**: §1.2.4 は LLM の編集試行の早期中断、本節は承認プロセスの設計原理への拡張。両者は同じ「早期ピボット」思想に立脚する。
+**不可逆性の判定**:
 
-**承認階層との対応は `.llm/guide/COLLABORATION_GUIDE.md` §2 を参照**（本原則の具体実装としての L0/L1/L2/L3 マッピング）。
+| 判定 | 例 | 承認の扱い |
+|---|---|---|
+| 外部世界・本番データ・公開 API・依存関係・プロジェクト構造を変える | DB マイグレーション実行、brick deps.edn 変更、新規 base/project、公開関数の破壊的変更 | L0/L1。事前承認が必要 |
+| git や文書履歴で明確に回復できる | 実装コード、テスト、ADR の新規発行、Q 起票 | L2/L3。検証と事後報告を優先 |
+| 迷う | 影響範囲が広い、回復手順が不明、判断主体が不明 | 上位階層に倒し、`.llm/guide/COLLABORATION_GUIDE.md` §2 を参照 |
+
+承認階層との対応は `.llm/guide/COLLABORATION_GUIDE.md` §2 を参照。本書 §2 は日常作業で見落としてはならない高リスク項目の入口であり、詳細マッピングは同ガイドに置く。
 
 ### 1.3 原則の使い方（LLM への指示）
 
@@ -126,15 +134,26 @@
 
 ## 2. 禁止：勝手にやらないこと（不可逆操作）
 
-§1 からの帰結：以下は**自動検証では防げない**かつ**影響が大きい**ため、人間の明示承認なしに実行してはならない。
+§1 からの帰結：**自動検証では防げない**かつ**影響が大きい**操作は、LLM が勝手に実行してはならない。
+
+意思決定階層は次の 4 値で判定する。詳細な項目別マッピングと 4 種文書の編集権限は `.llm/guide/COLLABORATION_GUIDE.md` §2 が正本。本節は、日常作業で先に見る高リスク項目の抜粋である。
+
+| 階層 | LLM がしてよいこと | 代表例 |
+|---|---|---|
+| **L0: 人間専権** | 決定しない。ユーザに求められた場合のみ判断材料・影響範囲・選択肢を整理 | プロダクト目的、主要スコープ、新ライブラリ採用 |
+| **L1: 提案 + 承認必須** | 案・差分・コマンドを提示し、承認後に実行 | 新規 component、interface 関数追加、DESIGN/KNOWLEDGE 改訂 |
+| **L2: 実施 + 事後報告** | 実行して結果を報告 | core 実装、テスト追加、Q 起票、承認済判断の ADR 化 |
+| **L3: 独断可** | 実行し、必要なら簡潔に報告 | 命名の微調整、局所的な整形、内部実装の細部 |
+
+以下は L0/L1 相当として扱う。提案可否・実行可否で迷った場合は上位階層に倒す。
 
 - 依存ライブラリの追加
 - **brick（base / component）の deps.edn へのライブラリ追加・変更**（実質的に依存追加。詳細手順は §6.2、選定論理は `.llm/guide/STACK_GUIDE.md`）
 - 既存 API（`interface.clj` の公開関数、Malli スキーマ、DB スキーマ）の破壊的変更
 - 新規 base / project の追加（`poly create base` / `poly create project`）
-- DB マイグレーションの実行（生成は可、実行は人間)
-- **必須層の入れ替え・削除**（§3 記載の Clojure / tools.deps / Polylith / Malli / clj-kondo / cljfmt、およびそれぞれの設定ファイル `.clj-kondo/config.edn` / `cljfmt.edn` / `workspace.edn` / `deps.edn` 必須部分）。設定の変更（例: lint 規則の追加・緩和、cljfmt 設定変更）も含む
-- CLAUDE.md / .llm/guide/ 配下の各種ガイドの自動編集（**提案のみ可**。ユーザからの明示的な改修依頼がある場合も、変更内容を提示して承認を得てから編集する。テンプレート保守タスクも同じ規律に従う。詳細な編集権限マトリクスは `.llm/guide/COLLABORATION_GUIDE.md` §2.2）
+- DB マイグレーションの実行（生成は可、実行は人間が行う）
+- **必須層の入れ替え・削除**（§3 記載の必須層、およびそれぞれの設定ファイル `.clj-kondo/config.edn` / `cljfmt.edn` / `workspace.edn` / `deps.edn` 必須部分）。設定の変更（例: lint 規則の追加・緩和、cljfmt 設定変更）も含む
+- CLAUDE.md / .llm/guide/ 配下の各種ガイドの自動編集（**提案のみ可**。ユーザからの明示的な改修依頼がある場合も、変更内容を提示して承認を得てから編集する。テンプレート保守タスクも同じ規律に従う。詳細な編集権限マトリクスは `.llm/guide/COLLABORATION_GUIDE.md` §2.3）
 - **コンポーネントの統合・分割**（境界変更は影響甚大）
 - `components/`、`bases/`、`projects/` 配下のファイル/ディレクトリを手作業で作成（必ず `poly create`）
 - **4 種文書（DESIGN.md / KNOWLEDGE.md / adr/ / QUESTIONS.md）の独断編集・状態変更**（詳細な編集権限マトリクスは `.llm/guide/COLLABORATION_GUIDE.md` §2.3）
@@ -143,7 +162,7 @@
 
 ## 3. 技術スタック
 
-本テンプレートの**必須層**は以下。入れ替え不可（バージョンは `STACK_GUIDE.md §2.1` を一次情報源とする）：
+本テンプレートの**必須層**は以下。入れ替え不可（バージョンと階層定義の正本は `STACK_GUIDE.md §2.1`）：
 
 - **Clojure**（言語）
 - **tools.deps**（`deps.edn` による依存管理。Polylith の前提）
@@ -155,9 +174,11 @@
 - **clj-watson**（依存脆弱性スキャン、時間軸を跨いだ機械化。`./.llm/scripts/check-vulnerabilities.sh` で起動、release 前必須。NVD API key 推奨）
 - **`.llm/scripts/` ディレクトリ**（`check-workspace-integrity.sh` / `check-*.sh` / `lint-import-hooks.sh`、設定ファイル・ディレクトリ構造の機械的検査を担う）
 
+必須層が固定される理由は、これらが本テンプレートの機械化・構造検証・境界契約・整形規律の前提だからである。入れ替えると個別ライブラリの変更ではなく、§1 の実装手段そのものを変更することになる。変更が必要な場合はテンプレート保守タスクとして扱い、`.llm/guide/MAINTAINERS_GUIDE.md` の手順に従う。
+
 必須層以外の技術選定（テストランナー、HTTP サーバ、DB 接続、ロギング、コンポーネント管理、JSON 変換など）は、プロジェクトの性格に応じて選ぶ **stack 層**に属する。選定の論理と推奨カタログは `.llm/guide/STACK_GUIDE.md` に一元化されている。採用した stack は `DESIGN.md` §8.3 に記録する。
 
-STACK_GUIDE.md に載っていない領域に遭遇した場合は、§6.3 の手順に従って第一原理から自律的に選定する。必須層が固定される点は変わらない。
+STACK_GUIDE.md に載っていない領域に遭遇した場合は、§6.3 の手順に従って第一原理から判断材料を整理し、人間判断へ渡す。必須層が固定される点は変わらない。
 
 ---
 
@@ -169,7 +190,7 @@ STACK_GUIDE.md に載っていない領域に遭遇した場合は、§6.3 の�
 
 失敗を契約に持ち上げ、境界で検証する。
 
-- **`interface.clj` の全 `defn` に `m/=>` 契約を付ける**（境界契約は境界に集約。`core.clj` には置かない。`check-interface-contracts.sh` が機械検証）
+- **`interface.clj` の公開 `defn` に `m/=>` 契約を付ける**（境界契約は境界に集約。`core.clj` には置かない。`check-interface-contracts.sh` が機械検証）。`defn-` / `^:private` は原則として `interface.clj` に置かない。マクロ生成関数や可変長引数など契約表現で迷う場合は、`.llm/memory/QUESTIONS.md` に Q を立てる
 - 外部入力（HTTP リクエスト、DB 行、外部 API レスポンス、設定ファイル）は**入口で `m/validate`**
 - 開発時は Malli instrumentation を有効化（`dev/user.clj` の `(malli-on!)` を REPL 起動後に呼ぶ。Integrant を使うプロジェクトでは `(go)` が内部的に呼ぶ）。契約違反は REPL 評価で即座に例外化
 - 関数が失敗し得るなら、戻り値の型を一貫させる（常に `nil` を返すか、`{:error ...}` 形式か、一つに決める）
@@ -180,8 +201,8 @@ STACK_GUIDE.md に載っていない領域に遭遇した場合は、§6.3 の�
 データ指向プログラミング。
 
 - **素のマップ・ベクタ・セット・キーワード優先**。`defrecord` は次のいずれかのみ: (1) プロトコル多態、(2) ホットパス性能、(3) Java 相互運用
-- **キーは名前空間付き**（`:user/id`、`:order/total`）。修飾子はドメイン / コンポーネント名に揃える
-- **可変状態（`atom` / `ref` / `agent`）は最上位層に限定**。ドメイン関数内で `atom` を作らない。Integrant を採用するプロジェクトでは Integrant コンポーネント内に、採用しないプロジェクトでは起動エントリ（`-main` や test fixture 等）の明示的な管理対象として配置する
+- **外部境界・コンポーネント境界・永続化境界を跨ぐマップのキーは名前空間付き**（`:user/id`、`:order/total`）。完全にローカルな一時マップは例外可。修飾子はドメイン / コンポーネント名に揃える
+- **可変状態（`atom` / `ref` / `agent`）は最上位層に限定**。ここでの最上位層とは、ライフサイクルを開始・停止できる境界（Integrant component、`-main`、test fixture、REPL の dev helper）を指す。ドメイン関数内で `atom` を作らない
 - 蓄積は `reduce` / `into`。ローカル `atom` で回さない
 - 詳細: `.llm/guide/CODING_GUIDE.md` §2〜§7
 
@@ -192,7 +213,7 @@ STACK_GUIDE.md に載っていない領域に遭遇した場合は、§6.3 の�
 - **ドメイン系コンポーネント**（user, order, …）は I/O ライブラリを `require` しない（clj-kondo で警告化）
 - I/O 系は**依存注入**で受け取る。Integrant を採用するプロジェクトでは Integrant key として提供、採用しないプロジェクトでは起動エントリで構築して関数引数として渡す（いずれも「ドメインは I/O を知らない」という原則は共通）
 - `println` / `prn` はアプリケーションコード（components / bases）で禁止（代わりに `mulog/log` または `tap>`）。**例外**: ビルドスクリプト（`projects/<deploy>/build.clj` 等）や `development/src/` 配下の一時デバッグコードでは、mulog 依存を引き込むこと自体が疲労増になるため `println` 使用を許容する。この例外は lint 設定 `.clj-kondo/config.edn` でも前提として扱われる（`--lint` 対象が `components bases development/src` で、build.clj は lint 対象外）
-- `with-redefs` は §1.1 全域性を破るので原則禁止（`clj-kondo` の `:discouraged-var` で警告化済）。の反映により「最小範囲」という主観語を外した。例外的に使用する場合は **ADR で理由付け必須**（「なぜ依存注入で置き換えられなかったか」を記録）
+- `with-redefs` は §1.1 全域性を破るので原則禁止（`clj-kondo` の `:discouraged-var` で警告化済）。例外的に使用する場合は **ADR で理由付け必須**（「なぜ依存注入で置き換えられなかったか」を記録）
 
 ---
 
@@ -231,7 +252,13 @@ Malli は必須層。`dev/user.clj` で `(malli-on!)` / `(malli-off!)` helper �
 
 ### 5.5 完了条件（以下全通過で初めて完了報告）
 
-> **※ ブートストラップ期の例外**: `projects/` が未作成の時点（`.llm/guide/BOOTSTRAP_GUIDE.md` §2.9 完了前）では最終行の uber ビルドはスキップ。`BOOTSTRAP_GUIDE.md` §2.9 完了時点から本節の全行が適用される。また、`workspace.edn` の `:top-namespace` が配布時プレースホルダ `"myorg.myapp"` のままだと `./.llm/scripts/check-workspace-integrity.sh` が失敗するので、ブートストラップ §2.1 のプレースホルダ置換完了が前提。
+完了条件はプロジェクト状態で分岐する。LLM は自分の状況を次の表で判定してからコマンドを実行する。
+
+| 状態 | 実行する完了条件 |
+|---|---|
+| `workspace.edn` に配布時プレースホルダ `"myorg.myapp"` が残る | ブートストラップ未完了。`.llm/guide/BOOTSTRAP_GUIDE.md` §2.1 を先に完了する。`check-workspace-integrity.sh` は失敗してよい状態ではなく、未完了状態の検出である |
+| `projects/` が未作成（`BOOTSTRAP_GUIDE.md` §2.9 前） | 下記コマンドのうち uber ビルドだけスキップ。その他は通す |
+| `projects/<deploy>` が存在し、DESIGN.md §8.4 にビルドコマンドが定義済み | 下記全行を実行 |
 
 ```bash
 clj -M:lint                                    # clj-kondo（構文・型・LLM 落とし穴検知）
@@ -240,10 +267,13 @@ clj -M:format check                            # cljfmt
 clj -M:poly check                              # Polylith 構造
 ./.llm/scripts/check-workspace-integrity.sh         # プレースホルダ残存・brick 登録・非推奨ライブラリ・:local/root 実在の総合検査
 clj -M:poly test :all                          # 全テスト
-cd projects/<deploy> && clj -T:build uber      # ビルド成功（<deploy> は DESIGN.md §8.2 で定めた project 名）
+cd projects/<deploy> && clj -T:build uber      # ビルド成功（<deploy> は DESIGN.md §8.4 のビルドコマンドに合わせる）
 ```
 
 release 前・週次 CI では追加で以下を実行:
+
+- **release 前**: tag 作成、外部配布、デプロイ、納品など、依存脆弱性を後から検出すると修復コストが高い節目
+- **週次 CI**: CI cron などで週 1 回以上走る定期検証。人間の手動実行でもよいが、運用主体は派生プロジェクトで決める
 
 ```bash
 ./.llm/scripts/check-vulnerabilities.sh             # clj-watson（時間軸を跨いだ脆弱性検知、release 前必須）
@@ -307,16 +337,16 @@ STACK_GUIDE.md §3 機能別節の `;; lib-catalog` カタログは、本テン�
 **利用規律**:
 
 - カタログに記載された領域は、これを信頼して利用する(プロジェクトのゴールと矛盾しない限り)
-- カタログに**未記載の領域**(該当機能節が無い技術分野、例: 特殊な科学技術計算、ゲーム、独自の用途等)に遭遇した場合、**第一原理から自律的に導出して判断**する。これはテンプレートの欠陥ではなく、メモリーが未カバーなだけ
-- 原則からの導出で決まらない**プロジェクト固有の選択**(組織方針、要件優先度、費用制約等)のみ、ユーザに質疑する
-- カタログにないことは判断不能の理由にならない
+- カタログに**未記載の領域**(該当機能節が無い技術分野、例: 特殊な科学技術計算、ゲーム、独自の用途等)に遭遇した場合、**第一原理から判断材料を整理してユーザ判断へ渡す**。これはテンプレートの欠陥ではなく、メモリーが未カバーなだけ
+- 原則からの導出で候補・代替・リスクを整理し、**採用可否は人間が決定**する（未記載領域は L0）
+- カタログにないことは思考停止の理由にならないが、LLM が独断採用する理由にもならない
 
 **原則からの導出の手順**(未記載領域に遭遇時):
 
 1. 要件を分解し、何が必要な機能カテゴリか明確化
-2. 各機能カテゴリについて、疲労最小化・三基底原則・data 駆動・Malli 統合容易性・メンテナンス活動・Clojure 慣用との整合を評価基準に候補を選定
+2. 各機能カテゴリについて、疲労最小化・三基底原則・data 駆動・Malli 統合容易性・メンテナンス活動・Clojure 慣用との整合を評価基準に候補を整理
 3. 候補の選定根拠と却下した代替を明示化
-4. プロジェクト固有要件で判断が分かれる部分のみユーザに質疑
+4. プロジェクト固有要件で判断が分かれる部分と、LLM だけでは決定できない価値判断をユーザに提示
 5. 採用決定後、判断経緯を ADR として記録(派生プロジェクト側)。テンプレート保守者側で一般化できる知見なら、STACK_GUIDE.md §3 機能別節 にメモリーとして追記(MAINTAINERS_GUIDE.md §5.9)
 
 カタログの網羅追求は疲労最小化原則と自己矛盾する(網羅は永久に達成不可能)。メモリーは「知っていることを記録する」ものであり、「すべてを記録しようとする」ものではない。
@@ -327,6 +357,16 @@ STACK_GUIDE.md §3 機能別節の `;; lib-catalog` カタログは、本テン�
 
 **LLM に時間感覚はない**ため、「30 分ルール」は機能しない。
 代わりに**ターン数・試行回数**で閾値化する。これが §1.2.4 早期破棄の具体実装である。
+
+本節で使う単位:
+
+| 用語 | 定義 |
+|---|---|
+| **ターン** | ユーザ入力を受けてから LLM が最終応答するまでの 1 サイクル。長い作業中の中間 update は同一ターン内の進捗報告として扱う |
+| **編集 1 回** | 同一目的で同一ファイルに差分を加える 1 パッチまたは 1 フォーマット実行。別関数でも同じファイルに同じ問題を追っているなら回数に含める |
+| **同一テストケース** | 同じ test var / assertion / 失敗メッセージに対応する失敗。実装側とテスト側のどちらを直しても同じ試行回数に含める |
+| **同一エラー** | 行番号が変わっても、原因カテゴリと主要メッセージが同じ失敗 |
+| **確度付き仮説** | `高` / `中` / `低` の 3 値で書く。百分率は使わない |
 
 ### 7.1 自己停止の発動条件（いずれか該当で自走停止）
 
@@ -339,7 +379,7 @@ STACK_GUIDE.md §3 機能別節の `;; lib-catalog` カタログは、本テン�
 
 ### 7.2 詰まり状況下の進捗メモ（必要時のみ）
 
-以下のいずれかが発動条件になったら、各ターン冒頭に進捗メモを出す（の反映、全ターン必須から緩和）:
+以下のいずれかが発動条件になったら、各ターン冒頭に進捗メモを出す:
 
 - §7.1 自己停止条件の**閾値に近づいた時**（同一試行 2 回目、同一ファイル編集 3 回目以降）
 - **仮説→検証のループに入った時**（2 回以上の仮説立案）
@@ -365,7 +405,7 @@ STACK_GUIDE.md §3 機能別節の `;; lib-catalog` カタログは、本テン�
 ## 自己停止の報告
 1. 試みた内容（最大 5 項目、箇条書き）
 2. 残っている障害（エラー・構造違反・テスト失敗の具体)
-3. 考えられる原因の仮説（最大 3、確度付き）
+3. 考えられる原因の仮説（最大 3、確度: 高 / 中 / 低）
 4. 次の選択肢：
    A. 現アプローチを続行（理由を書く）
    B. ブランチを破棄して別アプローチ（推奨時は B を明示）
@@ -402,55 +442,6 @@ STACK_GUIDE.md §3 機能別節の `;; lib-catalog` カタログは、本テン�
 
 §1.2.3 小単位分解の実装。
 
-### 8.0.0 ターン内で閉じる検証フィードバック
-
-LLM のフィードバックループは**編集単位でターン内に閉じる**。監視型（watch）や非同期通知には依存しない（別プロセスの出力を LLM は読めない）。
-
-**サイクル**:
-
-1. 編集（brick のコード、deps.edn、interface、テスト等）
-2. 影響範囲の検証をターン内で実行（以下から**適切な粒度**で選ぶ、複数組合せ可）:
-   - **REPL eval**（稼働中なら第一選択、下記 trigger matrix 該当時は必須）: `./.llm/scripts/repl-eval.sh`
-     - 既定で永続 session 再利用（`.nrepl-session`）、`--fresh` で ephemeral
-     - `--expr '(...)'` / `--load-file path.clj` が主界面、stdin は fallback
-     - hang した eval は `--interrupt`、session 再作成は `--reset-session`
-     - CLAUDE.md §9 Live Workbench Protocol 参照
-   - 静的: `clj -M:poly check`、`clj -M:lint`、`clj -M:format check`
-   - 単発 JVM: `clj -M:poly test`（影響範囲、高速）
-3. 結果を読む
-4. 失敗があれば下記の振り分け判断に従って対処
-
-`poly test` は stable タグからの diff で**影響範囲を自動判定**するため、LLM が毎回「どこまで走らせるか」を考える必要はない。完了条件（§5.5）では `poly test :all` で全体検証する。
-
-#### REPL eval 必須トリガ（mandatory）
-
-編集内容が以下のいずれかに該当したら、**`poly test` より先に** REPL eval で確認する。nREPL 未起動ならユーザに `clj -M:dev:nrepl` 起動を 1 度依頼し、起動後に実施する（§9.0 共有モデル）:
-
-| トリガ | なぜ REPL が必須か | 代表的な eval |
-|---|---|---|
-| Integrant key の defmethod 追加・変更 | 起動中 system map の内容が変わる、独立 JVM では再現しない | `(keys (system))` / `(get (system) ::my-key)` |
-| tools.namespace `(reset)` を伴う ns 再構成 | ロード順依存のバグは起動 JVM 単発では見えない | `(safe-reset!)` → `(myapp.new-ns/some-fn)` |
-| `m/=>` 契約の新規付与・変更 | instrumentation で即例外化、境界確認 | 対象関数を不正引数で呼び contract violation を観察 |
-| mulog publisher / event 名の変更 | publisher chain は起動中のみ観察可能 | `(mulog/log ::probe :data {:k 1})` で tail |
-| 外部 API / DB レスポンスの map 形状を使う処理 | 実形状を見ずに実装は §1.1.1 全域性違反 | `(probe (fetch-row db id))` で tap> + 値保持 |
-| 例外発生箇所の binding を観察するデバッグ | 予め context 再現、flow-storm で変遷観察 | `(fs-start!)` → `(fs-record-ns! 'ns)` → 再現 |
-| defrecord shape / protocol method 変更 | stale class instance による沈黙バグ検知 | `(hard-reset!)` 後に対象関数評価 |
-
-**該当しない編集**（純粋関数の追加、新 namespace で既存 state に触れない等）は `poly test` のみで良い。
-
-**検出された失敗の振り分け**:
-
-| 失敗の性格 | 対処 |
-|---|---|
-| 自分の編集が原因で原因が明確（typo、契約変更の波及漏れ等） | ターン内で修正（記録不要） |
-| 起動中 system state / 関数挙動の確認が必要 | REPL eval で即検証、再現したら修正（trigger matrix 該当時は必須） |
-| 修正方針に判断が必要（契約変更 vs 実装変更、影響範囲の広さ等） | `.llm/memory/QUESTIONS.md` に Q を起票 |
-| 将来の同種問題防止に価値ある知見 | `.llm/memory/KNOWLEDGE.md` に追記（ユーザに提示） |
-| 設計判断に関わる（新規原則導入、既存原則変更等） | ADR 発行（`.llm/memory/adr/`） |
-| 3 回試みても解決しない / 予想を超えて範囲が広がる | §7 自己停止プロトコル |
-
-この振り分けに載らない「タスク」概念は本テンプレートには存在しない。作業中の全事象は既存の受け皿（QUESTIONS.md / KNOWLEDGE.md / ADR / §7 自己停止）に流す。
-
 ### 8.0 実装着手前の確認（すべての作業に共通）
 
 どの作業を行う時も、着手前に以下を確認する。これは §1.3「生きた知識の活用で再発見の疲労を避ける」の具体実装：
@@ -460,23 +451,77 @@ LLM のフィードバックループは**編集単位でターン内に閉じ�
 3. **未決判断の確認**: `.llm/memory/QUESTIONS.md` の `open` / `in-discussion` に関連する Q がないか確認。関連 Q があれば、その解決を待つか、Q のコンテキストで作業する。状態遷移と昇格先判定は同ファイル §0
 4. **過去の決定の確認**: `.llm/memory/adr/` で関連する ADR があれば読む。発行・改訂手順は `.llm/memory/adr/README.md`
 
-**空スキャン規約**: 上記 4 つの確認は、該当文書が空（初期状態・該当エントリなし）の場合、**空スキャンで完了**とみなす。空を確認する行為自体が §1.3 の実装であり、スキップしてよい対象ではない。ただし、空であることを確認した後は次のステップに進む。下流 3 文書（KNOWLEDGE.md / QUESTIONS.md / adr/README.md）の §0 はこの §8.0 から呼び出される運用プロセスを定義する。
+**空スキャン規約**: 上記 4 つの確認は、該当文書が空（初期状態・該当エントリなし）の場合、**空スキャンで完了**とみなす。空を確認する行為自体が §1.3 の実装であり、スキップしてよい対象ではない。ただし、空であることを確認した後は次のステップに進む。
 
-仕様・知識・未決に**曖昧さ・矛盾・欠落**を発見したら、`.llm/memory/QUESTIONS.md` に Q を立てて**自己解釈で進めない**。
+空スキャンの目的は「読む価値があるか」を毎回推測しないことにある。空であっても確認済みなら、以後の判断で「見落としたかもしれない」という再確認を避けられる。下流 3 文書（KNOWLEDGE.md / QUESTIONS.md / adr/README.md）の §0 はこの §8.0 から呼び出される運用プロセスを定義する。
+
+仕様・知識・未決に**実装判断へ影響する曖昧さ・矛盾・欠落**を発見したら、`.llm/memory/QUESTIONS.md` に Q を立てて**自己解釈で進めない**。誤字、言い回し、実装判断に影響しない表現揺れは Q ではなく通常のドキュメント改善候補として扱う。
 
 **仕様曖昧性の点検項目**（用語定義・例外条件・数値基準・境界条件・受入基準整合・KNOWLEDGE との矛盾）と**質問の出し方**は `.llm/guide/COLLABORATION_GUIDE.md` §4 に一元化されている。
+
+### 8.0.0 ターン内で閉じる検証フィードバック
+
+LLM のフィードバックループは**編集単位でターン内に閉じる**。監視型（watch）や非同期通知には依存しない（別プロセスの出力を LLM は読めない）。
+
+**サイクル**:
+
+1. 編集（brick のコード、deps.edn、interface、テスト等）
+2. 下表で検証粒度を決める
+3. ターン内で検証を実行する
+4. 結果を読む
+5. 失敗があれば下記の振り分け判断に従って対処
+
+**検証粒度の判定**:
+
+| 編集・作業の性格 | 最初に行う検証 | 補足 |
+|---|---|---|
+| 調査・文書確認のみでファイル編集なし | §8.0 の確認のみ | 実行可能な検証がなければ不要 |
+| typo、コメント、純粋関数、テストのみ | `clj -M:poly test` または対象テスト | REPL 稼働中なら eval 併用可 |
+| `interface.clj` / `m/=>` 契約 / 外部入力 schema の変更 | REPL eval 必須 → `clj -M:poly test` | instrumentation で境界を即確認 |
+| Integrant key、runtime wiring、mulog publisher、defrecord / protocol、ns graph 変更 | REPL eval 必須。必要に応じて `(safe-reset!)` / `(hard-reset!)` | 起動中 JVM の状態に依存するため |
+| deps.edn、brick 構造、workspace.edn 変更 | `clj -M:poly check` + 依存解決確認 + fresh JVM 判断 | REPL の既存 classpath では確認不足 |
+| 完了報告前 | §5.5 完了条件 | `poly test :all` で全体検証 |
+
+`poly test` は stable タグからの diff で**影響範囲を自動判定**するため、LLM が毎回「どこまで走らせるか」を考える必要はない。stable タグの作成と更新はブートストラップ完了時または CI 運用で決める。タグが未整備なら `poly test :all` に倒す。
+
+#### REPL eval 必須トリガ（mandatory）
+
+編集内容が以下のいずれかに該当したら、**`poly test` より先に** REPL eval で確認する。nREPL 未起動ならユーザに `clj -M:dev:nrepl` 起動を 1 度依頼し、起動後に実施する（§9.0 共有モデル）:
+
+| トリガ | 代表的な eval |
+|---|---|
+| Integrant key の defmethod 追加・変更 | `(safe-reset!)` → `(keys (system))` / `(get (system) ::my-key)` |
+| tools.namespace refresh を伴う ns 再構成 | `(safe-reset!)` → `(myapp.new-ns/some-fn)` |
+| `m/=>` 契約の新規付与・変更 | 対象関数を正・不正引数で呼び contract violation を観察 |
+| mulog publisher / event 名の変更 | `(mulog/log ::probe :data {:k 1})` で publisher 経路を確認 |
+| 外部 API / DB レスポンスの map 形状を使う処理 | `(probe (fetch-row db id))` で tap> + 値保持 |
+| 例外発生箇所の binding を観察するデバッグ | `(fs-start!)` → `(fs-record-ns! 'ns)` → 再現 |
+| defrecord shape / protocol method 変更 | `(hard-reset!)` 後に対象関数評価 |
+
+**検出された失敗の振り分け**:
+
+| 失敗の性格 | 対処 |
+|---|---|
+| 自分の編集が原因で原因が明確（typo、契約変更の波及漏れ等） | ターン内で修正（記録不要） |
+| 起動中 system state / 関数挙動の確認が必要 | REPL eval で即検証、再現したら修正（REPL eval 必須トリガ該当時は必須） |
+| 修正方針に判断が必要（契約変更 vs 実装変更、影響範囲の広さ等） | `.llm/memory/QUESTIONS.md` に Q を起票 |
+| 将来の同種問題防止に価値ある知見 | `.llm/memory/KNOWLEDGE.md` への追記案をユーザに提示 |
+| 設計判断に関わる（新規原則導入、既存原則変更等） | ADR 発行を提案、または承認済判断なら ADR 化 |
+| 3 回試みても解決しない / 予想を超えて範囲が広がる | §7 自己停止プロトコル |
+
+この振り分けに載らない「タスク」概念は本テンプレートには存在しない。作業中の全事象は既存の受け皿（QUESTIONS.md / KNOWLEDGE.md / ADR / §7 自己停止）に流す。
 
 ### 8.1 既存コンポーネントへの機能追加
 
 1. §8.0 の確認を実施（REPL 稼働中なら `./.llm/scripts/repl-eval.sh --expr '(dev.user/status)'` で環境把握）
-2. 対象の `interface.clj` に追加する関数のシグネチャと Malli スキーマを設計し、**ユーザに提示・確認**
+2. 対象の `interface.clj` に追加する公開関数のシグネチャと Malli スキーマを設計し、**ユーザに提示・確認**。承認待ちの間に該当 interface の実装へ進まない
 3. `core.clj` に実装（`m/=>` 契約は置かない）
 4. `interface.clj` に委譲 + `m/=>` 契約付与（境界契約の集約）
-5. **REPL eval で境界挙動確認**（§8.0.0 trigger matrix 該当時は必須、§9 Live Diagnosis Loop）:
+5. **REPL eval で境界挙動確認**（§8.0.0 REPL eval 必須トリガ該当時は必須、§9 Live Diagnosis Loop）:
    - 編集ファイルを即反映: `./.llm/scripts/repl-eval.sh --load-file components/<c>/src/poly/<c>/interface.clj`
    - 対象関数を評価: `./.llm/scripts/repl-eval.sh --ns poly.<c>.interface --expr '(<new-fn> <sample-args>)'`
    - `m/=>` 契約違反は instrumentation で即例外化して観察、flow-storm 導入時は `(fs-record-ns! 'poly.<c>.core)` で trace も取れる
-6. `test/.../interface_test.clj` にテストとして REPL で見た挙動を昇格（単体 + プロパティ）
+6. `test/.../interface_test.clj` にテストとして REPL で見た挙動を昇格（観察した値を正常系・境界値・契約違反・不変条件に整理し、単体 + 必要ならプロパティテストへ落とす）
 7. `clj -M:poly check` → `clj -M:poly test`（REPL で動いても CLI gate は必ず通す）
 8. **実装中に発見した契約・不変条件・暗黙知**があれば、ユーザに提示して KNOWLEDGE.md への追加を提案（詳細は `KNOWLEDGE.md` §0）
 
@@ -494,7 +539,7 @@ clj -M:poly create component name:<name>
 ### 8.3 コミット
 
 - 論理単位ごとに細かく
-- **1 コミット = 1 関数追加 / 1 バグ修正 / 1 リファクタリング単位**
+- **目安: 1 コミット = 1 つの意図**（1 関数追加、1 バグ修正、1 リファクタリング等）。実装と対応テストは通常同じコミットに含める
 - メッセージ：現在形・命令形（"Add user/create function"）
 - ロジック変更とフォーマット変更は別コミット
 - WIP / テスト失敗をコミットしない
@@ -542,7 +587,7 @@ clj -M:poly create component name:<name>
 ### 9.0 共有モデル
 
 - 人間が 1 つの `clj -M:dev:nrepl` を起動（long-lived JVM）
-- CIDER / Calva / Cursive **と** LLM が**同じ nREPL に attach**する
+- CIDER / Calva / Cursive **と** LLM が**同じ nREPL に attach**する。LLM 側の attach は `./.llm/scripts/repl-eval.sh` が `.nrepl-port` を読み、nREPL eval op を送ることで実現する
 - どのクライアントも session を独占しない。LLM は `--fresh` / `--reset-session` で session 分離可能だが、既定は人間と共有
 - port は nREPL が `.nrepl-port` に自動書き出し、session は `.nrepl-session` に永続化
 - LLM は `./.llm/scripts/repl-eval.sh` 経由で eval する。直接 `clj` を叩かない（shell quoting・port 発見の複雑化回避）
@@ -567,20 +612,19 @@ clj -M:poly create component name:<name>
 
 ### 9.2 LLM Live Diagnosis Loop（必須）
 
-**LLM は編集の前後で以下のループを回す**。ユーザからの指示を待たない:
+**LLM は編集の前後で以下の分岐を回す**。ユーザからの指示を待たない。
 
-1. 接続確認: `session-briefing.sh` の REPL 状態節を読む。未起動なら 1 度だけ `clj -M:dev:nrepl` 起動をユーザに依頼
-2. `./.llm/scripts/repl-eval.sh --expr '(dev.user/status)'` で環境把握
-3. `(malli-on!)` 未実行なら `./.llm/scripts/repl-eval.sh --expr '(malli-on!)'`
-4. Integrant プロジェクトで runtime wiring を変える編集の場合: `(safe-reset!)` で state 再起動、`(keys (system))` で確認
-5. 編集したら `./.llm/scripts/repl-eval.sh --load-file <path>` で即反映
-6. 対象式を live JVM で eval: `./.llm/scripts/repl-eval.sh --ns <ns> --expr '(<fn> <args>)'`
-7. 値の形状探索は `(probe x)` / Portal、raw `println` は使わない
-8. state / 時系列 / 制御フローのバグは FlowStorm: `(fs-start!)` → `(fs-clear!)` → `(fs-record-ns! '<ns>)` → 再現
-9. refresh が壊れた感触なら `(hard-reset!)`（stale class / 半 reload 復旧）
-10. live 挙動が正しいことを確認したら**テストに昇格**、CLI gate（`poly check` / `poly test` / `lint`）へ
+| 状況 | 手順 |
+|---|---|
+| REPL 接続の初回確認 | `session-briefing.sh` の REPL 状態節を読む。未起動なら 1 度だけ `clj -M:dev:nrepl` 起動をユーザに依頼。起動済みなら `./.llm/scripts/repl-eval.sh --expr '(dev.user/status)'` |
+| 通常の関数・契約確認 | 必要なら `(malli-on!)` → `--load-file <path>` → `--ns <ns> --expr '(<fn> <args>)'` |
+| runtime wiring / Integrant 変更 | `--load-file` 後に `(safe-reset!)` → `(keys (system))`。system map の対象 key を確認 |
+| 値の形状探索 | `(probe x)` / Portal を使う。raw `println` は使わない |
+| state / 時系列 / 制御フローのバグ | FlowStorm 導入時のみ `(fs-start!)` → `(fs-clear!)` → `(fs-record-ns! '<ns>)` → 再現。未導入なら `:flow-storm-not-available` を確認して通常 eval に戻る |
+| refresh が壊れた感触 | `(hard-reset!)`。stale class / 半 reload 復旧を目的にする |
+| live 挙動を確認済み | REPL 結果を `interface_test.clj` 等へテスト化し、CLI gate（`poly check` / `poly test` / `lint`）へ進む |
 
-この 10 ステップが **REPL-capable から REPL-primary への移行**の実装。
+REPL で得た値をテストへ「昇格」するとは、観察した具体値をそのまま固定するだけではない。正常系・境界値・契約違反・不変条件のどれを確認したのかを切り分け、再現可能な `clojure.test` または property test に落とすことを指す。
 
 ### 9.3 やってはいけない事
 
@@ -588,10 +632,10 @@ clj -M:poly create component name:<name>
 - `comment` フォーム満足禁止（§9.2 step 10）
 - 副作用反復（DB insert 等）は冪等性確認後に限る
 - **ターン跨ぎ state 依存禁止**: session 消滅前提で、結果は必ずコード化
-- **`(require ... :reload)` の常用禁止**: ns graph 変更は `(safe-reset!)`（tools.namespace を内包）、`:reload` は narrow experiment のみ
+- **`(require ... :reload)` の常用禁止**: ns graph 変更は `(safe-reset!)`（tools.namespace を内包）、`:reload` は単一 namespace の仮説確認に限る。確認後は `safe-reset!` またはテストで再検証する
 - **defrecord shape / protocol method 変更時**: `(hard-reset!)` または fresh JVM。stale class instance による沈黙バグを避ける
 - 多エージェント並走時は `--fresh` か `--reset-session` で session 汚染を回避
-- bounded output（10KB/response）を超える探索は `(take 50 ...)` / `(keys m)` で絞る
+- bounded output（目安 10KB/response）を超える探索は `(take 50 ...)` / `(keys m)` で絞る。これは repl-eval.sh の制限ではなく、LLM が結果を読み切れる粒度に保つための運用上の上限
 
 ### 9.4 Reload 規律（stale state を避ける表）
 
@@ -599,11 +643,11 @@ clj -M:poly create component name:<name>
 
 | 変更種別 | 正しい対処 |
 |---|---|
-| 関数追加・変更（純粋） | `--load-file` or `(safe-reset!)` |
+| 関数追加・変更（純粋。I/O・global state・class shape に触れない） | `--load-file` or `(safe-reset!)` |
 | ns 追加・削除・rename | `(safe-reset!)`（tools.namespace が graph を解決） |
 | 依存追加（deps.edn 変更） | fresh JVM 再起動（ClassLoader 再構築必要）|
 | Integrant key の defmethod 変更 | `(safe-reset!)` で新 defmethod 反映 |
-| defrecord shape / protocol method 追加 | `(hard-reset!)` or fresh JVM |
+| defrecord shape / protocol method 追加・削除・シグネチャ変更 | `(hard-reset!)` or fresh JVM |
 | multimethod 再定義 | `(hard-reset!)` 推奨（stale dispatch 回避） |
 | `m/=>` 契約追加・変更 | `--load-file` で reload、その後 `(malli-on!)` 再実行 |
 
@@ -634,7 +678,7 @@ Exit codes: `0` 成功 / `1` eval-error・namespace-not-found・:ex / `2` 接続
 
 - **テストは原則 interface 経由で書く**（実装変更に頑健）
 - モックは §1.1.3 副作用隔離の失敗サイン。**依存注入で回避**
-- **検証はターン内で同期的に閉じる**（§8.1）。監視モード（watch）には依存しない。LLM は編集のたびに自分で `poly test` を走らせ、結果を読む
+- **検証はターン内で同期的に閉じる**（§8.0.0）。監視モード（watch）には依存しない。LLM は編集のたびに自分で `poly test` を走らせ、結果を読む
 
 ---
 
@@ -642,16 +686,20 @@ Exit codes: `0` 成功 / `1` eval-error・namespace-not-found・:ex / `2` 接続
 
 プロジェクトに関わる情報は、**原則 13（MAINTAINERS_GUIDE.md §4）に基づき 4 種類の文書に分離**される。役割が対照的なので混同しない。
 
+CLAUDE.md では日常判断に必要な短縮定義だけを置く。原則 13 の本定義は `.llm/guide/MAINTAINERS_GUIDE.md` §4、各文書の運用手順は各 §0 が正本。
+
 ### 11.1 4 種類の文書と参照先
 
-| 種別 | 配置 | 性質 | 詳細運用の参照先 |
-|---|---|---|---|
-| **仕様（DESIGN）** | `DESIGN.md` | 何を作るか | `DESIGN.md` §0 本ファイルの埋め方 |
-| **生きた知識（KNOWLEDGE）** | `.llm/memory/KNOWLEDGE.md` | 現時点の契約・不変条件・暗黙知（上書き更新） | `KNOWLEDGE.md` §0 運用プロセス |
-| **決定履歴（ADR）** | `.llm/memory/adr/NNNN-topic.md` | なぜそう決めたか（発行後不変、supersede で改訂）。発行・改訂手順の一次情報源は `.llm/memory/adr/README.md`、権限階層は `COLLABORATION_GUIDE.md §2.2` | `.llm/memory/adr/README.md` |
-| **判断保留（QUESTIONS）** | `.llm/memory/QUESTIONS.md` | 未決の判断（open → resolved） | `QUESTIONS.md` §0 運用プロセス |
+| 種別 | 配置 | 書くもの | 更新方式 | 詳細運用の参照先 |
+|---|---|---|---|---|
+| **仕様（DESIGN）** | `DESIGN.md` | 何を作るか、合意済みの目的・スコープ・受入基準 | 現在形で上書き。履歴は残さない | `DESIGN.md` §0 |
+| **生きた知識（KNOWLEDGE）** | `.llm/memory/KNOWLEDGE.md` | 現時点の契約・不変条件・暗黙知 | 上書き更新、常に最新 | `KNOWLEDGE.md` §0 |
+| **決定履歴（ADR）** | `.llm/memory/adr/NNNN-topic.md` | なぜそう決めたか、却下した代替案 | 発行後不変。改訂は新 ADR | `.llm/memory/adr/README.md` |
+| **判断保留（QUESTIONS）** | `.llm/memory/QUESTIONS.md` | 未決の判断、自己停止 D の受け皿 | open → resolved / wontfix / superseded | `QUESTIONS.md` §0 |
 
 編集権限・協働プロトコルは **`.llm/guide/COLLABORATION_GUIDE.md`** に一元化されている。**Q を立てるべき場面の一覧は `QUESTIONS.md` §1**、LLM の仕様書開発者としての複数役割は §11.3。
+
+分類に迷う場合は、先に `.llm/memory/QUESTIONS.md` に Q を立てる。分類自体を自己解釈しない。
 
 ### 11.2 サイクル全体図（羅針盤）
 

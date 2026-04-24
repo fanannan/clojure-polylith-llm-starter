@@ -223,6 +223,7 @@ LLM は本ファイルを読むたびに、以下の観点で**能動的に曖�
 ### 8.4 配布形態
 
 - **形式**: ＜TODO: 単一 uberjar / 複数 uberjar / Docker イメージ / Lambda / ライブラリ JAR 等＞
+- **Polylith project / deploy 名**: ＜TODO: 例 `app`、`worker`、`api`。`projects/<deploy>` と `workspace.edn :projects` に対応＞
 - **ビルドコマンド**: ＜TODO: 例 `cd projects/<deploy>/ && clj -T:build uber`＞
 - **デプロイ先**: ＜TODO: 例 AWS ECS / GCP Cloud Run / オンプレ等＞
 
