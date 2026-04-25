@@ -172,6 +172,7 @@ CLAUDE が「日々の作業フロー」を規定するのに対し、本文書�
   - **Integrant を採用し、ライフサイクル管理 helper を有効化済み**: `(go)` が内部で `(malli-on!)` を呼ぶ
   - **Integrant 非採用**（ライブラリ配布・単発 CLI 等）: REPL 起動後に明示的に `(malli-on!)` を呼ぶ
 - 契約違反は REPL 呼び出し即時に例外。LLM は例外メッセージから自己修正できる
+- `poly test` は高速な回帰確認であり、契約検証完了の代替ではない。契約をテスト中にも検証したい場合は、Malli instrumentation を test fixture で有効化する
 - 詳細は CLAUDE.md §5.4 / §9.1 と `development/src/dev/user.clj` の docstring
 
 ### 2.2 不変性（Immutability）の Clojure 実装

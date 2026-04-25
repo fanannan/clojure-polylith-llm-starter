@@ -137,13 +137,24 @@ Polylith は **../CLAUDE.md §1.1.3 副作用の隔離 + §1.2.1 機械化** の
 (ns myorg.myapp.<domain>.interface-test
   "テストは原則 interface 経由で書く（実装変更に頑健）。"
   (:require
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [clojure.test.check.clojure-test :refer [defspec]]
    [clojure.test.check.properties :as prop]
    [malli.core :as m]
+   [malli.dev :as mdev]
+   [malli.dev.pretty :as mpretty]
    [malli.generator :as mg]
    [matcher-combinators.test]
    [myorg.myapp.<domain>.interface :as d]))
+
+(defn with-malli-instrumentation [f]
+  (mdev/start! {:report (mpretty/reporter)})
+  (try
+    (f)
+    (finally
+      (mdev/stop!))))
+
+(use-fixtures :once with-malli-instrumentation)
 
 (deftest create-test
   (testing "create は必須項目から Entity を構築する"
@@ -159,6 +170,9 @@ Polylith は **../CLAUDE.md §1.1.3 副作用の隔離 + §1.2.1 機械化** の
   (prop/for-all [input (mg/generator d/CreateInput)]
     (m/validate d/Entity (d/create input))))
 ```
+
+`poly test` の通過は高速な回帰確認であり、契約検証完了そのものではない。
+`m/=>` 契約をテスト実行中にも有効化したい場合、test fixture で Malli instrumentation を `:once` で有効化する。
 
 ### 2.2 base — HTTP API エントリの例
 

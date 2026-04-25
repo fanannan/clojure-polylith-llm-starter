@@ -311,6 +311,8 @@ Malli は必須技術基盤。`dev/user.clj` で `(malli-on!)` helper を提供�
 - **ライフサイクル管理を使わないプロジェクト**（ライブラリ配布・単発 CLI 等）: REPL 起動後に明示的に `(malli-on!)` を呼ぶ
 
 `m/=>` 契約付き関数を REPL で呼び出した瞬間に契約違反が例外として顕在化。実行方法は本書 §9.1 と `development/src/dev/user.clj` の docstring を参照。
+`poly test` / `poly test :all` の通過は回帰確認であり、契約検証完了を意味しない。
+特に `interface.clj`、`m/=>` 契約、外部入力 schema の変更では、Malli instrumentation を有効化した REPL eval、または instrumentation を有効化した test fixture で契約を別途確認する。
 
 ### 5.5 完了条件（以下全通過で初めて完了報告）
 
@@ -336,7 +338,7 @@ clj -M:lint-splint                             # Splint（スタイル・イデ�
 clj -M:format check                            # cljfmt
 clj -M:poly check                              # Polylith 構造
 ./.llm/scripts/check-workspace-integrity.sh         # プレースホルダ残存・brick 登録・非推奨ライブラリ・:local/root 実在の総合検査
-clj -M:poly test :all                          # 全テスト
+clj -M:poly test :all                          # 全テスト（全体回帰確認）
 cd projects/<deploy> && clj -T:build uber      # ビルド成功（<deploy> は DESIGN.md §8.4 のビルドコマンドに合わせる）
 ```
 
@@ -386,8 +388,8 @@ Polylith 構造の操作と、追加ライブラリの採用・変更手順を�
 |---|---|
 | 状態確認（brick 一覧・依存・変更検知） | `clj -M:poly info` |
 | **構造違反の検証**（編集後に必ず実行） | `clj -M:poly check` |
-| **日常作業中のテスト**（変更影響範囲のみ、高速） | `clj -M:poly test` |
-| **完了報告前のテスト**（§5.5 完了条件の一部、全 project 全 brick 実行） | `clj -M:poly test :all` |
+| **日常作業中のテスト**（変更影響範囲の高速な回帰確認） | `clj -M:poly test` |
+| **完了報告前のテスト**（§5.5 完了条件の一部、全 project 全 brick の回帰確認） | `clj -M:poly test :all` |
 | **新規コンポーネント作成**(承認必須) | `clj -M:poly create component name:<name>` |
 | **新規ベース作成**(人間専権) | `clj -M:poly create base name:<name>` |
 | **新規プロジェクト作成**(人間専権) | `clj -M:poly create project name:<name>` |
@@ -572,13 +574,14 @@ LLM のフィードバックループは**編集単位でターン内に閉じ�
 | 編集・作業の性格 | 最初に行う検証 | 補足 |
 |---|---|---|
 | 調査・文書確認のみでファイル編集なし | §8.0 の確認のみ | 実行可能な検証がなければ不要 |
-| typo、コメント、純粋関数、テストのみ | `clj -M:poly test` または対象テスト | REPL 稼働中なら eval 併用可 |
-| `interface.clj` / `m/=>` 契約 / 外部入力 schema の変更 | REPL eval 必須 → `clj -M:poly test` | instrumentation で境界を即確認 |
+| typo、コメント、純粋関数、テストのみ | `clj -M:poly test` または対象テスト | 回帰確認として十分。REPL 稼働中なら eval 併用可 |
+| `interface.clj` / `m/=>` 契約 / 外部入力 schema の変更 | REPL eval 必須 → `clj -M:poly test` | `poly test` は回帰確認。契約検証は instrumentation 下で別途行う |
 | runtime wiring、publisher、defrecord / protocol、ns graph 変更 | REPL eval 必須。必要に応じて `(safe-reset!)` / `(hard-reset!)` | 起動中 JVM の状態に依存するため |
 | deps.edn、brick 構造、workspace.edn 変更 | `clj -M:poly check` + 依存解決確認 + fresh JVM 判断 | REPL の既存 classpath では確認不足 |
 | 完了報告前 | §5.5 完了条件 | `poly test :all` で全体検証 |
 
 `poly test` は stable タグからの diff で**影響範囲を自動判定**するため、LLM が毎回「どこまで走らせるか」を考える必要はない。stable タグの作成と更新は初期化完了時または CI 運用で決める。タグが未整備なら `poly test :all` に倒す。
+この高速性は回帰確認の粒度に関する話であり、契約検証完了とは別問題である。
 
 #### REPL eval 必須トリガ（mandatory）
 
