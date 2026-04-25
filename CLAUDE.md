@@ -298,7 +298,8 @@ Integrant・FlowStorm・Portal は必須技術基盤ではない。前者はプ�
 ### 5.3 `poly check`（Polylith 構造違反）
 
 - コンポーネント間は `interface.clj` 経由のみ
-- 単方向依存（base → component）
+- `base` は外部公開 API（REST/Lambda/CLI など）を持つ入口、`component` は再利用単位として内部実装を公開 API で提供
+- `base` から `component` への依存は可（単方向）。`component` が `base` を参照するのは不可
 - project は `:local/root` のみ
 - 違反時は CI が落ちる（詳細は `.llm/guide/POLYLITH_GUIDE.md`）
 
@@ -365,6 +366,17 @@ Clojure CLI の呼び出しは `clj` に統一する。`clojure` は使用しな
 ## 6. Polylith と技術選定の運用
 
 Polylith 構造の操作と、追加ライブラリの採用・変更手順を扱う。`poly` CLI と判断済み推奨集を併用する。
+
+### 6.0 component/base の公式準拠判定
+
+- 公式基準では `base` は外部 API（REST/Lambda/CLI/gRPC 等）を公開する special brick、`component` は `interface.clj` を通じて再利用可能な機能を提供する brick。
+- `component` は原則ドメイン／共通ロジック中心。ただし公式はインフラ系アダプタ（DB/API/認証等）を component として切る用途も認めているため、**外部公開そのものではなく「再利用可能性と交換可能性」**で切るケースがある。
+- 設計基準（運用用）:
+  - 外部世界へ窓口を開くなら `base`
+  - 複数 base/component から使い回せる共通ロジックや、外部システム連携の交換可能なアダプタなら `component`
+  - `base` は薄く保ち、実質処理は component へ委譲する
+
+補助参照: `.llm/guide/POLYLITH_GUIDE.md` §2.3（境界判断）、§4（コンポーネント境界）
 
 ### 6.1 poly コマンド早見表
 
