@@ -687,7 +687,11 @@ clj -M:poly create component name:<name>
 
 ### 9.1 `dev.user` — capability surface（LLM と人間の共通 API）
 
-`development/src/dev/user.clj` で以下を提供する:
+`development/src/dev/user.clj` で以下を提供する。
+配布時点では必須 helper のみが有効で、`integrant` / `FlowStorm` / `Portal` は
+任意セクションとしてコメントアウトされている状態。
+利用する場合は `development/src/dev/user.clj` の対応セクションを有効化し、
+依存追加が必要なものは `deps.edn` 側で追加する。
 
 常時使用可能:
 
@@ -699,13 +703,13 @@ clj -M:poly create component name:<name>
 (hard-reset!)         ; stale-state recovery: halt → refresh-all → restart
 ```
 
-プロジェクトが有効化した lifecycle helper がある場合のみ使用可能:
+プロジェクトで `integrant` を有効化した場合のみ使用可能:
 
 ```clojure
 (go) (reset) (halt) (system)
 ```
 
-LLM 向け trace helper として、導入時のみ使用可能:
+LLM 向け trace helper として、FlowStorm 導入時のみ使用可能:
 
 ```clojure
 (fs-start!)           ; trace helper 導入時のみ有効
@@ -713,7 +717,7 @@ LLM 向け trace helper として、導入時のみ使用可能:
 (fs-clear!)           ; trace helper 導入時のみ有効
 ```
 
-人間向け GUI helper として、導入時のみ使用可能:
+人間向け GUI helper として、Portal 導入時のみ使用可能:
 
 ```clojure
 (portal-open!) (portal-clear!) (portal-close!)
@@ -739,8 +743,8 @@ LLM 向け trace helper として、導入時のみ使用可能:
 | 状況 | 手順 |
 |---|---|
 | REPL 接続の初回確認 | `./.llm/scripts/session-briefing.sh` の REPL 状態節を読む。未起動なら 1 度だけ `clj -M:dev:nrepl` 起動をユーザに依頼。起動済みなら `./.llm/scripts/repl-eval.sh --expr '(dev.user/status)'` |
-| 通常の関数・契約確認 | 必要なら `(malli-on!)` → `--load-file <path>` → `--ns <ns> --expr '(<fn> <args>)'` |
-| runtime wiring 変更 | `(safe-reset!)` で refresh + 再起動。system map がある場合は対象 key を確認 |
+| 通常の関数・契約確認 | 必要なら `(malli-on!)` → `--load-file <path>` で ns の読み込み、または `--ns <ns> --expr '(<fn> <args>)'` で eval。`--load-file` は `--ns` を伴っても ns は切り替わらない（実装上は無視） |
+| runtime wiring 変更 | `(safe-reset!)` で refresh / reload。system map がある場合は対象 key を確認し、必要なら次段で `hard-reset!` を使う |
 | 値の形状探索 | `(probe x)` を使う。raw `println` は使わない |
 | state / 時系列 / 制御フローのバグ | 導入済みの trace helper があれば優先して使う。未導入なら通常 eval に戻る |
 | 人間が GUI で値を観察したい | 導入済みの GUI helper があれば `(probe x)` と組み合わせて使う。LLM はこれを標準経路にしない |
@@ -762,7 +766,7 @@ REPL で得た値をテストへ反映するとは、観察した具体値をそ
 
 ### 9.4 Reload 規律（stale state を避ける表）
 
-**`(safe-reset!)` を universal helper として使う**（lifecycle helper 採用時はその reset に、非採用時は `tn/refresh` に dispatch）。直接 `(reset)` を呼ぶのは helper を有効化した場合のみ利用可能。
+**`(safe-reset!)` を universal helper として使う**（lifecycle helper 採用時は `integrant.repl/reset`、非採用時は `tn/refresh`）。直接 `(reset)` を呼ぶのは lifecycle helper を有効化した場合のみ利用可能。
 
 | 変更種別 | 正しい対処 |
 |---|---|
