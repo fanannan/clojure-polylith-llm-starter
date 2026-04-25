@@ -11,6 +11,27 @@
 > プロジェクト初期化完了時に、**プロダクト README として完全に書き換えてください**。
 ¤ .llm/guide/BOOTSTRAP_GUIDE.md §4
 
+## まず読む場所
+
+| あなたの状況 | 最初に読む文書 | この README の役割 |
+|---|---|---|
+| **初めてテンプレートを開いた人** | 本ファイル | 入口と索引 |
+| **これから初期化する人** | 本ファイル → `BOOTSTRAP_GUIDE.md` | キックオフとゲート確認 |
+| **日常開発に入った LLM** | `CLAUDE.md` | 初期化後は索引だけ残る |
+| **仕様を埋める人** | `DESIGN.md` | どこを埋めるかの導線 |
+| **技術選定で迷う人** | `STACK_GUIDE.md` | 参照先の案内 |
+
+**優先順位**:
+- 初期化フローの入口は **README**
+- 日常作業の正本は別紙
+¤ CLAUDE.md
+- 権限と承認の正本は別紙
+¤ .llm/guide/COLLABORATION_GUIDE.md
+- 初期化の詳細手順の正本は別紙
+¤ .llm/guide/BOOTSTRAP_GUIDE.md
+
+初期化完了後は、本ファイルを運用ルールの正本として使わない。プロダクト README に置き換える。
+
 ---
 
 ## このテンプレートは何か
@@ -21,6 +42,19 @@
 詳細思想と技術選定の判断済み推奨集は別紙に置く。
 ∵ CLAUDE.md
 ∵ .llm/guide/STACK_GUIDE.md
+
+## 読者別索引
+
+| 目的 | 読む文書 | どこまで読めばよいか |
+|---|---|---|
+| 初期化を始める | `README.md` | 本ファイルの「開始手順」まで |
+| 初期化の詳細手順を実行する | `.llm/guide/BOOTSTRAP_GUIDE.md` | ゲートと対象節だけ |
+| 日常開発を進める | `CLAUDE.md` | 毎セッション最初から |
+| 仕様を埋める・直す | `DESIGN.md` | §0 と該当節 |
+| 技術選定を決める | `.llm/guide/STACK_GUIDE.md` | 冒頭の位置づけ + 該当機能節 |
+| Polylith 構造を決める | `.llm/guide/POLYLITH_GUIDE.md` | 冒頭の前提 + 該当手順節 |
+| 権限や承認で迷う | `.llm/guide/COLLABORATION_GUIDE.md` | §2 を正本として読む |
+| 何を記録するか迷う | `.llm/memory/QUESTIONS.md` / `.llm/memory/KNOWLEDGE.md` / `.llm/memory/adr/README.md` | 各文書冒頭の更新トリガー表 |
 
 ## 前提ツール
 
