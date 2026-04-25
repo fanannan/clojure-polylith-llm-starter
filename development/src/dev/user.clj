@@ -103,6 +103,12 @@
 ;;   - defrecord shape / protocol method 追加: (hard-reset!) or fresh JVM
 ;;   - multimethod 再定義: (hard-reset!) 推奨
 ;;   - m/=> 契約追加: --load-file 後に (malli-on!) 再実行
+;;
+;; capability の見方:
+;;   :always      配布時点で有効な helper
+;;   :lifecycle   対応セクション有効化 + 必要依存追加後に使える helper
+;;   :trace       FlowStorm 導入時のみ使える helper
+;;   :gui         Portal 導入時のみ使える helper
 ;; ---------------------------------------------------------------------------
 
 (defonce ^:private dev-tools-cap (atom nil))
