@@ -259,12 +259,24 @@ case "$nrepl_status" in
 esac
 
 echo ""
+echo "## 上位文脈（該当時のみ）"
+echo ""
+echo "本リポジトリが上位プロジェクト・親 Issue・外部設計合意の下で動いている場合、"
+echo "**KNOWLEDGE / ADR を本リポジトリに書く前に上位の方針を確認する**。"
+echo "判定基準: README に「このリポジトリは XXX の一部」記述、直近対話で上位言及、"
+echo "またはユーザが session 開始時に上位プロジェクトを示した。"
+echo "該当する場合: 上位 README / Issue を参照し、scope（implementation-project /"
+echo "parent-project / both）を明示してから提案する（COLLABORATION_GUIDE.md §6.4）。"
+echo "単独利用の場合: 本節は無視してよい。"
+echo "詳細: CLAUDE.md §8.0 第 5 項、アンチパターン §7.8。"
+echo ""
 echo "## 着手前チェックリスト（CLAUDE.md §8.0）"
 echo ""
 echo "- [ ] DESIGN.md の関連節を確認"
 echo "- [ ] KNOWLEDGE.md の関連節を確認"
 echo "- [ ] QUESTIONS.md の未対応(open) を確認（上記に同じ）"
 echo "- [ ] 関連 ADR を確認"
+echo "- [ ] 上位文脈の有無を確認（該当時のみ scope 明示）"
 echo "- [ ] REPL 状態を確認（起動中なら live workbench として使用開始）"
 
 exit 0
