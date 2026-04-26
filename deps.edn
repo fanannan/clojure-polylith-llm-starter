@@ -192,6 +192,16 @@
    :exec-fn     repl-eval/run}
 
   ;; ----------------------------------------------------------------
+  ;; :check-test-instrumentation — interface_test.clj の Malli fixture 検査
+  ;;   shell wrapper `.llm/scripts/check-test-instrumentation.sh` から呼ばれる。
+  ;;   `use-fixtures :once` が参照する defn fixture 本体に `malli.dev/start!`
+  ;;   があるかを Clojure form として解析する。
+  ;; ----------------------------------------------------------------
+  :check-test-instrumentation
+  {:extra-paths [".llm/scripts"]
+   :exec-fn     check-test-instrumentation/run}
+
+  ;; ----------------------------------------------------------------
   ;; :gen-lib-catalog — 技術選定カタログから artifact を生成
   ;;   `;; lib-catalog` マーカ付き EDN block を抽出 → Malli 検証 →
   ;;   .llm/data/{libs.edn, deprecated-libs.patterns, forbidden-requires.patterns}

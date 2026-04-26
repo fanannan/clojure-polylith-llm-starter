@@ -7,6 +7,7 @@
 #     - プレースホルダ残存（check-placeholders.sh）
 #     - brick 登録漏れ（check-brick-registration.sh）
 #     - 非推奨ライブラリ採用（check-deprecated-libs.sh）
+#     - interface_test.clj の Malli instrumentation fixture 欠落
 #     - 追加: deps.edn :local/root 実在、workspace.edn :projects 実在、.gitkeep と brick 併存
 #
 # 終了コード:
@@ -90,6 +91,10 @@ run_step "併用禁止ライブラリペア検査" \
 # --- interface.clj の m/=> 契約付与 ---
 run_step "interface 契約検査" \
   "$SCRIPT_DIR/check-interface-contracts.sh"
+
+# --- interface_test.clj の Malli instrumentation fixture ---
+run_step "test instrumentation 検査" \
+  "$SCRIPT_DIR/check-test-instrumentation.sh"
 
 # --- Markdown 参照マーカー検査 ---
 run_step "Markdown 参照マーカー検査" \

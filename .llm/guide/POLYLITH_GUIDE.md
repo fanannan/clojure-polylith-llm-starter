@@ -173,6 +173,9 @@ Polylith は **../CLAUDE.md §1.1.3 副作用の隔離 + §1.2.1 機械化** の
 
 `poly test` の通過は高速な回帰確認であり、契約検証完了そのものではない。
 `m/=>` 契約をテスト実行中にも有効化したい場合、test fixture で Malli instrumentation を `:once` で有効化する。
+この fixture は `with-malli-instrumentation` のような named `defn` として定義し、`use-fixtures :once` から参照する。匿名 fixture はテンプレート規約外。
+fixture の形は `mdev/start!` で開始し、`(try (f) (finally (mdev/stop!)))` で必ず停止する完全形を使う。
+テンプレート側では `.llm/scripts/check-test-instrumentation.sh` が `interface_test.clj` の fixture 欠落を検査し、`check-workspace-integrity.sh` から実行される。
 
 ### 2.2 base — HTTP API エントリの例
 

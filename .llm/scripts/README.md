@@ -30,7 +30,7 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 
 | スクリプト | 目的 |
 |---|---|
-| `check-workspace-integrity.sh` | 下記 5 種を束ねる総合検査（完了条件から呼ぶ） |
+| `check-workspace-integrity.sh` | 下記の workspace 整合性検査を束ねる総合検査（完了条件から呼ぶ） |
 | `check-placeholders.sh` | `workspace.edn` / `deps.edn` のプレースホルダ `myorg.myapp` 残存検査 |
 | `check-brick-registration.sh` | `components/` / `bases/` の brick が `deps.edn` に登録されているか検査 |
 | `check-deprecated-libs.sh` | `STACK_GUIDE.md` に埋め込まれた `;; lib-catalog` EDN block 由来の非推奨ライブラリを検知（`.llm/data/deprecated-libs.patterns` を読む） |
@@ -39,6 +39,8 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 | `check-doc-references.sh` | Markdown 間参照が `¤ / ∵ / ⚠` で型付けされているか検査。通常は default scope、保守監査では `--all` |
 | `gen_lib_catalog.clj` | `STACK_GUIDE.md` に埋め込まれた `;; lib-catalog` EDN block 群を合成し `.llm/data/{libs.edn, deprecated-libs.patterns, forbidden-requires.patterns, conflicts.patterns}` を生成（`clj -X:gen-lib-catalog`）。schema 検証 + uniqueness 検査付き |
 | `check-interface-contracts.sh` | `interface.clj` の全公開 `defn` に対応する `m/=>` 契約があるか検査 |
+| `check-test-instrumentation.sh` | `interface_test.clj` が `:once` fixture で Malli instrumentation を有効化しているか検査 |
+| `check_test_instrumentation.clj` | `check-test-instrumentation.sh` の Clojure 実装。`use-fixtures :once` と fixture 定義を結び付けて `malli.dev/start!` を検査 |
 | `check-single-ns-per-file.sh` | 1 つの `.clj` / `.cljc` / `.cljs` ファイルに `(ns ...)` が複数ないか検査 |
 | `check-vulnerabilities.sh` | `clj-watson` による依存脆弱性スキャン（release 前必須、完了条件外） |
 | `lint-import-hooks.sh` | 依存ライブラリ提供の `clj-kondo` hook を `.clj-kondo/configs/` に取り込む |
@@ -56,7 +58,7 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 ./.llm/scripts/check-workspace-integrity.sh
 ```
 
-これで brick 登録 / プレースホルダ / 非推奨ライブラリ / interface 契約 / 1 ファイル 1 ns の 5 検査 + 併存検査 + `:local/root` / `:projects` 実在検査が一括で走る。個別スクリプトを手動で呼ぶ必要はない。
+これで brick 登録 / プレースホルダ / 非推奨ライブラリ / interface 契約 / test instrumentation / 1 ファイル 1 ns の検査 + 併存検査 + `:local/root` / `:projects` 実在検査が一括で走る。個別スクリプトを手動で呼ぶ必要はない。
 
 ### release 前の追加検査（週次 CI / release 時）
 
