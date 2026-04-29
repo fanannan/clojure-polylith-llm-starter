@@ -120,9 +120,15 @@
               (str "  responses: " (pr-str resps))))
     resps))
 
+(defn- op-name [op]
+  (cond
+    (keyword? op) (name op)
+    (symbol? op)  (name op)
+    :else         (str op)))
+
 (defn- verify-ops! [client]
   (let [resps (consume client {:op "describe"})
-        ops   (-> resps first :ops keys set)
+        ops   (->> resps first :ops keys (map op-name) set)
         missing (remove ops required-ops)]
     (when (seq missing)
       (fatal! (str "FATAL: nREPL サーバに必須 op が欠けています: " (pr-str (sort missing)))
@@ -241,8 +247,19 @@
     :else
     (throw (ex-info "--expr / --code-file / --load-file のいずれか必須" {}))))
 
+(defn- ensure-default-workbench-ns-loaded! [client session-id opts]
+  (when (and (not (:ns-explicit opts))
+             (= "dev.user" (or (:ns opts) "dev.user")))
+    (consume client {:op "eval"
+                     :session session-id
+                     :ns "user"
+                     :code "(require 'dev.user)"
+                     :file "<repl-eval bootstrap>"
+                     :line 1})))
+
 (defn- dispatch-eval [{:keys [session-id client port]} opts]
   (let [req-id (str (random-uuid))
+        _ (ensure-default-workbench-ns-loaded! client session-id opts)
         op (-> (build-eval-op session-id opts) (assoc :id req-id))
         _  (save-persistent port session-id req-id)  ; T1: 送信前に永続化
         resps (doall (nrepl/message client op))

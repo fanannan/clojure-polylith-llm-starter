@@ -78,6 +78,7 @@ fi
 # exec-args を構築
 args=":command :$CMD"
 [[ -n "$FRESH" ]] && args="$args $FRESH"
+[[ "$NS_EXPLICIT" -eq 1 ]] && args="$args :ns-explicit true"
 
 case "$CMD" in
   eval)
