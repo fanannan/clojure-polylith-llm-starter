@@ -8,6 +8,14 @@ Attribution:
   https://github.com/flow-storm/flow-storm-debugger/blob/master/llm-prompt.txt
 - The upstream FlowStorm debugger repository is distributed under The Unlicense.
 
+References:
+
+- Official site: https://www.flow-storm.org/
+- Repository: https://github.com/flow-storm/flow-storm-debugger
+- User guide: https://flow-storm.github.io/flow-storm-debugger/user_guide.html
+- Official LLM prompt: https://github.com/flow-storm/flow-storm-debugger/blob/master/llm-prompt.txt
+- The Unlicense text: https://github.com/flow-storm/flow-storm-debugger/blob/master/UNLICENSE
+
 ## 1. When To Use
 
 Use FlowStorm when the question depends on runtime execution history:
