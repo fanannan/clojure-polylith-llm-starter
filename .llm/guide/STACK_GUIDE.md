@@ -847,6 +847,7 @@ kaocha 等の追加テストランナーは本テンプレートでは採用し�
 - **flow-storm**: trace / step / explore API が text / EDN ベースで取り出せ、**REPL-native に evaluation 履歴・値変遷を LLM が読める**。本テンプレートの第一原理（LLM と人間の共同開発における修復コスト最小化）と整合し、Portal の盲点（LLM から UI が不可視）を埋める。
 - **使い分け**: 人間が 値の構造を観察したいとき → Portal / tap>。複数段の変換・非同期・Integrant 起動連鎖の評価履歴を LLM が追うとき → flow-storm。
 - 両者とも**開発時のみ、プロダクションには混入させない**（`:dev :extra-deps` 限定）
+∵ optional/FLOWSTORM_DEBUGGING.md
 
 ```edn
 ;; lib-catalog

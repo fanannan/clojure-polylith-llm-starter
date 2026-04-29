@@ -746,6 +746,7 @@ LLM がこの規則を見落としやすいのは「stateless の方が安全」
 ```
 
 LLM 向け trace helper として、FlowStorm 導入時のみ使用可能:
+∵ .llm/guide/optional/FLOWSTORM_DEBUGGING.md
 
 ```clojure
 (fs-start!)           ; trace helper 導入時のみ有効
