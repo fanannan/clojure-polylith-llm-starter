@@ -378,7 +378,8 @@ Polylith 構造の操作と、追加ライブラリの採用・変更手順を�
   - 複数 base/component から使い回せる共通ロジックや、外部システム連携の交換可能なアダプタなら `component`
   - `base` は薄く保ち、実質処理は component へ委譲する
 
-補助参照: `.llm/guide/POLYLITH_GUIDE.md` §2.3（境界判断）、§4（コンポーネント境界）
+補助参照:
+∵ .llm/guide/POLYLITH_GUIDE.md §2.3, §4
 
 ### 6.1 poly コマンド早見表
 
@@ -720,6 +721,7 @@ LLM がこの規則を見落としやすいのは「stateless の方が安全」
 - どのクライアントも session を独占しない。LLM は `--fresh` / `--reset-session` で session 分離可能だが、既定は人間と共有
 - port は nREPL が `.nrepl-port` に自動書き出し、session は `.nrepl-session` に永続化
 - LLM は `./.llm/scripts/repl-eval.sh` 経由で eval する。直接 `clj` を叩かない（shell quoting・port 発見の複雑化回避）
+- `repl-eval.sh` は TCP 接続成功だけを信用しない。接続後に workspace root と `dev.user/status` の capability shape を検証し、別 workspace / 古い JVM / invalid workbench なら fatal で停止する。`NREPL_PORT` と `.nrepl-port` が食い違う場合も、古い環境変数による wrong JVM 接続を避けるため停止する
 
 ### 9.1 `dev.user` — capability surface（LLM と人間の共通 API）
 
@@ -830,6 +832,8 @@ echo '(+ 1 2)' | ./.llm/scripts/repl-eval.sh                       # stdin fallb
 ```
 
 Exit codes: `0` 成功 / `1` eval-error・namespace-not-found・:ex / `2` 接続・必須 op 欠落・引数不正 / `130` interrupted。
+
+接続時の防衛線: `repl-eval.sh` は `.nrepl-port` / `NREPL_PORT` から得た port へ接続した後、`describe` の required ops、JVM の `user.dir`、`dev.user/status` の常時 capability を検証する。TCP が通っても identity check に失敗した場合は exit `2` で止まる。これは stale port でも古い JVM が listen している事故を検出するためであり、`--fresh` / `--reset-session` で回復しようとせず、表示された port / workspace / workbench 不一致を解消する。
 
 ---
 

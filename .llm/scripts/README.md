@@ -44,9 +44,9 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 | `check-single-ns-per-file.sh` | 1 つの `.clj` / `.cljc` / `.cljs` ファイルに `(ns ...)` が複数ないか検査 |
 | `check-vulnerabilities.sh` | `clj-watson` による依存脆弱性スキャン（release 前必須、完了条件外） |
 | `lint-import-hooks.sh` | 依存ライブラリ提供の `clj-kondo` hook を `.clj-kondo/configs/` に取り込む |
-| `session-briefing.sh` | セッション起動時の状態ブリーフィング（フェーズ判定・未対応(open) Q・最新 ADR・直近コミット・REPL 状態）を stdout 出力。CLAUDE.md §8.0 実装着手前の確認の機械化バックアップ（状態提示、pass/fail 検査ではない） |
+| `session-briefing.sh` | セッション起動時の状態ブリーフィング（フェーズ判定・未対応(open) Q・最新 ADR・直近コミット・REPL 状態）を stdout 出力。CLAUDE.md §8.0 実装着手前の確認の機械化バックアップ（状態提示、pass/fail 検査ではない）。REPL 状態は軽量な TCP 生死判定に留め、強い identity check は `repl-eval.sh` 実行時に行う |
 | `repl-eval.sh` | 稼働中 nREPL に eval / load-file を送る LLM 向け client（CLAUDE.md §9 Live Workbench Protocol）。`.nrepl-port` 自動発見、永続 session 再利用（`.nrepl-session`）、`--expr` / `--load-file` / `--interrupt` / `--describe` / `--reset-session` / `--fresh` 対応 |
-| `repl_eval.clj` | repl-eval.sh の Clojure 実装（`clj -X:repl-eval` の exec-fn）。nREPL 標準 op（`eval` / `load-file` / `interrupt` / `describe` / `ls-sessions` / `clone`）を subcommand で提供、bounded printing（10000 chars/response）、file/line metadata 常時付与、process 跨ぎ request-id 永続化で確実な `--interrupt` を実現 |
+| `repl_eval.clj` | repl-eval.sh の Clojure 実装（`clj -X:repl-eval` の exec-fn）。nREPL 標準 op（`eval` / `load-file` / `interrupt` / `describe` / `ls-sessions` / `clone`）を subcommand で提供、bounded printing（10000 chars/response）、file/line metadata 常時付与、process 跨ぎ request-id 永続化で確実な `--interrupt` を実現。接続時に `NREPL_PORT` / `.nrepl-port` の食い違い、workspace root 不一致、`dev.user/status` capability 不一致を検出して wrong JVM への接続を防ぐ |
 
 ## 運用タイミング
 
@@ -95,6 +95,8 @@ NVD API key 推奨（`https://nvd.nist.gov/developers/request-an-api-key`）。�
 - **手動実行**: 任意のタイミングで `bash .llm/scripts/session-briefing.sh` を実行し、現時点の状態を確認できる
 
 本スクリプトは副作用ゼロ（stdout のみ）、終了コードは常に 0。`check-workspace-integrity.sh` のような重検査は呼ばず、フェーズ判定・未対応(open) Q 抽出・最新 ADR 抽出・`git log -5` に限定して軽量に保つ。
+
+REPL 状態節の `TCP 接続確認済` は「その port が listen している」ことだけを示す。古い JVM が生きているケースを弾く最終防衛線は `repl-eval.sh` / `repl_eval.clj` の workspace identity check である。
 
 ## 実装規律
 

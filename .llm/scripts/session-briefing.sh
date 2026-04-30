@@ -228,7 +228,7 @@ fi
 
 case "$nrepl_status" in
   running)
-    echo "- nREPL サーバ: 起動中 (port $nrepl_port、TCP 接続確認済)"
+    echo "- nREPL サーバ: 起動中 (port $nrepl_port、TCP 接続確認済、identity は repl-eval.sh 実行時に検証)"
     if [ -f ".nrepl-session" ]; then
       echo "- 永続 session (.nrepl-session): 存在"
     else

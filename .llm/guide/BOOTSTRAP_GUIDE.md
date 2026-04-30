@@ -38,6 +38,7 @@ README.md が「**誰が何をするか**」を示すのに対し、本文書は
 - **必須技術**: Clojure + tools.deps + Polylith + Malli + clj-kondo + cljfmt + Splint + clj-watson + `.llm/scripts/`。全プロジェクトで常に採用、入れ替え不可
 - **追加ライブラリ**: HTTP、永続化、ライフサイクル管理、開発支援など、必要な用途別機能カテゴリごとに選ぶ。実依存は各 brick の `deps.edn` に書く
 - **開発支援ライブラリ**: ワークスペースルート `deps.edn` の `:dev :extra-deps` に置き、本番ビルドへ混入させない
+- **任意の外部 CLI**: `clj-nrepl-eval`（`bhauman/clojure-mcp-light`）等は導入済みなら補助的に使ってよいが、テンプレートの正しさは `.llm/scripts/repl-eval.sh` / `repl_eval.clj` の workspace identity check で成立させる。未導入でも初期化と REPL 駆動開発は進められる
 
 **真実の一箇所化**: ライブラリ依存の一次情報源は **brick の deps.edn**。ワークスペースルートの deps.edn に本番依存を書かない。
 
