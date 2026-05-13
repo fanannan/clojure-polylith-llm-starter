@@ -390,7 +390,9 @@ fixture の形は `mdev/start!` で開始し、`(try (f) (finally (mdev/stop!)))
      :body   (uc/process deps (:body parameters))}))
 ```
 
-`refactor → feature` の 2 コミット分割（既存 handler から orchestration を抽出するコミット → orchestration を拡張するコミット）は `../CLAUDE.md §8.3` と `§1.2.3 小単位分解` に従う一般原則であり、本節では追加規約化しない。
+`refactor → feature` の 2 コミット分割（既存 handler から orchestration を抽出するコミット → orchestration を拡張するコミット）は一般原則に従う。本節では追加規約化しない。
+∵ ../CLAUDE.md §8.3
+∵ ../CLAUDE.md §1.2.3
 
 ### 2.3 project — デプロイ単位
 
