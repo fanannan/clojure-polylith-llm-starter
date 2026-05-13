@@ -981,7 +981,7 @@ Exit codes: `0` 成功 / `1` eval-error・namespace-not-found・:ex / `2` 接続
 分類に迷う場合は、先に QUESTIONS に Q を立てる。分類自体を自己解釈しない。
 ¤ .llm/memory/QUESTIONS.md
 
-**TEMPLATE mode の読み替え**: `.llm/repo-context.edn :repo-kind :template` で作業している時、テンプレート自身の保守決定は ADR にしない。テンプレ保守の議論・却下案・吸収先は maintainer archive staging に置き、現行ルールへ吸収後に削除または圧縮する。派生プロジェクトの ADR 規律をテンプレート本体へ持ち込まない。
+**TEMPLATE mode の読み替え**: `.llm/repo-context.edn :repo-kind :template` で作業している時、テンプレート自身の保守決定は ADR にしない。テンプレ保守の議論・却下案・吸収先は maintainer archive staging に置き、現行ルールへ吸収後に削除または圧縮する。派生プロジェクトの ADR 規律をテンプレート本体へ持ち込まない。規約変更を過去文書へどこまで遡及するかは MAINTAINERS_GUIDE の遡及適用規則に従う。
 ∵ .llm/guide/MAINTAINERS_GUIDE.md §7
 
 ### 11.2 サイクル全体図（羅針盤）
