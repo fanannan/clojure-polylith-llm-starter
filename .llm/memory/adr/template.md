@@ -1,3 +1,8 @@
+<!--
+  ⚠ 本テンプレ（.llm/memory/adr/template.md）から ADR をコピー作成するとき:
+     テンプレート自身の決定はここに置かない。scope の正本は .llm/repo-context.edn。
+     テンプレ保守決定の記録先は .llm/memory/archive/maintainer-discussions/。
+-->
 # NNNN: <1 行タイトル>
 
 - **Date**: YYYY-MM-DD

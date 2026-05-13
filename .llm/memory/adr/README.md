@@ -1,5 +1,9 @@
 # ADR (Architecture Decision Records)
 
+> ⚠ テンプレート自身の決定はここに置かない。
+> scope の正本は `.llm/repo-context.edn`。
+> テンプレ保守決定は `.llm/memory/archive/maintainer-discussions/` へ。
+
 本ディレクトリは、プロジェクトにおける**重要な設計判断の経緯を不変の履歴として記録**する。
 「分類管理の原則」（`../../.llm/guide/MAINTAINERS_GUIDE.md` §4）で定義される**決定履歴（ADR）**の実装である。
 

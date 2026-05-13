@@ -328,7 +328,13 @@ I/O リソースの起動・停止管理が必要な場合のみ実施する。�
 3. 解決した Q の結果が継続参照されるものは KNOWLEDGE へ反映（承認必須 (L1)、ゲート 3 承認対象、実テキストで提示）
 ¤ ../.llm/memory/KNOWLEDGE.md
 4. 重要な設計判断（技術選定、推奨からの逸脱等）は `../.llm/memory/adr/NNNN-topic.md` として ADR を発行し、事後報告する
-5. 初期化完了をコミット（例: `"Complete project bootstrap"`）— **このコマンドは LLM が提示、実行はユーザが行う**
+5. **`../.llm/repo-context.edn` を transform する**（モード境界の SSOT を派生プロジェクト用に書き換え。承認必須 (L1)）:
+   - `:repo-kind :template` → `:project`
+   - `:template-name "clojure-polylith-llm-starter"` → `:derived-from "clojure-polylith-llm-starter"` にリネーム
+   - `:project-name "<myorg.myapp の実値>"` を追加（例: `:project-name "acme.shop"`）
+   - `:ownership` ブロックは保持する（派生プロジェクトでも所有権 SSOT として機能させる）
+   - 削除しない（manifest 不在は session-briefing がエラー停止する）
+6. 初期化完了をコミット（例: `"Complete project bootstrap"`）— **このコマンドは LLM が提示、実行はユーザが行う**
 
 以降は CLAUDE の作業プロトコルで日常開発に移行する。本文書（BOOTSTRAP_GUIDE）は物理的には残るが、フェーズ判定により、完了後は自動的に読まれない。
 ¤ ../CLAUDE.md §8
