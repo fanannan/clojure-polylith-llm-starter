@@ -71,6 +71,10 @@ handler.clj は入出力変換のみに薄く保ち、実処理は orchestration
 
 派生プロジェクトはこの 3 派生を「越境ユースケースを書く時のチェックリスト」として運用する。**該当する派生をすべて満たす**。具体的には、抽出（派生 1）と起動（派生 2）はすべての越境ユースケース（read-only な集計や外部 API 連携を含む）に適用する。検証（派生 3）は**越境 tx を持つ orchestration**（複数 entity の write を 1 tx で行う処理）にのみ必須。
 
+### 派生間の運用順序
+
+派生 3（test）は派生 2（fixture）が提供する境界 state を前提とするため、**fixture を REPL で実際に観察してから test の precondition を確定する**。fixture 未観察の想像 state で Test Plan を書くと、後追いの fixture 変更が既書 test の設計を反復させる（`../CLAUDE.md §1.2.2 ループ短縮`違反）。派生 1（orchestration 配置）は派生 2 / 3 の観察後に調整可能。具体的な手順は §7.4.1。
+
 ---
 
 ## 1. brick 種別と責務
@@ -732,8 +736,40 @@ poly/<name> {:local/root "components/<name>"}
 - seed helper は冪等にする（`(seed-all!)` を連続呼び出ししてもエラーにならない）
 - 本テンプレート配布時には `dev/fixtures.clj` は置かない（brick 未配置と整合、YAGNI）。派生プロジェクトが最初の越境 UC を実装した時点で本節に従って作る
 
-**今後の拡張候補**: 派生プロジェクトが立てた `seed-<uc>!` を `dev.user/status` の `:capabilities` に自動検出させる機構は、機械化候補として QUESTIONS に記録されている（`Q-2026-05-002`）。helper 命名規約・配置・capability shape が安定したら導入を検討する。
+**今後の拡張候補**: 派生プロジェクトが立てた `seed-<uc>!` を `dev.user/status` の `:capabilities` に自動検出させる機構は、機械化候補として QUESTIONS に記録されている（`Q-2026-05-002`）。helper 命名規約・配置・capability shape が安定したら導入を検討する。fixture-first 規律（§7.4.1）と肥大化抑制（§7.4.2）が定着するほど、`(status)` から「現在どの `seed-<uc>!` が利用可能か」を確認する需要が高まり、自動検出の動機が強化される。
 ∵ ../memory/QUESTIONS.md §2
+
+#### 7.4.1 実装順序: fixture 観察ファースト
+
+越境 UC を実装する時、fixture を REPL で実際に観察してから test の precondition を確定する。fixture 未観察の想像 state で Test Plan を書く反パターンは、後追いの fixture 変更が既書 test の設計を反復させる（`../CLAUDE.md §1.2.2 ループ短縮`違反）。
+
+**推奨手順**:
+
+1. 越境 UC の orchestration interface を仮置きする（派生 1、シグネチャと Malli schema）
+2. UC が要求する境界 state を `seed-<uc>!` に実装する（派生 2）
+3. REPL で `(safe-reset!)` → `(seed-<uc>!)` を実行し、UC を呼び出して **実 state を観察する**（`(probe ...)` や `(dev.user/status)` を使う）
+4. 観察した state に基づいて test の precondition を確定し、test を書く（派生 3）
+5. Test Plan / PR 本文は 4 完了後に書く（観察済 state を Fixture state summary として記載、`.llm/templates/fixture-state-summary.md` の fragment を使う）
+6. 必要なら派生 1 の配置を調整する（複数 entrypoint で必要なら component 昇格、§2.2.1）
+
+ステップ 3 が肝心。fixture を REPL で観察してから test を設計することで、想像 state と実 state の乖離による設計反復を防ぐ。
+
+**許容される事前作業**:
+
+派生 1 の orchestration interface 仮置きと、test の受入条件・テスト観点の**粗いスケッチ**は fixture 観察前でも書いてよい。禁止されるのは fixture 未観察の想像 state に基づいて **concrete な test 本体 / Test Plan を確定する**こと。
+
+#### 7.4.2 fixture 肥大化の抑制
+
+fixture-first 規律の副作用として、`seed-all!` がすべての UC state を混ぜて肥大化し、UC 間で意図しない state 干渉が発生するリスクがある（例: 「全 entity が同時刻 attendance」になり double-booking 判定で候補が消える等の観察事例）。
+
+**規約**:
+
+- `seed-<uc>!` は **UC 単位で独立・最小**にする（minimum viable boundary state）。他 UC の state に依存しない
+- `seed-all!` は convenience であり、**test の前提は原則 `seed-<uc>!`** を使う。`(use-fixtures :once (fn [f] (seed-<uc>!) (f)))` のように個別 seed を選んで呼ぶ
+- shared `seed-all!` 由来の偶然 state に依存する test を避ける。`seed-all!` 全体に依存すると、新規 UC 追加で既存 test が影響を受ける
+- 「複数 UC を組み合わせた state が必要」な場合は、専用の `seed-<scenario>!` を別途定義し、`seed-all!` には混ぜない。複合シナリオは独立した名前を持つ
+
+**判定の目安**: ある test が `seed-all!` でしか動かない場合、その test は暗黙の state 依存を持っている疑いがある。必要な seed を `seed-<uc1>! seed-<uc2>!` のように明示的に列挙できるかを点検する。
 
 ---
 

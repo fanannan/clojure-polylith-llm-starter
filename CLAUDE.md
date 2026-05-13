@@ -860,11 +860,12 @@ Exit codes: `0` 成功 / `1` eval-error・namespace-not-found・:ex / `2` 接続
 
 ### 10.1 越境ユースケースの検証規律
 
-複数 entity / 複数 entrypoint をまたぐ処理（越境ユースケース）は、テスト戦略上、**2 つの規律**を伴う。両規律は POLYLITH_GUIDE.md の「越境ユースケースの機械化（上位原理）」の派生 2 と派生 3 に対応する。
+複数 entity / 複数 entrypoint をまたぐ処理（越境ユースケース）は、テスト戦略上、**3 つの規律**を伴う。3 規律は POLYLITH_GUIDE.md の「越境ユースケースの機械化（上位原理）」の派生 2 / 派生 3 / 派生間の運用順序に対応する。
 ∵ .llm/guide/POLYLITH_GUIDE.md
 
 - **共有 state は seed helper / fixture で機械化する**: テスト・smoke 検証で共有 state を作る時、人間手順（README に書かれた起動コマンド列）に逃がさず、`dev.fixtures` の `(seed-<uc>!)` / `(seed-all!)` に集約する。詳細は POLYLITH_GUIDE.md §7.4
 - **越境 tx を持つ orchestration には原子性を主張する境界テストを置く**: 「複数 entity が同一 tx に属する」ことを test で assert する。検証手段は採用 DB に依存する（next.jdbc / XTDB / Datomic 等）。テンプレートは「assert する」規律のみを規約化し、手段は派生プロジェクトの DB 選択に委ねる。DB 別の典型実装は POLYLITH_GUIDE.md の上位原理節（派生 3）
+- **test の precondition を明示する**: 各 test がどの `seed-<uc>!` を前提とするかを test docstring または直前コメントで明示する。「seed-all! 済前提」のような抽象表現は禁止し、必要な seed helper を個別列挙する。fixture を REPL で観察してから test の precondition を確定する規律は POLYLITH_GUIDE.md §7.4.1
 
 ---
 

@@ -243,7 +243,7 @@ Q の解決済み(resolved) 化は、解決内容がユーザ回答・承認済�
 - **提起日**: 2026-05-13
 - **更新日**: 2026-05-13
 - **提起の経路**: Issue #12 (fanannan/clojure-polylith-llm-starter) 対応プランで新設した「越境ユースケースの機械化」上位原理の派生 2（`(safe-reset!) → (seed-all!)` 2 行原則）に伴う、§1.2.1 機械化候補の記録
-- **文脈**: 派生 2 で `dev.fixtures` 配下に `(seed-all!)` / `(seed-<uc>!)` の命名規約を立てた。`dev.user` の `(status)` が返す capability surface に、派生プロジェクトが立てた seed helper を `:capabilities` で見せる自動検出機構は §1.2.1 機械化の有望候補。ただし以下の理由で今すぐ実装しない：
+- **文脈**: 派生 2 で `dev.fixtures` 配下に `(seed-all!)` / `(seed-<uc>!)` の命名規約を立てた。`dev.user` の `(status)` が返す capability surface に、派生プロジェクトが立てた seed helper を `:capabilities` で見せる自動検出機構は §1.2.1 機械化の有望候補。Issue #13 対応で fixture 観察ファースト規律（POLYLITH_GUIDE §7.4.1）と肥大化抑制規約（§7.4.2）を追加した結果、派生プロジェクトでの `seed-<uc>!` 採用と個別呼出が増えるため、`(status)` から「現在どの `seed-<uc>!` が利用可能か」を確認する需要が高まり、自動検出機構の動機がさらに強化されている。ただし以下の理由で今すぐ実装しない：
   - (a) seed helper の命名規約は本対応で初めて規約化されたばかりで、派生プロジェクトでの採用実績がない
   - (b) `dev.fixtures` ns 名も派生側の運用で揺れる可能性（`dev.seeds` / `dev.smoke` 等）
   - (c) `:capabilities` shape の拡張（既存の `:always` / `:lifecycle` / `:trace` / `:gui` に並ぶ `:fixtures` 区分の追加可否）は §9.1 正本性に影響するため設計が固まっていない

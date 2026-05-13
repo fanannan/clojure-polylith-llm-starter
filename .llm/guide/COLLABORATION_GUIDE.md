@@ -461,6 +461,27 @@ scope 判定の基準は上位文脈確認の規約に従う。
 - **option B（明記＋復元）**: 事後 state を `(dev.user/status)` 出力等で具体列挙し、reset 手順を併記
 - **option C（独立 seed）**: 専用 seed / fixture で実施し、共有 state を汚さない
 
+**規律 2': test の事前 state 明示**
+
+規律 2（事後 state）の対称項として、**test の事前 state（precondition）を明示する**。各 test がどの fixture / seed helper を前提とするかを test docstring または直前コメントで明示し、暗黙の state 依存を排除する。
+
+- **明示すべき内容**: 「どの `seed-<uc>!` を `use-fixtures` で呼ぶか」「呼ばずに来た場合の挙動」「他 test との state 共有有無」
+- **禁止**: 「適切な fixture が投入された前提」「seed-all! 済前提」のような抽象表現。`seed-all!` 全体に依存する test は `seed-<uc>!` を個別列挙する形に書き直す
+- **整合**: 規律 1 で機械化対象と判定された state は、ここで helper 名を明示することで再現性が二重に担保される
+
+詳細な fixture 規約は POLYLITH_GUIDE.md §7.4.1 / §7.4.2。PR 本文での state 共有規律は `.llm/templates/fixture-state-summary.md` の fragment を使う。
+∵ POLYLITH_GUIDE.md §7.4.1
+∵ ../templates/fixture-state-summary.md
+
+### 7.10 fixture 未観察の Test Plan 確定
+
+**症状**: 越境 UC の Test Plan を fixture 観察前に書き、smoke で fixture 不足が発覚して fixture を後追い拡張し、既書 test を再設計する手戻り loop に入る。
+
+**害**: `../CLAUDE.md §1.2.2 ループ短縮`が機能せず、test 設計コストが反復する。実観察事例として fanannan/clojure-polylith-llm-starter Issue #13 が参照する派生プロジェクト PR #35（reschedule 候補・double-booking 再現失敗）。
+
+**対処**: POLYLITH_GUIDE.md §7.4.1 fixture 観察ファースト順序を厳守。fixture を REPL で観察してから test の precondition を確定する。受入条件・テスト観点の粗いスケッチ、orchestration interface 仮置きは fixture 観察前でも可。禁止されるのは fixture 未観察の想像 state に基づいて **concrete な test 本体 / Test Plan を確定する**こと。
+∵ POLYLITH_GUIDE.md §7.4.1
+
 ---
 
 ## 8. 関連文書

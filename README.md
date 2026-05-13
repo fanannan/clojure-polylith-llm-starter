@@ -221,6 +221,10 @@ LLM が詰まった時は QUESTIONS に Q を起票して停止する。人間�
 │   ├── forbidden-requires.patterns   require 検知用パターン
 │   └── conflicts.patterns            併用禁止ペアパターン
 │
+├── .llm/templates/           ← platform-neutral fragment（派生プロジェクトの PR / MR / wiki に貼り付ける成果物断片。**正本は guide / CLAUDE**、本ディレクトリは規約の運用補助）
+│   ├── README.md                    ディレクトリの位置づけと fragment 一覧
+│   └── fixture-state-summary.md     越境 UC PR 本文 fragment（POLYLITH_GUIDE §7.4.1 関連）
+│
 ├── .clj-kondo/config.edn        lint 機械化（polyguard hook 同梱）
 ├── .clj-kondo/polyguard/        custom hook（機械化第 2 層: 本テンプレート固有パターン）
 ├── .gitignore

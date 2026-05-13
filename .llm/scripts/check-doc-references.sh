@@ -24,7 +24,9 @@ else
     "./.llm/memory/QUESTIONS.md" \
     "./.llm/memory/KNOWLEDGE.md" \
     "./.llm/memory/adr/README.md" \
-    "./.llm/scripts/README.md" > "${tmp}.files"
+    "./.llm/scripts/README.md" \
+    "./.llm/templates/README.md" \
+    "./.llm/templates/fixture-state-summary.md" > "${tmp}.files"
 fi
 
 violations=0

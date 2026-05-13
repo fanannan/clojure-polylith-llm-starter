@@ -104,6 +104,15 @@
 | .llm/guide/BOOTSTRAP_GUIDE.md | A | プロジェクト初期化手順。初期化完了後も移動せず、以後は通常作業で参照頻度が下がるだけ |
 | .llm/guide/MAINTAINERS_GUIDE.md（本文書） | A | テンプレート保守の羅針盤 |
 
+#### .llm/templates/（platform-neutral fragment）
+
+| ファイル | 区分 | 役割 |
+|---|---|---|
+| .llm/templates/README.md | A | ディレクトリの位置づけと fragment 一覧、fragment 規約 |
+| .llm/templates/fixture-state-summary.md | A | 越境 UC PR 本文 fragment。POLYLITH_GUIDE.md §7.4.1 / §7.4.2 と COLLABORATION_GUIDE.md §7.9 規律 2' / §7.10 の運用補助 |
+
+正本は guide / CLAUDE 側。`.llm/templates/` は派生プロジェクトの成果物（PR / MR / wiki）に貼り付けるための platform-neutral fragment を集約する。`.github/` 等の platform 固有ディレクトリは置かず、派生プロジェクトが自前で各 platform 用ファイルへコピーする運用とする。新 fragment 追加時は本表に登録し、`check-doc-references.sh` の検証対象に含まれていることを確認する。
+
 ### 3.2 ツール設定（B: 機械化）
 
 | ファイル | 区分 | 備考 |
