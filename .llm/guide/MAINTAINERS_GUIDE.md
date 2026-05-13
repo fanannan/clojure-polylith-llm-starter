@@ -835,6 +835,20 @@ archive entry は、議論中の staging record として次の形式で始め�
 
 この cleanup 作業自身も同じ workflow に従う。作業用 entry を作った場合、§7 と検査へ吸収した後に `absorbed` とし、retained-process 条件を満たさなければ削除する。
 
+### 7.4.1 規約変更の遡及適用
+
+テンプレート規約を変更した時、遡及適用の対象は live tree を優先する。すべての履歴を掃除しようとしない。
+
+| 対象 | 扱い |
+|---|---|
+| 現在配布される guide / script / manifest / template | 新規規約に合わせて更新する |
+| `.llm/memory/archive/maintainer-discussions/` の open entry | 必要なら現在語彙へ更新し、吸収先を明示する |
+| absorbed / retained-process entry | 現在判断に影響する場合だけ圧縮・注記。単なる過去語彙は git history として残してよい |
+| git commit message / 過去差分 | 書き換えない |
+| 派生プロジェクトに影響する変更 | `.llm/migrations/` に migration entry を追加し、派生側の判断材料にする |
+
+例: `:downstream` を `:project` に置き換える規約変更では、live tree の manifest・script・guide を更新する。過去の commit message や削除済み archive entry は対象外。配布物として残る retained-process entry に旧語彙があり、現在の判断を誤らせるなら短く注記する。
+
 ### 7.5 Archive README の役割
 
 archive README はディレクトリ入口であり、本節の詳細を複製しない。運用の正本は本文書 §7 に置く。

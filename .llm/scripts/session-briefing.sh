@@ -237,6 +237,7 @@ tcp_port_open() {
 echo "# Session Briefing"
 echo ""
 echo "LLM はこのブリーフィングを先に読んだ上で \`CLAUDE.md §8.0\` の確認ステップに従うこと。"
+echo "関連文書だけでなく、触るファイル周辺の docstring / comment / 近接 test も関連文脈として確認すること。"
 echo "生成元: \`.llm/scripts/session-briefing.sh\`（Claude Code は SessionStart hook で自動、"
 echo "他エージェントは \`AGENTS.md\` 経由で手動実行）。"
 echo ""
