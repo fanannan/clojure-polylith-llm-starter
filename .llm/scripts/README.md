@@ -57,6 +57,9 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 | `propose_template_migrations.clj` | `propose-template-migrations.sh` の Clojure 実装。git 履歴ではなく migration id ledger で比較 |
 | `propose-adoption-plan.sh` | 既存 repo の local signals と manifest から、次に確認すべき移行作業順を提示（副作用なし、推奨調査ではない） |
 | `propose_adoption_plan.clj` | `propose-adoption-plan.sh` の Clojure 実装。`detect-repo-profile` の結果を作業計画に変換 |
+| `llm-template-adopt.sh` | 既存 repo adoption の統合入口。detect / manifest proposal / migration proposal / adoption plan を順に表示し、承認後 apply へ誘導する（副作用なし） |
+| `check-repo-context-consistency.sh` | `.llm/repo-context.edn` の capability 依存関係、adoption mode、migration ledger 参照を検査 |
+| `check_repo_context_consistency.clj` | `check-repo-context-consistency.sh` の Clojure 実装 |
 | `apply-repo-context-migration.sh` | 人間承認後に `.llm/repo-context.edn` を作成する migration wrapper。既定では `APPLY` 入力を要求 |
 | `install-llm-template.sh` | 本テンプレート未導入の既存 repo に `.llm/` / root guide を持ち込む dry-run first の installer。`--apply` でも既存ファイルは上書きせず candidate を作る |
 | `repl-eval.sh` | 稼働中 nREPL に eval / load-file を送る LLM 向け client（CLAUDE.md §9 Live Workbench Protocol）。`.nrepl-port` 自動発見、永続 session 再利用（`.nrepl-session`）、`--expr` / `--load-file` / `--interrupt` / `--describe` / `--reset-session` / `--fresh` 対応 |
@@ -115,11 +118,18 @@ REPL 状態節の `TCP 接続確認済` は「その port が listen してい�
 ### 既存 repo への migration / retrofit
 
 既存テンプレ利用者、または本テンプレート未導入の Clojure / Polylith repo では、移行状態を `.llm/repo-context.edn` に集約する。自動検出は候補生成までで、manifest 反映は人間承認後に限る。
+
+plain Clojure repo への導入は、Polylith 化へ向かう retrofit として扱う。`:workspace-kind :plain-clojure` は検出された出発点であり、完成状態ではない。
+
+既存 Polylith repo への導入は、本テンプレートの厳密な規律へ合流する retrofit として扱う。既存規約の永続互換ではない。
 ∵ MAINTAINERS_GUIDE.md §7.6
 ∵ MAINTAINERS_GUIDE.md §7.7
 
 ```bash
 # 既に .llm/scripts がある repo
+./.llm/scripts/llm-template-adopt.sh
+
+# 個別確認したい場合:
 ./.llm/scripts/detect-repo-profile.sh
 ./.llm/scripts/propose-repo-context.sh
 ./.llm/scripts/propose-template-migrations.sh
@@ -131,7 +141,9 @@ REPL 状態節の `TCP 接続確認済` は「その port が listen してい�
 ./.llm/scripts/install-llm-template.sh --target /path/to/repo --apply
 ```
 
-`:adoption-mode :retrofit` の間、`check-workspace-integrity.sh` は検査失敗を WARN として提示し、作業開始を block しない。`:partial` / `:complete` へ昇格した後は、manifest の `:capabilities` に含まれる検査が通常の gate になる。
+`:adoption-mode :retrofit` の間、`check-workspace-integrity.sh` は検査失敗を WARN として提示し、作業開始を block しない。`:partial` / `:complete` へ昇格した後は、manifest の `:capabilities` に含まれる検査が通常の gate になる。plain Clojure repo では Polylith 化計画を、既存 Polylith repo では本テンプレートの strict gate への合流計画を立てるための一時状態である。
+
+Malli / cljfmt / clj-kondo / Polylith は本テンプレートの必須基盤である。既存 Polylith repo で未検出の場合、`propose-adoption-plan.sh` は strict gate への required task として提示する。
 
 ## 実装規律
 

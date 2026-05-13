@@ -347,6 +347,10 @@ I/O リソースの起動・停止管理が必要な場合のみ実施する。�
 
 既に動いている Clojure / Polylith repo に後から本テンプレートを持ち込む場合は、本章の初期化手順を最初からやり直さない。既存構造を壊さないため、導入直後は `:adoption-mode :retrofit` として扱う。
 
+plain Clojure repo に導入する場合も、本テンプレートは Polylith 化を目的とする。Polylith を採用しない repo 向けの軽量 LLM 規約パックとしては扱わない。
+
+既存 Polylith repo に導入する場合も、既存の独自規約を温存するためではなく、本テンプレートの厳密な記録規律・境界規律・機械検査へ移行するために行う。`retrofit` は移行の棚卸し状態であり、完成状態ではない。
+
 1. テンプレート repo 側で `.llm/scripts/install-llm-template.sh --target <repo>` を実行し、コピー計画だけを見る
 2. 人間承認後に `--apply` を付けてコピーする（既存ファイルは上書きされず `.candidate.<timestamp>` になる）
 3. target repo 側で `./.llm/scripts/detect-repo-profile.sh` を実行する
@@ -355,7 +359,7 @@ I/O リソースの起動・停止管理が必要な場合のみ実施する。�
 6. 承認後に `./.llm/scripts/apply-repo-context-migration.sh` を実行する
 7. `./.llm/scripts/check-workspace-integrity.sh` を実行し、WARN を棚卸しする
 
-この retrofit 手順では、既存の ADR / KNOWLEDGE / QUESTIONS / source tree を削除しない。属性キーワードの自動検出は候補生成までであり、manifest 反映は人間承認後に限る。
+この retrofit 手順では、既存の ADR / KNOWLEDGE / QUESTIONS / source tree を削除しない。属性キーワードの自動検出は候補生成までであり、manifest 反映は人間承認後に限る。plain Clojure repo の `:workspace-kind :plain-clojure` は Polylith 化前の一時状態であり、`propose-adoption-plan.sh` は Polylith 化計画を必須作業として提示する。既存 Polylith repo では、本テンプレートの完了条件へ合流するための strict 化作業を提示する。
 
 ∵ .llm/guide/MAINTAINERS_GUIDE.md §7.6
 ∵ .llm/guide/MAINTAINERS_GUIDE.md §7.7

@@ -180,6 +180,10 @@ LLM が詰まった時は QUESTIONS に Q を起票して停止する。人間�
 
 既に動いている Clojure / Polylith repo に後から本テンプレートを持ち込む場合は、新規 bootstrap 手順を最初から実行しない。既存構造を壊さないよう、導入直後は `:adoption-mode :retrofit` として扱い、検査結果は WARN 中心で棚卸しする。
 
+plain Clojure repo に本テンプレートを導入する場合、それは **Polylith 化する意図がある**ものとして扱う。Polylith を採用しない repo 向けに本テンプレートを薄く使う運用は想定しない。
+
+既存 Polylith repo に導入する場合も、既存流儀を温存するためではなく、**本テンプレートの厳密な記録規律・境界規律・機械検査へ移行する**ために使う。`retrofit` は一時的な棚卸し状態であり、最終的には `:adoption-mode :complete` を目指す。
+
 詳細手順の正本:
 ¤ .llm/guide/BOOTSTRAP_GUIDE.md §4.1
 ∵ .llm/guide/MAINTAINERS_GUIDE.md §7.6
@@ -188,6 +192,12 @@ LLM が詰まった時は QUESTIONS に Q を起票して停止する。人間�
 ### 既存テンプレート派生プロジェクトを更新する
 
 古いテンプレート由来の repo で `.llm/repo-context.edn` が無い、または古い場合は、manifest 候補を表示してから人間が確認する。
+
+```bash
+./.llm/scripts/llm-template-adopt.sh
+```
+
+個別に確認する場合は以下を順に実行する。
 
 ```bash
 ./.llm/scripts/detect-repo-profile.sh
@@ -213,6 +223,12 @@ LLM が詰まった時は QUESTIONS に Q を起票して停止する。人間�
 
 ```bash
 cd /path/to/repo
+./.llm/scripts/llm-template-adopt.sh
+```
+
+個別に確認する場合は以下を順に実行する。
+
+```bash
 ./.llm/scripts/detect-repo-profile.sh
 ./.llm/scripts/propose-repo-context.sh
 ./.llm/scripts/propose-template-migrations.sh
@@ -221,11 +237,11 @@ cd /path/to/repo
 ./.llm/scripts/check-workspace-integrity.sh
 ```
 
-`check-workspace-integrity.sh` は `:capabilities` に含まれる検査だけを対象にする。`:adoption-mode :retrofit` の間は、失敗しても既存 repo の作業開始を block せず WARN として表示する。
+`check-workspace-integrity.sh` は `:capabilities` に含まれる検査だけを対象にする。`:adoption-mode :retrofit` の間は、失敗しても既存 repo の作業開始を block せず WARN として表示する。`retrofit` は、plain Clojure repo では Polylith 化計画、既存 Polylith repo では本テンプレートの厳格規律への合流計画を立てるための一時状態であり、長期運用モードではない。
 
 `propose-template-migrations.sh` は `.llm/migrations/` の migration ledger と repo 側の `:applied-migrations` を比較し、未適用の判断材料を出す。git revision は由来確認の補助情報であり、移行判定は migration id で行う。
 
-`propose-adoption-plan.sh` は推奨ライブラリ調査ではなく、local repo の検出結果と manifest から「次に人間が確認すべき移行作業」を並べる。
+`propose-adoption-plan.sh` は推奨ライブラリ調査ではなく、local repo の検出結果と manifest から「次に人間が確認すべき移行作業」を並べる。plain Clojure repo では Polylith 化の計画作成を必須作業として提示する。
 
 ---
 
@@ -270,6 +286,8 @@ cd /path/to/repo
 │   ├── propose-repo-context.sh       repo-context.edn 候補を表示（副作用なし）
 │   ├── propose-template-migrations.sh  migration ledger と適用済み migration の差分を表示
 │   ├── propose-adoption-plan.sh      既存 repo の移行作業順を local signals から提示
+│   ├── llm-template-adopt.sh         detect / propose / migration / adoption plan を順に表示する統合入口
+│   ├── check-repo-context-consistency.sh  capability 依存・adoption mode・migration ledger 参照の検査
 │   ├── apply-repo-context-migration.sh  承認後に repo-context.edn を作成
 │   ├── install-llm-template.sh       未導入 repo へテンプレートファイルを dry-run first で導入
 │   ├── session-briefing.sh           SessionStart 時の状態ブリーフィング（REPL 状態含む）

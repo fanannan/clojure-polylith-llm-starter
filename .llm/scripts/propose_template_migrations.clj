@@ -59,7 +59,7 @@
             :applied-migrations applied}
      :status (if manifest-missing? :manifest-missing :compared)
      :known-migrations (mapv :id migrations)
-     :pending (mapv #(select-keys % [:id :title :summary :checks :manual-steps :requires-human-approval])
+     :pending (mapv #(select-keys % [:id :title :summary :checks :verify :manual-steps :requires-human-approval])
                     pending)}))
 
 (defn run [_]

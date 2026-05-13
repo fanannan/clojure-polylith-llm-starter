@@ -57,17 +57,24 @@
                 "Confirm capabilities"
                 :required
                 (str "detected capabilities: " (pr-str (:capabilities detected)))
-                "Review detected capabilities and write the accepted set to .llm/repo-context.edn."))))
+                "Review detected capabilities and write the accepted set to .llm/repo-context.edn."))
+
+    (and manifest (= :retrofit (:adoption-mode manifest)))
+    (conj (task :adoption-mode
+                "Promote out of retrofit"
+                :required
+                ":adoption-mode is :retrofit"
+                "Treat retrofit as temporary inventory. Resolve required tasks, then promote to :partial and finally :complete."))))
 
 (defn- polylith-tasks [detected]
   (let [signals (:signals detected)]
     (cond-> []
       (= :polylith (:workspace-kind detected))
       (conj (task :polylith
-                  "Run Polylith structural checks"
-                  :recommended
+                  "Converge to strict template gates"
+                  :required
                   "workspace.edn / components / bases / projects shape detected"
-                  "Run check-workspace-integrity.sh and clj -M:poly check after manifest approval."))
+                  "Run check-workspace-integrity.sh and clj -M:poly check after manifest approval; treat :retrofit as temporary inventory before promoting to :partial and then :complete."))
 
       (and (= :polylith (:workspace-kind detected))
            (not (:projects-dir signals)))
@@ -75,32 +82,32 @@
                   "Review projects directory"
                   :recommended
                   "workspace.edn exists but projects/ directory is missing"
-                  "Create projects/ only if this repo uses deploy projects; otherwise keep :adoption-mode :retrofit until structure is clarified."))
+                  "Decide the deploy project structure and create projects/ as part of Polylith alignment; keep :adoption-mode :retrofit only until that decision is made."))
 
       (and (= :polylith (:workspace-kind detected))
            (not (:cljfmt signals)))
       (conj (task :tooling
-                  "Consider cljfmt capability"
-                  :optional
+                  "Adopt cljfmt capability"
+                  :required
                   "cljfmt config or alias was not detected"
-                  "Do not enable :cljfmt until formatting behavior is confirmed."))
+                  "Add cljfmt configuration/alias as part of convergence to this template's strict formatting gate."))
 
       (and (= :polylith (:workspace-kind detected))
            (not (contains? (:capabilities detected) :malli)))
       (conj (task :contracts
-                  "Confirm Malli adoption"
-                  :optional
+                  "Adopt Malli contracts"
+                  :required
                   "Malli dependency was not detected"
-                  "Do not require interface m/=> contracts until Malli adoption is approved.")))))
+                  "Add Malli as part of convergence to this template's totality/contract discipline; enable interface contract checks after adoption.")))))
 
 (defn- plain-clojure-tasks [detected]
   (cond-> []
     (= :plain-clojure (:workspace-kind detected))
     (conj (task :plain-clojure
-                "Use plain Clojure gate set"
-                :recommended
+                "Plan Polylith adoption"
+                :required
                 "deps.edn/src/test shape detected without Polylith workspace"
-                "Keep :capabilities limited to detected tooling; skip Polylith-only checks."))))
+                "This template is intended for Polylith workspaces. Keep :adoption-mode :retrofit only while planning the conversion; create workspace.edn and components/bases/projects structure after human approval."))))
 
 (defn plan []
   (let [manifest (read-manifest)

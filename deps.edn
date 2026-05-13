@@ -256,6 +256,14 @@
    :exec-fn     propose-adoption-plan/run}
 
   ;; ----------------------------------------------------------------
+  ;; :check-repo-context-consistency — manifest 内部整合性検査
+  ;;   capability 依存関係、adoption mode、migration ledger 参照を検査する。
+  ;; ----------------------------------------------------------------
+  :check-repo-context-consistency
+  {:extra-paths [".llm/scripts"]
+   :exec-fn     check-repo-context-consistency/run}
+
+  ;; ----------------------------------------------------------------
   ;; :gen-lib-catalog — 技術選定カタログから artifact を生成
   ;;   `;; lib-catalog` マーカ付き EDN block を抽出 → Malli 検証 →
   ;;   .llm/data/{libs.edn, deprecated-libs.patterns, forbidden-requires.patterns}

@@ -11,7 +11,18 @@
  :checks
  ["./.llm/scripts/detect-repo-profile.sh"
   "./.llm/scripts/propose-repo-context.sh"
+  "./.llm/scripts/check-repo-context-consistency.sh"
   "./.llm/scripts/check-workspace-integrity.sh"]
+ :verify
+ {:manifest-required [:repo-kind
+                      :workspace-kind
+                      :adoption-mode
+                      :capabilities
+                      :migration-schema
+                      :applied-migrations]
+  :applied-migration-id "2026-05-13-001-retrofit-manifest"
+  :commands ["./.llm/scripts/check-repo-context-consistency.sh"
+             "./.llm/scripts/propose-adoption-plan.sh"]}
  :manual-steps
  ["Review detected :workspace-kind and :capabilities."
   "Apply .llm/repo-context.edn only after human approval."

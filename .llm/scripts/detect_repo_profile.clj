@@ -2,7 +2,8 @@
   "Detect the current repository shape for template adoption/migration.
 
    The result is advisory. It is intentionally side-effect free so humans can
-   approve the proposed manifest before any file is written."
+   approve the proposed manifest before any file is written. :plain-clojure is
+   a starting state for Polylith adoption, not a supported final mode."
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]

@@ -856,6 +856,10 @@ archive README はディレクトリ入口であり、本節の詳細を複製�
 
 本テンプレート未導入の既存 Clojure / Polylith repo に持ち込む場合は、いきなり完全準拠を要求しない。`.llm/scripts/install-llm-template.sh --target <repo>` は dry-run を既定とし、`--apply` が指定された場合も既存ファイルを上書きせず `.candidate.<timestamp>` に退避候補として置く。
 
+この retrofit は「plain Clojure のまま本テンプレートを薄く使う」ための機能ではない。本テンプレートを採用することは、Polylith 構造・本テンプレートの記録規律・機械検査へ段階的に合流する意思表示として扱う。`:workspace-kind :plain-clojure` は Polylith 化前の検出状態であり、長期運用の完成状態ではない。
+
+既存 Polylith repo への導入も同じく、本テンプレートの厳密なルールへ移行する意思表示として扱う。既存 repo の独自規約を無期限に温存するための compatibility layer ではない。`:adoption-mode :retrofit` は、差分を WARN として棚卸しし、`:partial` / `:complete` へ進めるための一時状態である。
+
 導入後の最小 workflow:
 
 1. `install-llm-template.sh --target <repo>` でコピー計画を確認する
@@ -868,7 +872,9 @@ archive README はディレクトリ入口であり、本節の詳細を複製�
 
 `detect-repo-profile.sh` の判定は補助情報であり、正本ではない。Polylith 判定、Malli 採用、clj-kondo / cljfmt 有無は誤検出の余地があるため、manifest に書き込む前に必ず人間が確認する。
 
-`propose-adoption-plan.sh` は推奨調査のための script ではない。local repo の構造・manifest・既存検査結果から、次に確認すべき移行作業を副作用なしで並べるための判断補助である。
+`propose-adoption-plan.sh` は推奨調査のための script ではない。local repo の構造・manifest・既存検査結果から、次に確認すべき移行作業を副作用なしで並べるための判断補助である。plain Clojure repo では、Polylith 化計画を必須作業として提示する。
+
+既存 Polylith repo で Malli / cljfmt / clj-kondo 等の必須技術基盤が欠ける場合、それらは optional ではなく strict template gate へ合流するための required task として扱う。
 
 ## 8. 関連文書
 

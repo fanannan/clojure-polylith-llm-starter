@@ -57,10 +57,12 @@ manifest_has_capability() {
   if [ ! -f ".llm/repo-context.edn" ]; then
     return 1
   fi
+  # Match a full EDN keyword token. A plain grep for ":$cap" would also match
+  # e.g. :deps-edn-disabled.
   awk '
-    /^[[:space:]]*:capabilities/ { in_caps=1 }
+    /^[[:space:]]*\{?:capabilities/ { in_caps=1 }
     in_caps { print; if ($0 ~ /\}/) exit }
-  ' .llm/repo-context.edn | grep -q ":$cap"
+  ' .llm/repo-context.edn | grep -Eq "(^|[^[:alnum:]_-]):${cap}([^[:alnum:]_-]|$)"
 }
 
 ADOPTION_MODE="$(read_adoption_mode)"
@@ -172,6 +174,10 @@ run_step_if_capability "llm-guides" "Markdown 参照マーカー検査" \
 # --- モード境界検査（template vs project の所有権違反検出） ---
 run_step_if_capability "llm-guides" "モード境界検査 (check-mode-scope)" \
   "$SCRIPT_DIR/check-mode-scope.sh"
+
+# --- repo-context manifest 内部整合性 ---
+run_step_if_capability "llm-guides" "repo-context 整合性検査" \
+  "$SCRIPT_DIR/check-repo-context-consistency.sh"
 
 # --- テンプレート保守記録の残骸検査 ---
 run_step_if_capability "llm-guides" "ADR ディレクトリ空検査 (template mode)" \

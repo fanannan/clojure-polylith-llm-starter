@@ -11,7 +11,11 @@
 ;;   - CLAUDE.md §1.2.5 失敗早期検知: bootstrap 中途状態を briefing で早期提示し、
 ;;     完了条件の check で block
 ;;
-;; モード:
+;; モード語彙:
+;;   正本は :repo-kind。文書上の "TEMPLATE MAINTENANCE" / "テンプレ保守" は
+;;   :repo-kind :template を、"PROJECT" / "派生プロジェクト保守" は
+;;   :repo-kind :project を指す。同義語を増やす時もこの 2 値へ写像する。
+;;
 ;;   :template — このリポはテンプレートそのもの。テンプレ保守作業が行われる。
 ;;               派生プロジェクトの記録領域（:project-owned）には触れない。
 ;;   :project  — このリポは派生プロジェクト（bootstrap 後）。派生プロジェクト
@@ -19,11 +23,25 @@
 ;;
 ;; 移行状態:
 ;;   :workspace-kind — :polylith | :plain-clojure | :unknown
+;;     :plain-clojure は Polylith 化前の移行出発点を表す。完成状態ではない。
+;;     本テンプレートを採用するなら Polylith 化へ進む。plain Clojure のまま
+;;     薄く使う compatibility mode は定義しない。
 ;;   :adoption-mode — :retrofit | :partial | :complete
 ;;     :retrofit は既存 repo への導入直後。検査は警告中心で、人間確認後に
 ;;     :partial / :complete へ昇格する。
-;;   :capabilities — 有効な検査・運用機能の前提。既存 Clojure/Polylith repo では
-;;     detect-repo-profile → 人間確認 → manifest 更新の順で採用する。
+;;     :partial は strict template へ移行中。採用済み capability の gate は有効、
+;;     未完了の required task は残っている状態。
+;;     :complete は strict template 準拠完了。plain-clojure の :complete は無効。
+;;   :capabilities — 検出結果ではなく「この repo が採用済みとして扱う前提」。
+;;     detect-repo-profile は候補を出すだけで、正本は人間承認後の本 manifest。
+;;     値の意味:
+;;       :deps-edn   — tools.deps/deps.edn を依存・alias 管理の正本として使う
+;;       :clj-kondo  — clj-kondo 設定と lint gate を本テンプレート規律に含める
+;;       :cljfmt     — cljfmt 設定と format gate を本テンプレート規律に含める
+;;       :malli      — Malli 契約・instrumentation 規律を採用する
+;;       :polylith   — Polylith workspace 構造・poly check/test gate を採用する
+;;       :llm-guides — CLAUDE.md / .llm/guide / .llm/memory / .llm/scripts の
+;;                     LLM 運用規律を採用する。ファイルの存在だけを意味しない。
 ;;   :template-source-revision / :applied-migrations — 派生 repo がどの template 由来で、
 ;;     どの migration を適用済みかを記録する。移行判定の正本は git 履歴ではなく
 ;;     .llm/template-version.edn と .llm/migrations/ の migration id。
@@ -80,7 +98,9 @@
     "projects/README.md"}
 
   ;; 同一ファイル内に二重所有が混在する場合。section 識別子で範囲を表す。
-  ;; "§N" は markdown の `## N.` 見出し、"§N+" は §N 以降のすべて。
+  ;; "§N" は markdown の level-2 見出し `## N.` から次の sibling `## M.`
+  ;; 直前までを指す。###/#### などの深い見出しは親 §N に含まれる。
+  ;; "§N+" は `## N.` 以降のすべて。level-2 の同番号重複は曖昧なので禁止。
   :section-scoped
   {".llm/memory/KNOWLEDGE.md" {:template ["§0"]      :project ["§1+"]}
    ".llm/memory/QUESTIONS.md" {:template ["§0" "§1"] :project ["§2+"]}
