@@ -287,6 +287,10 @@
 
 **詳細 schema**: `.llm/scripts/gen_lib_catalog.clj` の `entry-schema`、運用規約は `MAINTAINERS_GUIDE.md §5.9`。
 
+**選定時の補助観点: エラー教育性 / LLM 自走可能性**
+
+機能要件・依存軽量・data 駆動・Malli 統合容易性に加え、**実行時エラーメッセージから LLM が単独で修正方向を導けるか**を補助観点として評価する。教育性が低い lib は採用候補から外す根拠とはしないが、観察事例が見つかった場合は当該 `;; lib-catalog` block 直前の `;;` コメントに「由来: Issue #N」付きで記録し、テンプレート保守議論アーカイブの Observation log へ誘導する。観察は累積的に扱い、同方向の独立観察が複数蓄積した時点でテンプレート保守規則として再評価する。**本観点専用の新規 schema フィールド・タグは導入しない**（generator の `tag-values` / `entry-schema` 巻き込みを回避し、評価は narrative レベルで完結させる）。
+
 ### 3.1 ライフサイクル管理
 
 **採用**: Integrant
@@ -300,6 +304,11 @@
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
+ ;; 観察 (由来: Issue #10): `IllegalArgumentException` の根本理由把握に追加調査を要する
+ ;; ケースが派生プロジェクトから報告された。エラー教育性の観点では発生箇所と原因の
+ ;; 距離があり、LLM 自走で収束しにくい場合がある。詳細・累積は
+ ;; `.llm/memory/archive/maintainer-discussions/2026/2026-05.md` の Observation log を参照。
+ ;; 採否は `:recommended` のまま維持（単一観察では §1.2.5「粗い承認単位」に従い変更しない）。
 {:purpose   [:lifecycle]
   :ids       {:coord integrant/integrant :ns "integrant.core"}
   :judgment  {:status :recommended :version "0.13.1"}
@@ -358,6 +367,12 @@
 ```edn
 ;; lib-catalog
 [;; === 採用 ===
+ ;; 観察 (由来: Issue #10): `No reader function for tag` 等で解決方向が LLM から見えにくい
+ ;; ケースが派生プロジェクトから報告された。tagged literal 未定義や reader 登録漏れの
+ ;; 際、エラーメッセージから「どの tag をどの reader と対応付ければよいか」の自走に
+ ;; 追加調査を要する。詳細・累積は
+ ;; `.llm/memory/archive/maintainer-discussions/2026/2026-05.md` の Observation log を参照。
+ ;; 採否は `:recommended` のまま維持（単一観察では §1.2.5「粗い承認単位」に従い変更しない）。
 {:purpose   [:config]
   :ids       {:coord aero/aero :ns "aero.core"}
   :judgment  {:status :recommended :version "1.1.6"}
@@ -1330,6 +1345,12 @@ ring-core / ring-jetty-adapter / http-kit は §3.4 で採用済。本節では�
 [;; === 採用 ===
  ;; Biff は XTDB/Rum/HTMX を同梱した opinionated SaaS framework。
  ;; Integrant とは衝突するため併用不可（Biff 内部で独自 lifecycle 管理）。
+ ;; 観察 (由来: Issue #10): Biff 同梱の HTMX について、属性 typo (例: `hx-swap` 誤記) は
+ ;; 静的 lint で検出不可で、ブラウザ devtools での検証が必須となるケースが報告された。
+ ;; これは Biff そのものではなく HTMX 同梱に由来する診断特性であり、本エントリには
+ ;; この粒度で記録する。詳細・累積は
+ ;; `.llm/memory/archive/maintainer-discussions/2026/2026-05.md` の Observation log を参照。
+ ;; 採否は `:recommended` のまま維持（単一観察では §1.2.5「粗い承認単位」に従い変更しない）。
 {:purpose   [:saas :framework]
   :ids       {:coord com.biffweb/biff}
   :judgment  {:status :recommended :version "0.9.0"}
