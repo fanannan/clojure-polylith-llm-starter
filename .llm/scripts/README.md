@@ -96,6 +96,18 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 
 NVD API key 推奨（`https://nvd.nist.gov/developers/request-an-api-key`）。環境変数 `NVD_API_KEY` に設定すると高速化される。
 
+### テンプレート保守 E2E（通常ゲート外）
+
+`.llm/scripts/template-tests/` は、テンプレート自身の配布・移行・生成・検査を確認する E2E シナリオテストを置く。派生プロジェクトのアプリケーションテストではない。
+
+map generator / checker / migration script を変更した時、またはテンプレート release 前に実行する。
+
+```bash
+./.llm/scripts/template-tests/check-map-scenarios.sh
+```
+
+この検査は `/tmp` に synthetic Polylith-like repos を作成する。日常の `check-workspace-integrity.sh` には含めない。
+
 ### hook 取り込みの起動タイミング（`lint-import-hooks.sh`）
 
 `tools.deps` の `:main-opts` はシェル展開されないため、以下のタイミングで手動実行が必要:
