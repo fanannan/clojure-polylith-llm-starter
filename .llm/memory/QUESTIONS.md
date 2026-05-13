@@ -220,7 +220,22 @@ Q の解決済み(resolved) 化は、解決内容がユーザ回答・承認済�
 - **反映先**: （解決済み(resolved) 時に記入。例: KNOWLEDGE.md §2.3 境界方針 + adr/0003-order-user-boundary.md）
 -->
 
-（現在オープンな質問はありません）
+## Q-2026-05-001: Malli `:closed true` map の read-side 局所 clj-kondo hook 導入可否
+
+- **状態**: 未対応(open)
+- **提起日**: 2026-05-13
+- **更新日**: 2026-05-13
+- **提起の経路**: Issue #8 (fanannan/clojure-polylith-llm-starter) 対応プランの中期段階タスク
+- **文脈**: Malli `m/=>` は引数の型のみ検証し、closed map への read-side 未定義キーアクセス（`(:k m)` が `nil` を返す）は静的検出されない。Issue #8 では `school-membership` schema 未定義の `:active?` を LLM が類推で読み、全エンドポイントが 403 を返した。短期対策として CODING_GUIDE.md §1.15 / §2.1.5 / §13.5 で規律（accessor 集約 / 境界正規化 / 分岐 field 抽出 / branch condition test）を文書化したが、機械化はまだ存在しない。template 段階で generic な clj-kondo hook を実装するのは、検査対象の shape（schema 宣言規約・accessor 規約）が template 段階で未確定のため ROI が低い。
+- **問い**: 下流プロジェクトで §2.1.5 規律 A/B/C のいずれかが安定採用された後、その規約に閉じた**局所** clj-kondo hook を template 側で提供すべきか。
+- **選択肢**:
+  - A. 下流で規約 A が定着した段階で、accessor 関数群を集約する registry を導入し、handler コードでの raw `(:k m)` を当該 closed schema 対象 map に対してのみ警告化する narrow hook を `.clj-kondo/polyguard/` に追加
+  - B. 下流で規約 B が定着した段階で、正規化マップ生成関数の戻り値型を hook で追跡し、未定義キーアクセスを警告化
+  - C. 規律のみで運用、hook は導入しない（規律が形骸化したら見直し）
+  - D. Malli 上流の API 進化（schema-aware static analysis API 等）を待つ
+- **推奨**: 現時点では C を維持。下流での規約採用実績が複数プロジェクトで安定し、`(:k m)` パターンの誤読バグが規律のみで防げない事例が複数観測された段階で A または B を再評価する。
+- **影響範囲**: `.clj-kondo/polyguard/hooks.clj`、`.llm/guide/MAINTAINERS_GUIDE.md` §5.10、`.llm/guide/CODING_GUIDE.md` §2.1.5
+- **反映先**: （解決時に記入）
 
 ---
 

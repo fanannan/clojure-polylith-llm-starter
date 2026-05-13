@@ -124,6 +124,26 @@ CLAUDE が「日々の作業フロー」を規定するのに対し、本文書�
 
 **対処**: docstring は 1〜3 行。「何を返すか」と「重要な副作用・前提」のみ。
 
+### 1.15 Malli `:closed true` map への未定義キー類推アクセス（§1.1.1 全域性の盲点）
+
+**兆候**: 類似 entity（例: `class-membership` と `school-membership`）の片方にしかない field を、もう片方の map に対しても**類推で**読み出す。`(:school-membership/active? m)` が schema 未定義のキーで、`nil` を返して条件分岐を破壊する。
+
+**なぜ静的検出されないか**:
+
+- `m/=>` は引数の**型**を検証するが、呼び出し側が読むキーの**存在**は検証対象外
+- Clojure 意味論上 `(:k m)` は欠損時 `nil` を返す正常な式
+- clj-kondo / Splint / `poly check` は意味論上正常な式を弾けない
+- **静的検査を通ったことを安全の根拠にしない**こと
+
+**対処**:
+
+1. **read-site を書く前に対象 schema を直接読む**。類似 entity からの類推、docstring からの推測、過去コードからのコピーで field 集合を決めない
+2. REPL で schema 形状を先に確認する経路を取る（`schema-keys` helper を有効化している場合）
+3. **§2.1.5 の read-side 規律のいずれかを採用**して read-site を物理的に局所化する（accessor 集約 / 境界正規化 / 分岐 field の明示抽出）
+4. closed map 由来の **branch condition は §13.5 に従って interface-test で各枝を陽に検証**する
+
+**背景**: 本項は LLM がパターン類推で誤推論しやすい構造的脆弱性に対する規範。`m/=>` 契約と静的検査の盲点を補う多層防御として §2.1.5 と §13.5 を併読する。
+
 ---
 
 ## 2. 三つの基底原則の詳細展開（**../CLAUDE.md §1.1 の具体化**）
@@ -174,6 +194,35 @@ CLAUDE が「日々の作業フロー」を規定するのに対し、本文書�
 - 契約違反は REPL 呼び出し即時に例外。LLM は例外メッセージから自己修正できる
 - `poly test` は高速な回帰確認であり、契約検証完了の代替ではない。契約をテスト中にも検証したい場合は、Malli instrumentation を test fixture で有効化する
 - 詳細は CLAUDE.md §5.4 / §9.1 と `development/src/dev/user.clj` の docstring
+
+#### 2.1.5 read-side の局所化規律（Malli `:closed true` map の盲点対処）
+
+**背景**: Malli `m/=>` は引数の型を検証するが、呼び出し側が map から読むキーの**存在**は検証しない。`(:k m)` は欠損時 `nil` を返すため、未定義キーへのアクセスは静的検出されず、条件分岐を沈黙裏に破壊する（§1.15 参照）。
+
+**規律**: read-site の自由度を下げ、誤推論余地を物理的に縮める。下記 A/B/C のいずれかを brick 単位で採用し、採否と理由を当該 brick の docstring または ADR に記録する:
+
+- **規律 A: accessor 関数への集約**
+  - 境界 map（DB 行・HTTP リクエスト・外部 API レスポンス・コンポーネント間引渡し map）の field 読み出しは、対応 component の `interface.clj` で accessor 関数（例: `(user/active? m)`）として公開する
+  - handler / branching code は raw `(:k m)` を書かない
+  - accessor 関数自体は `m/=>` 契約で覆える（引数型は schema、戻り値型は field の型）
+
+- **規律 B: 境界での正規化**
+  - 境界で `m/decode` または明示的なパース関数で**必要 field のみ抽出した正規化マップ**を作る
+  - 以後の処理はこの正規化マップに対してのみ行う
+  - 正規化マップの schema を `:closed true` で定義し、未定義 field の混入を弾く
+
+- **規律 C: 分岐 field の明示抽出**
+  - 条件分岐の `case` / `cond` 等で使う field は、分岐の直前に `let` で名前付き束縛として取り出す
+  - 分岐式内で `(:k m)` を書かない
+  - 束縛名で意図が読めるため、未定義キー由来の `nil` が「明示的な変数 `nil`」として目立つ
+
+**選択基準**:
+
+- 当該 field を 2 箇所以上で読むなら → 規律 A（重複を集約）
+- 境界が複数 field を必要としドメイン全体で形が固まるなら → 規律 B（一回の正規化で済む）
+- 局所的な分岐 1 箇所のみなら → 規律 C（最小コスト）
+
+**§1.2.5 失敗早期検知との整合**: 本規律は静的機械化ではなく規律レベルの介入だが、read-site が局所化されると将来の局所 clj-kondo hook（規約成熟後に再検討、`.llm/memory/QUESTIONS.md` 参照）の対象が明確になる。記述系を重くする `defrecord` 採用や独自マクロ導入より先に、この規律で形を作る順序を取る。
 
 ### 2.2 不変性（Immutability）の Clojure 実装
 
@@ -332,6 +381,14 @@ CLAUDE.md §1.1.2 不変性・§1.1.1 全域性の具体化。
 ;; ❌ Don't
 (defrecord User [id name])
 ```
+
+**注記（nil バグ対策としての defrecord 化は不採用）**: boundary entity を `defrecord` 化すると未定義 field の dot-access (`.foo`) は compile error になる。一見 §1.15 / §2.1.5 で扱う「`:closed true` map 読み違いによる nil 化バグ」への対策に見えるが、本テンプレートはこの目的での defrecord 採用を**推奨しない**。理由:
+
+1. map-first 原則（§2.2.1）との衝突コストが、得られる typo 検出便益を上回る
+2. record は keyword アクセス (`(:foo r)`) や `assoc` で extra field を持てるため「`:closed` 検証の代替」にはならない
+3. namespaced keyword 境界（§2.2.3）・schema レジストリとの相性が悪い
+
+上記 3 条件（protocol 多態 / hot path / Java interop）を満たすことで defrecord が必要な場面で**副次効果として** compile-time safety を得るのは許容するが、nil バグ対策を主目的とした defrecord 導入は規律 A/B/C（§2.1.5）で代替する。
 
 ### 3.2 キーは名前空間付きキーワード
 
@@ -622,6 +679,21 @@ CLAUDE.md §1.1.1 全域性・§1.1.3 副作用隔離の具体化。
 ### 13.4 matcher-combinators で部分一致
 
 **Rule**: 完全一致不要な場面では `match?` を使う。
+
+### 13.5 closed map 由来の branch condition は各枝を陽に検証
+
+**背景**: `m/=>` は引数の型のみを検証する。read-side で map から読むキーの**存在**は契約の検出範囲外で、未定義キーが `nil` を返して分岐ロジックを破壊するバグ（§1.15）は契約・lint・`poly check` すべてをすり抜ける。
+
+**Rule**: `:closed true` map に由来する **branch condition**（権限判定・状態判定・条件分岐）は、interface-test で各枝を陽に検証する。
+
+- 検出最小単位は **interface 単位**。HTTP 統合・E2E ではなく、`interface.clj` の公開関数（accessor / 判定関数）に対してテストを書く
+- 各枝（true/false、各 role、各状態）について **positive assertion を併記**する
+  - ❌ Don't: 「403 が返らない」のような negative assertion だけ
+  - ✅ Do: 「role `:staff` に対し `(active-staff? m)` が true を返す」かつ「role `:guest` に対し false を返す」
+- accessor の戻り値が `nil` になる入力（未定義キー由来）は、`m/=>` の戻り値契約 `[:maybe ...]` の使用判断を見直すきっかけとする。`nil` を業務的に許容するか、`nil` を弾くかを設計レベルで決める
+- §2.1.5 規律 A を採用している場合、accessor 関数自体への単体テストが上記要件を自然に満たす
+
+**理由**: HTTP 403 は症状であり、テストすべき最小単位ではない。interface 単位で各枝を押さえる方が検出コストが低く、再現性も高い。
 
 ---
 

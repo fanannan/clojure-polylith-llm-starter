@@ -80,6 +80,55 @@
   (reset! malli-running? true))
 
 ;; ---------------------------------------------------------------------------
+;; Schema Preview Helper（任意・補助、Issue #8 対処の §1.15 / §2.1.5 補助策）
+;;
+;; 【このセクションの扱い】
+;;   - 配布時点では無効（コメントアウト）
+;;   - 採用したいプロジェクトは下記 defn の `;;` を除去して有効化
+;;   - 依存は Malli のみ（必須技術基盤）。追加 deps.edn 変更は不要
+;;
+;; 【役割】
+;;   - Malli `:closed true` map に対する read-side の事前確認用補助 helper
+;;   - read-site を書く前に、対象 schema の field 集合と :closed? を REPL で確認する
+;;   - voluntary call に依存するため、Issue #8 系バグの主対策ではない。CODING_GUIDE
+;;     の §1.15 / §2.1.5 / §13.5 規律を主、本 helper を補助として併用する
+;;
+;; 【使用例】
+;;   (schema-keys MyClosedSchema)        ; schema 値を直接渡す
+;;   (schema-keys :user/profile)          ; registry 経由（登録済み key）
+;;   ;; => {:keys #{:user/id :user/name} :closed? true}
+;;
+;; 採用時の有効化手順:
+;;   1. 下記 `defn schema-keys` の各行頭 `;;` を除去
+;;   2. ns :require に [malli.core :as m] が無ければ追加（既存なら不要）
+;;   3. (status) 出力の `:capabilities :always` に `schema-keys` を追加列挙
+;; ---------------------------------------------------------------------------
+
+;; (defn schema-keys
+;;   "Malli schema（値 or registry key）から :map エントリのキー集合と :closed? を返す。
+;;    read-side を書く前に schema 形状を REPL で先に確認するための補助 helper。
+;;
+;;    戻り値: {:keys #{...} :closed? bool}
+;;
+;;    未対応 schema 形（:map 以外、registry 未登録 key 等）は :error map を返す。
+;;    主対策ではなく補助。CODING_GUIDE.md §1.15 / §2.1.5 / §13.5 を併読のこと。"
+;;   [schema-or-key]
+;;   (try
+;;     (let [schema   (m/schema schema-or-key)
+;;           form     (m/form schema)
+;;           map?     (and (sequential? form) (= :map (first form)))]
+;;       (if-not map?
+;;         {:error :not-a-map-schema :form form}
+;;         (let [props      (when (and (>= (count form) 2) (map? (second form)))
+;;                            (second form))
+;;               entries    (drop (if props 2 1) form)
+;;               key-fn     (fn [entry] (first entry))]
+;;           {:keys    (into #{} (map key-fn) entries)
+;;            :closed? (boolean (:closed props))})))
+;;     (catch Exception e
+;;       {:error :schema-resolution-failed :ex (ex-message e)})))
+
+;; ---------------------------------------------------------------------------
 ;; REPL Workbench Helpers（LLM と人間の共通 primary 面、CLAUDE.md §9）
 ;;
 ;; 【このセクションの扱い】
