@@ -108,6 +108,10 @@ run_step_if_capability "polylith" "brick 登録整合検査" \
 run_step_if_capability "polylith" "Brick Map 生成物検査" \
   "$SCRIPT_DIR/check-brick-map.sh"
 
+# --- project metadata / workspace generated map drift ---
+run_step_if_capability "polylith" "Project / Workspace Map 生成物検査" \
+  "$SCRIPT_DIR/check-workspace-map.sh"
+
 # --- lib-catalog 生成物の同期検証 ---
 # STACK_GUIDE.md §8 の ;; lib-catalog EDN block と .llm/data/ 配下の生成物が
 # ずれていないか検証する（生成後の commit 忘れを早期検知）。

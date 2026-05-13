@@ -124,7 +124,7 @@ base の `brick.edn` は外部 entrypoint と利用 capability を表す。base 
 clj -Sdeps '{:paths [".llm/scripts"]}' -X gen-brick-map/generate
 ```
 
-`./.llm/scripts/check-workspace-integrity.sh` は、全 brick の `brick.edn` 存在、component/base の意味違反、重複 capability、base の未提供 capability 参照、`docs/BRICKS.md` / `.llm/data/brick-map.edn` の drift を検査する。
+`./.llm/scripts/check-workspace-integrity.sh` は、全 brick の `brick.edn` 存在、component/base の意味違反、重複 capability、base の未提供 capability 参照、`:brick/not-for` との衝突、capability 命名、capability と公開 API 名の対応、`docs/BRICKS.md` / `.llm/data/brick-map.edn` の drift を検査する。
 
 既存 repo の導入時など、`brick.edn` を持たない brick がある場合は、まず skeleton 案を出す。
 
@@ -139,6 +139,14 @@ clj -Sdeps '{:paths [".llm/scripts"]}' -X gen-brick-map/generate
 ```
 
 `:brick/name`、`:brick/type`、公開 API 候補は実装から推測できるが、`:brick/purpose`、`:brick/provides`、`:brick/not-for`、`:brick/requirements` は設計意図なので TODO として生成される。TODO は警告であり、移行完了前に人間/LLM が DESIGN と実装を見て確定する。
+
+TODO・空の `:brick/provides`・曖昧な capability / API 対応は、`:adoption-mode :retrofit` / `:partial` では WARN、`:complete` では ERROR として扱う。これにより既存 repo 導入時は移行を止めず、strict template 準拠後は未確認事項を残さない。
+
+要求 ID 対応の検査順序:
+
+1. `brick.edn` が参照する `:brick/requirements` の ID が `DESIGN.md` に存在するかを検査する。存在しない ID 参照は誤リンクなので ERROR
+2. `DESIGN.md` にある要求 ID がどの brick にも参照されていない場合は WARN。初期仕様・将来機能・未実装要求があり得るため、ただちに ERROR にはしない
+3. 未割当要求を実装対象にする時は、先に対応する component capability または base entrypoint を決め、`brick.edn` に ID を記録してから実装する
 
 ### 1.2 既存機能の探索手順
 
@@ -185,6 +193,45 @@ clj -Sdeps '{:paths [".llm/scripts"]}' -X gen-brick-map/generate
 ;; 要再考: brick 名も capability も曖昧
 (manager/create input)
 ```
+
+### 1.4 Project Map と Workspace Map
+
+project には capability を持たせない。project は deploy / build 単位であり、どの base entrypoint を出荷し、どの brick を束ねるかという意図だけを `projects/<name>/project.edn` に記録する。
+
+```clojure
+{:project/name :api
+ :project/type :service
+ :project/purpose "HTTP API を uberjar として出荷する"
+ :project/entrypoints #{:http-api}
+ :project/includes {:bases #{:web-api}
+                    :components #{:invoice :customer}}
+ :project/requirements ["API-01"]
+ :project/build {:kind :uberjar}}
+```
+
+`project.edn` は deploy intent の正本であり、classpath や依存の正本ではない。実際の project 依存は `projects/<name>/deps.edn` が正本であり、Polylith の構造事実は `poly check` に委譲する。`project.edn` と `deps.edn` の includes がずれている場合は生成検査で警告する。
+
+workspace については、手書きの追加正本を増やさない。`workspace.edn`、`deps.edn`、`.llm/repo-context.edn`、`brick.edn`、`project.edn` から、閲覧用の `docs/WORKSPACE.md` と検索用の `.llm/data/workspace-map.edn` を生成する。
+
+生成:
+
+```bash
+clj -Sdeps '{:paths [".llm/scripts"]}' -X gen-workspace-map/generate
+```
+
+既存 repo の導入時など、`project.edn` が欠落している場合は skeleton 案を表示できる。
+
+```bash
+./.llm/scripts/propose-project-edn.sh
+```
+
+実際に欠落 skeleton と下流生成物を作る場合は次を使う。
+
+```bash
+./.llm/scripts/ensure-workspace-map.sh
+```
+
+Project / Workspace Map の検査は、`workspace.edn :projects` と `projects/*/project.edn` の対応、project entrypoint と base `:brick/entrypoint` の対応、project includes と実在 brick、project deps の `:local/root`、project deps への外部ライブラリ直書き禁止を確認する。
 
 ---
 

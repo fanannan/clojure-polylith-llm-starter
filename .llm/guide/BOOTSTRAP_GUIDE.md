@@ -234,6 +234,33 @@ clj -Sdeps '{:paths [".llm/scripts"]}' -X gen-brick-map/generate
 
 生成された TODO は未確認事項の警告として扱い、移行完了前に確定する。
 
+### 2.5.2 Project / Workspace Map の生成
+
+project を作成したら、`projects/<deploy>/project.edn` を作成する。project は capability を所有しない。deploy / build 単位の意図、entrypoint、含める base / component、配布形態だけを記録する。
+
+```clojure
+{:project/name :api
+ :project/type :service
+ :project/purpose "HTTP API を uberjar として出荷する"
+ :project/entrypoints #{:http-api}
+ :project/includes {:bases #{:web-api}
+                    :components #{:invoice}}
+ :project/requirements ["API-01"]
+ :project/build {:kind :uberjar}}
+```
+
+project / workspace の閲覧用文書と検索用 index は生成物であり、直接編集しない。
+
+```bash
+clj -Sdeps '{:paths [".llm/scripts"]}' -X gen-workspace-map/generate
+```
+
+既存 repo への導入などで `project.edn` が欠落している場合は、欠落 skeleton と下流生成物をまとめて作る。
+
+```bash
+./.llm/scripts/ensure-workspace-map.sh
+```
+
 ### 2.6 development/src/dev/user.clj の調整
 
 配布版の dev/user.clj は、必須の Malli instrumentation と任意の開発補助セクションを同梱している。プロジェクトで使わない任意セクションは削除する：

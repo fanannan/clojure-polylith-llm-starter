@@ -1,4 +1,5 @@
 (ns gen-brick-map
+  (:refer-clojure :exclude [ensure])
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]
@@ -51,6 +52,17 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
                       {:path path}
                       e)))))
 
+(defn- repo-context []
+  (when (file? ".llm/repo-context.edn")
+    (read-edn-file ".llm/repo-context.edn")))
+
+(defn- adoption-mode []
+  (let [ctx (repo-context)]
+    (or (:adoption-mode ctx)
+        (if (= :template (:repo-kind ctx))
+          :complete
+          :retrofit))))
+
 (defn- nonblank-string? [x]
   (and (string? x) (not (str/blank? x))))
 
@@ -79,6 +91,19 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
   (when (contains-todo? data)
     [(str "WARN: " path " contains TODO placeholders; review and replace them before migration is complete")]))
 
+(def capability-pattern
+  #"^[a-z][a-z0-9-]*/[a-z][a-z0-9-]*$")
+
+(defn- valid-capability? [x]
+  (and (keyword? x)
+       (re-matches capability-pattern (subs (str x) 1))))
+
+(defn- capability-op [capability]
+  (some-> capability str (subs 1) (str/split #"/") second))
+
+(defn- todo-skeleton? [data]
+  (contains-todo? data))
+
 (defn- validate-component! [path data]
   (when-not (= :component (:brick/type data))
     (error! (str "ERROR: " path " must have :brick/type :component")))
@@ -86,8 +111,10 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
     (error! (str "ERROR: " path " must have keyword :brick/name")))
   (when-not (nonblank-string? (:brick/purpose data))
     (error! (str "ERROR: " path " must have non-empty :brick/purpose")))
-  (when-not (and (keyword-coll? (:brick/provides data))
-                 (seq (:brick/provides data)))
+  (when-not (keyword-coll? (:brick/provides data))
+    (error! (str "ERROR: " path " component must have :brick/provides as a collection of keywords")))
+  (when (and (empty? (:brick/provides data))
+             (not (todo-skeleton? data)))
     (error! (str "ERROR: " path " component must provide non-empty :brick/provides")))
   (when-not (string-coll? (:brick/requirements data))
     (error! (str "ERROR: " path " must have :brick/requirements as a collection of strings")))
@@ -160,19 +187,51 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
             (str/join ", " generic))])))
 
 (defn- duplicate-public-api-name-warnings [bricks]
-  (->> bricks
+  (->> (filter #(= :component (:brick/type %)) bricks)
        (mapcat (fn [b]
-                 (map #(vector (api-name %) (:brick/path b) %)
+                 (map #(vector (api-name %) b %)
                       (:brick/public-api b))))
        (group-by first)
        (keep (fn [[name entries]]
-               (let [paths (set (map second entries))]
+               (let [bricks-with-api (map second entries)
+                     paths (set (map :brick/path bricks-with-api))
+                     matching-caps (set (for [b bricks-with-api
+                                              cap (:brick/provides b)
+                                              :when (= name (capability-op cap))]
+                                          cap))]
                  (when (and (< 1 (count paths))
-                            (contains? allowed-generic-api-names name))
+                            (contains? allowed-generic-api-names name)
+                            (not= (count paths) (count matching-caps)))
                    (str "WARN: public API function name `" name
                         "` appears in multiple bricks: "
                         (str/join ", " (sort paths))
-                        ". Keep only if each brick has a clearly distinct capability in brick.edn.")))))))
+                        ". Keep only if each brick has a clearly distinct :<domain>/"
+                        name " capability in brick.edn.")))))))
+
+(defn- public-api-name-set [brick]
+  (set (map api-name (:brick/public-api brick))))
+
+(defn- component-capability-warnings [brick]
+  (let [api-names (public-api-name-set brick)]
+    (concat
+     (for [cap (:brick/provides brick)
+           :when (not (valid-capability? cap))]
+       (str "WARN: " (:brick/path brick) " capability `" cap
+            "` should use :<domain>/<operation> form"))
+     (for [cap (:brick/provides brick)
+           :let [op (capability-op cap)]
+           :when (and op
+                      (seq api-names)
+                      (not (contains? api-names op)))]
+       (str "WARN: " (:brick/path brick) " capability `" cap
+            "` has no matching public function `" op
+            "` in interface.clj; keep only if the capability is intentionally represented by a differently named API")))))
+
+(defn- empty-provides-warnings [brick]
+  (when (and (= :component (:brick/type brick))
+             (empty? (:brick/provides brick)))
+    [(str "WARN: " (:brick/path brick)
+          " has empty :brick/provides; fill capability ownership before migration is complete")]))
 
 (defn- brick-name [path]
   (keyword (.getName (io/file path))))
@@ -235,12 +294,21 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
                            use (:brick/uses b)
                            :when (not (contains? provided-set use))]
                        [(:brick/path b) use])
+        not-for-conflicts (for [b bricks
+                                cap (:brick/not-for b)
+                                :let [owned-or-used (set (concat (:brick/provides b)
+                                                                 (:brick/uses b)))]
+                                :when (contains? owned-or-used cap)]
+                            [(:brick/path b) cap])
         design-ids (design-requirement-ids)
         unknown-reqs (when (seq design-ids)
                        (for [b bricks
                              req (:brick/requirements b)
                              :when (not (contains? design-ids req))]
-                         [(:brick/path b) req]))]
+                         [(:brick/path b) req]))
+        referenced-reqs (set (mapcat :brick/requirements bricks))
+        unassigned-reqs (when (seq design-ids)
+                          (remove referenced-reqs design-ids))]
     (when (seq duplicate-provides)
       (error!
        "ERROR: duplicate component capabilities:"
@@ -253,12 +321,39 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
        (str/join "\n" (map (fn [[path use]]
                              (str "  " path " uses " use))
                            unknown-uses))))
+    (when (seq not-for-conflicts)
+      (error!
+       "ERROR: brick.edn has :brick/not-for conflicts:"
+       (str/join "\n" (map (fn [[path cap]]
+                             (str "  " path " conflicts on " cap))
+                           not-for-conflicts))))
     (when (seq unknown-reqs)
       (error!
        "ERROR: brick.edn references requirement ids not found in DESIGN.md:"
        (str/join "\n" (map (fn [[path req]]
                              (str "  " path " references " req))
-                           unknown-reqs))))))
+                           unknown-reqs))))
+    (when (seq unassigned-reqs)
+      (warn!
+       "WARN: DESIGN.md has requirement ids not referenced by any brick.edn:"
+       (str/join "\n" (map #(str "  " %) (sort unassigned-reqs)))))))
+
+(defn- migration-quality-warnings [bricks]
+  (concat
+   (mapcat #(todo-warnings (str (:brick/path %) "/brick.edn") %) bricks)
+   (mapcat empty-provides-warnings bricks)
+   (mapcat component-capability-warnings (filter #(= :component (:brick/type %)) bricks))
+   (mapcat #(api-name-warnings (:brick/path %) (:brick/public-api %)) bricks)
+   (duplicate-public-api-name-warnings bricks)))
+
+(defn- report-migration-quality! [bricks {:keys [strict?]}]
+  (let [warnings (vec (migration-quality-warnings bricks))]
+    (if (and strict? (seq warnings))
+      (apply error!
+             "ERROR: Brick Map has unresolved migration-quality warnings in :adoption-mode :complete:"
+             warnings)
+      (doseq [warning warnings]
+        (warn! warning)))))
 
 (defn- bullet-list [items empty-text]
   (if (seq items)
@@ -347,14 +442,7 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
                     "  clj -Sdeps '{:paths [\".llm/scripts\"]}' -X gen-brick-map/generate :auto-create? true"))
         bricks (mapv load-brick (brick-dirs))]
     (validate-cross-brick! bricks)
-    (doseq [b bricks
-            warning (todo-warnings (str (:brick/path b) "/brick.edn") b)]
-      (warn! warning))
-    (doseq [b bricks
-            warning (api-name-warnings (:brick/path b) (:brick/public-api b))]
-      (warn! warning))
-    (doseq [warning (duplicate-public-api-name-warnings bricks)]
-      (warn! warning))
+    (report-migration-quality! bricks {:strict? false})
     (write-file! out-file (render bricks))
     (write-file! index-file (render-index bricks))
     (println "generated" out-file)
@@ -389,6 +477,7 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
             expected-doc (render bricks)
             expected-index (render-index bricks)]
         (validate-cross-brick! bricks)
+        (report-migration-quality! bricks {:strict? (= :complete (adoption-mode))})
         (when-not (file? "docs/BRICKS.md")
           (error! "ERROR: docs/BRICKS.md is missing. Run gen-brick-map/generate after adding bricks."))
         (when-not (file? ".llm/data/brick-map.edn")

@@ -305,6 +305,8 @@ cd /path/to/repo
 │   └── fixture-state-summary.md     越境 UC PR 本文 fragment（POLYLITH_GUIDE §7.4.1 関連）
 │
 ├── docs/BRICKS.md            ← brick.edn / interface.clj から生成される閲覧用 Brick Map（派生プロジェクトで brick 作成後に生成、直接編集しない）
+├── docs/PROJECTS.md          ← project.edn / project deps から生成される閲覧用 Project Map（project 作成後に生成、直接編集しない）
+├── docs/WORKSPACE.md         ← workspace 全体の生成ビュー（直接編集しない）
 │
 ├── .clj-kondo/config.edn        lint 機械化（polyguard hook 同梱）
 ├── .clj-kondo/polyguard/        custom hook（機械化第 2 層: 本テンプレート固有パターン）
@@ -326,6 +328,7 @@ cd /path/to/repo
 | Clojure の書き方で迷った | `.llm/guide/CODING_GUIDE.md` |
 | Polylith 構造判断・brick 追加 | `.llm/guide/POLYLITH_GUIDE.md` |
 | brick 構成・機能分担の把握 | `docs/BRICKS.md`（閲覧用生成物） / `.llm/data/brick-map.edn`（検索用生成物）。正本は各 `brick.edn` と `interface.clj` |
+| project / workspace 構成の把握 | `docs/PROJECTS.md` / `docs/WORKSPACE.md`（閲覧用生成物） / `.llm/data/workspace-map.edn`（検索用生成物）。正本は `project.edn`、`workspace.edn`、`deps.edn`、`brick.edn` |
 | LLM と人間の協働方針で迷った | `.llm/guide/COLLABORATION_GUIDE.md` |
 | テンプレート自体の改修 | `.llm/guide/MAINTAINERS_GUIDE.md` |
 | 判断に迷った時（Q を立てる） | `.llm/memory/QUESTIONS.md` |
@@ -339,6 +342,7 @@ cd /path/to/repo
 - **機械化 5 層**: 第 1 層 clj-kondo 組込 linter / 第 2 層 `.clj-kondo/polyguard/` custom hook / 第 3 層 Splint / 第 4 層 `.llm/scripts/check-*.sh`（設定・構造検査）+ Polylith `poly check` + Malli instrumentation / 第 5 層 clj-watson（時間軸脆弱性）。規約を人間の注意力ではなくツールで強制（詳細は `MAINTAINERS_GUIDE.md` §5.10）
 - **単一の正本（SSOT）生成**: `.llm/scripts/gen_lib_catalog.clj` が `STACK_GUIDE` の `;; lib-catalog` EDN block 群を検証・合成し `.llm/data/` 配下に生成物を出力する。shell script はその生成物を読む
 - **Brick Map 生成**: 各 `brick.edn` と `interface.clj` を正本として `docs/BRICKS.md` / `.llm/data/brick-map.edn` を生成し、component/base の意味違反・重複 capability・drift を検査する
+- **Project / Workspace Map 生成**: 各 `project.edn`、`workspace.edn`、`deps.edn`、`brick.edn` から `docs/PROJECTS.md` / `docs/WORKSPACE.md` / `.llm/data/workspace-map.edn` を生成し、deploy intent と project deps の整合を検査する
 - **REPL as Primary Workbench**: `.llm/scripts/repl-eval.sh` により LLM が稼働中 nREPL に eval / load-file を送信。永続 session で状態を継続し、編集から検証までを同一ターンで閉じる
 - **技術選定の判断済み推奨集**: 必須技術基盤はワークスペースルートで常に採用し、追加ライブラリは必要な brick の `deps.edn` に配置する。判断済み推奨集は `.llm/guide/STACK_GUIDE.md`
 - **4 種の文書分離**: 仕様（DESIGN）/ 知識（KNOWLEDGE）/ 決定履歴（ADR）/ 判断保留（QUESTIONS）

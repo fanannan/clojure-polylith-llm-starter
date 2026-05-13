@@ -605,7 +605,7 @@ subagent / tool 呼び出し / 長い shell 実行は、ユーザへの最終応
 
 1. **仕様の確認**: DESIGN の関連節（特に §3 主要ユースケース、§4 受入基準）を読む
 ¤ DESIGN.md
-2. **Brick Map の確認（brick / 機能配置に関わる作業のみ）**: `docs/BRICKS.md` と `.llm/data/brick-map.edn` が存在する場合、既存 capability・担当 component・entrypoint base を確認する。既存 capability が見つかった場合は新規実装せず、該当 `interface.clj` 経由で利用する。brick が存在するのに生成物が無い、または drift している場合は `gen-brick-map/generate` の再生成対象として扱う
+2. **Brick / Project Map の確認（brick・機能配置・deploy 構成に関わる作業のみ）**: `docs/BRICKS.md` / `.llm/data/brick-map.edn` が存在する場合、既存 capability・担当 component・entrypoint base を確認する。project / deploy に関わる場合は `docs/PROJECTS.md` / `docs/WORKSPACE.md` / `.llm/data/workspace-map.edn` も確認する。既存 capability が見つかった場合は新規実装せず、該当 `interface.clj` 経由で利用する。生成物が無い、または drift している場合は対応する generator の再生成対象として扱う
 3. **既存知識の確認**: KNOWLEDGE の関連節（対象ドメイン・境界契約・運用制約）を読む
 ¤ .llm/memory/KNOWLEDGE.md
 4. **未決判断の確認**: QUESTIONS の `未対応(open)` / `議論中(in-discussion)` に関連する Q がないか確認する。関連 Q があれば、その解決を待つか、Q のコンテキストで作業する
@@ -665,6 +665,7 @@ LLM のフィードバックループは**編集単位でターン内に閉じ�
 | runtime wiring、publisher、defrecord / protocol、ns graph 変更 | REPL eval 必須。必要に応じて `(safe-reset!)` / `(hard-reset!)` | 起動中 JVM の状態に依存するため |
 | deps.edn、brick 構造、workspace.edn 変更 | `clj -M:poly check` + 依存解決確認 + fresh JVM 判断 | REPL の既存 classpath では確認不足 |
 | `brick.edn`、公開 API、capability 変更 | `./.llm/scripts/check-workspace-integrity.sh` | `docs/BRICKS.md` / `.llm/data/brick-map.edn` の drift、重複 capability、base の未提供 capability 参照を検出 |
+| `project.edn`、project deps、workspace project 構成変更 | `./.llm/scripts/check-workspace-integrity.sh` | `docs/PROJECTS.md` / `docs/WORKSPACE.md` / `.llm/data/workspace-map.edn` の drift、entrypoint/includes/deps 整合を検出 |
 | 完了報告前 | §5.5 完了条件 | `poly test :all` で全体検証 |
 
 文書のみのテンプレ保守では REPL eval は不要である。Markdown 参照・archive staging・mode boundary など、変更対象に対応する script gate を優先する。`.llm/scripts/*.clj` / `.llm/scripts/*.sh` を触った場合は総合検査と該当 script の単体実行を行う。Clojure/Polylith の構造や runtime code を触った場合だけ、REPL と `poly` gate を通常どおり要求する。
