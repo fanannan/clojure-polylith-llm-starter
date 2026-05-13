@@ -333,7 +333,7 @@ I/O リソースの起動・停止管理が必要な場合のみ実施する。�
    - `:template-name "clojure-polylith-llm-starter"` → `:derived-from "clojure-polylith-llm-starter"` にリネーム
    - `:project-name "<myorg.myapp の実値>"` を追加（例: `:project-name "acme.shop"`）
    - `:ownership` ブロックは保持する（派生プロジェクトでも所有権 SSOT として機能させる）
-   - 削除しない（manifest 不在は session-briefing がエラー停止する）
+   - 削除しない（manifest 不在は session-briefing が non-blocking ERROR と migration 手順を表示する）
 6. 初期化完了をコミット（例: `"Complete project bootstrap"`）— **このコマンドは LLM が提示、実行はユーザが行う**
 
 以降は CLAUDE の作業プロトコルで日常開発に移行する。本文書（BOOTSTRAP_GUIDE）は物理的には残るが、フェーズ判定により、完了後は自動的に読まれない。

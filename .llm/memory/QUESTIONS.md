@@ -220,42 +220,7 @@ Q の解決済み(resolved) 化は、解決内容がユーザ回答・承認済�
 - **反映先**: （解決済み(resolved) 時に記入。例: KNOWLEDGE.md §2.3 境界方針 + adr/0003-order-user-boundary.md）
 -->
 
-## Q-2026-05-001: Malli `:closed true` map の read-side 局所 clj-kondo hook 導入可否
-
-- **状態**: 未対応(open)
-- **提起日**: 2026-05-13
-- **更新日**: 2026-05-13
-- **提起の経路**: Issue #8 (fanannan/clojure-polylith-llm-starter) 対応プランの中期段階タスク
-- **文脈**: Malli `m/=>` は引数の型のみ検証し、closed map への read-side 未定義キーアクセス（`(:k m)` が `nil` を返す）は静的検出されない。Issue #8 では `school-membership` schema 未定義の `:active?` を LLM が類推で読み、全エンドポイントが 403 を返した。短期対策として CODING_GUIDE.md §1.15 / §2.1.5 / §13.5 で規律（accessor 集約 / 境界正規化 / 分岐 field 抽出 / branch condition test）を文書化したが、機械化はまだ存在しない。template 段階で generic な clj-kondo hook を実装するのは、検査対象の shape（schema 宣言規約・accessor 規約）が template 段階で未確定のため ROI が低い。
-- **問い**: 下流プロジェクトで §2.1.5 規律 A/B/C のいずれかが安定採用された後、その規約に閉じた**局所** clj-kondo hook を template 側で提供すべきか。
-- **選択肢**:
-  - A. 下流で規約 A が定着した段階で、accessor 関数群を集約する registry を導入し、handler コードでの raw `(:k m)` を当該 closed schema 対象 map に対してのみ警告化する narrow hook を `.clj-kondo/polyguard/` に追加
-  - B. 下流で規約 B が定着した段階で、正規化マップ生成関数の戻り値型を hook で追跡し、未定義キーアクセスを警告化
-  - C. 規律のみで運用、hook は導入しない（規律が形骸化したら見直し）
-  - D. Malli 上流の API 進化（schema-aware static analysis API 等）を待つ
-- **推奨**: 現時点では C を維持。下流での規約採用実績が複数プロジェクトで安定し、`(:k m)` パターンの誤読バグが規律のみで防げない事例が複数観測された段階で A または B を再評価する。
-- **影響範囲**: `.clj-kondo/polyguard/hooks.clj`、`.llm/guide/MAINTAINERS_GUIDE.md` §5.10、`.llm/guide/CODING_GUIDE.md` §2.1.5
-- **反映先**: （解決時に記入）
-
-## Q-2026-05-002: 派生 seed helper を `dev.user/status` の `:capabilities` に自動検出させる機構
-
-- **状態**: 未対応(open)
-- **提起日**: 2026-05-13
-- **更新日**: 2026-05-13
-- **提起の経路**: Issue #12 (fanannan/clojure-polylith-llm-starter) 対応プランで新設した「越境ユースケースの機械化」上位原理の派生 2（`(safe-reset!) → (seed-all!)` 2 行原則）に伴う、§1.2.1 機械化候補の記録
-- **文脈**: 派生 2 で `dev.fixtures` 配下に `(seed-all!)` / `(seed-<uc>!)` の命名規約を立てた。`dev.user` の `(status)` が返す capability surface に、派生プロジェクトが立てた seed helper を `:capabilities` で見せる自動検出機構は §1.2.1 機械化の有望候補。Issue #13 対応で fixture 観察ファースト規律（POLYLITH_GUIDE §7.4.1）と肥大化抑制規約（§7.4.2）を追加した結果、派生プロジェクトでの `seed-<uc>!` 採用と個別呼出が増えるため、`(status)` から「現在どの `seed-<uc>!` が利用可能か」を確認する需要が高まり、自動検出機構の動機がさらに強化されている。ただし以下の理由で今すぐ実装しない：
-  - (a) seed helper の命名規約は本対応で初めて規約化されたばかりで、派生プロジェクトでの採用実績がない
-  - (b) `dev.fixtures` ns 名も派生側の運用で揺れる可能性（`dev.seeds` / `dev.smoke` 等）
-  - (c) `:capabilities` shape の拡張（既存の `:always` / `:lifecycle` / `:trace` / `:gui` に並ぶ `:fixtures` 区分の追加可否）は §9.1 正本性に影響するため設計が固まっていない
-- **問い**: 派生プロジェクトでの seed helper 採用実績が複数プロジェクト累積した段階で、`dev.user/status` に seed helper 自動検出機構を実装すべきか。
-- **選択肢**:
-  - A. 派生 2 件以上での採用が確認できた段階で、`dev.fixtures` ns の存在を resolve で検出し、`seed-*!` 形式の public var を列挙して `:capabilities :fixtures` に出す機構を実装
-  - B. ns 名を `dev.fixtures` に強制せず、メタデータ（`^{::seed true}`）でマークされた var を検出する形にする（命名規約への依存を緩める）
-  - C. 自動検出は導入せず、派生プロジェクト側で `(status)` を override する選択肢を docstring で示すに留める
-  - D. 機械化候補のまま保留し続ける（採用実績が累積しなければ ROI が低い）
-- **推奨**: 現時点では D を維持。派生プロジェクトでの規約採用実績が累積した段階で A または B を再評価する。命名規約への依存度が問題化した場合は B、安定したら A。
-- **影響範囲**: `development/src/dev/user.clj`、`.llm/guide/POLYLITH_GUIDE.md` §7.4、CLAUDE.md §9.1
-- **反映先**: （解決時に記入）
+（現在該当はありません）
 
 ---
 
@@ -264,21 +229,7 @@ Q の解決済み(resolved) 化は、解決内容がユーザ回答・承認済�
 <!-- 解決済み Q はここに移動。削除しない（「議論の軌跡を残す」）。
      年間 100 件超で .llm/memory/questions-archive-YYYY.md に分離する。 -->
 
-## Q-2026-04-002: session-briefing.sh への上位文脈ヒント節追加
-- **状態**: 解決済み(resolved)
-- **提起日**: 2026-04-26
-- **更新日**: 2026-04-26
-- **提起の経路**: フィードバック反映（product-osint Phase 1 振り返り、構造引きずられバイアス対処）
-- **文脈**: 上位文脈の確認規約（着手前確認の第 5 項）を CLAUDE で追加した。LLM が能動的に判定する規約だが、session-briefing スクリプトの出力にヒント節を追加すれば機械化補助になる。
-∵ ../../CLAUDE.md §8.0
-- **選択肢**:
-  - A. session-briefing.sh に「## 上位文脈（該当時のみ）」節を追加し、固定文言を表示
-  - B. 親リポジトリの存在を機械的に検出して節を出す
-  - C. 何もしない（規約のみで運用）
-- **決定**: A（ユーザ承認 2026-04-26）
-- **反映先**: `.llm/scripts/session-briefing.sh` に「## 上位文脈（該当時のみ）」節と着手前チェックリストへの 1 項目を追加
-
----
+（現在該当はありません）
 
 ## 4. 却下・統合済み（wontfix / superseded）
 

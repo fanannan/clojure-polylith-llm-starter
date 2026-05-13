@@ -736,7 +736,7 @@ poly/<name> {:local/root "components/<name>"}
 - seed helper は冪等にする（`(seed-all!)` を連続呼び出ししてもエラーにならない）
 - 本テンプレート配布時には `dev/fixtures.clj` は置かない（brick 未配置と整合、YAGNI）。派生プロジェクトが最初の越境 UC を実装した時点で本節に従って作る
 
-**今後の拡張候補**: 派生プロジェクトが立てた `seed-<uc>!` を `dev.user/status` の `:capabilities` に自動検出させる機構は、機械化候補として QUESTIONS に記録されている（`Q-2026-05-002`）。helper 命名規約・配置・capability shape が安定したら導入を検討する。fixture-first 規律（§7.4.1）と肥大化抑制（§7.4.2）が定着するほど、`(status)` から「現在どの `seed-<uc>!` が利用可能か」を確認する需要が高まり、自動検出の動機が強化される。
+**今後の拡張候補**: 派生プロジェクトが立てた `seed-<uc>!` を `dev.user/status` の `:capabilities` に自動検出させる機構は、helper 命名規約・配置・capability shape が安定した後に検討する。fixture-first 規律（§7.4.1）と肥大化抑制（§7.4.2）が定着するほど、`(status)` から「現在どの `seed-<uc>!` が利用可能か」を確認する需要が高まり、自動検出の動機が強化される。
 ∵ ../memory/QUESTIONS.md §2
 
 #### 7.4.1 実装順序: fixture 観察ファースト

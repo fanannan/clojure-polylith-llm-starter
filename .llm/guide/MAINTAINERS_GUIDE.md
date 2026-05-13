@@ -221,9 +221,9 @@
 
 ### 原則 10: 「議論の軌跡を残す」
 
-**内容**: 設計判断の結果だけでなく、その**判断に至った経緯・検討した反対仮説・却下した選択肢**も残す。現在有効な規則は本文書または該当ガイドに反映し、重要な決定理由は ADR に、議論過程は `.llm/memory/archive/maintainer-discussions/` に分離して記録する。
+**内容**: 設計判断の結果だけでなく、その**判断に至った経緯・検討した反対仮説・却下した選択肢**も、現在有効な規則へ蒸留できる形で扱う。現在有効な規則は本文書または該当ガイドに反映し、テンプレート保守中の議論過程は `.llm/memory/archive/maintainer-discussions/` に一時的に置く。吸収完了後は、原則として archive entry を削除または圧縮する。
 **守らないとどうなるか**: 時間経過で判断が「自明の前提」化し、前提が変わった時に気づけない。
-**保守時のチェック**: 新しい設計判断を下したら、「現行ルールへの反映」「ADR が必要か」「議論アーカイブに残すべき経緯があるか」を §7.1 の記録先表で判定する。本文書に過去の暫定判断を混ぜない。
+**保守時のチェック**: 新しい設計判断を下したら、「現行ルールへの反映」「機械化への反映」「一時 archive の終状態」を §7.1〜§7.3 で判定する。本文書に過去の暫定判断を混ぜない。
 
 ### 原則 11: 「判断とプロセスの対称性」
 
@@ -774,42 +774,71 @@ Markdown 文書どうしの参照は、無印の Markdown 参照を禁止し、�
 
 ---
 
-## 7. 議論アーカイブ運用
+## 7. テンプレート保守記録の蒸留
 
-本文書は現行ルールを扱う。過去の議論・暫定判断・却下案・失敗分析は、本文書に追記せず `.llm/memory/archive/maintainer-discussions/` に分離する。
+本文書は現行ルールを扱う。テンプレート保守中の議論・暫定判断・却下案・失敗分析は、正本へ吸収するまでの一時領域として `.llm/memory/archive/maintainer-discussions/` に置く。archive は永続保管庫ではない。下流へ配布するテンプレートには、原則として archive entry を残さない。
 
 ### 7.1 記録先
 
 | 内容 | 記録先 |
 |---|---|
-| 現在有効な保守規則 | 本文書 |
-| 今後も参照すべき重要な決定理由 | `.llm/memory/archive/maintainer-discussions/YYYY/YYYY-MM.md` |
-| 議論の流れ・反対仮説・却下案・失敗分析 | `.llm/memory/archive/maintainer-discussions/YYYY/YYYY-MM.md`（同上） |
+| 現在有効な保守規則 | 本文書、または該当 guide |
+| 機械化された事実 | `.llm/repo-context.edn` / `.llm/scripts/` |
+| 議論中の過程 | `.llm/memory/archive/maintainer-discussions/YYYY/YYYY-MM.md` |
 | 未決事項 | `.llm/memory/QUESTIONS.md` |
-| 現時点で有効な運用知識 | `.llm/memory/KNOWLEDGE.md` |
+| 派生プロジェクトの決定履歴 | `.llm/memory/adr/NNNN-topic.md` |
 
-### 7.2 記録ルール
+`.llm/memory/adr/` は派生プロジェクト専用領域である。テンプレート保守作業では、テンプレート自身の決定を ADR に置かない。所有権の正本は `.llm/repo-context.edn` を参照する。
 
-- 新しい設計判断を下したら、現行ルールへの反映先を先に決める。
-- 重要判断は議論アーカイブに記録する。結論・根拠・代替案・影響範囲を残す。
-- `.llm/memory/adr/` は派生プロジェクト専用領域（manifest `.llm/repo-context.edn` の `:project-owned` を参照）であり、テンプレ自身の決定は置かない。
-- 会話の経緯や失敗分析も月次アーカイブに要約する。
-- 本文書には「現在どう判断するか」だけを書く。過去の暫定方針は本文に残さない。
-- 本文書からアーカイブへは、必要な場合だけ短いリンクを置く。
+### 7.2 Archive entry の状態
 
-### 7.2.1 モード境界
+archive entry は、議論中の staging record として次の形式で始める。
 
-本書はテンプレート保守モードで読まれる。テンプレート保守作業では、`.llm/repo-context.edn` で `:project-owned` と定義される領域（派生プロジェクトの ADR / 仕様コンテンツ / brick subdir）にテンプレート自身の決定を書かない。テンプレ保守決定の記録先は `.llm/memory/archive/maintainer-discussions/`。所有権の正本は manifest を参照する。
+```markdown
+## MD-YYYY-MM-NNN: <title>
+- **状態**: open | absorbed | retained-process
+- **作成日**: YYYY-MM-DD
+- **吸収先**: [`MAINTAINERS_GUIDE.md §7.2`, `.llm/repo-context.edn`]
+- **保持理由**: <retained-process の時のみ 1 行>
+```
 
-### 7.3 月次アーカイブの形式
+| 状態 | 意味 | 終状態 |
+|---|---|---|
+| `open` | 議論中、または正本への吸収が未完了 | 30 日以上 open なら点検 |
+| `absorbed` | 現行ルール・guide・manifest・script へ吸収済み | 原則削除 |
+| `retained-process` | process narrative として例外保持 | 半年ごとに再評価 |
 
-詳細な運用規則と記録フォーマットは archive の README に置く。
+`retained-process` は、同類の decision が再発しやすく、かつ git history だけでは経緯を追えない場合に限る。迷う場合は削除側に倒す。`absorbed` の `吸収先` は、実在する file / section / script を指す。吸収先の検査は `.llm/scripts/check-archive-staleness.sh` が行う。
+
+### 7.3 却下案の扱い
+
+却下案は archive に重複保持しない。将来の再提案防止に永続価値があるものだけ、該当する現行ルールの本文近くに 1〜2 行で残す。
+
+残す条件:
+- LLM が再提案しやすい
+- 誤採用すると SSOT・所有権・配布物最小化を壊す
+- 短く説明できる
+
+例: bare marker は所有権範囲を表現できず SSOT として弱いため不採用。`:downstream` 命名は派生後もテンプレート視点を残すため不採用。codex review の各 round、却下された一時ドラフト文面、作業途中の表現揺れは残さない。
+
+### 7.4 将来の保守 workflow
+
+1. 議論開始時に、必要なら archive entry を `状態: open` で作る
+2. 決定を本文書・該当 guide・manifest・script に反映する
+3. entry の `吸収先` を埋め、`状態: absorbed` にする
+4. retained-process 条件を満たさない場合は entry を削除する
+5. 削除後も必要な履歴は git commit が保持する
+
+この cleanup 作業自身も同じ workflow に従う。作業用 entry を作った場合、§7 と検査へ吸収した後に `absorbed` とし、retained-process 条件を満たさなければ削除する。
+
+### 7.5 Archive README の役割
+
+archive README はディレクトリ入口であり、本節の詳細を複製しない。運用の正本は本文書 §7 に置く。
 ∵ ../memory/archive/maintainer-discussions/README.md
 
-### 7.4 移管済みアーカイブ
+### 7.6 既存派生プロジェクトへの持ち込み
 
-- `.llm/memory/archive/maintainer-discussions/2026/2026-04.md` — 2026-04 のテンプレート設計・文書体系・REPL workbench 関連の議論
-- `.llm/memory/archive/maintainer-discussions/2026/2026-05.md` — 2026-05 のテンプレート保守規律と評価観点に関する議論 (Issue #10 エラー教育性 / LLM フレンドリー度 / Issue #11 6 バイアス対応)
+既存プロジェクトに本テンプレート更新を持ち込む場合、`.llm/repo-context.edn` が無い状態は旧テンプレート由来の通常状態として扱う。`session-briefing.sh` は non-blocking ERROR として migration 例を表示し、作業開始を止めない。完了条件を strict 化する前に、`:repo-kind :project` の manifest を追加し、既存 ADR / KNOWLEDGE / QUESTIONS を削除せず棚卸しする。
 
 ## 8. 関連文書
 

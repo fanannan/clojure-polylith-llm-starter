@@ -44,8 +44,11 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 | `check-single-ns-per-file.sh` | 1 つの `.clj` / `.cljc` / `.cljs` ファイルに `(ns ...)` が複数ないか検査 |
 | `check-vulnerabilities.sh` | `clj-watson` による依存脆弱性スキャン（release 前必須、完了条件外） |
 | `lint-import-hooks.sh` | 依存ライブラリ提供の `clj-kondo` hook を `.clj-kondo/configs/` に取り込む |
-| `session-briefing.sh` | セッション起動時の状態ブリーフィング。`.llm/repo-context.edn` から `:repo-kind` を読み TEMPLATE MAINTENANCE / PROJECT モードを判定（conflict 最優先、bootstrap 完了痕跡 + `:template` で hard error）。モード別に表示内容を切り替える（CLAUDE.md §8.0 実装着手前の確認の機械化バックアップ） |
-| `check-mode-scope.sh` | テンプレ保守 vs 派生プロジェクトの所有権境界違反を機械検出。`.llm/repo-context.edn` を SSOT として、`:project-owned` 配下のテンプレ保守マーカー混入、`:section-scoped` の section 跨ぎ違反等を WARN として報告。CLAUDE.md §1.2.1 機械化の実装 |
+| `session-briefing.sh` | セッション起動時の状態ブリーフィング。`.llm/repo-context.edn` から `:repo-kind` を読み TEMPLATE MAINTENANCE / PROJECT モードを判定（conflict 最優先、bootstrap 完了痕跡 + `:template` で non-blocking ERROR）。モード別に表示内容を切り替える（CLAUDE.md §8.0 実装着手前の確認の機械化バックアップ） |
+| `check-mode-scope.sh` | テンプレ保守 vs 派生プロジェクトの所有権境界違反を機械検出。`.llm/repo-context.edn` を EDN として読み、`:project-owned` 配下のテンプレ保守マーカー混入、`:section-scoped` の section 跨ぎ違反等を報告。CLAUDE.md §1.2.1 機械化の実装 |
+| `check-adr-dir-empty.sh` | TEMPLATE モードで `.llm/memory/adr/` に `README.md` / `template.md` 以外の実 ADR が残っていないか検査 |
+| `check-archive-staleness.sh` | maintainer discussion archive entry の staging schema、30 日超 open、吸収先 link 切れを検査 |
+| `check-no-dead-adr-refs.sh` | TEMPLATE モードの live tree に、撤去済みテンプレ ADR slug への参照が残っていないか検査 |
 | `repl-eval.sh` | 稼働中 nREPL に eval / load-file を送る LLM 向け client（CLAUDE.md §9 Live Workbench Protocol）。`.nrepl-port` 自動発見、永続 session 再利用（`.nrepl-session`）、`--expr` / `--load-file` / `--interrupt` / `--describe` / `--reset-session` / `--fresh` 対応 |
 | `repl_eval.clj` | repl-eval.sh の Clojure 実装（`clj -X:repl-eval` の exec-fn）。nREPL 標準 op（`eval` / `load-file` / `interrupt` / `describe` / `ls-sessions` / `clone`）を subcommand で提供、bounded printing（10000 chars/response）、file/line metadata 常時付与、process 跨ぎ request-id 永続化で確実な `--interrupt` を実現。接続時に `NREPL_PORT` / `.nrepl-port` の食い違い、workspace root 不一致、`dev.user/status` capability 不一致を検出して wrong JVM への接続を防ぐ |
 
@@ -121,7 +124,7 @@ REPL 状態節の `TCP 接続確認済` は「その port が listen してい�
 1. `.llm/scripts/check-<topic>.sh` を作成（終了コード 0 / 1 で成否表現、エラー時は人間に読めるメッセージ）
 2. `check-workspace-integrity.sh` の `run_step` に 1 行追加
 3. 本 README の「スクリプト一覧」表を更新
-4. 新しい観点・判断根拠は `MAINTAINERS_GUIDE.md §5.12`（linter 継続点検規律）または ADR として記録
+4. 新しい観点・判断根拠は `MAINTAINERS_GUIDE.md §5.12`（linter 継続点検規律）または §7 の staging model に従って記録
 
 ## Markdown 参照監査
 

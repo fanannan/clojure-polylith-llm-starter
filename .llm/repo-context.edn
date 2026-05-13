@@ -8,7 +8,8 @@
 ;;   - SSOT: 所有権情報は本ファイルのみが保持する。banner や規約文書には enumerate せず、
 ;;     代わりに本ファイルへの pointer のみを置く（drift 防止）。
 ;;   - CLAUDE.md §1.2.1 機械化: 規律ではなく manifest + script で強制
-;;   - CLAUDE.md §1.2.5 失敗早期検知: bootstrap 中途状態を briefing 起動時に hard error
+;;   - CLAUDE.md §1.2.5 失敗早期検知: bootstrap 中途状態を briefing で早期提示し、
+;;     完了条件の check で block
 ;;
 ;; モード:
 ;;   :template — このリポはテンプレートそのもの。テンプレ保守作業が行われる。

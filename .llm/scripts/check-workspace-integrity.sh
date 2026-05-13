@@ -104,6 +104,16 @@ run_step "Markdown 参照マーカー検査" \
 run_step "モード境界検査 (check-mode-scope)" \
   "$SCRIPT_DIR/check-mode-scope.sh"
 
+# --- テンプレート保守記録の残骸検査 ---
+run_step "ADR ディレクトリ空検査 (template mode)" \
+  "$SCRIPT_DIR/check-adr-dir-empty.sh"
+
+run_step "maintainer archive staging 検査" \
+  "$SCRIPT_DIR/check-archive-staleness.sh"
+
+run_step "撤去済みテンプレ ADR 参照検査" \
+  "$SCRIPT_DIR/check-no-dead-adr-refs.sh"
+
 # --- 1 ファイル 1 ns ---
 run_step "1 ファイル 1 ns 検査" \
   "$SCRIPT_DIR/check-single-ns-per-file.sh"

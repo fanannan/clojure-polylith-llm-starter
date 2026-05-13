@@ -202,6 +202,24 @@
    :exec-fn     check-test-instrumentation/run}
 
   ;; ----------------------------------------------------------------
+  ;; :check-mode-scope — repo-context.edn に基づく mode/ownership 境界検査
+  ;;   shell wrapper `.llm/scripts/check-mode-scope.sh` から呼ばれる。
+  ;;   `.llm/repo-context.edn` を EDN として読み、template/project の
+  ;;   所有権境界違反を検出する。
+  ;; ----------------------------------------------------------------
+  :check-mode-scope
+  {:extra-paths [".llm/scripts"]
+   :exec-fn     check-mode-scope/run}
+
+  ;; ----------------------------------------------------------------
+  ;; :check-archive-staleness — maintainer discussion staging entry 検査
+  ;;   shell wrapper `.llm/scripts/check-archive-staleness.sh` から呼ばれる。
+  ;; ----------------------------------------------------------------
+  :check-archive-staleness
+  {:extra-paths [".llm/scripts"]
+   :exec-fn     check-archive-staleness/run}
+
+  ;; ----------------------------------------------------------------
   ;; :gen-lib-catalog — 技術選定カタログから artifact を生成
   ;;   `;; lib-catalog` マーカ付き EDN block を抽出 → Malli 検証 →
   ;;   .llm/data/{libs.edn, deprecated-libs.patterns, forbidden-requires.patterns}

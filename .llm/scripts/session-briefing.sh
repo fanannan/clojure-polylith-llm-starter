@@ -33,10 +33,10 @@ cd "$WORKSPACE_ROOT"
 # -----------------------------------------------------------------------------
 #
 # 判定順序（conflict 最優先）:
-#   1. manifest が :template + bootstrap 完了痕跡  → hard error
+#   1. manifest が :template + bootstrap 完了痕跡  → non-blocking ERROR を表示
 #   2. manifest が :template                        → TEMPLATE MAINTENANCE モード
 #   3. manifest が :project                         → PROJECT モード
-#   4. manifest 不在                                → エラー停止（手動修復を促す）
+#   4. manifest 不在                                → non-blocking ERROR + migration 案内
 
 read_repo_kind() {
   # `.llm/repo-context.edn` から :repo-kind の値を抽出。:template または :project を返す。
@@ -231,17 +231,30 @@ PROJECT_NAME="$(read_project_name || true)"
 if [ -z "$REPO_KIND" ]; then
   echo "## MODE: UNKNOWN（manifest 不在）"
   echo ""
-  echo "**エラー**: \`.llm/repo-context.edn\` が見つかりません。"
-  echo "本テンプレ由来のリポジトリでは manifest が必須です。配布物から復元するか、"
-  echo "\`.llm/repo-context.edn\` を手動で作成してください。"
+  echo "**ERROR (non-blocking)**: \`.llm/repo-context.edn\` が見つかりません。"
+  echo "既存派生プロジェクトへ本テンプレ更新を持ち込んだ直後なら、"
+  echo "\`:repo-kind :project\` の manifest を追加してください。"
+  echo ""
+  echo "派生プロジェクトでの作成例（\`:project-name\` を実値に置換し、\`:ownership\` は"
+  echo "テンプレ最新版の \`.llm/repo-context.edn\` からコピー）:"
+  echo ""
+  cat <<'EOF'
+{:repo-kind :project
+ :derived-from "clojure-polylith-llm-starter"
+ :project-name "myorg.myapp"
+ :ownership {;; copy from the latest template .llm/repo-context.edn
+             }}
+EOF
+  echo ""
+  echo "詳細: \`.llm/guide/MAINTAINERS_GUIDE.md\` §7.6"
   exit 0
 fi
 
 # 2. conflict: manifest が :template かつ bootstrap 完了痕跡
 if [ "$REPO_KIND" = "template" ] && has_bootstrap_traces; then
-  echo "## MODE: CONFLICT（hard error）"
+  echo "## MODE: CONFLICT"
   echo ""
-  echo "**bootstrap finalization missed manifest transform**"
+  echo "**ERROR (non-blocking)**: bootstrap finalization missed manifest transform"
   echo ""
   echo "manifest は \`:repo-kind :template\` を主張していますが、bootstrap 完了痕跡"
   echo "（workspace.edn がプレースホルダから書き換わっている、または projects/ 配下に"
