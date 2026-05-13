@@ -86,6 +86,106 @@ handler.clj は入出力変換のみに薄く保ち、実処理は orchestration
 | **project** | デプロイ単位。components + bases の組合せを `:local/root` で参照 | **機械化**（配線のみ、ライブラリ依存禁止） |
 | **development** | 開発用の統合 REPL。全 brick を単一プロセスで読み込む | **ループ短縮**（§1.2.2） |
 
+### 1.1 Brick Map と `brick.edn`
+
+brick の機能分担は Markdown を正本にしない。各 brick 直下の `brick.edn` を機械可読な設計意図の正本とし、閲覧用の `docs/BRICKS.md` と検索用の `.llm/data/brick-map.edn` は `brick.edn` と `interface.clj` から生成する。
+
+目的は、必要な機能をどの component に頼ればよいか、base がどの entrypoint からどの component capability を使うか、重複実装が発生していないかを常に機械検査できる状態にすることである。
+
+`brick.edn` はコードの代替正本ではない。公開 API と Malli 契約の正本は `interface.clj`、実装事実の正本は `core.clj` / `system.clj` 等、ライブラリ依存の正本は brick の `deps.edn` である。`brick.edn` が担うのは、コードだけから安全に復元できない責務・capability ownership・not-for・要求対応である。
+
+新規 brick では、実装より先に `brick.edn` を作る。`brick.edn` で capability ownership を決めてから `interface.clj` の公開 API と `m/=>` 契約を設計し、実装を進める。
+
+component の `brick.edn` は capability の所有を表す。
+
+```clojure
+{:brick/name :invoice
+ :brick/type :component
+ :brick/purpose "請求書エンティティの生成・検証・金額計算"
+ :brick/provides #{:invoice/create :invoice/validate :invoice/total-amount}
+ :brick/not-for #{:pdf/render :email/send :http/response}
+ :brick/requirements ["INV-01" "INV-02"]}
+```
+
+base の `brick.edn` は外部 entrypoint と利用 capability を表す。base は capability を所有しないため、`:brick/provides` を書かない。
+
+```clojure
+{:brick/name :web-api
+ :brick/type :base
+ :brick/purpose "HTTP API として外部リクエストを受け、component の機能へ委譲する"
+ :brick/entrypoint :http-api
+ :brick/uses #{:invoice/create :invoice/validate}
+ :brick/requirements ["API-01"]}
+```
+
+`docs/BRICKS.md` と `.llm/data/brick-map.edn` は自動生成物であり、直接編集しない。再生成は次で行う。
+
+```bash
+clj -Sdeps '{:paths [".llm/scripts"]}' -X gen-brick-map/generate
+```
+
+`./.llm/scripts/check-workspace-integrity.sh` は、全 brick の `brick.edn` 存在、component/base の意味違反、重複 capability、base の未提供 capability 参照、`docs/BRICKS.md` / `.llm/data/brick-map.edn` の drift を検査する。
+
+既存 repo の導入時など、`brick.edn` を持たない brick がある場合は、まず skeleton 案を出す。
+
+```bash
+./.llm/scripts/propose-brick-edn.sh
+```
+
+この提案は書き込みを行わない。実際に欠落 skeleton と下流生成物を作る場合は次を使う。
+
+```bash
+./.llm/scripts/ensure-brick-map.sh
+```
+
+`:brick/name`、`:brick/type`、公開 API 候補は実装から推測できるが、`:brick/purpose`、`:brick/provides`、`:brick/not-for`、`:brick/requirements` は設計意図なので TODO として生成される。TODO は警告であり、移行完了前に人間/LLM が DESIGN と実装を見て確定する。
+
+### 1.2 既存機能の探索手順
+
+ある機能が既存 brick に実装済みかを調べる時は、次の順に確認する。
+
+1. capability 名が分かる場合は `.llm/data/brick-map.edn` の `:capabilities` を見る
+2. 機能名・要求 ID・自然言語の語彙しか分からない場合は `docs/BRICKS.md` と `.llm/data/brick-map.edn` を検索する
+3. 見つかった capability は、提供元 component の `interface.clj` 経由で利用する
+4. 見つからない場合だけ、新規 component capability の追加候補として扱う
+5. 新規追加前に、既存 component の `:brick/not-for` も確認し、意図的に対象外とされていないか確認する
+
+この順序を飛ばして新規 component を作ると、同じ capability の重複実装を誘発する。`check-workspace-integrity.sh` は重複 capability を検出するが、探索手順は編集前に重複を避けるためのプロトコルである。
+
+### 1.3 公開関数名の規律
+
+公開関数名は、`brick.edn` の capability と対応して理解できる名前にする。関数名だけで混乱する状態は、LLM が既存機能を見落として重複実装する原因になる。
+
+原則:
+
+- `interface.clj` の公開関数は、`brick.edn` の `:brick/provides` に対応する操作名を表す
+- 同一 brick 内で自明な場合だけ `create`、`validate`、`parse`、`format` などの短い動詞を許容する
+- 複数 entity / 複数 capability を扱う brick では、`create-invoice`、`validate-invoice`、`calculate-total-amount` のように対象語を含める
+- base の公開関数は entrypoint の配線を表す名前にし、ドメイン機能を所有しているような名前にしない
+- 既存 repo の既存関数名は、導入時に破壊的 rename しない。まず `brick.edn` と generated Brick Map で意味を補い、必要なら後続の通常変更として alias / deprecation / rename を計画する
+- 複数 brick に同じ短い公開関数名が現れる場合は、generated Brick Map の警告対象とする。ただし、同種の操作を別 brick に分けるために `invoice/create`、`customer/create` のように関数名を揃えることは許容する。この場合、各 brick の `:brick/provides` が `:<domain>/<operation>` 形式で一意であり、呼び出し側の namespace alias と合わせて意味が完成している必要がある
+
+命名判断:
+
+| 状況 | 推奨 |
+|---|---|
+| component が単一 entity の主要操作だけを持つ | `create` / `validate` など短い名前を許容 |
+| component が複数 entity または複数 capability を持つ | 対象語を含める |
+| 同じ動詞が複数 capability に対応し得る | capability 名に寄せて具体化 |
+| 同種の操作を別 brick で揃える | 関数名の重複を許容。ただし `:brick/provides` は一意にし、namespace alias で意味が読めること |
+| 既存関数名が曖昧だが外部利用がある | rename せず `brick.edn` に意味を記録し、移行計画を別途作る |
+
+例:
+
+```clojure
+;; OK: namespace + 関数名 + capability ownership で意味が明確
+(invoice/create input)  ; :invoice/create
+(customer/create input) ; :customer/create
+
+;; 要再考: brick 名も capability も曖昧
+(manager/create input)
+```
+
 ---
 
 ## 2. brick のコード例（**この節が書き方の正本**）
@@ -500,17 +600,19 @@ components/<name>/
 
 その後の手順：
 
-1. `deps.edn` に必要な依存を追加（**ライブラリ依存はここに書く**、project には書かない）
-2. 本文書 §2.1 component コード例を参照して以下を埋める：
+1. 実装前に `brick.edn` を作成し、`:brick/type :component`、`:brick/provides`、`:brick/requirements` を記録する
+2. `deps.edn` に必要な依存を追加（**ライブラリ依存はここに書く**、project には書かない）
+3. 本文書 §2.1 component コード例を参照して以下を埋める：
    - `core.clj`: Malli スキーマ + 純粋関数（`m/=>` 契約は置かない）
    - `interface.clj`: core への薄い委譲 + `m/=>` 契約集約（境界契約、§1.1.1）（100 行超えたら実装漏れ、core に戻す）
    - `interface_test.clj`: clojure.test + プロパティテスト
-3. Integrant key を提供する場合は entry base の `system.clj`（§2.2 のコード例）の defmethod 集約に追加
-4. project の `deps.edn` に `:local/root` で登録
-5. development の `deps.edn` の `:dev` エイリアス `:extra-paths` にソースパスを追加（`components/<name>/src` 等）
-6. **development の `deps.edn` の `:dev` エイリアス `:extra-deps` に `:local/root` で登録**（`poly/<name> {:local/root "components/<name>"}`）。これにより brick deps.edn の `:deps` が推移的解決され、REPL で利用可能になる
-7. `clj -M:poly check` で構造検証
-8. `clj -M:poly test project:<project-name>` で特定 project 配下の brick テストを実行（全 project・全 brick を流すなら `clj -M:poly test :all`）
+4. Integrant key を提供する場合は entry base の `system.clj`（§2.2 のコード例）の defmethod 集約に追加
+5. project の `deps.edn` に `:local/root` で登録
+6. development の `deps.edn` の `:dev` エイリアス `:extra-paths` にソースパスを追加（`components/<name>/src` 等）
+7. **development の `deps.edn` の `:dev` エイリアス `:extra-deps` に `:local/root` で登録**（`poly/<name> {:local/root "components/<name>"}`）。これにより brick deps.edn の `:deps` が推移的解決され、REPL で利用可能になる
+8. `clj -Sdeps '{:paths [".llm/scripts"]}' -X gen-brick-map/generate` で `docs/BRICKS.md` を再生成
+9. `clj -M:poly check` で構造検証
+10. `clj -M:poly test project:<project-name>` で特定 project 配下の brick テストを実行（全 project・全 brick を流すなら `clj -M:poly test :all`）
 
 ### 3.2 新規ベース追加（**人間専権**）
 
@@ -522,7 +624,7 @@ clj -M:poly create base name:<name>
 
 用途の例：HTTP API（既存 entry base と）は別の CLI、Lambda 関数、バッチジョブなど。
 
-その後、`bases/<name>/deps.edn` に必要なライブラリを追加、本文書 §2.2 base コード例を雛形として `core.clj`/`system.clj` などを実装。
+その後、`bases/<name>/brick.edn` に `:brick/type :base`、`:brick/entrypoint`、`:brick/uses` を記録する。base は capability を所有しないため `:brick/provides` を書かない。続いて `bases/<name>/deps.edn` に必要なライブラリを追加、本文書 §2.2 base コード例を雛形として `core.clj`/`system.clj` などを実装し、`docs/BRICKS.md` を再生成する。
 
 ### 3.3 新規プロジェクト追加（**人間専権**）
 

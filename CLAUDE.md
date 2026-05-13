@@ -605,13 +605,14 @@ subagent / tool 呼び出し / 長い shell 実行は、ユーザへの最終応
 
 1. **仕様の確認**: DESIGN の関連節（特に §3 主要ユースケース、§4 受入基準）を読む
 ¤ DESIGN.md
-2. **既存知識の確認**: KNOWLEDGE の関連節（対象ドメイン・境界契約・運用制約）を読む
+2. **Brick Map の確認（brick / 機能配置に関わる作業のみ）**: `docs/BRICKS.md` と `.llm/data/brick-map.edn` が存在する場合、既存 capability・担当 component・entrypoint base を確認する。既存 capability が見つかった場合は新規実装せず、該当 `interface.clj` 経由で利用する。brick が存在するのに生成物が無い、または drift している場合は `gen-brick-map/generate` の再生成対象として扱う
+3. **既存知識の確認**: KNOWLEDGE の関連節（対象ドメイン・境界契約・運用制約）を読む
 ¤ .llm/memory/KNOWLEDGE.md
-3. **未決判断の確認**: QUESTIONS の `未対応(open)` / `議論中(in-discussion)` に関連する Q がないか確認する。関連 Q があれば、その解決を待つか、Q のコンテキストで作業する
+4. **未決判断の確認**: QUESTIONS の `未対応(open)` / `議論中(in-discussion)` に関連する Q がないか確認する。関連 Q があれば、その解決を待つか、Q のコンテキストで作業する
 ¤ .llm/memory/QUESTIONS.md
-4. **過去の決定の確認**: 関連する ADR があれば読む
+5. **過去の決定の確認**: 関連する ADR があれば読む
 ¤ .llm/memory/adr/README.md
-5. **上位文脈の確認（該当する場合のみ）**: 本リポジトリが上位プロジェクト・親 Issue・外部設計合意の下で動いているなら、その上位文脈で記録先・配置先・公開範囲が決まっていないか確認する。判定基準は次のいずれか：(a) README やプロジェクトトップに「このリポジトリは XXX の一部」のような記述がある、(b) 直近の対話・Issue で上位プロジェクトが明示されている、(c) ユーザが session 開始時に上位プロジェクトを言及した。いずれにも該当しないなら本項はスキップしてよい（空確認）。
+6. **上位文脈の確認（該当する場合のみ）**: 本リポジトリが上位プロジェクト・親 Issue・外部設計合意の下で動いているなら、その上位文脈で記録先・配置先・公開範囲が決まっていないか確認する。判定基準は次のいずれか：(a) README やプロジェクトトップに「このリポジトリは XXX の一部」のような記述がある、(b) 直近の対話・Issue で上位プロジェクトが明示されている、(c) ユーザが session 開始時に上位プロジェクトを言及した。いずれにも該当しないなら本項はスキップしてよい（空確認）。
    - **本項が無視されやすい構造的理由**: 本テンプレートの `.llm/memory/` 構造は強力で、LLM は「ここに書け」と引き寄せられる。能動的に上位を見に行かないと、上位合意を忘れて下位 KNOWLEDGE.md に書き出してしまう（実観察事例）。KNOWLEDGE/ADR の記録先 scope は §6 の協働プロトコルに従って明示する。
    ∵ .llm/guide/COLLABORATION_GUIDE.md §6
 
@@ -621,7 +622,7 @@ subagent / tool 呼び出し / 長い shell 実行は、ユーザへの最終応
 |---|---|---|
 | L0 | `session-briefing.sh` の MODE と次に読む文書を確認 | 作業 mode と所有権が分かる |
 | L1 | DESIGN / KNOWLEDGE / QUESTIONS / ADR の見出し・状態欄を scan | 対象ドメイン・未決 Q・関連 ADR の有無が分かる |
-| L2 | タスク語彙・対象 namespace・機能名で `rg` する | 関連節または「該当なし」を説明できる |
+| L2 | タスク語彙・対象 namespace・機能名で `.llm/data/brick-map.edn` / `docs/BRICKS.md` / repo 全体を `rg` する | 既存 capability・担当 brick・関連節または「該当なし」を説明できる |
 | L3 | 触るファイル周辺の ns/docstring/comment、`interface.clj`、近接 test を読む | コード内の局所規約と既存境界が分かる |
 | L4 | README・直近対話・Issue 由来の上位文脈を確認 | 上位プロジェクトや外部合意の有無が分かる |
 
@@ -629,7 +630,7 @@ L3 は文書確認では代替できない。対象 namespace に docstring / co
 
 §8.0 の確認は「セッション 1 回だけ」ではなく、新しい bounded task に入るたびに差分確認として行う。ただし毎回全文を読み直さない。前回確認後に触る対象・モード・関連語彙が変わった時だけ、ladder の該当段を再実行する。context compaction / 長い中断 / 予期しない file change 通知 / 本書や `.llm/repo-context.edn` の変更を検知した時は、`session-briefing.sh`、`git status`、対象ファイルの再読で状態を再同期してから編集を続ける。
 
-**「空確認」規約**: 上記 5 つの確認は、該当文書が空または該当事項なしの場合、**着手前確認は通過したものとみなす**（第 5 項は「上位文脈なし」を確認した場合を含む）。空を確認する行為自体が §1.3 の実装であり、スキップしてよい対象ではない。ただし、空であることを確認した後は次のステップに進む。
+**「空確認」規約**: 上記 6 つの確認は、該当文書が空または該当事項なしの場合、**着手前確認は通過したものとみなす**（第 6 項は「上位文脈なし」を確認した場合を含む）。空を確認する行為自体が §1.3 の実装であり、スキップしてよい対象ではない。ただし、空であることを確認した後は次のステップに進む。
 
 空確認の目的は「読む価値があるか」を毎回推測しないことにある。空であっても確認済みなら、以後の判断で「見落としたかもしれない」という再確認を避けられる。各文書の運用手順は、この §8.0 から呼び出されるプロセスを定義する。
 ∵ .llm/memory/KNOWLEDGE.md
@@ -663,6 +664,7 @@ LLM のフィードバックループは**編集単位でターン内に閉じ�
 | `interface.clj` / `m/=>` 契約 / 外部入力 schema の変更 | REPL eval 必須 → `clj -M:poly test` | `poly test` は回帰確認。契約検証は instrumentation 下で別途行う |
 | runtime wiring、publisher、defrecord / protocol、ns graph 変更 | REPL eval 必須。必要に応じて `(safe-reset!)` / `(hard-reset!)` | 起動中 JVM の状態に依存するため |
 | deps.edn、brick 構造、workspace.edn 変更 | `clj -M:poly check` + 依存解決確認 + fresh JVM 判断 | REPL の既存 classpath では確認不足 |
+| `brick.edn`、公開 API、capability 変更 | `./.llm/scripts/check-workspace-integrity.sh` | `docs/BRICKS.md` / `.llm/data/brick-map.edn` の drift、重複 capability、base の未提供 capability 参照を検出 |
 | 完了報告前 | §5.5 完了条件 | `poly test :all` で全体検証 |
 
 文書のみのテンプレ保守では REPL eval は不要である。Markdown 参照・archive staging・mode boundary など、変更対象に対応する script gate を優先する。`.llm/scripts/*.clj` / `.llm/scripts/*.sh` を触った場合は総合検査と該当 script の単体実行を行う。Clojure/Polylith の構造や runtime code を触った場合だけ、REPL と `poly` gate を通常どおり要求する。

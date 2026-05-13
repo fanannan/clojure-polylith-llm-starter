@@ -165,6 +165,11 @@ clj -M:poly create project name:<deploy>
 
 生成された brick は、**POLYLITH_GUIDE のコード例に従って**中身を実装する。独自の流儀を発明しない。
 ¤ POLYLITH_GUIDE.md §2
+公開関数名は `brick.edn` の capability と対応して理解できる名前にする。短い `create` / `validate` などは、単一 entity の主要操作として自明な場合だけ使う。
+∵ POLYLITH_GUIDE.md §1.3
+
+各 brick には、実装より先に `brick.edn` を作成する。component は所有する capability を `:brick/provides` に、base は外部 entrypoint と利用 capability を `:brick/entrypoint` / `:brick/uses` に記録する。`docs/BRICKS.md` と `.llm/data/brick-map.edn` はこの EDN と `interface.clj` から生成される派生成果物であり、直接編集しない。
+∵ POLYLITH_GUIDE.md §1.1
 
 ### 2.4 必要な用途別機能カテゴリの推奨ライブラリを brick deps.edn に反映
 
@@ -210,6 +215,24 @@ deps.edn へ入れるライブラリは必要な用途別機能カテゴリ単�
   ```
 
 **なぜ `:local/root` 登録が必要か**（選択肢 H の帰結）: brick deps.edn を一次情報源とする方針では、brick の依存は brick の deps.edn に書かれている。tools.deps は `:extra-paths` からソースを読むが、各 brick の deps.edn を自動解決しない。development が全 brick を統合して REPL で使うには、`:local/root` で brick を依存として登録する必要がある。これにより brick の deps.edn の `:deps` が推移的に解決され、REPL で `(require ...)` できるようになる。
+
+### 2.5.1 Brick Map の生成
+
+brick 構成・機能分担・公開 API は、閲覧用の `docs/BRICKS.md` と検索用の `.llm/data/brick-map.edn` に生成する。これらのファイルは自動生成物であり、直接編集しない。
+
+```bash
+clj -Sdeps '{:paths [".llm/scripts"]}' -X gen-brick-map/generate
+```
+
+`check-workspace-integrity.sh` は `docs/BRICKS.md` が最新かを検査するため、brick 追加・capability 変更・公開 API 変更後は必ず再生成する。
+
+既存 repo への導入などで `brick.edn` が欠落している場合は、欠落 skeleton と下流生成物をまとめて作る。
+
+```bash
+./.llm/scripts/ensure-brick-map.sh
+```
+
+生成された TODO は未確認事項の警告として扱い、移行完了前に確定する。
 
 ### 2.6 development/src/dev/user.clj の調整
 

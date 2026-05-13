@@ -244,6 +244,7 @@ LLM は本ファイルを読むたびに、以下の観点で**能動的に曖�
 ### 8.5 アーキテクチャ構造
 
 - **Polylith**（components / bases / projects / development）
+- **Brick Map**: brick 構成・機能分担・公開 API は `docs/BRICKS.md`（閲覧用生成物）と `.llm/data/brick-map.edn`（検索用生成物）で確認する。正本は各 `brick.edn` と `interface.clj`
 - 構造詳細は別紙に置く
 ∵ .llm/guide/POLYLITH_GUIDE.md
 
