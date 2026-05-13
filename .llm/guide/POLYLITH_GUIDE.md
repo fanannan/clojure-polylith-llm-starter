@@ -27,6 +27,52 @@ Polylith は **../CLAUDE.md §1.1.3 副作用の隔離 + §1.2.1 機械化** の
 
 ---
 
+## 越境ユースケースの機械化（上位原理）
+
+複数 entity / 複数 entrypoint をまたぐ処理（以下「越境ユースケース」）は、Polylith 構造の上で**見落とされやすく再発見コストの高い領域**である。本テンプレートはこれを `../CLAUDE.md §1.2.1 機械化` と `§1.2.2 ループ短縮` の合成として最優先の機械化対象に位置づける。
+
+**上位原理**: 越境ユースケースは、人間の記憶ではなく **ns 配置（抽出）・REPL helper（起動）・境界テスト（検証）** の 3 つの機械化手段で再現可能にする。新しい越境ユースケースに遭遇した時は、以下の 3 派生それぞれに該当する作業が完了しているか自己点検する。
+
+### 派生 1: 抽出 — orchestration ns
+
+越境処理は handler.clj に書かず、`<uc>-orchestration` という名前付き ns へ抽出する。配置基準は entrypoint の共有度に依存する条件型判定（§2.2.1）：
+
+- **単一 entrypoint 専用**（HTTP API だけが呼ぶ等）→ `bases/<base>/src/.../<uc>_orchestration.clj` に sub-ns 配置
+- **複数 entrypoint 共有**（API + CLI + UI が同じ処理を呼ぶ）→ `components/<uc>-orchestration/` として component 昇格
+
+handler.clj は入出力変換のみに薄く保ち、実処理は orchestration へ委譲する。
+
+### 派生 2: 起動 — `(safe-reset!) → (seed-all!)` 2 行原則
+
+越境ユースケースの開発・PR smoke test では、その境界を **2 行で立ち上げられる状態**を維持する：
+
+```clojure
+(safe-reset!)   ; refresh / lifecycle reset
+(seed-all!)     ; seed helper による fixture 投入
+```
+
+- 配置: `development/src/dev/fixtures.clj`（派生プロジェクト側で実体化）
+- 命名: 全体を担う `(seed-all!)` と、UC 単位の `(seed-<uc>!)` の 2 階層
+- `seed-all!` は `(doseq [f [seed-<uc1>! seed-<uc2>! ...]] (f))` で組み立てる
+
+本テンプレート配布時には `dev/fixtures.clj` は置かない（brick 未配置と整合）。派生プロジェクトが brick を生やしたタイミングで本規約に従って実体化する。詳細手順は §7.4。
+
+### 派生 3: 検証 — 越境 tx の原子性 assert
+
+越境 tx を持つ orchestration には、**原子性を主張する境界テストを 1 つ以上置く**。これは `../CLAUDE.md §1.1.1 全域性` の境界契約の延長として独立に成立する規律であり、「越境処理を書いた」という事実から自動的に発生する義務である。
+
+検証**手段**は採用 DB に依存する。テンプレートは中立を保ち、規約化するのは **「assert する」** 規律のみ：
+
+| 採用 DB | 原子性 assert の典型実装 |
+|---|---|
+| next.jdbc（RDBMS） | tx handle を 1 つに固定し、orchestration 内で取得 connection の `System/identityHashCode` 一致を assert、または `with-transaction` ネスト検出 |
+| XTDB | 各 entity の `_system_from` metadata 一致を assert（`(= 1 (count (set system-froms)))`） |
+| Datomic | 単一 tx report に期待 datom がすべて含まれることを assert、または期待 datom の `:tx` が同一であることを assert |
+
+派生プロジェクトはこの 3 派生を「越境ユースケースを書く時のチェックリスト」として運用する。**該当する派生をすべて満たす**。具体的には、抽出（派生 1）と起動（派生 2）はすべての越境ユースケース（read-only な集計や外部 API 連携を含む）に適用する。検証（派生 3）は**越境 tx を持つ orchestration**（複数 entity の write を 1 tx で行う処理）にのみ必須。
+
+---
+
 ## 1. brick 種別と責務
 
 | 種別 | 責務 | §1.1 原則のどれを担うか |
@@ -301,6 +347,50 @@ fixture の形は `mdev/start!` で開始し、`(try (f) (finally (mdev/stop!)))
                          rrc/coerce-response-middleware]}})
    (ring/create-default-handler)))
 ```
+
+#### 2.2.1 越境処理の抽出 — `<uc>-orchestration` ns
+
+複数 entity を跨ぐ処理や、複数 entrypoint（HTTP / CLI / UI 等）から共有される処理を handler.clj に直書きしない。**`<uc>-orchestration` という名前付き ns に抽出**する（上位原理「越境ユースケースの機械化」派生 1）。
+
+**配置基準（条件型）**:
+
+- **単一 entrypoint 専用**: orchestration が 1 つの base からしか呼ばれないことが明らかなら `bases/<entry>/src/myorg/myapp/<entry>/<uc>_orchestration.clj` に sub-ns で置く
+- **複数 entrypoint 共有**: 2 つ以上の base / entrypoint から同じ orchestration を呼ぶなら、即座に `components/<uc>-orchestration/` として component に昇格させる
+
+「将来 UI からも呼ぶかもしれない」という推測で先に component 化しない（YAGNI）。実際に 2 つ目の呼び出し元が発生した時点で昇格させる。逆に、最初から複数 entrypoint で呼ぶ予定が明確なら、最初から component に置く。
+
+**抽象例（base 内 sub-ns 版）**:
+
+```clojure
+;; bases/<entry>/src/myorg/myapp/<entry>/<uc>_orchestration.clj
+(ns myorg.myapp.<entry>.<uc>-orchestration
+  "<uc> ユースケース：複数 entity を跨ぐ orchestration。
+   本 base の handler.clj から呼ばれる（単一 entrypoint 専用）。
+   別 entrypoint からも呼ぶ必要が生じた時点で components/<uc>-orchestration/ へ昇格する。"
+  (:require
+   [myorg.myapp.<domain-a>.interface :as a]
+   [myorg.myapp.<domain-b>.interface :as b]))
+
+(defn process [deps inputs]
+  ;; 越境 tx の組み立て：1 つの tx で a と b を更新
+  ;; 検証側（派生 3）でこの原子性を境界テストにより assert する
+  ...)
+```
+
+**handler 側**:
+
+```clojure
+;; handler.clj は薄く保つ：入出力変換のみ
+(:require
+ [myorg.myapp.<entry>.<uc>-orchestration :as uc])
+
+(defn- <uc>-handler [deps]
+  (fn [{:keys [parameters]}]
+    {:status 201
+     :body   (uc/process deps (:body parameters))}))
+```
+
+`refactor → feature` の 2 コミット分割（既存 handler から orchestration を抽出するコミット → orchestration を拡張するコミット）は `../CLAUDE.md §8.3` と `§1.2.3 小単位分解` に従う一般原則であり、本節では追加規約化しない。
 
 ### 2.3 project — デプロイ単位
 
@@ -595,6 +685,53 @@ poly/<name> {:local/root "components/<name>"}
 
 - **開発ツール**: nrepl, portal, integrant.repl, tools.namespace, test.check, matcher-combinators など（本番ビルドに混入させない）
 - **brick の `:local/root` 登録**: `poly/<name> {:local/root "..."}` の形（brick deps.edn の依存を REPL で使うため）
+
+### 7.4 開発フィードバック規約 — `(safe-reset!) → (seed-all!)` 2 行原則
+
+越境ユースケースの開発・PR smoke test では、`development` プロセス上で**境界状態を 2 行で立ち上げられる**ように維持する（上位原理「越境ユースケースの機械化」派生 2）。これは `../CLAUDE.md §1.2.2 ループ短縮` を smoke test レベルで実装する規律である。
+
+**配置と命名**:
+
+- 配置: `development/src/dev/fixtures.clj`
+- 命名:
+  - 全体 fixture: `(seed-all!)`
+  - UC 単位 fixture: `(seed-<uc>!)`（例: `(seed-order-cancellation!)`, `(seed-monthly-report!)`）
+
+**抽象実装例**:
+
+```clojure
+;; development/src/dev/fixtures.clj
+(ns dev.fixtures
+  "派生プロジェクトの smoke test / REPL 駆動開発用 fixture 集約。
+   (safe-reset!) → (seed-all!) の 2 行で全 UC を試せる状態にする。"
+  (:require
+   [myorg.myapp.<domain-a>.interface :as a]
+   [myorg.myapp.<domain-b>.interface :as b]))
+
+(defn seed-<uc1>!
+  "<uc1> ユースケースの境界状態を投入する。
+   越境 tx で a と b に minimum viable な値を書く。"
+  []
+  ...)
+
+(defn seed-<uc2>! [] ...)
+
+(defn seed-all!
+  "全 UC の seed helper を順に呼ぶ。
+   2 行 smoke test の右側。`(safe-reset!) (seed-all!)` で完全な開発状態。"
+  []
+  (doseq [f [seed-<uc1>! seed-<uc2>!]]
+    (f)))
+```
+
+**運用規律**:
+
+- 新しい越境 UC を追加したら、対応する `seed-<uc>!` を `dev/fixtures.clj` に追加し、`seed-all!` の vector にも登録する
+- seed helper は冪等にする（`(seed-all!)` を連続呼び出ししてもエラーにならない）
+- 本テンプレート配布時には `dev/fixtures.clj` は置かない（brick 未配置と整合、YAGNI）。派生プロジェクトが最初の越境 UC を実装した時点で本節に従って作る
+
+**今後の拡張候補**: 派生プロジェクトが立てた `seed-<uc>!` を `dev.user/status` の `:capabilities` に自動検出させる機構は、機械化候補として QUESTIONS に記録されている（`Q-2026-05-002`）。helper 命名規約・配置・capability shape が安定したら導入を検討する。
+∵ ../memory/QUESTIONS.md §2
 
 ---
 
