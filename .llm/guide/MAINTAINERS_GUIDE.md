@@ -795,6 +795,7 @@ Markdown 文書どうしの参照は、無印の Markdown 参照を禁止し、�
 ### 7.4 移管済みアーカイブ
 
 - `.llm/memory/archive/maintainer-discussions/2026/2026-04.md` — 2026-04 のテンプレート設計・文書体系・REPL workbench 関連の議論
+- `.llm/memory/archive/maintainer-discussions/2026/2026-05.md` — 2026-05 のテンプレート保守規律と評価観点に関する議論 (Issue #10 エラー教育性 / LLM フレンドリー度 / Issue #11 6 バイアス対応)
 
 ## 8. 関連文書
 
