@@ -780,11 +780,13 @@ Markdown 文書どうしの参照は、無印の Markdown 参照を禁止し、�
 
 ### 7.1 記録先
 
+モード語彙の正本は `.llm/repo-context.edn :repo-kind` である。本文書で「TEMPLATE MAINTENANCE」「テンプレ保守」「テンプレート本体の保守」と言う時は `:repo-kind :template` を指す。「PROJECT」「派生プロジェクト保守」は `:repo-kind :project` を指す。新しい呼称を追加する場合も、この 2 値へ明示的に写像する。
+
 | 内容 | 記録先 |
 |---|---|
 | 現在有効な保守規則 | 本文書、または該当 guide |
 | 機械化された事実 | `.llm/repo-context.edn` / `.llm/scripts/` |
-| 議論中の過程 | `.llm/memory/archive/maintainer-discussions/YYYY/YYYY-MM.md` |
+| 吸収前の議論過程 | `.llm/memory/archive/maintainer-discussions/YYYY/YYYY-MM.md` |
 | 未決事項 | `.llm/memory/QUESTIONS.md` |
 | 派生プロジェクトの決定履歴 | `.llm/memory/adr/NNNN-topic.md` |
 
@@ -809,6 +811,8 @@ archive entry は、議論中の staging record として次の形式で始め�
 | `retained-process` | process narrative として例外保持 | 半年ごとに再評価 |
 
 `retained-process` は、同類の decision が再発しやすく、かつ git history だけでは経緯を追えない場合に限る。迷う場合は削除側に倒す。`absorbed` の `吸収先` は、実在する file / section / script を指す。吸収先の検査は `.llm/scripts/check-archive-staleness.sh` が行う。
+
+30 日超 open の警告閾値は `.llm/scripts/check_archive_staleness.clj` の `open-warn-days` が正本である。長期レビュー中の正当な open も WARN になり得るが、これは block ではなく棚卸しの合図として扱う。
 
 ### 7.3 却下案の扱い
 
@@ -836,6 +840,8 @@ archive entry は、議論中の staging record として次の形式で始め�
 archive README はディレクトリ入口であり、本節の詳細を複製しない。運用の正本は本文書 §7 に置く。
 ∵ ../memory/archive/maintainer-discussions/README.md
 
+テンプレートから配布する archive は、原則として README のみである。`YYYY/YYYY-MM.md` の entry が残っている場合は staging record の吸収漏れとして扱い、`check-archive-staleness.sh` と §7.2 の基準で削除または圧縮を判断する。
+
 ### 7.6 既存派生プロジェクトへの持ち込み
 
 既存プロジェクトに本テンプレート更新を持ち込む場合、`.llm/repo-context.edn` が無い状態は旧テンプレート由来の通常状態として扱う。`session-briefing.sh` は non-blocking ERROR として migration 例を表示し、作業開始を止めない。
@@ -849,6 +855,12 @@ archive README はディレクトリ入口であり、本節の詳細を複製�
 5. WARN が整理された範囲から `:partial`、最終的に `:complete` へ昇格する
 
 属性キーワードは script が自動検出・提案してよいが、manifest への採用は人間承認後に限る。`:retrofit` では検査失敗を WARN として提示し、既存利用者の作業開始を block しない。`:partial` / `:complete` では、manifest の `:capabilities` に含まれる検査を gate として扱う。
+
+昇格基準:
+- `:retrofit` → `:partial`: `.llm/repo-context.edn` が存在し、`check-repo-context-consistency.sh` が通り、採用済み capability の gate 化について人間承認が済んでいる
+- `:partial` → `:complete`: strict template capabilities（`:deps-edn` / `:clj-kondo` / `:cljfmt` / `:malli` / `:polylith` / `:llm-guides`）がすべて採用済みで、`check-workspace-integrity.sh`、format/lint/poly check/test が通り、plain Clojure 由来の場合は Polylith 化が完了し、必須技術基盤の未導入 task が残っていない
+
+LLM が `.llm/repo-context.edn` を直接編集する経路は技術的には塞がない。承認モデルの実効性は、manifest 変更時に `apply-repo-context-migration.sh` または同等の人間承認を要求し、review で直接編集を差し戻す運用で担保する。承認なしの manifest 直接編集は規約違反である。
 
 テンプレート更新差分の判断材料は `.llm/migrations/` の migration id と、派生 repo の `.llm/repo-context.edn :applied-migrations` の比較から出す。git revision は由来確認・調査補助として記録してよいが、zip 配布や shallow clone でも移行判定できるよう、git 履歴そのものには依存しない。
 
@@ -875,6 +887,20 @@ archive README はディレクトリ入口であり、本節の詳細を複製�
 `propose-adoption-plan.sh` は推奨調査のための script ではない。local repo の構造・manifest・既存検査結果から、次に確認すべき移行作業を副作用なしで並べるための判断補助である。plain Clojure repo では、Polylith 化計画を必須作業として提示する。
 
 既存 Polylith repo で Malli / cljfmt / clj-kondo 等の必須技術基盤が欠ける場合、それらは optional ではなく strict template gate へ合流するための required task として扱う。
+
+### 7.8 Capability の追加・変更
+
+`:capabilities` は `.llm/repo-context.edn` の manifest 値であり、検出結果ではなく採用済み前提を表す。新しい capability を追加する時は、単に keyword を増やさない。
+
+1. 既存 capability の組み合わせで表現できないか確認する
+2. 必要なら archive entry を open で作成し、追加理由・却下案・影響する検査を記録する
+3. `.llm/repo-context.edn` のコメントに値の意味と採用基準を追加する
+4. `check_repo_context_consistency.clj` に依存関係と adoption-mode 上の妥当性を追加する
+5. `detect_repo_profile.clj` / `propose_adoption_plan.clj` が必要なら候補検出・移行 task を追加する
+6. 派生プロジェクトに影響するなら `.llm/migrations/` に migration entry を追加する
+7. `check-workspace-integrity.sh` に gate を追加する場合は、accepted capability だけで起動するようにする
+
+例: `:integrant` を追加したい場合、まず STACK_GUIDE の推奨ライブラリとして扱うだけで足りるかを確認する。検査・移行 task・runtime 構成規律まで manifest で gate する必要がある場合にだけ capability 化する。
 
 ## 8. 関連文書
 

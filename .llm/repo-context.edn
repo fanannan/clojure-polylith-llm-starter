@@ -32,6 +32,7 @@
 ;;     :partial は strict template へ移行中。採用済み capability の gate は有効、
 ;;     未完了の required task は残っている状態。
 ;;     :complete は strict template 準拠完了。plain-clojure の :complete は無効。
+;;     :complete には下記 6 capability の全採用が必要。
 ;;   :capabilities — 検出結果ではなく「この repo が採用済みとして扱う前提」。
 ;;     detect-repo-profile は候補を出すだけで、正本は人間承認後の本 manifest。
 ;;     値の意味:

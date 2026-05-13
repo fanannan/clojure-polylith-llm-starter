@@ -3,7 +3,7 @@
 本ディレクトリは、`.clj-kondo/` の custom hook では捕捉できない**設定ファイル・ディレクトリ構造・配布物整合性**の検査と、シェル展開が必要な運用コマンドのラッパー、および markdown 文書から機械可読な生成物を生成する Clojure script を収容する。各スクリプトは単独でも実行できるが、基本は `check-workspace-integrity.sh` が完了条件から一括で起動する。
 ∵ CLAUDE.md §5.5
 
-**Convention 拡張**（既存は shell のみ、以降は Clojure script も追加）: `gen_*.clj` は markdown 文書（典型的には `STACK_GUIDE`）から EDN / patterns 生成物を生成するための Clojure script。通常は shell wrapper から `clj -Sdeps '{:paths [".llm/scripts"]}' -X <ns>/<fn>` で起動する。`deps.edn` alias はテンプレ本体での直接実行用に残すが、既存 repo への retrofit 直後でも動くよう wrapper は alias に依存しない。
+**Convention 拡張**（既存は shell のみ、以降は Clojure script も追加）: `gen_*.clj` は markdown 文書（典型的には `STACK_GUIDE`）から EDN / patterns 生成物を生成する。`check_*.clj` は検査、`propose_*.clj` は人間承認前の判断材料提示、`apply_*.clj` は承認後の書き込みを担う。通常は shell wrapper から `clj -Sdeps '{:paths [".llm/scripts"]}' -X <ns>/<fn>` で起動する。`deps.edn` alias はテンプレ本体での直接実行用に残すが、既存 repo への retrofit 直後でも動くよう wrapper は alias に依存しない。
 
 hook（`.clj-kondo/polyguard/`）と script（本ディレクトリ）の役割分担は保守者向け文書に置く。
 ∵ MAINTAINERS_GUIDE.md §5.10
@@ -60,6 +60,7 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 | `llm-template-adopt.sh` | 既存 repo adoption の統合入口。detect / manifest proposal / migration proposal / adoption plan を順に表示し、承認後 apply へ誘導する（副作用なし） |
 | `check-repo-context-consistency.sh` | `.llm/repo-context.edn` の capability 依存関係、adoption mode、migration ledger 参照を検査 |
 | `check_repo_context_consistency.clj` | `check-repo-context-consistency.sh` の Clojure 実装 |
+| `check-adoption-mode-scenarios.sh` | テンプレ本体では実運用されにくい `:retrofit` / `:partial` / `:complete` の manifest 段階挙動を fixture で検査 |
 | `apply-repo-context-migration.sh` | 人間承認後に `.llm/repo-context.edn` を作成する migration wrapper。既定では `APPLY` 入力を要求 |
 | `install-llm-template.sh` | 本テンプレート未導入の既存 repo に `.llm/` / root guide を持ち込む dry-run first の installer。`--apply` でも既存ファイルは上書きせず candidate を作る |
 | `repl-eval.sh` | 稼働中 nREPL に eval / load-file を送る LLM 向け client（CLAUDE.md §9 Live Workbench Protocol）。`.nrepl-port` 自動発見、永続 session 再利用（`.nrepl-session`）、`--expr` / `--load-file` / `--interrupt` / `--describe` / `--reset-session` / `--fresh` 対応 |
@@ -141,9 +142,9 @@ plain Clojure repo への導入は、Polylith 化へ向かう retrofit として
 ./.llm/scripts/install-llm-template.sh --target /path/to/repo --apply
 ```
 
-`:adoption-mode :retrofit` の間、`check-workspace-integrity.sh` は検査失敗を WARN として提示し、作業開始を block しない。`:partial` / `:complete` へ昇格した後は、manifest の `:capabilities` に含まれる検査が通常の gate になる。plain Clojure repo では Polylith 化計画を、既存 Polylith repo では本テンプレートの strict gate への合流計画を立てるための一時状態である。
+`:adoption-mode :retrofit` の間、`check-workspace-integrity.sh` は検査失敗を WARN として提示し、作業開始を block しない。`:partial` / `:complete` へ昇格した後は、manifest の `:capabilities` に含まれる検査が通常の gate になる。`:partial` は accepted capability の gate を有効化した移行中状態、`:complete` は strict template 準拠完了状態である。plain Clojure repo では Polylith 化計画を、既存 Polylith repo では本テンプレートの strict gate への合流計画を立てるための一時状態である。
 
-Malli / cljfmt / clj-kondo / Polylith は本テンプレートの必須基盤である。既存 Polylith repo で未検出の場合、`propose-adoption-plan.sh` は strict gate への required task として提示する。
+Malli / cljfmt / clj-kondo / Polylith は本テンプレートの必須基盤である。既存 Polylith repo で未検出の場合、`propose-adoption-plan.sh` は strict gate への required task として提示する。plain Clojure repo を採用対象にする場合も、最終状態は Polylith 化済みの strict template 準拠であり、plain Clojure のまま留まる運用は定義しない。
 
 ## 実装規律
 
@@ -163,6 +164,8 @@ Malli / cljfmt / clj-kondo / Polylith は本テンプレートの必須基盤で
 - 生成物は `.llm/data/` に配置、ヘッダに `;; GENERATED — do not edit by hand` を入れる 
 - `check-workspace-integrity.sh` に「一時領域に再生成 → diff で drift 検知」のステップを追加し、元文書と生成物の同期を保証
 
+`.llm/data/` 配下は source 文書からの生成物である。テンプレート本体では `clj -X:gen-lib-catalog` で再生成し、`check-workspace-integrity.sh` が drift を検出する。派生プロジェクトは通常そのまま消費するだけでよいが、STACK_GUIDE や capability 定義を派生側で意図的に変更するなら、同じ生成コマンドで `.llm/data/` を再生成し、source 文書変更と同一コミットにまとめる。
+
 ## 新しい検査の追加手順
 
 1. `.llm/scripts/check-<topic>.sh` を作成（終了コード 0 / 1 で成否表現、エラー時は人間に読めるメッセージ）
@@ -178,13 +181,13 @@ Malli / cljfmt / clj-kondo / Polylith は本テンプレートの必須基盤で
 - `∵`: 根拠・背景参照
 - `⚠`: 問題発生時のみ参照
 
-通常運用では default scope を検査する。
+通常運用では default scope を検査する。default scope は、常時読まれる root 文書・bootstrap/memory/script/template README など、テンプレートの主要導線に限定した高速検査である。
 
 ```bash
 ./.llm/scripts/check-doc-references.sh
 ```
 
-保守時の全体監査では `--all` を使う。
+保守時の全体監査では `--all` を使う。`--all` は tracked/untracked を問わず repo 内の Markdown を広く走査するが、`.git/` と `.llm/memory/archive/` は除外する。
 
 ```bash
 ./.llm/scripts/check-doc-references.sh --all

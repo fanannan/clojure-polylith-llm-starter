@@ -20,6 +20,9 @@
    :polylith #{:deps-edn}
    :llm-guides #{}})
 
+(def strict-template-capabilities
+  #{:deps-edn :clj-kondo :cljfmt :malli :polylith :llm-guides})
+
 (def allowed-repo-kinds #{:template :project})
 (def allowed-workspace-kinds #{:polylith :plain-clojure :unknown})
 (def allowed-adoption-modes #{:retrofit :partial :complete})
@@ -63,6 +66,7 @@
                            :when (not (contains? caps dep))]
                        [cap dep])
         unknown-caps (remove #(contains? (set (keys capability-deps)) %) caps)
+        missing-strict-caps (seq (sort (remove caps strict-template-capabilities)))
         unknown-applied (remove known-migrations applied)]
     (cond-> {:errors [] :warnings []}
       (not (contains? allowed-repo-kinds (:repo-kind manifest)))
@@ -83,6 +87,11 @@
            (= :complete (:adoption-mode manifest)))
       (update :errors error ":workspace-kind :plain-clojure は Polylith 化前の一時状態なので :complete にできない")
 
+      (and (= :complete (:adoption-mode manifest))
+           missing-strict-caps)
+      (update :errors error (str ":adoption-mode :complete には strict template capabilities が必要: "
+                                 (pr-str (vec missing-strict-caps))))
+
       (seq missing-deps)
       (update :errors error (str ":capabilities の依存不足: "
                                  (pr-str (vec missing-deps))))
@@ -94,6 +103,12 @@
       (and (= :project (:repo-kind manifest))
            (= :retrofit (:adoption-mode manifest)))
       (update :warnings warning ":adoption-mode :retrofit は一時状態です。propose-adoption-plan.sh で strict 化計画を確認してください")
+
+      (and (= :project (:repo-kind manifest))
+           (= :partial (:adoption-mode manifest))
+           missing-strict-caps)
+      (update :warnings warning (str ":adoption-mode :partial は移行中状態です。complete 前に不足 capability を採用してください: "
+                                     (pr-str (vec missing-strict-caps))))
 
       (seq unknown-applied)
       (update :warnings warning (str ":applied-migrations に local ledger 不在の ID があります: "

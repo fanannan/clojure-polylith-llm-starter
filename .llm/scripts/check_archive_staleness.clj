@@ -13,6 +13,7 @@
    [java.time.temporal ChronoUnit]))
 
 (def archive-root ".llm/memory/archive/maintainer-discussions")
+(def open-warn-days 30)
 
 (defn- slurp-if-exists [path]
   (let [f (io/file path)]
@@ -60,7 +61,7 @@
 
 (defn- old-open? [date-str]
   (when-let [d (parse-date date-str)]
-    (>= (.between ChronoUnit/DAYS d (LocalDate/now)) 30)))
+    (>= (.between ChronoUnit/DAYS d (LocalDate/now)) open-warn-days)))
 
 (defn- targets [absorbed-into]
   (re-seq #"`([^`]+)`" (or absorbed-into "")))
@@ -107,7 +108,8 @@
      (when-not (parse-date created)
        [(str "WARN: " (:path entry) " " (:title entry) ": 作成日 must be YYYY-MM-DD")])
      (when (and (= state "open") (old-open? created))
-       [(str "WARN: " (:path entry) " " (:title entry) ": open のまま 30 日以上経過")])
+       [(str "WARN: " (:path entry) " " (:title entry) ": open のまま "
+             open-warn-days " 日以上経過")])
      (when (and (= state "absorbed") (empty? target-values))
        [(str "WARN: " (:path entry) " " (:title entry) ": absorbed entry must have 吸収先")])
      (when (and (= state "retained-process") (str/blank? reason))

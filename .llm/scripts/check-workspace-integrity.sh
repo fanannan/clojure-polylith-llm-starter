@@ -179,6 +179,9 @@ run_step_if_capability "llm-guides" "モード境界検査 (check-mode-scope)" \
 run_step_if_capability "llm-guides" "repo-context 整合性検査" \
   "$SCRIPT_DIR/check-repo-context-consistency.sh"
 
+run_step_if_capability "llm-guides" "adoption-mode シナリオ検査" \
+  "$SCRIPT_DIR/check-adoption-mode-scenarios.sh"
+
 # --- テンプレート保守記録の残骸検査 ---
 run_step_if_capability "llm-guides" "ADR ディレクトリ空検査 (template mode)" \
   "$SCRIPT_DIR/check-adr-dir-empty.sh"
