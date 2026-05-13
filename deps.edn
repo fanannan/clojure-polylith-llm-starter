@@ -239,6 +239,23 @@
    :exec-fn     propose-repo-context/run}
 
   ;; ----------------------------------------------------------------
+  ;; :propose-template-migrations — migration ledger 差分提案
+  ;;   `.llm/template-version.edn` / `.llm/migrations/` と
+  ;;   `.llm/repo-context.edn :applied-migrations` を比較する。
+  ;; ----------------------------------------------------------------
+  :propose-template-migrations
+  {:extra-paths [".llm/scripts"]
+   :exec-fn     propose-template-migrations/run}
+
+  ;; ----------------------------------------------------------------
+  ;; :propose-adoption-plan — 既存 repo retrofit の作業順提案
+  ;;   推奨調査ではなく、local signals と manifest から移行作業を並べる。
+  ;; ----------------------------------------------------------------
+  :propose-adoption-plan
+  {:extra-paths [".llm/scripts"]
+   :exec-fn     propose-adoption-plan/run}
+
+  ;; ----------------------------------------------------------------
   ;; :gen-lib-catalog — 技術選定カタログから artifact を生成
   ;;   `;; lib-catalog` マーカ付き EDN block を抽出 → Malli 検証 →
   ;;   .llm/data/{libs.edn, deprecated-libs.patterns, forbidden-requires.patterns}

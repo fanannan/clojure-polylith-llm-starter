@@ -53,6 +53,10 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 | `detect_repo_profile.clj` | `detect-repo-profile.sh` の Clojure 実装。`deps.edn` / `workspace.edn` / `.clj-kondo` / `.cljfmt.edn` / Malli 依存を検出 |
 | `propose-repo-context.sh` | 既存テンプレ利用者・既存 Clojure / Polylith repo 向けに `.llm/repo-context.edn` 候補を表示（副作用なし） |
 | `propose_repo_context.clj` | `propose-repo-context.sh` と `apply-repo-context-migration.sh` の Clojure 実装。人間確認前は候補表示のみ、`:write true` で manifest 書き込み |
+| `propose-template-migrations.sh` | `.llm/migrations/` と `.llm/repo-context.edn :applied-migrations` を比較し、未適用 migration の判断材料を表示（副作用なし） |
+| `propose_template_migrations.clj` | `propose-template-migrations.sh` の Clojure 実装。git 履歴ではなく migration id ledger で比較 |
+| `propose-adoption-plan.sh` | 既存 repo の local signals と manifest から、次に確認すべき移行作業順を提示（副作用なし、推奨調査ではない） |
+| `propose_adoption_plan.clj` | `propose-adoption-plan.sh` の Clojure 実装。`detect-repo-profile` の結果を作業計画に変換 |
 | `apply-repo-context-migration.sh` | 人間承認後に `.llm/repo-context.edn` を作成する migration wrapper。既定では `APPLY` 入力を要求 |
 | `install-llm-template.sh` | 本テンプレート未導入の既存 repo に `.llm/` / root guide を持ち込む dry-run first の installer。`--apply` でも既存ファイルは上書きせず candidate を作る |
 | `repl-eval.sh` | 稼働中 nREPL に eval / load-file を送る LLM 向け client（CLAUDE.md §9 Live Workbench Protocol）。`.nrepl-port` 自動発見、永続 session 再利用（`.nrepl-session`）、`--expr` / `--load-file` / `--interrupt` / `--describe` / `--reset-session` / `--fresh` 対応 |
@@ -118,6 +122,8 @@ REPL 状態節の `TCP 接続確認済` は「その port が listen してい�
 # 既に .llm/scripts がある repo
 ./.llm/scripts/detect-repo-profile.sh
 ./.llm/scripts/propose-repo-context.sh
+./.llm/scripts/propose-template-migrations.sh
+./.llm/scripts/propose-adoption-plan.sh
 ./.llm/scripts/apply-repo-context-migration.sh
 
 # まだテンプレート未導入の repo（テンプレート repo 側から実行）

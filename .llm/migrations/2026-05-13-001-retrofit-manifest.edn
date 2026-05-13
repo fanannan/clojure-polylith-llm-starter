@@ -1,0 +1,18 @@
+;; Migration entries are ordered by :id. They describe what a derived project
+;; should review when moving from an older template revision to this one.
+
+{:id "2026-05-13-001-retrofit-manifest"
+ :title "repo-context manifest, retrofit adoption mode, and migration helpers"
+ :introduced-at "543c6348414d491518416b1880ed4fe42c6d67ba"
+ :applies-to #{:project}
+ :requires-human-approval true
+ :summary
+ "Add .llm/repo-context.edn migration metadata, adoption mode/capabilities, and safe retrofit helpers for existing Clojure/Polylith repositories."
+ :checks
+ ["./.llm/scripts/detect-repo-profile.sh"
+  "./.llm/scripts/propose-repo-context.sh"
+  "./.llm/scripts/check-workspace-integrity.sh"]
+ :manual-steps
+ ["Review detected :workspace-kind and :capabilities."
+  "Apply .llm/repo-context.edn only after human approval."
+  "Start with :adoption-mode :retrofit; promote to :partial or :complete after WARNs are resolved."]}

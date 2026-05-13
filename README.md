@@ -18,6 +18,7 @@
 |---|---|---|
 | **初めてテンプレートを開いた人** | 本ファイル | 入口と索引 |
 | **これから初期化する人** | 本ファイル → `BOOTSTRAP_GUIDE.md` | キックオフとゲート確認 |
+| **既存 Clojure / Polylith repo に導入する人** | 本ファイル → `BOOTSTRAP_GUIDE.md` §4.1 | retrofit 手順の入口 |
 | **日常開発に入った LLM** | `CLAUDE.md` | 初期化後は索引だけ残る |
 | **仕様を埋める人** | `DESIGN.md` | どこを埋めるかの導線 |
 | **技術選定で迷う人** | `STACK_GUIDE.md` | 参照先の案内 |
@@ -50,6 +51,7 @@
 |---|---|---|
 | 初期化を始める | `README.md` | 本ファイルの「開始手順」まで |
 | 初期化の詳細手順を実行する | `.llm/guide/BOOTSTRAP_GUIDE.md` | ゲートと対象節だけ |
+| 既存 repo に後から導入する | `README.md` → `.llm/guide/BOOTSTRAP_GUIDE.md` §4.1 | 本ファイルの「既存 repo への導入」まで |
 | 日常開発を進める | `CLAUDE.md` | 毎セッション最初から |
 | 仕様を埋める・直す | `DESIGN.md` | §0 と該当節 |
 | 技術選定を決める | `.llm/guide/STACK_GUIDE.md` | 冒頭の位置づけ + 該当機能節 |
@@ -174,6 +176,59 @@ LLM が詰まった時は QUESTIONS に Q を起票して停止する。人間�
 
 ---
 
+## 既存 repo への導入
+
+既に動いている Clojure / Polylith repo に後から本テンプレートを持ち込む場合は、新規 bootstrap 手順を最初から実行しない。既存構造を壊さないよう、導入直後は `:adoption-mode :retrofit` として扱い、検査結果は WARN 中心で棚卸しする。
+
+詳細手順の正本:
+¤ .llm/guide/BOOTSTRAP_GUIDE.md §4.1
+∵ .llm/guide/MAINTAINERS_GUIDE.md §7.6
+∵ .llm/guide/MAINTAINERS_GUIDE.md §7.7
+
+### 既存テンプレート派生プロジェクトを更新する
+
+古いテンプレート由来の repo で `.llm/repo-context.edn` が無い、または古い場合は、manifest 候補を表示してから人間が確認する。
+
+```bash
+./.llm/scripts/detect-repo-profile.sh
+./.llm/scripts/propose-repo-context.sh
+./.llm/scripts/propose-template-migrations.sh
+./.llm/scripts/propose-adoption-plan.sh
+./.llm/scripts/apply-repo-context-migration.sh
+./.llm/scripts/check-workspace-integrity.sh
+```
+
+`apply-repo-context-migration.sh` は既定で `APPLY` 入力を要求する。属性キーワード（`:workspace-kind` / `:capabilities` / `:adoption-mode`）は自動検出されるが、manifest への反映は人間承認後に限る。
+
+### 未導入の既存 Clojure / Polylith repo に持ち込む
+
+テンプレート repo 側から dry-run でコピー計画を確認し、承認後に `--apply` する。既存ファイルは上書きせず、競合時は `.candidate.<timestamp>` として出力する。
+
+```bash
+./.llm/scripts/install-llm-template.sh --target /path/to/repo
+./.llm/scripts/install-llm-template.sh --target /path/to/repo --apply
+```
+
+その後、target repo 側で profile 検出・manifest 候補確認・承認後適用を行う。
+
+```bash
+cd /path/to/repo
+./.llm/scripts/detect-repo-profile.sh
+./.llm/scripts/propose-repo-context.sh
+./.llm/scripts/propose-template-migrations.sh
+./.llm/scripts/propose-adoption-plan.sh
+./.llm/scripts/apply-repo-context-migration.sh
+./.llm/scripts/check-workspace-integrity.sh
+```
+
+`check-workspace-integrity.sh` は `:capabilities` に含まれる検査だけを対象にする。`:adoption-mode :retrofit` の間は、失敗しても既存 repo の作業開始を block せず WARN として表示する。
+
+`propose-template-migrations.sh` は `.llm/migrations/` の migration ledger と repo 側の `:applied-migrations` を比較し、未適用の判断材料を出す。git revision は由来確認の補助情報であり、移行判定は migration id で行う。
+
+`propose-adoption-plan.sh` は推奨ライブラリ調査ではなく、local repo の検出結果と manifest から「次に人間が確認すべき移行作業」を並べる。
+
+---
+
 ## ファイル構成
 
 ```
@@ -211,6 +266,12 @@ LLM が詰まった時は QUESTIONS に Q を起票して停止する。人間�
 │   ├── check-vulnerabilities.sh      clj-watson による脆弱性スキャン（release 前）
 │   ├── gen_lib_catalog.clj           技術選定の判断済み推奨集の EDN block から生成物を生成
 │   ├── lint-import-hooks.sh          依存ライブラリ提供の clj-kondo hook 取込
+│   ├── detect-repo-profile.sh        既存 repo の workspace-kind / capabilities 候補を検出
+│   ├── propose-repo-context.sh       repo-context.edn 候補を表示（副作用なし）
+│   ├── propose-template-migrations.sh  migration ledger と適用済み migration の差分を表示
+│   ├── propose-adoption-plan.sh      既存 repo の移行作業順を local signals から提示
+│   ├── apply-repo-context-migration.sh  承認後に repo-context.edn を作成
+│   ├── install-llm-template.sh       未導入 repo へテンプレートファイルを dry-run first で導入
 │   ├── session-briefing.sh           SessionStart 時の状態ブリーフィング（REPL 状態含む）
 │   ├── repl-eval.sh                  稼働中 nREPL へ eval 送信（LLM 向け、CLAUDE.md §9）
 │   └── repl_eval.clj                 repl-eval.sh の Clojure 実装（clj -X:repl-eval）

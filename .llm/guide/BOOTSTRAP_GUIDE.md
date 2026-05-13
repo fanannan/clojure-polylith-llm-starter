@@ -351,8 +351,9 @@ I/O リソースの起動・停止管理が必要な場合のみ実施する。�
 2. 人間承認後に `--apply` を付けてコピーする（既存ファイルは上書きされず `.candidate.<timestamp>` になる）
 3. target repo 側で `./.llm/scripts/detect-repo-profile.sh` を実行する
 4. `./.llm/scripts/propose-repo-context.sh` の manifest 候補を人間が確認する
-5. 承認後に `./.llm/scripts/apply-repo-context-migration.sh` を実行する
-6. `./.llm/scripts/check-workspace-integrity.sh` を実行し、WARN を棚卸しする
+5. `./.llm/scripts/propose-template-migrations.sh` と `./.llm/scripts/propose-adoption-plan.sh` で判断材料を確認する
+6. 承認後に `./.llm/scripts/apply-repo-context-migration.sh` を実行する
+7. `./.llm/scripts/check-workspace-integrity.sh` を実行し、WARN を棚卸しする
 
 この retrofit 手順では、既存の ADR / KNOWLEDGE / QUESTIONS / source tree を削除しない。属性キーワードの自動検出は候補生成までであり、manifest 反映は人間承認後に限る。
 

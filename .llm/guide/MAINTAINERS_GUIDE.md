@@ -850,6 +850,8 @@ archive README はディレクトリ入口であり、本節の詳細を複製�
 
 属性キーワードは script が自動検出・提案してよいが、manifest への採用は人間承認後に限る。`:retrofit` では検査失敗を WARN として提示し、既存利用者の作業開始を block しない。`:partial` / `:complete` では、manifest の `:capabilities` に含まれる検査を gate として扱う。
 
+テンプレート更新差分の判断材料は `.llm/migrations/` の migration id と、派生 repo の `.llm/repo-context.edn :applied-migrations` の比較から出す。git revision は由来確認・調査補助として記録してよいが、zip 配布や shallow clone でも移行判定できるよう、git 履歴そのものには依存しない。
+
 ### 7.7 既存 Clojure / Polylith repo の retrofit
 
 本テンプレート未導入の既存 Clojure / Polylith repo に持ち込む場合は、いきなり完全準拠を要求しない。`.llm/scripts/install-llm-template.sh --target <repo>` は dry-run を既定とし、`--apply` が指定された場合も既存ファイルを上書きせず `.candidate.<timestamp>` に退避候補として置く。
@@ -860,10 +862,13 @@ archive README はディレクトリ入口であり、本節の詳細を複製�
 2. 人間承認後に `install-llm-template.sh --target <repo> --apply` を実行する
 3. target repo で `./.llm/scripts/detect-repo-profile.sh` を実行し、`:workspace-kind` と `:capabilities` 候補を確認する
 4. `./.llm/scripts/propose-repo-context.sh` で manifest 候補を表示する
-5. 人間承認後に `./.llm/scripts/apply-repo-context-migration.sh` を実行する
-6. `:adoption-mode :retrofit` で総合検査を走らせ、既存構造とのずれを WARN として棚卸しする
+5. `./.llm/scripts/propose-template-migrations.sh` と `./.llm/scripts/propose-adoption-plan.sh` で、未適用 migration と移行作業順を確認する
+6. 人間承認後に `./.llm/scripts/apply-repo-context-migration.sh` を実行する
+7. `:adoption-mode :retrofit` で総合検査を走らせ、既存構造とのずれを WARN として棚卸しする
 
 `detect-repo-profile.sh` の判定は補助情報であり、正本ではない。Polylith 判定、Malli 採用、clj-kondo / cljfmt 有無は誤検出の余地があるため、manifest に書き込む前に必ず人間が確認する。
+
+`propose-adoption-plan.sh` は推奨調査のための script ではない。local repo の構造・manifest・既存検査結果から、次に確認すべき移行作業を副作用なしで並べるための判断補助である。
 
 ## 8. 関連文書
 

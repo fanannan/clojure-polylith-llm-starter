@@ -24,6 +24,9 @@
 ;;     :partial / :complete へ昇格する。
 ;;   :capabilities — 有効な検査・運用機能の前提。既存 Clojure/Polylith repo では
 ;;     detect-repo-profile → 人間確認 → manifest 更新の順で採用する。
+;;   :template-source-revision / :applied-migrations — 派生 repo がどの template 由来で、
+;;     どの migration を適用済みかを記録する。移行判定の正本は git 履歴ではなく
+;;     .llm/template-version.edn と .llm/migrations/ の migration id。
 ;;
 ;; Bootstrap 時の transform:
 ;;   下流プロジェクトは bootstrap 完了時に本ファイルを以下のように書き換える:
@@ -40,6 +43,9 @@
 
 {:repo-kind     :template
  :template-name "clojure-polylith-llm-starter"
+ :template-source-revision "543c6348414d491518416b1880ed4fe42c6d67ba"
+ :migration-schema 1
+ :applied-migrations #{"2026-05-13-001-retrofit-manifest"}
  :workspace-kind :polylith
  :adoption-mode :complete
  :capabilities #{:deps-edn
@@ -63,6 +69,8 @@
     ".llm/guide/"
     ".llm/scripts/"
     ".clj-kondo/polyguard/"
+    ".llm/template-version.edn"
+    ".llm/migrations/"
     ".llm/memory/archive/maintainer-discussions/"
     ".llm/repo-context.edn"
     ".llm/memory/adr/README.md"

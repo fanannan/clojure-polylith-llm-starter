@@ -12,6 +12,7 @@
    [detect-repo-profile :as profile]))
 
 (def manifest-path ".llm/repo-context.edn")
+(def version-path ".llm/template-version.edn")
 (def template-name "clojure-polylith-llm-starter")
 
 (def default-ownership
@@ -21,12 +22,14 @@
      "bases/*/**"
      "projects/*/**"}
 
-   :template-owned
-   #{"CLAUDE.md"
-     ".llm/guide/"
-     ".llm/scripts/"
-     ".clj-kondo/polyguard/"
-     ".llm/memory/archive/maintainer-discussions/"
+     :template-owned
+     #{"CLAUDE.md"
+       ".llm/guide/"
+       ".llm/scripts/"
+       ".clj-kondo/polyguard/"
+       ".llm/template-version.edn"
+       ".llm/migrations/"
+       ".llm/memory/archive/maintainer-discussions/"
      ".llm/repo-context.edn"
      ".llm/memory/adr/README.md"
      ".llm/memory/adr/template.md"
@@ -50,6 +53,12 @@
       (edn/read-string s)
       (catch Exception _ nil))))
 
+(defn- read-template-version []
+  (when-let [s (slurp-if-exists version-path)]
+    (try
+      (edn/read-string s)
+      (catch Exception _ nil))))
+
 (defn- ownership-source [existing]
   (if-let [ownership (:ownership existing)]
     {:ownership ownership
@@ -66,6 +75,7 @@
 (defn candidate
   [{:keys [root project-name workspace-kind adoption-mode capabilities]}]
   (let [existing (read-manifest)
+        template-version (read-template-version)
         detected (profile/detect (or root "."))
         ownership (ownership-source existing)
         caps (or capabilities
@@ -77,8 +87,18 @@
     {:repo-kind :project
      :derived-from (or (:template-name existing)
                        (:derived-from existing)
+                       (:template-name template-version)
                        template-name)
      :project-name (or project-name (:project-name existing) (:project-name detected))
+     :template-source-revision (or (:template-source-revision existing)
+                                   (:source-git-revision template-version))
+     :migration-schema (or (:migration-schema existing)
+                           (:migration-schema template-version)
+                           1)
+     :applied-migrations (or (:applied-migrations existing)
+                             (when-let [head (:migration-head template-version)]
+                               #{head})
+                             #{})
      :workspace-kind (or workspace-kind (:workspace-kind existing) (:workspace-kind detected))
      :adoption-mode (default-adoption-mode existing adoption-mode)
      :capabilities caps

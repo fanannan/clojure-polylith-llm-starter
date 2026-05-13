@@ -58,7 +58,7 @@ manifest_has_capability() {
     return 1
   fi
   awk '
-    /:capabilities/ { in_caps=1 }
+    /^[[:space:]]*:capabilities/ { in_caps=1 }
     in_caps { print; if ($0 ~ /\}/) exit }
   ' .llm/repo-context.edn | grep -q ":$cap"
 }

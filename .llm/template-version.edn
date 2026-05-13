@@ -1,0 +1,11 @@
+;; .llm/template-version.edn — template migration ledger SSOT
+;;
+;; Migration compatibility is based on migration ids, not on SemVer and not on
+;; requiring local git history. :source-git-revision is provenance only; zip
+;; downloads and shallow clones must still be able to compare migration ledgers.
+
+{:template-name "clojure-polylith-llm-starter"
+ :version-source :migration-ledger
+ :source-git-revision "543c6348414d491518416b1880ed4fe42c6d67ba"
+ :migration-schema 1
+ :migration-head "2026-05-13-001-retrofit-manifest"}
