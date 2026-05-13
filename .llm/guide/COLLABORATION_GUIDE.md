@@ -477,7 +477,8 @@ scope 判定の基準は上位文脈確認の規約に従う。
 
 **症状**: 越境 UC の Test Plan を fixture 観察前に書き、smoke で fixture 不足が発覚して fixture を後追い拡張し、既書 test を再設計する手戻り loop に入る。
 
-**害**: `../CLAUDE.md §1.2.2 ループ短縮`が機能せず、test 設計コストが反復する。実観察事例として fanannan/clojure-polylith-llm-starter Issue #13 が参照する派生プロジェクト PR #35（reschedule 候補・double-booking 再現失敗）。
+**害**: ループ短縮が機能せず、test 設計コストが反復する。実観察事例として fanannan/clojure-polylith-llm-starter Issue #13 が参照する派生プロジェクト PR #35（reschedule 候補・double-booking 再現失敗）。
+∵ ../CLAUDE.md §1.2.2
 
 **対処**: POLYLITH_GUIDE.md §7.4.1 fixture 観察ファースト順序を厳守。fixture を REPL で観察してから test の precondition を確定する。受入条件・テスト観点の粗いスケッチ、orchestration interface 仮置きは fixture 観察前でも可。禁止されるのは fixture 未観察の想像 state に基づいて **concrete な test 本体 / Test Plan を確定する**こと。
 ∵ POLYLITH_GUIDE.md §7.4.1
