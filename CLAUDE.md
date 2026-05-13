@@ -590,6 +590,9 @@ LLM のフィードバックループは**編集単位でターン内に閉じ�
 人間 smoke を伴う検証（不可逆 / 外部 state を含む場合の判定、事後 state の記述規律）は別途扱う。
 ∵ .llm/guide/COLLABORATION_GUIDE.md §7.9
 
+Malli `:closed true` map の read-side 未定義キーアクセスは静的検出されない（`m/=>` の盲点）。read-site の局所化規律と各枝の検証規律を別途扱う。
+∵ .llm/guide/CODING_GUIDE.md §1.15
+
 #### REPL eval 必須トリガ（mandatory）
 
 編集内容が以下のいずれかに該当したら、**`poly test` より先に** REPL eval で確認する。nREPL 未起動ならユーザに `clj -M:dev:nrepl` 起動を 1 度依頼し、起動後に実施する（§9.0 共有モデル）:
