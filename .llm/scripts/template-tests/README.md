@@ -25,6 +25,7 @@
 - 欠落 metadata の skeleton 生成
 - TODO / partial / complete の severity 切替
 - DESIGN requirement ID の unknown / duplicate / unassigned
+- fenced code block 内の DESIGN requirement ID 例示は定義として扱わないこと
 - base と component の capability 整合
 - public API 名と capability の対応
 - missing / empty `interface.clj`

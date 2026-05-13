@@ -212,6 +212,19 @@ project には capability を持たせない。project は deploy / build 単位
 
 `:project/type` は検査ポリシーであり、語彙は `:app` / `:library` の 2 つに限定する。`:app` は実行・deploy される成果物で、base / entrypoint を原則必須とする。`:library` は非 deploy の bundle で、base / entrypoint なしを許容する。service / worker / CLI / batch / lambda などの実行形態は、必要な場合だけ任意の `:project/runtime` に書く。
 
+非 deploy の library project は次のように書く。
+
+```clojure
+{:project/name :domain-lib
+ :project/type :library
+ :project/purpose "Reusable domain bundle"
+ :project/entrypoints #{}
+ :project/includes {:bases #{}
+                    :components #{:invoice :customer}}
+ :project/requirements []
+ :project/build {:kind :jar}}
+```
+
 `project.edn` は deploy intent の正本であり、classpath や依存の正本ではない。実際の project 依存は `projects/<name>/deps.edn` が正本であり、Polylith の構造事実は `poly check` に委譲する。`project.edn` と `deps.edn` の includes がずれている場合は生成検査で警告する。
 
 workspace については、手書きの追加正本を増やさない。`workspace.edn`、`deps.edn`、`.llm/repo-context.edn`、`brick.edn`、`project.edn` から、閲覧用の `docs/WORKSPACE.md` と検索用の `.llm/data/workspace-map.edn` を生成する。

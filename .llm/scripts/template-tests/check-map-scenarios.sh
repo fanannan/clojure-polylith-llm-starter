@@ -428,6 +428,22 @@ scenario_21_legacy_project_type_repair() {
   run_check_all "$repo"
 }
 
+scenario_22_design_code_block_ids_ignored() {
+  local repo="$BASE/22-design-code-block-ids-ignored"
+  base_files "$repo" complete
+  complete_metadata "$repo"
+  cat >> "$repo/DESIGN.md" <<'EOF'
+
+```markdown
+- INV-01 example inside documentation only
+- API-01 example inside documentation only
+### INV-01 example heading inside documentation only
+```
+EOF
+  run_generate_all "$repo"
+  run_check_all "$repo"
+}
+
 scenario "01 new complete" scenario_01_new_complete
 scenario "02 retrofit skeleton" scenario_02_retrofit_skeleton
 scenario "03 partial todo" scenario_03_partial_todo
@@ -449,5 +465,6 @@ scenario "18 missing interface repair" scenario_18_missing_interface_repair
 scenario "19 empty interface repair" scenario_19_empty_interface_repair
 scenario "20 project capability ownership repair" scenario_20_project_capability_ownership_repair
 scenario "21 legacy project type repair" scenario_21_legacy_project_type_repair
+scenario "22 DESIGN code block ids ignored" scenario_22_design_code_block_ids_ignored
 
 echo "ALL TEMPLATE MAP SCENARIOS PASSED"

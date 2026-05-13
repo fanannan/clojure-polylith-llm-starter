@@ -252,6 +252,19 @@ project を作成したら、`projects/<deploy>/project.edn` を作成する。p
 
 `:project/type` は `:app` または `:library` に限定する。`:app` は実行・deploy される成果物で、base / entrypoint を原則必須とする。`:library` は非 deploy の bundle で、base / entrypoint なしを許容する。Web API / worker / CLI / batch / lambda などの実行形態は、必要な場合だけ任意の `:project/runtime` に書く。
 
+非 deploy の library project は次のように書く。
+
+```clojure
+{:project/name :domain-lib
+ :project/type :library
+ :project/purpose "Reusable domain bundle"
+ :project/entrypoints #{}
+ :project/includes {:bases #{}
+                    :components #{:invoice :customer}}
+ :project/requirements []
+ :project/build {:kind :jar}}
+```
+
 project / workspace の閲覧用文書と検索用 index は生成物であり、直接編集しない。
 
 ```bash

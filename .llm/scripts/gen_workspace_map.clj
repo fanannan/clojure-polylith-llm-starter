@@ -171,7 +171,6 @@ workspace 全体の構造事実は Polylith / tools.deps に委譲し、この�
         deps-includes (includes-from-deps (str project-path "/deps.edn"))]
     {:project/name (keyword name)
      :project/type :TODO
-     :project/runtime :TODO
      :project/purpose "TODO: describe this deploy/build unit"
      :project/entrypoints #{}
      :project/includes deps-includes
@@ -232,16 +231,19 @@ workspace 全体の構造事実は Polylith / tools.deps に委譲し、この�
 (def requirement-definition-pattern
   #"(?m)^[ \t]{0,3}(?:#{1,6}[ \t]+|[-*][ \t]+)([A-Z][A-Z0-9]+-[0-9]+)\b")
 
+(defn- strip-fenced-code-blocks [text]
+  (str/replace text #"(?s)```.*?```" ""))
+
 (defn- design-requirement-ids []
   (if (file? "DESIGN.md")
-    (->> (re-seq requirement-definition-pattern (slurp "DESIGN.md"))
+    (->> (re-seq requirement-definition-pattern (strip-fenced-code-blocks (slurp "DESIGN.md")))
          (map second)
          set)
     #{}))
 
 (defn- duplicate-design-requirement-ids []
   (if (file? "DESIGN.md")
-    (->> (re-seq requirement-definition-pattern (slurp "DESIGN.md"))
+    (->> (re-seq requirement-definition-pattern (strip-fenced-code-blocks (slurp "DESIGN.md")))
          (map second)
          frequencies
          (keep (fn [[id n]] (when (< 1 n) id)))

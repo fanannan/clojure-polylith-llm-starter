@@ -285,16 +285,19 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
 (def requirement-definition-pattern
   #"(?m)^[ \t]{0,3}(?:#{1,6}[ \t]+|[-*][ \t]+)([A-Z][A-Z0-9]+-[0-9]+)\b")
 
+(defn- strip-fenced-code-blocks [text]
+  (str/replace text #"(?s)```.*?```" ""))
+
 (defn- design-requirement-ids []
   (if (file? "DESIGN.md")
-    (->> (re-seq requirement-definition-pattern (slurp "DESIGN.md"))
+    (->> (re-seq requirement-definition-pattern (strip-fenced-code-blocks (slurp "DESIGN.md")))
          (map second)
          set)
     #{}))
 
 (defn- duplicate-design-requirement-ids []
   (if (file? "DESIGN.md")
-    (->> (re-seq requirement-definition-pattern (slurp "DESIGN.md"))
+    (->> (re-seq requirement-definition-pattern (strip-fenced-code-blocks (slurp "DESIGN.md")))
          (map second)
          frequencies
          (keep (fn [[id n]] (when (< 1 n) id)))
