@@ -1,0 +1,62 @@
+;; .llm/repo-context.edn — リポジトリのモード/所有権 manifest（SSOT）
+;;
+;; このファイルが repo-kind とパス所有権の唯一の情報源。
+;; `.llm/scripts/session-briefing.sh` と `.llm/scripts/check-mode-scope.sh` が
+;; 同一の manifest を読み、モード判定・所有権検査を行う。
+;;
+;; 設計原則:
+;;   - SSOT: 所有権情報は本ファイルのみが保持する。banner や規約文書には enumerate せず、
+;;     代わりに本ファイルへの pointer のみを置く（drift 防止）。
+;;   - CLAUDE.md §1.2.1 機械化: 規律ではなく manifest + script で強制
+;;   - CLAUDE.md §1.2.5 失敗早期検知: bootstrap 中途状態を briefing 起動時に hard error
+;;
+;; モード:
+;;   :template — このリポはテンプレートそのもの。テンプレ保守作業が行われる。
+;;               派生プロジェクトの記録領域（:project-owned）には触れない。
+;;   :project  — このリポは派生プロジェクト（bootstrap 後）。派生プロジェクト
+;;               固有の決定・知見・コンテンツを記録する。
+;;
+;; Bootstrap 時の transform:
+;;   下流プロジェクトは bootstrap 完了時に本ファイルを以下のように書き換える:
+;;     :repo-kind     :template → :project
+;;     :template-name → :derived-from にリネーム
+;;     :project-name "<myorg.myapp の実値>" を追加
+;;   :ownership は保持（下流側でも SSOT として機能させる）。
+;;   詳細手順: .llm/guide/BOOTSTRAP_GUIDE.md
+;;
+;; パス記法:
+;;   - 末尾 `/` はディレクトリ全体
+;;   - `*/**` は再帰 glob（subdir 配下のファイル全部）
+;;   - `NNNN-*.md` は数字 4 桁プレフィックスのファイル名パターン
+
+{:repo-kind     :template
+ :template-name "clojure-polylith-llm-starter"
+
+ :ownership
+ {;; 派生プロジェクトが所有・編集する領域。テンプレ保守作業ではここを touch しない。
+  :project-owned
+  #{".llm/memory/adr/NNNN-*.md"   ; NNNN-*.md パターン。README.md / template.md は除外
+    "components/*/**"              ; brick subdir 配下を再帰的に。top-level README は除外
+    "bases/*/**"
+    "projects/*/**"}
+
+  ;; テンプレートが所有・保守する領域。派生プロジェクトでは原則編集しない。
+  :template-owned
+  #{"CLAUDE.md"
+    ".llm/guide/"
+    ".llm/scripts/"
+    ".clj-kondo/polyguard/"
+    ".llm/memory/archive/maintainer-discussions/"
+    ".llm/repo-context.edn"
+    ".llm/memory/adr/README.md"
+    ".llm/memory/adr/template.md"
+    "components/README.md"
+    "bases/README.md"
+    "projects/README.md"}
+
+  ;; 同一ファイル内に二重所有が混在する場合。section 識別子で範囲を表す。
+  ;; "§N" は markdown の `## N.` 見出し、"§N+" は §N 以降のすべて。
+  :section-scoped
+  {".llm/memory/KNOWLEDGE.md" {:template ["§0"]      :project ["§1+"]}
+   ".llm/memory/QUESTIONS.md" {:template ["§0" "§1"] :project ["§2+"]}
+   "DESIGN.md"                {:template ["§0"]      :project ["§1+"]}}}}

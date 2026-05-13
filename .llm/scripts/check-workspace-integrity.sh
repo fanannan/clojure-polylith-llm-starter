@@ -100,6 +100,10 @@ run_step "test instrumentation 検査" \
 run_step "Markdown 参照マーカー検査" \
   "$SCRIPT_DIR/check-doc-references.sh"
 
+# --- モード境界検査（template vs project の所有権違反検出） ---
+run_step "モード境界検査 (check-mode-scope)" \
+  "$SCRIPT_DIR/check-mode-scope.sh"
+
 # --- 1 ファイル 1 ns ---
 run_step "1 ファイル 1 ns 検査" \
   "$SCRIPT_DIR/check-single-ns-per-file.sh"

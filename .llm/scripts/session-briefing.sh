@@ -29,9 +29,51 @@ WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 cd "$WORKSPACE_ROOT"
 
 # -----------------------------------------------------------------------------
-# フェーズ判定（ブートストラップ完了か、日常開発か）
+# モード判定（manifest .llm/repo-context.edn の :repo-kind を読む）
 # -----------------------------------------------------------------------------
+#
+# 判定順序（conflict 最優先）:
+#   1. manifest が :template + bootstrap 完了痕跡  → hard error
+#   2. manifest が :template                        → TEMPLATE MAINTENANCE モード
+#   3. manifest が :project                         → PROJECT モード
+#   4. manifest 不在                                → エラー停止（手動修復を促す）
 
+read_repo_kind() {
+  # `.llm/repo-context.edn` から :repo-kind の値を抽出。:template または :project を返す。
+  # 失敗時は空文字。
+  if [ ! -f ".llm/repo-context.edn" ]; then
+    return 0
+  fi
+  grep -oE ':repo-kind[[:space:]]+:[a-z-]+' .llm/repo-context.edn 2>/dev/null \
+    | head -1 \
+    | sed -E 's/.*:repo-kind[[:space:]]+:([a-z-]+).*/\1/'
+}
+
+read_project_name() {
+  # :project モード時の :project-name を抽出
+  if [ ! -f ".llm/repo-context.edn" ]; then
+    return 0
+  fi
+  grep -oE ':project-name[[:space:]]+"[^"]+"' .llm/repo-context.edn 2>/dev/null \
+    | head -1 \
+    | sed -E 's/.*"([^"]+)".*/\1/'
+}
+
+has_bootstrap_traces() {
+  # bootstrap 完了痕跡:
+  #   - workspace.edn が 'myorg.myapp' プレースホルダから書き換わっている、または
+  #   - projects/ 配下に deploy project が存在する
+  if [ -f "workspace.edn" ] && ! grep -q 'myorg\.myapp' workspace.edn 2>/dev/null; then
+    return 0
+  fi
+  if [ -d "projects" ] && [ -n "$(find projects -maxdepth 1 -mindepth 1 -type d 2>/dev/null)" ]; then
+    return 0
+  fi
+  return 1
+}
+
+# 旧 is_bootstrap_phase: PROJECT モードかつ bootstrap 未完了痕跡を持つ場合に true
+# （:project モードで初期化未完了の派生プロジェクトを briefing が detect するため）
 is_bootstrap_phase() {
   # workspace.edn に配布時プレースホルダ myorg.myapp が残っていれば bootstrap
   if [ -f "workspace.edn" ] && grep -q 'myorg\.myapp' workspace.edn 2>/dev/null; then
@@ -181,37 +223,104 @@ echo "生成元: \`.llm/scripts/session-briefing.sh\`（Claude Code は SessionS
 echo "他エージェントは \`AGENTS.md\` 経由で手動実行）。"
 echo ""
 
-if is_bootstrap_phase; then
-  echo "## Phase: bootstrap（初期化未完了）"
+# モード判定（conflict 最優先）
+REPO_KIND="$(read_repo_kind || true)"
+PROJECT_NAME="$(read_project_name || true)"
+
+# 1. manifest 不在
+if [ -z "$REPO_KIND" ]; then
+  echo "## MODE: UNKNOWN（manifest 不在）"
   echo ""
-  echo "### 未完了の指標"
-  describe_bootstrap_gaps
-  echo ""
-  echo "### 次に読む文書"
-  echo "- \`.llm/guide/BOOTSTRAP_GUIDE.md\` §2（初期化手順）"
-  echo "- \`DESIGN.md\`（§1-§4, §8 の埋め込み対象）"
-else
-  echo "## Phase: development（ブートストラップ完了済）"
-  echo ""
-  echo "### 次に読む文書（作業内容に応じて）"
-  echo "- \`DESIGN.md\` の関連節（仕様確認）"
-  echo "- \`.llm/memory/KNOWLEDGE.md\` の関連節（契約・不変条件）"
-  echo "- \`CLAUDE.md §8\` 作業プロトコル"
+  echo "**エラー**: \`.llm/repo-context.edn\` が見つかりません。"
+  echo "本テンプレ由来のリポジトリでは manifest が必須です。配布物から復元するか、"
+  echo "\`.llm/repo-context.edn\` を手動で作成してください。"
+  exit 0
 fi
 
-echo ""
-echo "## 未解決の判断（.llm/memory/QUESTIONS.md §2 未対応(open)）"
-echo ""
-extract_open_questions
-echo ""
-echo "## 最新の決定（ADR）"
-echo ""
-latest_adr
-echo ""
-echo "## 直近のコミット（git log -5 --oneline）"
-echo ""
-recent_commits
-echo ""
+# 2. conflict: manifest が :template かつ bootstrap 完了痕跡
+if [ "$REPO_KIND" = "template" ] && has_bootstrap_traces; then
+  echo "## MODE: CONFLICT（hard error）"
+  echo ""
+  echo "**bootstrap finalization missed manifest transform**"
+  echo ""
+  echo "manifest は \`:repo-kind :template\` を主張していますが、bootstrap 完了痕跡"
+  echo "（workspace.edn がプレースホルダから書き換わっている、または projects/ 配下に"
+  echo "deploy project が存在）が検出されました。"
+  echo ""
+  echo "**対処**: BOOTSTRAP_GUIDE.md の完了処理を再実施し、\`.llm/repo-context.edn\` を"
+  echo "transform（\`:repo-kind :template\` → \`:project\`、\`:template-name\` → \`:derived-from\`、"
+  echo "\`:project-name\` を追加）してください。"
+  exit 0
+fi
+
+# 3. TEMPLATE MAINTENANCE モード
+if [ "$REPO_KIND" = "template" ]; then
+  echo "## MODE: TEMPLATE MAINTENANCE"
+  echo ""
+  echo "**本リポジトリはテンプレート自身**（clojure-polylith-llm-starter）。"
+  echo "テンプレート保守作業を行うモード。派生プロジェクトの記録領域（manifest の"
+  echo "\`:project-owned\`）には触れない。"
+  echo ""
+  echo "### 次に読む文書"
+  echo "- \`.llm/guide/MAINTAINERS_GUIDE.md\` §5（保守作業の手順）"
+  echo "- \`.llm/memory/archive/maintainer-discussions/\` 配下（過去のテンプレ保守議論）"
+  echo "- 所有権の正本: \`.llm/repo-context.edn\`"
+  echo ""
+  echo "### テンプレ保守決定の記録先"
+  echo "- 議論経緯: \`.llm/memory/archive/maintainer-discussions/YYYY/YYYY-MM.md\`"
+  echo "- \`.llm/memory/adr/\` は派生プロジェクト専用のため使用しない"
+  echo ""
+  echo "## 直近のコミット（git log -5 --oneline）"
+  echo ""
+  recent_commits
+  echo ""
+else
+  # 4. PROJECT モード
+  if [ -n "$PROJECT_NAME" ]; then
+    echo "## MODE: PROJECT ($PROJECT_NAME)"
+  else
+    echo "## MODE: PROJECT"
+  fi
+  echo ""
+
+  if is_bootstrap_phase; then
+    echo "## Phase: bootstrap（初期化未完了）"
+    echo ""
+    echo "### 未完了の指標"
+    describe_bootstrap_gaps
+    echo ""
+    echo "### 次に読む文書"
+    echo "- \`.llm/guide/BOOTSTRAP_GUIDE.md\` §2（初期化手順）"
+    echo "- \`DESIGN.md\`（§1-§4, §8 の埋め込み対象）"
+  else
+    echo "## Phase: development（ブートストラップ完了済）"
+    echo ""
+    echo "### 次に読む文書（作業内容に応じて）"
+    echo "- \`DESIGN.md\` の関連節（仕様確認）"
+    echo "- \`.llm/memory/KNOWLEDGE.md\` の関連節（契約・不変条件）"
+    echo "- \`CLAUDE.md §8\` 作業プロトコル"
+  fi
+
+  echo ""
+  echo "## 未解決の判断（.llm/memory/QUESTIONS.md §2 未対応(open)）"
+  echo ""
+  extract_open_questions
+  echo ""
+  echo "## 最新の決定（ADR）"
+  echo ""
+  latest_adr
+  echo ""
+  echo "## 直近のコミット（git log -5 --oneline）"
+  echo ""
+  recent_commits
+  echo ""
+fi
+
+# 以下の section は PROJECT モード時のみ表示する（テンプレ保守では非該当）
+if [ "$REPO_KIND" != "project" ]; then
+  exit 0
+fi
+
 echo "## REPL 状態（CLAUDE.md §9 Live Workbench Protocol）"
 echo ""
 # .nrepl-port 存在 + 実際の TCP 接続可否で判定（crash 後の stale file を見誤らない）
