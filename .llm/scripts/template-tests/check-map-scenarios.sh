@@ -88,7 +88,8 @@ EOF
 EOF
   cat > "$repo/projects/api/project.edn" <<'EOF'
 {:project/name :api
- :project/type :service
+ :project/type :app
+ :project/runtime :service
  :project/purpose "HTTP API deploy unit"
  :project/entrypoints #{:http-api}
  :project/includes {:bases #{:web-api} :components #{:invoice}}
@@ -337,6 +338,96 @@ scenario_14_workspace_drift_repair() {
   )
 }
 
+scenario_15_duplicate_design_id_repair() {
+  local repo="$BASE/15-duplicate-design-id-repair"
+  base_files "$repo" complete
+  complete_metadata "$repo"
+  cat >> "$repo/DESIGN.md" <<'EOF'
+- INV-01 duplicated accidental requirement id
+EOF
+  expect_fail "$repo" "./.llm/scripts/check-brick-map.sh" "duplicate requirement ids" "15-duplicate-design-brick"
+  expect_fail "$repo" "./.llm/scripts/check-workspace-map.sh" "duplicate requirement ids" "15-duplicate-design-project"
+  sed -i 's/INV-01 duplicated accidental requirement id/INV-02 duplicated accidental requirement id/' "$repo/DESIGN.md"
+  run_generate_all "$repo"
+  run_check_all "$repo"
+}
+
+scenario_16_broken_brick_edn_repair() {
+  local repo="$BASE/16-broken-brick-edn-repair"
+  base_files "$repo" complete
+  complete_metadata "$repo"
+  printf '{:brick/name :invoice\n' > "$repo/components/invoice/brick.edn"
+  expect_fail "$repo" "./.llm/scripts/check-brick-map.sh" "Invalid EDN" "16-broken-brick-edn"
+  complete_metadata "$repo"
+  run_generate_all "$repo"
+  run_check_all "$repo"
+}
+
+scenario_17_broken_project_edn_repair() {
+  local repo="$BASE/17-broken-project-edn-repair"
+  base_files "$repo" complete
+  complete_metadata "$repo"
+  printf '{:project/name :api\n' > "$repo/projects/api/project.edn"
+  expect_fail "$repo" "./.llm/scripts/check-workspace-map.sh" "Invalid EDN" "17-broken-project-edn"
+  complete_metadata "$repo"
+  run_generate_all "$repo"
+  run_check_all "$repo"
+}
+
+scenario_18_missing_interface_repair() {
+  local repo="$BASE/18-missing-interface-repair"
+  base_files "$repo" complete
+  complete_metadata "$repo"
+  rm "$repo/components/invoice/src/example/app/invoice/interface.clj"
+  expect_fail "$repo" "./.llm/scripts/check-brick-map.sh" "no public API in interface.clj" "18-missing-interface"
+  cat > "$repo/components/invoice/src/example/app/invoice/interface.clj" <<'EOF'
+(ns example.app.invoice.interface)
+(defn create [input] input)
+(defn validate [invoice] true)
+EOF
+  run_generate_all "$repo"
+  run_check_all "$repo"
+}
+
+scenario_19_empty_interface_repair() {
+  local repo="$BASE/19-empty-interface-repair"
+  base_files "$repo" complete
+  complete_metadata "$repo"
+  cat > "$repo/components/invoice/src/example/app/invoice/interface.clj" <<'EOF'
+(ns example.app.invoice.interface)
+EOF
+  expect_fail "$repo" "./.llm/scripts/check-brick-map.sh" "no public API in interface.clj" "19-empty-interface"
+  cat > "$repo/components/invoice/src/example/app/invoice/interface.clj" <<'EOF'
+(ns example.app.invoice.interface)
+(defn create [input] input)
+(defn validate [invoice] true)
+EOF
+  run_generate_all "$repo"
+  run_check_all "$repo"
+}
+
+scenario_20_project_capability_ownership_repair() {
+  local repo="$BASE/20-project-capability-ownership-repair"
+  base_files "$repo" complete
+  complete_metadata "$repo"
+  sed -i 's/:project\/build/:project\/provides #{:invoice\/create} :project\/build/' "$repo/projects/api/project.edn"
+  expect_fail "$repo" "./.llm/scripts/check-workspace-map.sh" "must not own capabilities" "20-project-capability-ownership"
+  complete_metadata "$repo"
+  run_generate_all "$repo"
+  run_check_all "$repo"
+}
+
+scenario_21_legacy_project_type_repair() {
+  local repo="$BASE/21-legacy-project-type-repair"
+  base_files "$repo" complete
+  complete_metadata "$repo"
+  sed -i 's/:project\/type :app/:project\/type :service/' "$repo/projects/api/project.edn"
+  expect_fail "$repo" "./.llm/scripts/check-workspace-map.sh" ":project/type must be one of" "21-legacy-project-type"
+  complete_metadata "$repo"
+  run_generate_all "$repo"
+  run_check_all "$repo"
+}
+
 scenario "01 new complete" scenario_01_new_complete
 scenario "02 retrofit skeleton" scenario_02_retrofit_skeleton
 scenario "03 partial todo" scenario_03_partial_todo
@@ -351,5 +442,12 @@ scenario "11 project external dep repair" scenario_11_project_external_dep_repai
 scenario "12 missing project.edn repair" scenario_12_missing_project_edn_repair
 scenario "13 entrypoint repair" scenario_13_entrypoint_repair
 scenario "14 workspace drift repair" scenario_14_workspace_drift_repair
+scenario "15 duplicate DESIGN id repair" scenario_15_duplicate_design_id_repair
+scenario "16 broken brick.edn repair" scenario_16_broken_brick_edn_repair
+scenario "17 broken project.edn repair" scenario_17_broken_project_edn_repair
+scenario "18 missing interface repair" scenario_18_missing_interface_repair
+scenario "19 empty interface repair" scenario_19_empty_interface_repair
+scenario "20 project capability ownership repair" scenario_20_project_capability_ownership_repair
+scenario "21 legacy project type repair" scenario_21_legacy_project_type_repair
 
 echo "ALL TEMPLATE MAP SCENARIOS PASSED"

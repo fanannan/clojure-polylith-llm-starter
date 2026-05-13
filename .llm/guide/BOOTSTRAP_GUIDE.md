@@ -240,7 +240,8 @@ project を作成したら、`projects/<deploy>/project.edn` を作成する。p
 
 ```clojure
 {:project/name :api
- :project/type :service
+ :project/type :app
+ :project/runtime :service
  :project/purpose "HTTP API を uberjar として出荷する"
  :project/entrypoints #{:http-api}
  :project/includes {:bases #{:web-api}
@@ -248,6 +249,8 @@ project を作成したら、`projects/<deploy>/project.edn` を作成する。p
  :project/requirements ["API-01"]
  :project/build {:kind :uberjar}}
 ```
+
+`:project/type` は `:app` または `:library` に限定する。`:app` は実行・deploy される成果物で、base / entrypoint を原則必須とする。`:library` は非 deploy の bundle で、base / entrypoint なしを許容する。Web API / worker / CLI / batch / lambda などの実行形態は、必要な場合だけ任意の `:project/runtime` に書く。
 
 project / workspace の閲覧用文書と検索用 index は生成物であり、直接編集しない。
 

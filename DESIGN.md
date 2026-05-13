@@ -94,6 +94,30 @@ LLM は本ファイルを読むたびに、以下の観点で**能動的に曖�
 変更の流れは CLAUDE の仕様変更フローに従う。
 ¤ CLAUDE.md §8.5
 
+### 0.6 Requirement ID の定義形式
+
+`brick.edn` / `project.edn` の `:brick/requirements` / `:project/requirements` から参照する ID は、DESIGN.md 内で明示的に定義する。
+
+定義として扱う形式:
+
+```markdown
+- REQ-001: 請求書を作成できる
+### REQ-002: 請求書を承認できる
+```
+
+機械検査は、行頭の bullet または heading に現れる `PREFIX-001` 形式だけを requirement 定義として扱う。文中参照、例示、範囲表記は定義として数えない。
+
+```markdown
+- [ ] REQ-001 が動作する       # 参照。定義ではない
+- [ ] UC-1 〜 UC-5 が動作する  # 範囲表記。定義ではない
+```
+
+推奨:
+
+- Prefix は対象領域を表す短い英大文字にする。例: `INV-001`, `API-001`, `AUTH-001`
+- 同じ ID を複数箇所で定義しない
+- brick / project に紐づく要求は、実装前に対応する `brick.edn` / `project.edn` に ID を記録する
+
 ---
 
 ---

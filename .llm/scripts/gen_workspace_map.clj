@@ -62,10 +62,9 @@ workspace 全体の構造事実は Polylith / tools.deps に委譲し、この�
 (defn- read-edn-file [path]
   (try
     (edn/read-string (slurp path))
-    (catch Exception e
+    (catch Throwable e
       (throw (ex-info (str "Invalid EDN: " path " - " (.getMessage e))
-                      {:path path}
-                      e)))))
+                      {:path path})))))
 
 (defn- write-file! [path content]
   (io/make-parents path)
@@ -172,6 +171,7 @@ workspace 全体の構造事実は Polylith / tools.deps に委譲し、この�
         deps-includes (includes-from-deps (str project-path "/deps.edn"))]
     {:project/name (keyword name)
      :project/type :TODO
+     :project/runtime :TODO
      :project/purpose "TODO: describe this deploy/build unit"
      :project/entrypoints #{}
      :project/includes deps-includes
@@ -206,6 +206,12 @@ workspace 全体の構造事実は Polylith / tools.deps に委譲し、この�
       (error! (str "ERROR: " path " must have keyword :project/name")))
     (when-not (keyword? (:project/type p))
       (error! (str "ERROR: " path " must have keyword :project/type")))
+    (when (and (not= :TODO (:project/type p))
+               (not (contains? #{:app :library} (:project/type p))))
+      (error! (str "ERROR: " path " :project/type must be one of #{:app :library}; use optional :project/runtime for service/worker/cli/batch/lambda details")))
+    (when (and (contains? p :project/runtime)
+               (not (keyword? (:project/runtime p))))
+      (error! (str "ERROR: " path " must have keyword :project/runtime when present")))
     (when-not (nonblank-string? (:project/purpose p))
       (error! (str "ERROR: " path " must have non-empty :project/purpose")))
     (when-not (keyword-coll? (:project/entrypoints p))
@@ -218,13 +224,29 @@ workspace 全体の構造事実は Polylith / tools.deps に委譲し、この�
       (when-not (keyword-coll? (get-in p [:project/includes k] #{}))
         (error! (str "ERROR: " path " :project/includes " k " must be a collection of keywords"))))
     (when-not (map? (:project/build p))
-      (error! (str "ERROR: " path " must have :project/build map")))))
+      (error! (str "ERROR: " path " must have :project/build map")))
+    (when (or (contains? p :project/provides)
+              (contains? p :project/capabilities))
+      (error! (str "ERROR: " path " must not own capabilities; capability ownership belongs to component brick.edn")))))
+
+(def requirement-definition-pattern
+  #"(?m)^[ \t]{0,3}(?:#{1,6}[ \t]+|[-*][ \t]+)([A-Z][A-Z0-9]+-[0-9]+)\b")
 
 (defn- design-requirement-ids []
   (if (file? "DESIGN.md")
-    (->> (re-seq #"\b[A-Z][A-Z0-9]+-[0-9]+\b" (slurp "DESIGN.md"))
+    (->> (re-seq requirement-definition-pattern (slurp "DESIGN.md"))
+         (map second)
          set)
     #{}))
+
+(defn- duplicate-design-requirement-ids []
+  (if (file? "DESIGN.md")
+    (->> (re-seq requirement-definition-pattern (slurp "DESIGN.md"))
+         (map second)
+         frequencies
+         (keep (fn [[id n]] (when (< 1 n) id)))
+         sort)
+    []))
 
 (defn- validate-cross-project! [projects bricks]
   (let [base-names (set (map :brick/name (filter #(= :base (:brick/type %)) bricks)))
@@ -234,7 +256,12 @@ workspace 全体の構造事実は Polylith / tools.deps に委譲し、この�
         project-names (set (map (comp name :project/name) projects))
         unregistered-projects (remove ws-projects project-names)
         missing-project-edn (remove project-names ws-projects)
-        design-ids (design-requirement-ids)]
+        design-ids (design-requirement-ids)
+        duplicate-design-ids (duplicate-design-requirement-ids)]
+    (when (seq duplicate-design-ids)
+      (error!
+       "ERROR: DESIGN.md has duplicate requirement ids:"
+       (str/join "\n" (map #(str "  " %) duplicate-design-ids))))
     (when (and (= :complete (adoption-mode))
                (seq unregistered-projects))
       (error! "ERROR: project.edn exists for projects not registered in workspace.edn:"
@@ -281,7 +308,11 @@ workspace 全体の構造事実は Polylith / tools.deps に委譲し、この�
    (for [p projects :when (contains-todo? p)]
      (str "WARN: " (:project/path p) "/project.edn contains TODO placeholders"))
    (for [p projects :when (empty? (:project/entrypoints p))]
-     (str "WARN: " (:project/path p) " has empty :project/entrypoints; fill deploy entrypoints before migration is complete"))))
+     (str "WARN: " (:project/path p) " has empty :project/entrypoints; fill deploy entrypoints before migration is complete"))
+   (for [p projects
+         :when (and (= :app (:project/type p))
+                    (empty? (get-in p [:project/includes :bases])))]
+     (str "WARN: " (:project/path p) " has :project/type :app but includes no base; use :project/type :library only for non-deployable bundle projects"))))
 
 (defn- report-quality! [projects {:keys [strict?]}]
   (let [warnings (vec (migration-warnings projects))]
@@ -304,6 +335,7 @@ workspace 全体の構造事実は Polylith / tools.deps に委譲し、この�
         [:project/path
          :project/name
          :project/type
+         :project/runtime
          :project/purpose
          :project/entrypoints
          :project/includes
@@ -330,7 +362,8 @@ workspace 全体の構造事実は Polylith / tools.deps に委譲し、この�
   (let [normalized-projects (mapv normalize-project (sort-by :project/path projects))
         normalized-bricks (mapv normalize-brick (sort-by :brick/path bricks))]
     (str ";; GENERATED - do not edit by hand.\n"
-         ";; Sources: workspace.edn, deps.edn, repo-context.edn, project.edn, brick.edn\n"
+         ";; Source of truth: workspace.edn, deps.edn, .llm/repo-context.edn, projects/*/project.edn, components/*/brick.edn, bases/*/brick.edn\n"
+         ";; Regenerate with: clj -Sdeps '{:paths [\".llm/scripts\"]}' -X gen-workspace-map/generate\n"
          (with-out-str
            (pprint/pprint
             {:workspace {:projects (into (sorted-set) (workspace-projects))
@@ -347,6 +380,8 @@ workspace 全体の構造事実は Polylith / tools.deps に委譲し、この�
   (str "\n## " (:project/path p) "\n\n"
        "- Name: `" (:project/name p) "`\n"
        "- Type: `" (:project/type p) "`\n"
+       (when (:project/runtime p)
+         (str "- Runtime: `" (:project/runtime p) "`\n"))
        "- Purpose: " (:project/purpose p) "\n"
        "- Entrypoints:\n" (bullet-list (:project/entrypoints p) "- none") "\n"
        "- Bases:\n" (bullet-list (get-in p [:project/includes :bases]) "- none") "\n"

@@ -200,7 +200,8 @@ project には capability を持たせない。project は deploy / build 単位
 
 ```clojure
 {:project/name :api
- :project/type :service
+ :project/type :app
+ :project/runtime :service
  :project/purpose "HTTP API を uberjar として出荷する"
  :project/entrypoints #{:http-api}
  :project/includes {:bases #{:web-api}
@@ -208,6 +209,8 @@ project には capability を持たせない。project は deploy / build 単位
  :project/requirements ["API-01"]
  :project/build {:kind :uberjar}}
 ```
+
+`:project/type` は検査ポリシーであり、語彙は `:app` / `:library` の 2 つに限定する。`:app` は実行・deploy される成果物で、base / entrypoint を原則必須とする。`:library` は非 deploy の bundle で、base / entrypoint なしを許容する。service / worker / CLI / batch / lambda などの実行形態は、必要な場合だけ任意の `:project/runtime` に書く。
 
 `project.edn` は deploy intent の正本であり、classpath や依存の正本ではない。実際の project 依存は `projects/<name>/deps.edn` が正本であり、Polylith の構造事実は `poly check` に委譲する。`project.edn` と `deps.edn` の includes がずれている場合は生成検査で警告する。
 

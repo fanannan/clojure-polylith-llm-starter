@@ -47,10 +47,9 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
 (defn- read-edn-file [path]
   (try
     (edn/read-string (slurp path))
-    (catch Exception e
+    (catch Throwable e
       (throw (ex-info (str "Invalid EDN: " path " - " (.getMessage e))
-                      {:path path}
-                      e)))))
+                      {:path path})))))
 
 (defn- repo-context []
   (when (file? ".llm/repo-context.edn")
@@ -211,6 +210,13 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
 (defn- public-api-name-set [brick]
   (set (map api-name (:brick/public-api brick))))
 
+(defn- component-interface-warnings [brick]
+  (when (and (= :component (:brick/type brick))
+             (seq (:brick/provides brick))
+             (empty? (:brick/public-api brick)))
+    [(str "WARN: " (:brick/path brick)
+          " provides capabilities but has no public API in interface.clj; create an interface function or remove the unimplemented capability")]))
+
 (defn- component-capability-warnings [brick]
   (let [api-names (public-api-name-set brick)]
     (concat
@@ -276,11 +282,24 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
        (remove #(file? (str (:path %) "/brick.edn")))
        vec))
 
+(def requirement-definition-pattern
+  #"(?m)^[ \t]{0,3}(?:#{1,6}[ \t]+|[-*][ \t]+)([A-Z][A-Z0-9]+-[0-9]+)\b")
+
 (defn- design-requirement-ids []
   (if (file? "DESIGN.md")
-    (->> (re-seq #"\b[A-Z][A-Z0-9]+-[0-9]+\b" (slurp "DESIGN.md"))
+    (->> (re-seq requirement-definition-pattern (slurp "DESIGN.md"))
+         (map second)
          set)
     #{}))
+
+(defn- duplicate-design-requirement-ids []
+  (if (file? "DESIGN.md")
+    (->> (re-seq requirement-definition-pattern (slurp "DESIGN.md"))
+         (map second)
+         frequencies
+         (keep (fn [[id n]] (when (< 1 n) id)))
+         sort)
+    []))
 
 (defn- validate-cross-brick! [bricks]
   (let [provided (mapcat (fn [b] (map #(vector % b) (:brick/provides b))) (filter #(= :component (:brick/type %)) bricks))
@@ -308,7 +327,12 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
                          [(:brick/path b) req]))
         referenced-reqs (set (mapcat :brick/requirements bricks))
         unassigned-reqs (when (seq design-ids)
-                          (remove referenced-reqs design-ids))]
+                          (remove referenced-reqs design-ids))
+        duplicate-design-ids (duplicate-design-requirement-ids)]
+    (when (seq duplicate-design-ids)
+      (error!
+       "ERROR: DESIGN.md has duplicate requirement ids:"
+       (str/join "\n" (map #(str "  " %) duplicate-design-ids))))
     (when (seq duplicate-provides)
       (error!
        "ERROR: duplicate component capabilities:"
@@ -342,6 +366,7 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
   (concat
    (mapcat #(todo-warnings (str (:brick/path %) "/brick.edn") %) bricks)
    (mapcat empty-provides-warnings bricks)
+   (mapcat component-interface-warnings bricks)
    (mapcat component-capability-warnings (filter #(= :component (:brick/type %)) bricks))
    (mapcat #(api-name-warnings (:brick/path %) (:brick/public-api %)) bricks)
    (duplicate-public-api-name-warnings bricks)))
@@ -419,7 +444,8 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
                          (map (fn [b] [(:brick/entrypoint b) (:brick/path b)]))
                          (into (sorted-map)))]
     (str ";; GENERATED - do not edit by hand.\n"
-         ";; Sources: components/*/brick.edn, bases/*/brick.edn, interface.clj\n"
+         ";; Source of truth: DESIGN.md, components/*/brick.edn, bases/*/brick.edn, interface.clj\n"
+         ";; Regenerate with: clj -Sdeps '{:paths [\".llm/scripts\"]}' -X gen-brick-map/generate\n"
          (with-out-str
            (pprint/pprint
             {:bricks normalized

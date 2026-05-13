@@ -738,6 +738,50 @@ Markdown 文書どうしの参照は、無印の Markdown 参照を禁止し、�
 4. 例外は機械判定できるものだけに限定する。コードブロック、外部 URL、同一文書内参照、規約説明の例示ブロック以外を意味論で免除しない
 - false positive の許容は「一括 error で導入、問題が出たら個別に `:config-in-ns` で除外」の順（��断 2）
 
+### 5.14 Brick / Project / Workspace intent map の保守
+
+Brick / Project / Workspace Map は、Polylith 構造に対するテンプレート固有の設計意図 layer である。目的は、README や手書き Markdown ではなく、機械可読な意図から閲覧用文書と検索用 index を生成し、重複実装・責務混同・drift を早期検出することである。
+
+正本の分担:
+
+- `brick.edn`: brick の責務、component capability ownership、base entrypoint / uses、not-for、requirement 対応
+- `project.edn`: deploy / build intent、entrypoint、include brick、requirement 対応
+- `interface.clj`: 公開 API と契約の実装事実
+- `deps.edn` / `workspace.edn`: classpath と Polylith 構造事実
+- `docs/BRICKS.md` / `docs/PROJECTS.md` / `docs/WORKSPACE.md` / `.llm/data/*-map.edn`: 自動生成物。直接編集禁止
+
+機械が自動生成してよいのは skeleton / proposal / generated docs / index までである。責務説明、capability の意味、not-for、requirement 対応は設計意図なので、推測で確定しない。不明点は TODO に残し、`:adoption-mode :retrofit` / `:partial` では WARN、`:complete` では ERROR とする。
+
+`:complete` へ昇格できる条件:
+
+- 全 brick に `brick.edn` があり、全 project に `project.edn` がある
+- `brick.edn` / `project.edn` に TODO が残っていない
+- `DESIGN.md` の requirement ID に重複がない
+- `brick.edn` / `project.edn` の requirement 参照が `DESIGN.md` に存在する
+- component/base の責務分離違反がない
+- component capability の重複がない
+- base の `:brick/uses` が存在する component capability を指す
+- `:brick/not-for` が provides / uses と衝突していない
+- public API の重複が capability で説明されている
+- component が capability を宣言するなら `interface.clj` に公開 API がある
+- project が capability ownership を持たない
+- project entrypoint と base `:brick/entrypoint` が一致する
+- project includes と `projects/*/deps.edn` の `:local/root` が整合する
+- generated docs / index に drift がない
+- Polylith 構造事実は `poly check` が通る
+
+`project.edn` の `:project/type` は検査ポリシーであり、語彙は `:app` / `:library` に限定する。`:app` は実行・deploy される成果物で base / entrypoint を原則必須とし、`:library` は非 deploy bundle として base / entrypoint なしを許容する。service / worker / CLI / batch / lambda などの実行形態は、必要な場合だけ任意の `:project/runtime` に書く。3 軸以上の分類は、対応する機械検査が生まれるまで追加しない。
+
+Requirement ID の検査順序:
+
+1. `DESIGN.md` から requirement ID の定義行を抽出する
+2. `DESIGN.md` 内の定義 ID 重複を ERROR にする
+3. `brick.edn` / `project.edn` の requirement 参照を収集する
+4. 存在しない ID 参照を ERROR にする
+5. 未参照 DESIGN ID は WARN にする
+
+テンプレート保守で `gen_brick_map.clj` / `gen_workspace_map.clj` / wrapper / migration policy を変更した場合、通常ゲートとは別に `.llm/scripts/template-tests/check-map-scenarios.sh` を実行対象にする。この E2E は `/tmp` の synthetic repo で生成・移行・エラー検出・自力修復を検査するもので、派生プロジェクトのアプリケーションテストではない。
+
 ---
 
 ## 6. 避けるべきアンチパターン

@@ -69,6 +69,7 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 | `check-repo-context-consistency.sh` | `.llm/repo-context.edn` の capability 依存関係、adoption mode、migration ledger 参照を検査 |
 | `check_repo_context_consistency.clj` | `check-repo-context-consistency.sh` の Clojure 実装 |
 | `check-adoption-mode-scenarios.sh` | テンプレ本体では実運用されにくい `:retrofit` / `:partial` / `:complete` の manifest 段階挙動を fixture で検査 |
+| `template-tests/check-map-scenarios.sh` | テンプレート自身の Brick / Project / Workspace Map E2E。synthetic repo で生成・移行・エラー検出・自力修復を検査する。通常ゲート外 |
 | `apply-repo-context-migration.sh` | 人間承認後に `.llm/repo-context.edn` を作成する migration wrapper。既定では `APPLY` 入力を要求 |
 | `install-llm-template.sh` | 本テンプレート未導入の既存 repo に `.llm/` / root guide を持ち込む dry-run first の installer。`--apply` でも既存ファイルは上書きせず candidate を作る |
 | `repl-eval.sh` | 稼働中 nREPL に eval / load-file を送る LLM 向け client（CLAUDE.md §9 Live Workbench Protocol）。`.nrepl-port` 自動発見、永続 session 再利用（`.nrepl-session`）、`--expr` / `--load-file` / `--interrupt` / `--describe` / `--reset-session` / `--fresh` 対応 |
