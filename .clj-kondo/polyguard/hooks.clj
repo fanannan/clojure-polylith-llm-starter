@@ -309,6 +309,7 @@
                :level :warning
                :message (str "(catch " class-sym " ...) は広すぎます。"
                              "ex-info の具体クラス、または Java の具体例外を catch してください。"
+                             "例: java.io.IOException / java.sql.SQLException / clojure.lang.ExceptionInfo。"
                              "CODING_GUIDE.md §7.2")})))))
 
 (defn- nil-or-false-token?
@@ -328,6 +329,8 @@
              :level :error
              :message (str "catch 本体が空または nil / false のみです。例外の握り潰しは禁止。"
                            "少なくとも構造化ログ（mulog/log）または ex-info で再 throw する。"
+                           "例: (catch ExceptionInfo e (log/error e {:ctx ...}) "
+                           "(throw (ex-info \"...\" {:ctx ...} e))) — cause は ex-info の第 3 引数で渡す。"
                            "CODING_GUIDE.md §7.2")}))))
 
 (defn- check-catch
