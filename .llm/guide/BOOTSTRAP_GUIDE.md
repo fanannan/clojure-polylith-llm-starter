@@ -152,6 +152,21 @@ ADR の発行（§4）は実施後報告 (L2) として LLM が自動実施し�
 判断権限と実行主体を混同しない。component は承認必須 (L1)、base / project は人間専権 (L0) で採否を決める。実際のコマンド実行は、承認または指示が確定した後に行う。
 ∵ COLLABORATION_GUIDE.md §2.0
 
+brick 作成前に、DESIGN の要求から **capability plan** を短く作り、人間に提示して承認を得る。これは永続ファイルの追加を必須にしない。目的は、自然言語仕様から直接 `poly create` へ飛ばず、要求・capability・brick・副作用境界の対応を一度だけ明示することである。
+
+最小形式:
+
+```clojure
+[{:requirement "INV-001"
+  :capability  :invoice/create
+  :brick       :invoice
+  :kind        :component
+  :effect      :pure
+  :public-fn   'create}]
+```
+
+提示前に既存の Brick Map 生成物を確認し、既存 capability で足りる場合は新規 brick を作らない。新規が必要な場合だけ、component / base / project の候補名、`brick.edn` に入れる `:brick/provides` または `:brick/uses`、対応 requirement ID をまとめて提示する。
+
 ```bash
 # ドメインコンポーネント（承認必須 (L1)）
 clj -M:poly create component name:<domain>

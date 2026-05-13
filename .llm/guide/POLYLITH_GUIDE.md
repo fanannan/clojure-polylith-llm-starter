@@ -107,6 +107,8 @@ component の `brick.edn` は capability の所有を表す。
  :brick/requirements ["INV-01" "INV-02"]}
 ```
 
+`component` は pure domain component と adapter component の両方を取り得る。現時点の `brick.edn` schema には `:brick/effect` を導入しないが、設計時は `:pure` / `:adapter` / `:entry` 相当の区別を必ず考える。特に `:pure` 相当の component では、時刻・乱数・I/O・可変状態を内側に置かない。将来この区別を機械検査へ接続する場合は、`brick.edn` に `:brick/effect` を追加する案を検討する。
+
 base の `brick.edn` は外部 entrypoint と利用 capability を表す。base は capability を所有しないため、`:brick/provides` を書かない。
 
 ```clojure
@@ -125,6 +127,8 @@ clj -Sdeps '{:paths [".llm/scripts"]}' -X gen-brick-map/generate
 ```
 
 `./.llm/scripts/check-workspace-integrity.sh` は、全 brick の `brick.edn` 存在、component/base の意味違反、重複 capability、base の未提供 capability 参照、`:brick/not-for` との衝突、capability 命名、capability と公開 API 名の対応、`docs/BRICKS.md` / `.llm/data/brick-map.edn` の drift を検査する。
+
+`check-interface-contracts.sh` が検査するのは、`interface.clj` の公開 `defn` に対応する `m/=>` が存在することまでである。arity 整合、schema の意味妥当性、失敗表現の妥当性はこの gate では保証しない。これらは Malli instrumentation 下の REPL eval、interface test、必要に応じた property test で検証する。
 
 既存 repo の導入時など、`brick.edn` を持たない brick がある場合は、まず skeleton 案を出す。
 
@@ -323,15 +327,17 @@ Project / Workspace Map の検査は、`workspace.edn :projects` と `projects/*
 
 (def CreateInput
   [:map
+   [:id :uuid]
+   [:created-at inst?]
    [:name [:string {:min 1 :max 100}]]])
 
 ;; --- 純粋関数 ---
 (defn create
-  "Entity を構築する純粋関数。永続化は行わない（§1.1.3 副作用の隔離）。"
-  [{:keys [name]}]
-  {:<domain>/id         (random-uuid)
+  "Entity を構築する純粋関数。id / created-at は呼び出し側で生成して渡す。"
+  [{:keys [id name created-at]}]
+  {:<domain>/id         id
    :<domain>/name       name
-   :<domain>/created-at (java.time.Instant/now)})
+   :<domain>/created-at created-at})
 
 (defn validate
   "Entity がスキーマに適合するかを返す。"
@@ -340,9 +346,13 @@ Project / Workspace Map の検査は、`workspace.edn :projects` と `projects/*
 
 ;; --- リッチコメント ---
 (comment
-  (create {:name "test"})
-  (validate (create {:name "test"})))
+  (create {:id (random-uuid) :name "test" :created-at (java.time.Instant/now)})
+  (validate (create {:id (random-uuid) :name "test" :created-at (java.time.Instant/now)})))
 ```
+
+時刻・乱数・UUID 生成は非決定性を持つため、ドメイン component の `core.clj` では呼び出さない。
+base / orchestration / REPL fixture などの外側で生成し、値として component に渡す。
+これにより純粋関数、プロパティテスト、REPL 再現性を保つ。
 
 #### `components/<domain>/test/myorg/myapp/<domain>/interface_test.clj`
 
@@ -371,10 +381,12 @@ Project / Workspace Map の検査は、`workspace.edn :projects` と `projects/*
 
 (deftest create-test
   (testing "create は必須項目から Entity を構築する"
-    (let [e (d/create {:name "Alice"})]
+    (let [id #uuid "00000000-0000-0000-0000-000000000001"
+          created-at #inst "2026-01-01T00:00:00.000-00:00"
+          e (d/create {:id id :name "Alice" :created-at created-at})]
       (is (match? {:<domain>/name       "Alice"
-                   :<domain>/id         uuid?
-                   :<domain>/created-at inst?}
+                   :<domain>/id         id
+                   :<domain>/created-at created-at}
                   e))
       (is (m/validate d/Entity e)))))
 

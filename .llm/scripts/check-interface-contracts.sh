@@ -13,6 +13,11 @@
 #   - `defn fn-name` / `defn- fn-name` / `m/=> fn-name` を grep で抽出、集合比較。
 #   - defn- は private なので m/=> 対応は任意（検査対象外）。defn のみ必須。
 #
+# 限界:
+#   - 本 script は契約の「存在」だけを検査する。
+#   - defn と m/=> の arity 整合、schema の意味妥当性、失敗表現の妥当性は検査しない。
+#   - それらは Malli instrumentation 下の REPL eval、interface test、property test で検証する。
+#
 # 検査対象:
 #   components/*/src/**/interface.clj（interface のみ、core.clj 等は免除）
 #
