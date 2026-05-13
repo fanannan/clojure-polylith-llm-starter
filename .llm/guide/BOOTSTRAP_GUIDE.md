@@ -332,6 +332,7 @@ I/O リソースの起動・停止管理が必要な場合のみ実施する。�
    - `:repo-kind :template` → `:project`
    - `:template-name "clojure-polylith-llm-starter"` → `:derived-from "clojure-polylith-llm-starter"` にリネーム
    - `:project-name "<myorg.myapp の実値>"` を追加（例: `:project-name "acme.shop"`）
+   - `:workspace-kind` / `:capabilities` / `:adoption-mode` は `.llm/scripts/propose-repo-context.sh` の候補を人間が確認して決める
    - `:ownership` ブロックは保持する（派生プロジェクトでも所有権 SSOT として機能させる）
    - 削除しない（manifest 不在は session-briefing が non-blocking ERROR と migration 手順を表示する）
 6. 初期化完了をコミット（例: `"Complete project bootstrap"`）— **このコマンドは LLM が提示、実行はユーザが行う**
@@ -339,6 +340,24 @@ I/O リソースの起動・停止管理が必要な場合のみ実施する。�
 以降は CLAUDE の作業プロトコルで日常開発に移行する。本文書（BOOTSTRAP_GUIDE）は物理的には残るが、フェーズ判定により、完了後は自動的に読まれない。
 ¤ ../CLAUDE.md §8
 ∵ ../CLAUDE.md §0
+
+---
+
+## 4.1 既存 repo への retrofit
+
+既に動いている Clojure / Polylith repo に後から本テンプレートを持ち込む場合は、本章の初期化手順を最初からやり直さない。既存構造を壊さないため、導入直後は `:adoption-mode :retrofit` として扱う。
+
+1. テンプレート repo 側で `.llm/scripts/install-llm-template.sh --target <repo>` を実行し、コピー計画だけを見る
+2. 人間承認後に `--apply` を付けてコピーする（既存ファイルは上書きされず `.candidate.<timestamp>` になる）
+3. target repo 側で `./.llm/scripts/detect-repo-profile.sh` を実行する
+4. `./.llm/scripts/propose-repo-context.sh` の manifest 候補を人間が確認する
+5. 承認後に `./.llm/scripts/apply-repo-context-migration.sh` を実行する
+6. `./.llm/scripts/check-workspace-integrity.sh` を実行し、WARN を棚卸しする
+
+この retrofit 手順では、既存の ADR / KNOWLEDGE / QUESTIONS / source tree を削除しない。属性キーワードの自動検出は候補生成までであり、manifest 反映は人間承認後に限る。
+
+∵ .llm/guide/MAINTAINERS_GUIDE.md §7.6
+∵ .llm/guide/MAINTAINERS_GUIDE.md §7.7
 
 ---
 

@@ -838,7 +838,32 @@ archive README はディレクトリ入口であり、本節の詳細を複製�
 
 ### 7.6 既存派生プロジェクトへの持ち込み
 
-既存プロジェクトに本テンプレート更新を持ち込む場合、`.llm/repo-context.edn` が無い状態は旧テンプレート由来の通常状態として扱う。`session-briefing.sh` は non-blocking ERROR として migration 例を表示し、作業開始を止めない。完了条件を strict 化する前に、`:repo-kind :project` の manifest を追加し、既存 ADR / KNOWLEDGE / QUESTIONS を削除せず棚卸しする。
+既存プロジェクトに本テンプレート更新を持ち込む場合、`.llm/repo-context.edn` が無い状態は旧テンプレート由来の通常状態として扱う。`session-briefing.sh` は non-blocking ERROR として migration 例を表示し、作業開始を止めない。
+
+移行は次の順序に固定する。
+
+1. `.llm/scripts/propose-repo-context.sh` で manifest 候補を表示する（副作用なし）
+2. 人間が `:repo-kind` / `:project-name` / `:workspace-kind` / `:capabilities` / `:adoption-mode` を確認する
+3. 承認後に `.llm/scripts/apply-repo-context-migration.sh` で `.llm/repo-context.edn` を作る
+4. `:adoption-mode :retrofit` のまま `check-workspace-integrity.sh` を実行し、既存 ADR / KNOWLEDGE / QUESTIONS を削除せず棚卸しする
+5. WARN が整理された範囲から `:partial`、最終的に `:complete` へ昇格する
+
+属性キーワードは script が自動検出・提案してよいが、manifest への採用は人間承認後に限る。`:retrofit` では検査失敗を WARN として提示し、既存利用者の作業開始を block しない。`:partial` / `:complete` では、manifest の `:capabilities` に含まれる検査を gate として扱う。
+
+### 7.7 既存 Clojure / Polylith repo の retrofit
+
+本テンプレート未導入の既存 Clojure / Polylith repo に持ち込む場合は、いきなり完全準拠を要求しない。`.llm/scripts/install-llm-template.sh --target <repo>` は dry-run を既定とし、`--apply` が指定された場合も既存ファイルを上書きせず `.candidate.<timestamp>` に退避候補として置く。
+
+導入後の最小 workflow:
+
+1. `install-llm-template.sh --target <repo>` でコピー計画を確認する
+2. 人間承認後に `install-llm-template.sh --target <repo> --apply` を実行する
+3. target repo で `./.llm/scripts/detect-repo-profile.sh` を実行し、`:workspace-kind` と `:capabilities` 候補を確認する
+4. `./.llm/scripts/propose-repo-context.sh` で manifest 候補を表示する
+5. 人間承認後に `./.llm/scripts/apply-repo-context-migration.sh` を実行する
+6. `:adoption-mode :retrofit` で総合検査を走らせ、既存構造とのずれを WARN として棚卸しする
+
+`detect-repo-profile.sh` の判定は補助情報であり、正本ではない。Polylith 判定、Malli 採用、clj-kondo / cljfmt 有無は誤検出の余地があるため、manifest に書き込む前に必ず人間が確認する。
 
 ## 8. 関連文書
 

@@ -59,6 +59,24 @@ read_project_name() {
     | sed -E 's/.*"([^"]+)".*/\1/'
 }
 
+read_workspace_kind() {
+  if [ ! -f ".llm/repo-context.edn" ]; then
+    return 0
+  fi
+  grep -oE ':workspace-kind[[:space:]]+:[a-z-]+' .llm/repo-context.edn 2>/dev/null \
+    | head -1 \
+    | sed -E 's/.*:workspace-kind[[:space:]]+:([a-z-]+).*/\1/'
+}
+
+read_adoption_mode() {
+  if [ ! -f ".llm/repo-context.edn" ]; then
+    return 0
+  fi
+  grep -oE ':adoption-mode[[:space:]]+:[a-z-]+' .llm/repo-context.edn 2>/dev/null \
+    | head -1 \
+    | sed -E 's/.*:adoption-mode[[:space:]]+:([a-z-]+).*/\1/'
+}
+
 has_bootstrap_traces() {
   # bootstrap 完了痕跡:
   #   - workspace.edn が 'myorg.myapp' プレースホルダから書き換わっている、または
@@ -226,6 +244,8 @@ echo ""
 # モード判定（conflict 最優先）
 REPO_KIND="$(read_repo_kind || true)"
 PROJECT_NAME="$(read_project_name || true)"
+WORKSPACE_KIND="$(read_workspace_kind || true)"
+ADOPTION_MODE="$(read_adoption_mode || true)"
 
 # 1. manifest 不在
 if [ -z "$REPO_KIND" ]; then
@@ -234,6 +254,7 @@ if [ -z "$REPO_KIND" ]; then
   echo "**ERROR (non-blocking)**: \`.llm/repo-context.edn\` が見つかりません。"
   echo "既存派生プロジェクトへ本テンプレ更新を持ち込んだ直後なら、"
   echo "\`:repo-kind :project\` の manifest を追加してください。"
+  echo "\`.llm/scripts/propose-repo-context.sh\` が利用可能なら、まず候補を表示してください。"
   echo ""
   echo "派生プロジェクトでの作成例（\`:project-name\` を実値に置換し、\`:ownership\` は"
   echo "テンプレ最新版の \`.llm/repo-context.edn\` からコピー）:"
@@ -242,11 +263,14 @@ if [ -z "$REPO_KIND" ]; then
 {:repo-kind :project
  :derived-from "clojure-polylith-llm-starter"
  :project-name "myorg.myapp"
+ :workspace-kind :polylith
+ :adoption-mode :retrofit
+ :capabilities #{:deps-edn :polylith :llm-guides}
  :ownership {;; copy from the latest template .llm/repo-context.edn
              }}
 EOF
   echo ""
-  echo "詳細: \`.llm/guide/MAINTAINERS_GUIDE.md\` §7.6"
+  echo "詳細: \`.llm/guide/MAINTAINERS_GUIDE.md\` §7.6 / §7.7"
   exit 0
 fi
 
@@ -293,6 +317,11 @@ else
     echo "## MODE: PROJECT ($PROJECT_NAME)"
   else
     echo "## MODE: PROJECT"
+  fi
+  if [ -n "$WORKSPACE_KIND" ] || [ -n "$ADOPTION_MODE" ]; then
+    echo ""
+    echo "- workspace-kind: ${WORKSPACE_KIND:-unknown}"
+    echo "- adoption-mode: ${ADOPTION_MODE:-unspecified}"
   fi
   echo ""
 

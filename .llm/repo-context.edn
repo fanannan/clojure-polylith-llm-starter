@@ -17,6 +17,14 @@
 ;;   :project  — このリポは派生プロジェクト（bootstrap 後）。派生プロジェクト
 ;;               固有の決定・知見・コンテンツを記録する。
 ;;
+;; 移行状態:
+;;   :workspace-kind — :polylith | :plain-clojure | :unknown
+;;   :adoption-mode — :retrofit | :partial | :complete
+;;     :retrofit は既存 repo への導入直後。検査は警告中心で、人間確認後に
+;;     :partial / :complete へ昇格する。
+;;   :capabilities — 有効な検査・運用機能の前提。既存 Clojure/Polylith repo では
+;;     detect-repo-profile → 人間確認 → manifest 更新の順で採用する。
+;;
 ;; Bootstrap 時の transform:
 ;;   下流プロジェクトは bootstrap 完了時に本ファイルを以下のように書き換える:
 ;;     :repo-kind     :template → :project
@@ -32,6 +40,14 @@
 
 {:repo-kind     :template
  :template-name "clojure-polylith-llm-starter"
+ :workspace-kind :polylith
+ :adoption-mode :complete
+ :capabilities #{:deps-edn
+                 :clj-kondo
+                 :cljfmt
+                 :malli
+                 :polylith
+                 :llm-guides}
 
  :ownership
  {;; 派生プロジェクトが所有・編集する領域。テンプレ保守作業ではここを touch しない。

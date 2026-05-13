@@ -220,6 +220,25 @@
    :exec-fn     check-archive-staleness/run}
 
   ;; ----------------------------------------------------------------
+  ;; :detect-repo-profile — 既存 Clojure/Polylith repo の移行前検出
+  ;;   shell wrapper `.llm/scripts/detect-repo-profile.sh` から呼ばれる。
+  ;;   副作用なしで workspace-kind / capabilities 候補を EDN 出力する。
+  ;; ----------------------------------------------------------------
+  :detect-repo-profile
+  {:extra-paths [".llm/scripts"]
+   :exec-fn     detect-repo-profile/run}
+
+  ;; ----------------------------------------------------------------
+  ;; :propose-repo-context — migration 用 repo-context.edn 候補生成
+  ;;   shell wrapper `.llm/scripts/propose-repo-context.sh` / 
+  ;;   `.llm/scripts/apply-repo-context-migration.sh` から呼ばれる。
+  ;;   既定は副作用なし。`:write true` の時のみ manifest を書く。
+  ;; ----------------------------------------------------------------
+  :propose-repo-context
+  {:extra-paths [".llm/scripts"]
+   :exec-fn     propose-repo-context/run}
+
+  ;; ----------------------------------------------------------------
   ;; :gen-lib-catalog — 技術選定カタログから artifact を生成
   ;;   `;; lib-catalog` マーカ付き EDN block を抽出 → Malli 検証 →
   ;;   .llm/data/{libs.edn, deprecated-libs.patterns, forbidden-requires.patterns}

@@ -8,4 +8,4 @@ WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 cd "$WORKSPACE_ROOT"
 
-clj -X:check-archive-staleness
+clj -Sdeps '{:paths [".llm/scripts"]}' -X check-archive-staleness/run

@@ -148,7 +148,7 @@
     (cond
       (nil? manifest)
       (do
-        (println "ERROR: .llm/repo-context.edn 不在（旧テンプレート由来の派生プロジェクトなら :repo-kind :project の manifest を追加してください）")
+        (println "ERROR: .llm/repo-context.edn 不在（旧テンプレート由来の派生プロジェクトなら propose-repo-context.sh で候補を確認し、:repo-kind :project の manifest を追加してください）")
         (System/exit 0))
 
       (and (= repo-kind :template) (has-bootstrap-traces?))

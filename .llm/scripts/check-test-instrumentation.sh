@@ -13,4 +13,4 @@ WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 cd "$WORKSPACE_ROOT"
 
-clj -X:check-test-instrumentation
+clj -Sdeps '{:paths [".llm/scripts"]}' -X check-test-instrumentation/run

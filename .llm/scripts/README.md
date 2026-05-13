@@ -3,7 +3,7 @@
 本ディレクトリは、`.clj-kondo/` の custom hook では捕捉できない**設定ファイル・ディレクトリ構造・配布物整合性**の検査と、シェル展開が必要な運用コマンドのラッパー、および markdown 文書から機械可読な生成物を生成する Clojure script を収容する。各スクリプトは単独でも実行できるが、基本は `check-workspace-integrity.sh` が完了条件から一括で起動する。
 ∵ CLAUDE.md §5.5
 
-**Convention 拡張**（既存は shell のみ、以降は Clojure script も追加）: `gen_*.clj` は markdown 文書（典型的には `STACK_GUIDE`）から EDN / patterns 生成物を生成するための Clojure script。実行は `clj -X:gen-*` alias 経由（`deps.edn` 参照）。shell script と `.llm/data/` 配下の生成物を結ぶ中継層にあたる。
+**Convention 拡張**（既存は shell のみ、以降は Clojure script も追加）: `gen_*.clj` は markdown 文書（典型的には `STACK_GUIDE`）から EDN / patterns 生成物を生成するための Clojure script。通常は shell wrapper から `clj -Sdeps '{:paths [".llm/scripts"]}' -X <ns>/<fn>` で起動する。`deps.edn` alias はテンプレ本体での直接実行用に残すが、既存 repo への retrofit 直後でも動くよう wrapper は alias に依存しない。
 
 hook（`.clj-kondo/polyguard/`）と script（本ディレクトリ）の役割分担は保守者向け文書に置く。
 ∵ MAINTAINERS_GUIDE.md §5.10
@@ -49,6 +49,12 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 | `check-adr-dir-empty.sh` | TEMPLATE モードで `.llm/memory/adr/` に `README.md` / `template.md` 以外の実 ADR が残っていないか検査 |
 | `check-archive-staleness.sh` | maintainer discussion archive entry の staging schema、30 日超 open、吸収先 link 切れを検査 |
 | `check-no-dead-adr-refs.sh` | TEMPLATE モードの live tree に、撤去済みテンプレ ADR slug への参照が残っていないか検査 |
+| `detect-repo-profile.sh` | 既存 Clojure / Polylith repo の形状を副作用なしで検出し、`:workspace-kind` / `:capabilities` 候補を EDN 出力 |
+| `detect_repo_profile.clj` | `detect-repo-profile.sh` の Clojure 実装。`deps.edn` / `workspace.edn` / `.clj-kondo` / `.cljfmt.edn` / Malli 依存を検出 |
+| `propose-repo-context.sh` | 既存テンプレ利用者・既存 Clojure / Polylith repo 向けに `.llm/repo-context.edn` 候補を表示（副作用なし） |
+| `propose_repo_context.clj` | `propose-repo-context.sh` と `apply-repo-context-migration.sh` の Clojure 実装。人間確認前は候補表示のみ、`:write true` で manifest 書き込み |
+| `apply-repo-context-migration.sh` | 人間承認後に `.llm/repo-context.edn` を作成する migration wrapper。既定では `APPLY` 入力を要求 |
+| `install-llm-template.sh` | 本テンプレート未導入の既存 repo に `.llm/` / root guide を持ち込む dry-run first の installer。`--apply` でも既存ファイルは上書きせず candidate を作る |
 | `repl-eval.sh` | 稼働中 nREPL に eval / load-file を送る LLM 向け client（CLAUDE.md §9 Live Workbench Protocol）。`.nrepl-port` 自動発見、永続 session 再利用（`.nrepl-session`）、`--expr` / `--load-file` / `--interrupt` / `--describe` / `--reset-session` / `--fresh` 対応 |
 | `repl_eval.clj` | repl-eval.sh の Clojure 実装（`clj -X:repl-eval` の exec-fn）。nREPL 標準 op（`eval` / `load-file` / `interrupt` / `describe` / `ls-sessions` / `clone`）を subcommand で提供、bounded printing（10000 chars/response）、file/line metadata 常時付与、process 跨ぎ request-id 永続化で確実な `--interrupt` を実現。接続時に `NREPL_PORT` / `.nrepl-port` の食い違い、workspace root 不一致、`dev.user/status` capability 不一致を検出して wrong JVM への接続を防ぐ |
 
@@ -102,6 +108,25 @@ NVD API key 推奨（`https://nvd.nist.gov/developers/request-an-api-key`）。�
 
 REPL 状態節の `TCP 接続確認済` は「その port が listen している」ことだけを示す。古い JVM が生きているケースを弾く最終防衛線は `repl-eval.sh` / `repl_eval.clj` の workspace identity check である。
 
+### 既存 repo への migration / retrofit
+
+既存テンプレ利用者、または本テンプレート未導入の Clojure / Polylith repo では、移行状態を `.llm/repo-context.edn` に集約する。自動検出は候補生成までで、manifest 反映は人間承認後に限る。
+∵ MAINTAINERS_GUIDE.md §7.6
+∵ MAINTAINERS_GUIDE.md §7.7
+
+```bash
+# 既に .llm/scripts がある repo
+./.llm/scripts/detect-repo-profile.sh
+./.llm/scripts/propose-repo-context.sh
+./.llm/scripts/apply-repo-context-migration.sh
+
+# まだテンプレート未導入の repo（テンプレート repo 側から実行）
+./.llm/scripts/install-llm-template.sh --target /path/to/repo
+./.llm/scripts/install-llm-template.sh --target /path/to/repo --apply
+```
+
+`:adoption-mode :retrofit` の間、`check-workspace-integrity.sh` は検査失敗を WARN として提示し、作業開始を block しない。`:partial` / `:complete` へ昇格した後は、manifest の `:capabilities` に含まれる検査が通常の gate になる。
+
 ## 実装規律
 
 ### Shell script
@@ -113,7 +138,8 @@ REPL 状態節の `TCP 接続確認済` は「その port が listen してい�
 
 ### Clojure script (`gen_*.clj`)
 
-- `deps.edn` に `:gen-<topic>` alias を追加し、`:exec-fn <ns>/generate` で `clj -X` から起動
+- shell wrapper から `clj -Sdeps '{:paths [".llm/scripts"]}' -X <ns>/<fn>` で起動し、既存 repo の `deps.edn` alias に依存しない
+- テンプレ本体の利便性として、必要に応じて `deps.edn` に `:gen-<topic>` / `:check-<topic>` alias を追加する
 - 依存は root `:deps` を継承（`-X` の意味論）。追加依存が必要な場合のみ alias 内 `:extra-deps` で最小限に
 - Malli schema で入力を厳格検証、違反は明示的に error 終了
 - 生成物は `.llm/data/` に配置、ヘッダに `;; GENERATED — do not edit by hand` を入れる 

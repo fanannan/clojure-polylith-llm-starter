@@ -11,4 +11,4 @@ WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 cd "$WORKSPACE_ROOT"
 
-clj -X:check-mode-scope
+clj -Sdeps '{:paths [".llm/scripts"]}' -X check-mode-scope/run
