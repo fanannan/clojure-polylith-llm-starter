@@ -587,6 +587,9 @@ LLM のフィードバックループは**編集単位でターン内に閉じ�
 `poly test` は stable タグからの diff で**影響範囲を自動判定**するため、LLM が毎回「どこまで走らせるか」を考える必要はない。stable タグの作成と更新は初期化完了時または CI 運用で決める。タグが未整備なら `poly test :all` に倒す。
 この高速性は回帰確認の粒度に関する話であり、契約検証完了とは別問題である。
 
+人間 smoke を伴う検証（不可逆 / 外部 state を含む場合の判定、事後 state の記述規律）は別途扱う。
+∵ .llm/guide/COLLABORATION_GUIDE.md §7.9
+
 #### REPL eval 必須トリガ（mandatory）
 
 編集内容が以下のいずれかに該当したら、**`poly test` より先に** REPL eval で確認する。nREPL 未起動ならユーザに `clj -M:dev:nrepl` 起動を 1 度依頼し、起動後に実施する（§9.0 共有モデル）:
