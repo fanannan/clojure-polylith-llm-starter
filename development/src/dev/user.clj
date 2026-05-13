@@ -101,7 +101,8 @@
 ;; 採用時の有効化手順:
 ;;   1. 下記 `defn schema-keys` の各行頭 `;;` を除去
 ;;   2. ns :require に [malli.core :as m] が無ければ追加（既存なら不要）
-;;   3. (status) 出力の `:capabilities :always` に `schema-keys` を追加列挙
+;;   3. (status) を再評価すると `:capabilities :schema-preview :available?` が
+;;      自動的に true になる（resolve 経由で probe するため追加列挙は不要）
 ;; ---------------------------------------------------------------------------
 
 ;; (defn schema-keys
@@ -110,19 +111,23 @@
 ;;
 ;;    戻り値: {:keys #{...} :closed? bool}
 ;;
+;;    引数の registry key 版（例: `(schema-keys :user/profile)`）は、対象 key を
+;;    解決できる registry が `m/schema` に見えていることが前提。グローバル registry
+;;    に登録していない場合は schema 値そのものを渡すこと。
+;;
 ;;    未対応 schema 形（:map 以外、registry 未登録 key 等）は :error map を返す。
 ;;    主対策ではなく補助。CODING_GUIDE.md §1.15 / §2.1.5 / §13.5 を併読のこと。"
 ;;   [schema-or-key]
 ;;   (try
-;;     (let [schema   (m/schema schema-or-key)
-;;           form     (m/form schema)
-;;           map?     (and (sequential? form) (= :map (first form)))]
-;;       (if-not map?
+;;     (let [schema       (m/schema schema-or-key)
+;;           form         (m/form schema)
+;;           map-schema?  (and (sequential? form) (= :map (first form)))]
+;;       (if-not map-schema?
 ;;         {:error :not-a-map-schema :form form}
-;;         (let [props      (when (and (>= (count form) 2) (map? (second form)))
-;;                            (second form))
-;;               entries    (drop (if props 2 1) form)
-;;               key-fn     (fn [entry] (first entry))]
+;;         (let [props   (when (and (>= (count form) 2) (map? (second form)))
+;;                         (second form))
+;;               entries (drop (if props 2 1) form)
+;;               key-fn  (fn [entry] (first entry))]
 ;;           {:keys    (into #{} (map key-fn) entries)
 ;;            :closed? (boolean (:closed props))})))
 ;;     (catch Exception e
@@ -154,10 +159,11 @@
 ;;   - m/=> 契約追加: --load-file 後に (malli-on!) 再実行
 ;;
 ;; capability の見方:
-;;   :always      配布時点で有効な helper
-;;   :lifecycle   対応セクション有効化 + 必要依存追加後に使える helper
-;;   :trace       FlowStorm 導入時のみ使える helper
-;;   :gui         Portal 導入時のみ使える helper
+;;   :always          配布時点で有効な helper
+;;   :lifecycle       対応セクション有効化 + 必要依存追加後に使える helper
+;;   :trace           FlowStorm 導入時のみ使える helper
+;;   :gui             Portal 導入時のみ使える helper
+;;   :schema-preview  Schema Preview Helper を有効化した時のみ使える helper
 ;; ---------------------------------------------------------------------------
 
 (defonce ^:private dev-tools-cap (atom nil))
@@ -219,16 +225,19 @@
   "接続時に最初に実行する。helper capability と環境状態を 1 map で返す。"
   []
   (let [cap             (ensure-dev-tools!)
-        lifecycle-state (lifecycle-helper-state)]
+        lifecycle-state (lifecycle-helper-state)
+        schema-preview? (boolean (resolve 'dev.user/schema-keys))]
     {:malli-on?    @malli-running?
-     :capabilities {:always    '[status malli-on! probe safe-reset! hard-reset!]
-                    :lifecycle {:available? (boolean lifecycle-state)
-                                :impl       (:impl lifecycle-state)
-                                :commands   '[go reset halt system]}
-                    :trace     {:available? (:flow-storm cap)
-                                :commands   '[fs-start! fs-record-ns! fs-clear!]}
-                    :gui       {:available? (:portal cap)
-                                :commands   '[portal-open! portal-clear! portal-close!]}}
+     :capabilities {:always         '[status malli-on! probe safe-reset! hard-reset!]
+                    :lifecycle      {:available? (boolean lifecycle-state)
+                                     :impl       (:impl lifecycle-state)
+                                     :commands   '[go reset halt system]}
+                    :trace          {:available? (:flow-storm cap)
+                                     :commands   '[fs-start! fs-record-ns! fs-clear!]}
+                    :gui            {:available? (:portal cap)
+                                     :commands   '[portal-open! portal-clear! portal-close!]}
+                    :schema-preview {:available? schema-preview?
+                                     :commands   '[schema-keys]}}
      :lifecycle    lifecycle-state
      :refresh-dirs refresh-dirs
      :current-ns   (ns-name *ns*)}))
