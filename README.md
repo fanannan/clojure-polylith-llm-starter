@@ -1,11 +1,10 @@
 # Clojure Polylith LLM Starter
 
-**Clojure + Polylith プロジェクト**（LLM と人間の仕様共同開発フレームワーク）
+**Clojure + Polylith に特化した、LLM 協働型の仕様駆動開発テンプレート。**
 
-- 必須技術: Clojure + tools.deps + Polylith + Malli 契約 + clj-kondo + cljfmt + Splint + clj-watson + `.llm/scripts/`
-- 追加ライブラリは必要な用途別機能カテゴリごとに最小選択し、各 brick の `deps.edn` に記録する
-- 技術選定の判断済み推奨集は `.llm/guide/STACK_GUIDE.md`
-- 未整理の着想メモから開始できる。仕様正本は DESIGN に集約する
+このテンプレートは、LLM に大量のコードを書かせるための雛形ではありません。LLM が間違えたときに、人間が監視役として消耗せず、仕様・境界・契約・REPL・自動検査で早く修復できるようにするための開発基盤です。
+
+人間は最初から完全な仕様を書く必要はありません。未整理の着想を IDEA に書くと、LLM が DESIGN への反映案、質問、受入基準、test obligation、Polylith 構造候補へ分解します。DESIGN は仕様正本として扱われ、design-ir、brick map、workspace map、Malli 契約、自動テスト、README 生成へ接続されます。
 
 > ⚠️ **このファイルはテンプレート配布時の入口です。**
 >
@@ -16,7 +15,123 @@
 ¤ .llm/templates/PROJECT_README.md
 ¤ .llm/guide/TEMPLATE_USAGE_GUIDE.md
 
-## まず読む場所
+## 何ができるか
+
+このテンプレートは、Clojure + Polylith プロジェクトの立ち上げと継続開発に、次の流れを用意します。
+
+```text
+IDEA
+  ↓ LLM が整理・質問・反映案を作る
+DESIGN
+  ↓ requirement / use case / acceptance criteria / constraint を抽出
+design-ir.edn
+  ↓ brick-map / workspace-map / libs.edn と照合
+Polylith 構造・Malli 契約・REPL 検証・自動テスト
+  ↓
+継続的な drift 検出と README 半自動生成
+```
+
+主な機能:
+
+- **IDEA から始められる**: 自由記載の着想メモを LLM が DESIGN 反映案、矛盾、質問候補へ分解する
+- **DESIGN を仕様正本にする**: 実装判断、IR 生成、capability plan、受入基準、テスト義務の起点を 1 箇所に集約する
+- **design-ir で仕様を機械可読化する**: requirement、use case、constraint、test obligation を EDN として抽出し、実装側の分析情報と照合する
+- **Polylith 境界へ落とす**: LLM が触る範囲を brick 単位に局所化し、interface と Malli 契約で境界を明示する
+- **REPL を主作業台にする**: 永続 nREPL と Malli instrumentation により、編集から検証までを短いループで閉じる
+- **多層の機械検査で止める**: clj-kondo、polyguard hook、Splint、Polylith、Malli、`.llm/scripts/`、clj-watson で advisory ではなく fail させる
+- **記憶を混ぜない**: DESIGN、KNOWLEDGE、ADR、QUESTIONS を分離し、現在形仕様・現時点知識・不変決定履歴・判断保留を別々に扱う
+- **承認権限を分ける**: L0 人間専権、L1 承認必須、L2 実施後報告、L3 独断可を明示し、人間の判断を不可逆部分に集中させる
+- **派生プロジェクト README を生成する**: 初期化完了時に、テンプレート README をプロダクト README として半自動生成・完全置換する
+
+## 背景にある哲学
+
+このテンプレートの最上位目標は、LLM 時代の開発で人間が消耗しないことです。
+
+LLM は大量のコードを生成できますが、人間がその出力を常時監視し、微妙な誤りを見つけ続ける構造は長続きしません。問題はコードを書く速さではなく、生成されたコードを信頼できるか、誤りを早く局所化できるか、手戻りを小さくできるかです。
+
+そのため、このテンプレートは次の方針を取ります。
+
+- 機械が検査できるものは機械に検査させる
+- 人間はプロダクト判断、仕様判断、不可逆な設計判断に集中する
+- LLM が触る範囲を Polylith brick 単位に小さく保つ
+- Malli 契約と REPL 検証で、動的言語でも短いフィードバックループを作る
+- 仕様、知識、決定履歴、判断保留を混ぜない
+- 仕様と実装の対応を EDN 生成物で追跡する
+- 迷走した LLM を人間が後から救うのではなく、早めに止める
+
+Clojure の不変データ、REPL 駆動、データ指向設計、Polylith の明示的な境界は、この目的と相性が良い。Rust のように静的型で閉じる方向ではなく、Clojure では Malli 契約、REPL、Polylith、lint、生成 EDN を組み合わせて、実用上の検査可能性と局所推論性を作ります。
+
+## 一般的な仕様駆動開発との違い
+
+一般的な SDD ツールは、仕様を first-class artifact として扱い、要件 → 設計 → タスク → 実装の流れを整えます。本テンプレートもその思想を共有しますが、**異なる前提**から**異なる構造**で同じ目的に到達しています。
+
+一般的な SDD ツールの多くは、「LLM やステークホルダーが repo 内文書を読まないチームでも仕様駆動を維持する」ことを目的とし、dashboard・外部 issue tracker 同期・tasks ファイル等の**外部表示による補償機構**を備えます。
+
+本テンプレートは前提を逆に取ります。「**LLM が毎セッション必ず repo 内文書を読む**」ことを `session-briefing.sh` と `.llm/data/*.edn`、および毎セッション必読規約で機械化し、補償機構そのものを不要にします。
+∵ CLAUDE.md
+
+### 一般的な補償機構と本テンプレの対応
+
+| 一般的な SDD の機能 | 想定されている弱点 | 本テンプレの構造的封じ込め |
+|---|---|---|
+| 進捗 dashboard / status 表示 | 人間ステークホルダーが repo を読まない | 毎セッション必読 + L0-L3 権限階層で LLM の自律度を判定 |
+| 作業計画ファイルと並列マーカー | 作業計画が会話で消える | brick = 再利用単位 + `poly check` + `:brick/requirements` で REQ-ID 紐付け |
+| 外部 issue tracker との双方向同期 | repo 内 markdown を読まない文化 | `QUESTIONS.md` / `ADR` を repo 内 markdown として保持、git 履歴と一体管理 |
+| proposal → apply → archive の状態機械 | 仕様変更の所在が分散 | `QUESTIONS.md` の状態遷移 + `:adoption-mode :retrofit/:partial/:complete` |
+| エージェント規約ファイルの拡張 | エージェントごとの規約分散 | `CLAUDE.md` に一極集中、`AGENTS.md` は 1 行リダイレクタ |
+| マルチエージェント orchestration | 単一 LLM の context 限界 | 自己停止プロトコル + subagent 分離 + REPL primary workbench |
+
+一般的な機能が「無い」のではなく、本テンプレでは**別の構造でそもそも問題が発生しない**設計になっています。
+
+### 「読む」前提と「読まない」前提の分岐
+
+一般的な SDD と本テンプレの最も深い違いは、LLM とステークホルダーが repo 内文書を**読むか読まないか**の前提にあります。
+
+| | 一般的な SDD の暗黙前提 | 本テンプレの明示前提 |
+|---|---|---|
+| 想定チーム規模 | 大規模 / 多役割 | 単独〜小規模 |
+| 一次作業面 | IDE / 外部 issue tracker / dashboard | repo 内 markdown と REPL |
+| LLM の repo 読み込み | 部分的・任意 | 毎セッション必須・機械強制 |
+| 仕様変更の伝達 | 外部通知・同期 | git 履歴と repo 内文書で完結 |
+
+この分岐により、本テンプレは「読む」前提でしか成立しない強み (4 種文書純度 / IR 機械照合 / 多層機械検査 / REPL primary workbench) を獲得する代わりに、「読まないチーム」へのスケールを意図的に放棄しています。これは**トレードオフではなく設計選択**です。
+
+### 重点の違い
+
+| 観点 | 一般的な SDD | 本テンプレート |
+|---|---|---|
+| 対象 | 多言語・汎用 | Clojure + Polylith に特化 |
+| 仕様の役割 | 実装前の合意文書 | 実装判断・IR 生成・テスト義務・構造検査の起点 |
+| LLM との関係 | 仕様を LLM に渡して実装させる | LLM が IDEA を DESIGN へ構造化し、検査結果で自己修正する |
+| 強制力 | 文書・タスク管理・レビュー中心 | clj-kondo / Splint / Polylith / Malli / scripts / clj-watson で fail させる |
+| モジュール境界 | 設計規約に依存しがち | Polylith brick と interface で物理的に区切る |
+| 仕様と実装の照合 | ツール依存、または手動 | design-ir と brick/workspace map で照合 |
+| 知識管理 | spec / plan / tasks に集約しがち | DESIGN / KNOWLEDGE / ADR / QUESTIONS を分離 |
+| 開発ループ | テスト・CI 中心 | REPL primary workbench + Malli instrumentation + CI |
+| 人間の役割 | 仕様作成者・レビュー者 | L0 判断と承認に集中し、検査は機械へ寄せる |
+
+つまり、本テンプレートは「仕様をよく書くための道具」ではなく、「仕様から実装・検査・記憶・承認までをつなぎ、人間の注意力に依存する箇所を減らすための Clojure Polylith 向け実装」です。
+
+## 向いているプロジェクト
+
+- 新規 Clojure プロジェクト
+- Polylith による明示的な境界設計を採用したいプロジェクト
+- 単独開発者または小規模チーム
+- LLM と長期的に共同開発する前提のプロジェクト
+- 要件変更があり、仕様・知識・判断履歴を保守し続けたいプロジェクト
+- REPL 駆動、Malli 契約、データ指向設計を積極的に使うプロジェクト
+
+向いていないもの:
+
+- 多言語汎用の SDD テンプレートを探している場合
+- サンプルアプリや全部入り Web フレームワークを期待している場合
+- Polylith を採用しない Clojure プロジェクト
+- 大規模チームで dashboard / 外部 issue tracker が一次作業面である場合
+- 既存の独自規約を温存したまま運用する必要がある場合
+
+不適な条件下では、一般的な SDD ツールのほうが適合します。これは本テンプレートの欠陥ではなく、**設計選択の境界線**です。同じ目的 (LLM 協働の修復コスト最小化) に対して、前提条件が異なれば最適解も異なります。
+
+## 使い始め方
 
 | あなたの状況 | 最初に読む文書 | この README の役割 |
 |---|---|---|
@@ -42,16 +157,13 @@
 
 ---
 
-## このテンプレートは何か
+**必須技術基盤**: Clojure + tools.deps + Polylith + Malli + clj-kondo + cljfmt + Splint + clj-watson + `.llm/scripts/`。
 
-**Clojure + tools.deps + Polylith + Malli + clj-kondo + cljfmt + Splint + clj-watson + `.llm/scripts/`** を必須技術基盤とする、**LLM 駆動開発向け**のプロジェクトテンプレート。HTTP、永続化、ライフサイクル管理などの追加技術は、必要になった用途別機能カテゴリごとに選び、brick の `deps.edn` に追加する。
-
-疲労最小化原則（LLM と人間の共同開発における修復コスト最小化）に基づき設計されている。
-詳細思想と技術選定の判断済み推奨集は別紙に置く。
+HTTP、永続化、ライフサイクル管理などの追加技術は、必要になった用途別機能カテゴリごとに選び、brick の `deps.edn` に追加する。推奨ライブラリは判断済み推奨集として guide 側に置く。
 ∵ CLAUDE.md
 ∵ .llm/guide/STACK_GUIDE.md
 
-## 読者別索引
+## 詳細索引
 
 | 目的 | 読む文書 | どこまで読めばよいか |
 |---|---|---|
