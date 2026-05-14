@@ -423,7 +423,7 @@ trace metadata は、仕様 ID と Clojure の安定境界をつなぐための�
 禁止:
 
 - component の `core.clj`、private helper、adapter 内部に trace metadata を付ける
-- base の `system.clj` や orchestration sub-ns に trace metadata を付ける
+- base の `system.clj`、orchestration sub-ns、外部 entrypoint ではない内部関数に trace metadata を付ける
 - 実装関数に `:trace/test-obligations` を付ける
 - `deftest` に `:trace/requirements` / `:trace/use-cases` だけを付け、`:trace/test-obligations` を省く
 - `comment` 内の REPL 試行や補助関数に trace metadata を付ける
@@ -437,7 +437,7 @@ trace metadata は、仕様 ID と Clojure の安定境界をつなぐための�
 - `deftest` の `:trace/requirements` / `:trace/use-cases` は、参照する test obligation の `:related-requirements` / `:related-use-cases` と照合する
 - design-ir に存在する test obligation がどの `deftest` からも参照されない場合、`:adoption-mode :complete` では error、`:retrofit` / `:partial` では warning とする
 - `.llm/scripts/gen-trace-index.sh` は `docs/TRACE.md` / `.llm/data/trace-index.edn` を生成する。DESIGN 更新時は trace-index の impact map を使い、修正対象の public boundary と `deftest` を先に特定する
-- `.llm/scripts/trace-impact.sh` は ID / file / var / `--changed` / `--health` から trace-index を引く標準入口である。仕様変更時は実装前に該当 ID の impact を出し、修正対象を説明してからコードへ入る
+- `.llm/scripts/trace-impact.sh` は、要件・受入基準・公開関数・変更差分から trace-index を引く標準入口である。仕様変更時は実装前に「この要件に関係するコードとテスト」「この公開関数が満たす仕様」「今回の変更で影響する要件」を確認し、修正対象を説明してからコードへ入る
 
 ---
 

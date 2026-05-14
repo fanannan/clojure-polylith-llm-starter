@@ -157,11 +157,11 @@ CLAUDE が「日々の作業フロー」を規定するのに対し、本文書�
 
 #### 2.1.1 Malli 契約の徹底
 
-- 公開関数（`interface.clj` の `defn`）には **`m/=>` を必ず付ける**（`defn-` は免除、`core.clj` は内部実装のため任意）
-- 契約は境界（`interface.clj`）に集約する（§1.1.1 全域性「境界契約は境界で宣言」）。`core.clj` には置かない。これにより REPL / テスト / 他 brick からの呼び出しは interface 経由で instrumentation が効き、`check-interface-contracts.sh` が interface.clj 内の `(m/=>)` 存在を機械検証する
+- component の公開関数（`interface.clj` の `defn`）には **`m/=>` を必ず付ける**（`defn-` は免除、component の `core.clj` は内部実装のため任意）
+- 契約は component 境界（`interface.clj`）に集約する（§1.1.1 全域性「境界契約は境界で宣言」）。component の `core.clj` には置かない。これにより REPL / テスト / 他 brick からの呼び出しは interface 経由で instrumentation が効き、`check-interface-contracts.sh` が interface.clj 内の `(m/=>)` 存在を機械検証する
 - スキーマは関数定義の直後に書く（関数と契約を一体で読めるように）
 - 仕様 trace metadata は stable public boundary にだけ置く。component では `interface.clj` の公開 `defn`、base では外部 entrypoint に近い `core.clj` / `handler.clj` の公開 `defn` に `:trace/requirements` / `:trace/use-cases` を付ける
-- component の `core.clj`、private helper、adapter 内部には trace metadata を付けない。実装詳細の refactor で仕様 trace が壊れる状態を作らない
+- component の `core.clj`、private helper、base の `system.clj` / orchestration sub-ns、adapter 内部には trace metadata を付けない。実装詳細の refactor で仕様 trace が壊れる状態を作らない
 - trace metadata の ID list は空にしない。空文字、重複 ID、DESIGN に存在しない ID は検査で失敗する
 - 対応する requirement / use case ID が曖昧なら、推測で metadata を付けず QUESTIONS に切り出す
 

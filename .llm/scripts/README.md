@@ -43,7 +43,7 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 | `gen-trace-index.sh` | `design-ir.edn` と Clojure `:trace/*` metadata から `docs/TRACE.md` / `.llm/data/trace-index.edn` を生成 |
 | `check-trace-index.sh` | `docs/TRACE.md` / `.llm/data/trace-index.edn` が `design-ir.edn` と trace metadata からの生成結果と同期しているか検査 |
 | `gen_trace_index.clj` | trace index 生成 / 検査の Clojure 実装。requirement / use case / test obligation ごとの implementation / test 対応と impact index を作る |
-| `trace-impact.sh` | `trace-index.edn` を検索し、REQ / UC / AC / TO / file / var / `--changed` / `--health` から影響 public boundary・test・test obligation を表示 |
+| `trace-impact.sh` | `trace-index.edn` を検索し、要件・受入基準・公開関数・変更差分から、影響する public boundary・test・test obligation を表示 |
 | `trace_impact.clj` | `trace-impact.sh` の Clojure 実装。DESIGN 更新前後の探索、commit 前の変更差分確認、session briefing の trace health に使う |
 | `check-deprecated-libs.sh` | `STACK_GUIDE.md` に埋め込まれた `;; lib-catalog` EDN block 由来の非推奨ライブラリを検知（`.llm/data/deprecated-libs.patterns` を読む） |
 | `check-forbidden-requires.sh` | `STACK_GUIDE.md` に埋め込まれた `;; lib-catalog` EDN block 由来の非推奨 namespace を検知（`.llm/data/forbidden-requires.patterns` を読む） |

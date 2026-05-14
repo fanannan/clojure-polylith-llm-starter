@@ -427,7 +427,7 @@ cd /path/to/repo
 │   ├── check-interface-contracts.sh  interface.clj の m/=> 契約網羅
 │   ├── check-trace-metadata.sh       仕様 ID と public boundary / deftest metadata の照合
 │   ├── gen-trace-index.sh            trace metadata から docs/TRACE.md / trace-index.edn を生成
-│   ├── check-trace-index.sh          Trace Map 生成物の drift 検査
+│   ├── check-trace-index.sh          Trace Index 生成物の drift 検査
 │   ├── trace-impact.sh               要件・公開関数・変更差分から仕様上の影響範囲を表示
 │   ├── check-single-ns-per-file.sh   1 ファイル 1 ns
 │   ├── check-vulnerabilities.sh      clj-watson による脆弱性スキャン（release 前）
