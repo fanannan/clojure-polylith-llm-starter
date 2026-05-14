@@ -18,7 +18,10 @@
   :constraint-implementation-references [],
   :unknown-implementation-requirements []},
  :diagnostics
- {:duplicate-requirement-ids [], :duplicate-test-obligation-ids []},
+ {:duplicate-requirement-ids [],
+  :duplicate-test-obligation-ids [],
+  :unknown-related-requirements [],
+  :unknown-related-use-cases []},
  :generated-by "gen-design-ir",
  :implementation-index
  {:brick-requirements [],

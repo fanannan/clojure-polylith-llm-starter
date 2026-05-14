@@ -37,7 +37,7 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 | `check-workspace-map.sh` | `projects/*/project.edn` と workspace/project 生成物を検査し、`docs/PROJECTS.md` / `docs/WORKSPACE.md` / `.llm/data/workspace-map.edn` の drift を検出 |
 | `gen-design-ir.sh` | `DESIGN.md` と既存 `.llm/data/*.edn` 分析情報から `.llm/data/design-ir.edn` を生成 |
 | `check-design-ir.sh` | `.llm/data/design-ir.edn` が `DESIGN.md` および既存分析 EDN と同期しているか検査 |
-| `gen_design_ir.clj` | `gen-design-ir.sh` / `check-design-ir.sh` の Clojure 実装。明示 requirement / use case / acceptance item を抽出し、constraint と実装 requirement を分けて brick-map / workspace-map / libs と照合 |
+| `gen_design_ir.clj` | `gen-design-ir.sh` / `check-design-ir.sh` の Clojure 実装。明示 requirement / use case / acceptance item と `[REQ-001]` / `[UC-1]` trace を抽出し、constraint と実装 requirement を分けて brick-map / workspace-map / libs と照合 |
 | `check-deprecated-libs.sh` | `STACK_GUIDE.md` に埋め込まれた `;; lib-catalog` EDN block 由来の非推奨ライブラリを検知（`.llm/data/deprecated-libs.patterns` を読む） |
 | `check-forbidden-requires.sh` | `STACK_GUIDE.md` に埋め込まれた `;; lib-catalog` EDN block 由来の非推奨 namespace を検知（`.llm/data/forbidden-requires.patterns` を読む） |
 | `check-conflicting-libs.sh` | `STACK_GUIDE.md` に埋め込まれた `;; lib-catalog` EDN block 由来の併用禁止ペアを検知（`.llm/data/conflicts.patterns` を読む） |

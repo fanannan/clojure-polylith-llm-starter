@@ -41,3 +41,4 @@ DESIGN IR 検査は `/tmp` に synthetic repos を作成し、DESIGN 抽出・�
 - stale design-ir の検出と再生成
 - constraint ID と実装 requirement ID の coverage 分離
 - test obligation の明示 ID / hash ID / 重複検出
+- test obligation から related requirement / use case trace を抽出し、未知参照を diagnostics に出すこと

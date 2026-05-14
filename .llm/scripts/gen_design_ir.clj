@@ -67,6 +67,9 @@
 (def explicit-obligation-id-pattern
   #"^((?:AC|TO)-[0-9]+)[:：][ \t]*(.*)$")
 
+(def bracket-reference-pattern
+  #"\[([A-Z][A-Z0-9]+-[0-9]+)\]")
+
 (def constraint-kinds
   #{:non-functional :external-interface :technical-constraints})
 
@@ -139,9 +142,28 @@
        (remove #(contains? constraint-kinds (:kind %)))
        vec))
 
+(defn- sorted-strings [xs]
+  (vec (sort (set (remove nil? xs)))))
+
 (defn- fallback-obligation-id [text]
   (let [normalized (-> text str/trim str/lower-case)]
     (format "TO-%08X" (bit-and 0xffffffff (.hashCode normalized)))))
+
+(defn- bracket-references [text]
+  (->> (re-seq bracket-reference-pattern text)
+       (map second)
+       sorted-strings))
+
+(defn- related-use-cases [text]
+  (->> (bracket-references text)
+       (filter #(re-matches #"UC-[0-9]+" %))
+       sorted-strings))
+
+(defn- related-requirements [text]
+  (->> (bracket-references text)
+       (remove #(re-matches #"UC-[0-9]+" %))
+       (remove #(re-matches #"(?:AC|TO)-[0-9]+" %))
+       sorted-strings))
 
 (defn- test-obligation [item]
   (let [text (:text item)
@@ -150,6 +172,8 @@
     (assoc item
            :id (or explicit-id (fallback-obligation-id text'))
            :text text'
+           :related-requirements (related-requirements text')
+           :related-use-cases (related-use-cases text')
            :source :acceptance-criteria
            :verification :unspecified)))
 
@@ -164,6 +188,20 @@
        sort
        vec))
 
+(defn- unknown-related-requirements [requirements obligations]
+  (let [known (set (map :id requirements))]
+    (->> obligations
+         (mapcat :related-requirements)
+         (remove known)
+         sorted-strings)))
+
+(defn- unknown-related-use-cases [use-cases obligations]
+  (let [known (set (map :id use-cases))]
+    (->> obligations
+         (mapcat :related-use-cases)
+         (remove known)
+         sorted-strings)))
+
 (defn- read-analysis []
   {:brick-map (read-edn-if-exists ".llm/data/brick-map.edn")
    :workspace-map (read-edn-if-exists ".llm/data/workspace-map.edn")
@@ -171,9 +209,6 @@
 
 (defn- present-source [path value]
   {:path path :exists (boolean value)})
-
-(defn- sorted-strings [xs]
-  (vec (sort (set (remove nil? xs)))))
 
 (defn- sorted-keywords [xs]
   (vec (sort-by str (set (remove nil? xs)))))
@@ -223,7 +258,9 @@
            :implementation-index index
            :coverage (coverage design index)
            :diagnostics {:duplicate-requirement-ids (duplicate-ids (:requirements design))
-                         :duplicate-test-obligation-ids (duplicate-test-obligation-ids obligations)}})))
+                         :duplicate-test-obligation-ids (duplicate-test-obligation-ids obligations)
+                         :unknown-related-requirements (unknown-related-requirements (:requirements design) obligations)
+                         :unknown-related-use-cases (unknown-related-use-cases (:use-cases design) obligations)}})))
 
 (defn- render [data]
   (str ";; GENERATED - do not edit by hand.\n"

@@ -44,8 +44,8 @@ base_design() {
 
 ## 4. 受入基準
 
-- [ ] AC-001: 請求書を作成できる
-- [ ] 金額が負ならエラーにする
+- [ ] AC-001: [UC-1][REQ-001] 請求書を作成できる
+- [ ] [REQ-001][NFR-001] 金額が負ならエラーにする
 
 ## 6. 非機能要件
 
@@ -117,6 +117,11 @@ scenario_01_extract_design_ir() {
   assert_ir "$repo" '(contains? (set (map :id (:test-obligations data))) "AC-001")' "AC-001 obligation missing"
   assert_ir "$repo" '(not (contains? (set (map :id (:test-obligations data))) "TO-001"))' "position-based TO-001 obligation generated"
   assert_ir "$repo" '(some #(re-matches #"TO-[0-9A-F]{8}" %) (map :id (:test-obligations data)))' "stable hash obligation missing"
+  assert_ir "$repo" '(contains? (set (:related-use-cases (first (filter #(= "AC-001" (:id %)) (:test-obligations data))))) "UC-1")' "AC-001 related UC-1 missing"
+  assert_ir "$repo" '(contains? (set (:related-requirements (first (filter #(= "AC-001" (:id %)) (:test-obligations data))))) "REQ-001")' "AC-001 related REQ-001 missing"
+  assert_ir "$repo" '(some #(contains? (set (:related-requirements %)) "NFR-001") (:test-obligations data))' "NFR-001 related requirement missing"
+  assert_ir "$repo" '(empty? (get-in data [:diagnostics :unknown-related-requirements]))' "unexpected unknown related requirements"
+  assert_ir "$repo" '(empty? (get-in data [:diagnostics :unknown-related-use-cases]))' "unexpected unknown related use cases"
   assert_ir "$repo" '(contains? (set (map :id (:constraints data))) "NFR-001")' "NFR-001 constraint missing"
   assert_ir "$repo" '(contains? (set (map :id (:constraints data))) "API-001")' "API-001 constraint missing"
   assert_ir "$repo" '(contains? (set (map :id (:constraints data))) "TECH-001")' "TECH-001 constraint missing"
@@ -197,10 +202,26 @@ EOF
   expect_fail "$repo" "./.llm/scripts/gen-design-ir.sh" "duplicate test obligation ids" "05-duplicate-obligation"
 }
 
+scenario_06_unknown_related_references_are_diagnostics() {
+  local repo="$BASE/06-unknown-related-references-are-diagnostics"
+  base_design "$repo"
+  cat >> "$repo/DESIGN.md" <<'EOF'
+
+## 4. 受入基準の追記
+
+- [ ] AC-002: [UC-999][REQ-999] unknown references
+EOF
+  run_generate "$repo"
+  assert_ir "$repo" '(contains? (set (get-in data [:diagnostics :unknown-related-requirements])) "REQ-999")' "REQ-999 unknown related requirement missing"
+  assert_ir "$repo" '(contains? (set (get-in data [:diagnostics :unknown-related-use-cases])) "UC-999")' "UC-999 unknown related use case missing"
+  run_check "$repo"
+}
+
 scenario "01 extract DESIGN IR" scenario_01_extract_design_ir
 scenario "02 duplicate DESIGN id fails" scenario_02_duplicate_design_id_fails
 scenario "03 analysis EDN coverage" scenario_03_analysis_edn_coverage
 scenario "04 stale IR detection and repair" scenario_04_stale_ir_detection_and_repair
 scenario "05 duplicate test obligation id fails" scenario_05_duplicate_test_obligation_id_fails
+scenario "06 unknown related references are diagnostics" scenario_06_unknown_related_references_are_diagnostics
 
 echo "All DESIGN IR scenarios passed."
