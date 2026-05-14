@@ -173,7 +173,7 @@ brick 作成前に、DESIGN の要求から **capability plan** を短く作り�
   :public-fn   'create}]
 ```
 
-提示前に既存の Brick Map 生成物を確認し、既存 capability で足りる場合は新規 brick を作らない。新規が必要な場合だけ、component / base / project の候補名、`brick.edn` に入れる `:brick/provides` または `:brick/uses`、対応 requirement ID をまとめて提示する。
+提示前に既存の Brick Map 生成物を確認し、既存 capability で足りる場合は新規 brick を作らない。新規が必要な場合だけ、component / base / project の候補名、`brick.edn` に入れる `:brick/provides` または `:brick/uses`、対応 requirement ID をまとめて提示する。類似 brick の俯瞰に役立つ場合は任意の `:brick/group` 候補も提示してよいが、group 未確定なら空のまま進める。group は構造判断や project inclusion の根拠にしない。
 
 ```bash
 # ドメインコンポーネント（承認必須 (L1)）
@@ -191,7 +191,11 @@ clj -M:poly create project name:<deploy>
 公開関数名は `brick.edn` の capability と対応して理解できる名前にする。短い `create` / `validate` などは、単一 entity の主要操作として自明な場合だけ使う。
 ∵ POLYLITH_GUIDE.md §1.3
 
-各 brick には、実装より先に `brick.edn` を作成する。component は所有する capability を `:brick/provides` に、base は外部 entrypoint と利用 capability を `:brick/entrypoint` / `:brick/uses` に記録する。`docs/BRICKS.md` と `.llm/data/brick-map.edn` はこの EDN と `interface.clj` から生成される派生成果物であり、直接編集しない。
+初期 brick の公開境界には、DESIGN 由来の trace metadata を最初から付ける。component では `interface.clj` の公開 `defn`、base では外部 entrypoint に近い `core.clj` / `handler.clj` の公開 `defn` が対象である。`core.clj` の内部実装、private helper、base の `system.clj` や orchestration sub-ns には trace metadata を付けない。DESIGN の受入基準から生成された test obligation を検証する `deftest` には `:trace/test-obligations` を付ける。
+∵ POLYLITH_GUIDE.md §1.1
+∵ SPEC_GUIDE.md §8.1
+
+各 brick には、実装より先に `brick.edn` を作成する。component は所有する capability を `:brick/provides` に、base は外部 entrypoint と利用 capability を `:brick/entrypoint` / `:brick/uses` に記録する。類似 brick の探索軸が明確な場合だけ、任意の単数 keyword として `:brick/group` を記録する。`docs/BRICKS.md` と `.llm/data/brick-map.edn` はこの EDN と `interface.clj` から生成される派生成果物であり、直接編集しない。
 ∵ POLYLITH_GUIDE.md §1.1
 
 ### 2.4 必要な用途別機能カテゴリの推奨ライブラリを brick deps.edn に反映
@@ -356,6 +360,7 @@ I/O リソースの起動・停止管理が必要な場合のみ実施する。�
   ```bash
   ./.llm/scripts/check-workspace-integrity.sh
   ```
+  この検査には trace metadata 検査も含まれる。`:adoption-mode :complete` では、未対応 test obligation も失敗として扱う。
 
 **workspace 全体の品質確認**:
 
@@ -391,6 +396,7 @@ I/O リソースの起動・停止管理が必要な場合のみ実施する。�
 - [ ] 必要な用途別機能カテゴリのライブラリが brick の deps.edn に反映されている
 - [ ] 推奨から逸脱した場合、ADR が発行されている
 - [ ] 最低 1 組の component + base + project が存在
+- [ ] 初期実装の public boundary と `deftest` に DESIGN 由来の trace metadata が付いている
 - [ ] §2.9 の動作確認がすべて通過
 - [ ] 採用した各用途別機能カテゴリの確認事項がすべて点検済み
 - [ ] `../.llm/memory/QUESTIONS.md` に残っている 未対応(open) Q を点検済み

@@ -108,6 +108,9 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
     (error! (str "ERROR: " path " must have :brick/type :component")))
   (when-not (keyword? (:brick/name data))
     (error! (str "ERROR: " path " must have keyword :brick/name")))
+  (when (and (contains? data :brick/group)
+             (not (keyword? (:brick/group data))))
+    (error! (str "ERROR: " path " must have keyword :brick/group when present")))
   (when-not (nonblank-string? (:brick/purpose data))
     (error! (str "ERROR: " path " must have non-empty :brick/purpose")))
   (when-not (keyword-coll? (:brick/provides data))
@@ -128,6 +131,9 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
     (error! (str "ERROR: " path " must have :brick/type :base")))
   (when-not (keyword? (:brick/name data))
     (error! (str "ERROR: " path " must have keyword :brick/name")))
+  (when (and (contains? data :brick/group)
+             (not (keyword? (:brick/group data))))
+    (error! (str "ERROR: " path " must have keyword :brick/group when present")))
   (when-not (nonblank-string? (:brick/purpose data))
     (error! (str "ERROR: " path " must have non-empty :brick/purpose")))
   (when-not (keyword? (:brick/entrypoint data))
@@ -394,6 +400,8 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
      "\n## " (:brick/path b) "\n\n"
      "- Type: `" (name kind) "`\n"
      "- Name: `" (:brick/name b) "`\n"
+     (when (:brick/group b)
+       (str "- Group: `" (:brick/group b) "`\n"))
      "- Purpose: " (:brick/purpose b) "\n"
      (case kind
        :component
@@ -427,6 +435,7 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
         [:brick/path
          :brick/name
          :brick/type
+         :brick/group
          :brick/purpose
          :brick/provides
          :brick/not-for
@@ -445,6 +454,12 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
         entrypoints (->> normalized
                          (filter #(= :base (:brick/type %)))
                          (map (fn [b] [(:brick/entrypoint b) (:brick/path b)]))
+                         (into (sorted-map)))
+        groups (->> normalized
+                    (filter :brick/group)
+                    (group-by :brick/group)
+                    (map (fn [[group bs]]
+                           [group (vec (sort (map :brick/path bs)))]))
                          (into (sorted-map)))]
     (str ";; GENERATED - do not edit by hand.\n"
          ";; Source of truth: DESIGN.md, components/*/brick.edn, bases/*/brick.edn, interface.clj\n"
@@ -452,6 +467,7 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
          (with-out-str
            (pprint/pprint
             {:bricks normalized
+             :groups groups
              :capabilities capabilities
              :entrypoints entrypoints})))))
 

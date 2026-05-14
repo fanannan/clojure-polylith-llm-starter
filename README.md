@@ -26,7 +26,7 @@ DESIGN
   ↓ requirement / use case / acceptance criteria / constraint を抽出
 design-ir.edn
   ↓ brick-map / workspace-map / libs.edn と照合
-Polylith 構造・Malli 契約・REPL 検証・自動テスト
+Polylith 構造・Malli 契約・trace metadata・REPL 検証・自動テスト
   ↓
 継続的な drift 検出と README 半自動生成
 ```
@@ -37,6 +37,7 @@ Polylith 構造・Malli 契約・REPL 検証・自動テスト
 - **DESIGN を仕様正本にする**: 実装判断、IR 生成、capability plan、受入基準、テスト義務の起点を 1 箇所に集約する
 - **design-ir で仕様を機械可読化する**: requirement、use case、constraint、test obligation を EDN として抽出し、実装側の分析情報と照合する
 - **Polylith 境界へ落とす**: LLM が触る範囲を brick 単位に局所化し、interface と Malli 契約で境界を明示する
+- **仕様とコード・テストを trace する**: public boundary の `:trace/requirements` / `:trace/use-cases` と `deftest` の `:trace/test-obligations` を design-ir と照合し、仕様 drift を早く検出する
 - **REPL を主作業台にする**: 永続 nREPL と Malli instrumentation により、編集から検証までを短いループで閉じる
 - **多層の機械検査で止める**: clj-kondo、polyguard hook、Splint、Polylith、Malli、`.llm/scripts/`、clj-watson で advisory ではなく fail させる
 - **記憶を混ぜない**: DESIGN、KNOWLEDGE、ADR、QUESTIONS を分離し、現在形仕様・現時点知識・不変決定履歴・判断保留を別々に扱う
@@ -105,7 +106,8 @@ Clojure の不変データ、REPL 駆動、データ指向設計、Polylith の�
 | LLM との関係 | 仕様を LLM に渡して実装させる | LLM が IDEA を DESIGN へ構造化し、検査結果で自己修正する |
 | 強制力 | 文書・タスク管理・レビュー中心 | clj-kondo / Splint / Polylith / Malli / scripts / clj-watson で fail させる |
 | モジュール境界 | 設計規約に依存しがち | Polylith brick と interface で物理的に区切る |
-| 仕様と実装の照合 | ツール依存、または手動 | design-ir と brick/workspace map で照合 |
+| 仕様と実装の照合 | ツール依存、または手動 | design-ir、brick/workspace map、Clojure trace metadata で照合 |
+| 仕様とテストの照合 | 受入基準とテストの対応をレビューで追う | test obligation と `deftest` metadata を照合 |
 | 知識管理 | spec / plan / tasks に集約しがち | DESIGN / KNOWLEDGE / ADR / QUESTIONS を分離 |
 | 開発ループ | テスト・CI 中心 | REPL primary workbench + Malli instrumentation + CI |
 | 人間の役割 | 仕様作成者・レビュー者 | L0 判断と承認に集中し、検査は機械へ寄せる |
@@ -423,6 +425,7 @@ cd /path/to/repo
 │   ├── check-forbidden-requires.sh   非推奨 namespace の require 検知
 │   ├── check-conflicting-libs.sh     併用禁止ライブラリペアの検知
 │   ├── check-interface-contracts.sh  interface.clj の m/=> 契約網羅
+│   ├── check-trace-metadata.sh       仕様 ID と public boundary / deftest metadata の照合
 │   ├── check-single-ns-per-file.sh   1 ファイル 1 ns
 │   ├── check-vulnerabilities.sh      clj-watson による脆弱性スキャン（release 前）
 │   ├── gen_lib_catalog.clj           技術選定の判断済み推奨集の EDN block から生成物を生成
@@ -473,7 +476,7 @@ cd /path/to/repo
 | 技術選定 | `.llm/guide/STACK_GUIDE.md` |
 | Clojure の書き方で迷った | `.llm/guide/CODING_GUIDE.md` |
 | Polylith 構造判断・brick 追加 | `.llm/guide/POLYLITH_GUIDE.md` |
-| brick 構成・機能分担の把握 | `docs/BRICKS.md`（閲覧用生成物） / `.llm/data/brick-map.edn`（検索用生成物）。正本は各 `brick.edn` と `interface.clj` |
+| brick 構成・機能分担の把握 | `docs/BRICKS.md`（閲覧用生成物） / `.llm/data/brick-map.edn`（検索用生成物）。正本は各 `brick.edn` と `interface.clj`。任意の `:brick/group` は類似 brick の俯瞰用で、構造境界ではない |
 | project / workspace 構成の把握 | `docs/PROJECTS.md` / `docs/WORKSPACE.md`（閲覧用生成物） / `.llm/data/workspace-map.edn`（検索用生成物）。正本は `project.edn`、`workspace.edn`、`deps.edn`、`brick.edn` |
 | LLM と人間の協働方針で迷った | `.llm/guide/COLLABORATION_GUIDE.md` |
 | テンプレート自体の改修 | `.llm/guide/MAINTAINERS_GUIDE.md` |

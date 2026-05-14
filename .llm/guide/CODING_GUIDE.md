@@ -160,6 +160,10 @@ CLAUDE が「日々の作業フロー」を規定するのに対し、本文書�
 - 公開関数（`interface.clj` の `defn`）には **`m/=>` を必ず付ける**（`defn-` は免除、`core.clj` は内部実装のため任意）
 - 契約は境界（`interface.clj`）に集約する（§1.1.1 全域性「境界契約は境界で宣言」）。`core.clj` には置かない。これにより REPL / テスト / 他 brick からの呼び出しは interface 経由で instrumentation が効き、`check-interface-contracts.sh` が interface.clj 内の `(m/=>)` 存在を機械検証する
 - スキーマは関数定義の直後に書く（関数と契約を一体で読めるように）
+- 仕様 trace metadata は stable public boundary にだけ置く。component では `interface.clj` の公開 `defn`、base では外部 entrypoint に近い `core.clj` / `handler.clj` の公開 `defn` に `:trace/requirements` / `:trace/use-cases` を付ける
+- component の `core.clj`、private helper、adapter 内部には trace metadata を付けない。実装詳細の refactor で仕様 trace が壊れる状態を作らない
+- trace metadata の ID list は空にしない。空文字、重複 ID、DESIGN に存在しない ID は検査で失敗する
+- 対応する requirement / use case ID が曖昧なら、推測で metadata を付けず QUESTIONS に切り出す
 
 ```clojure
 ;; interface.clj（境界）
@@ -168,7 +172,11 @@ CLAUDE が「日々の作業フロー」を規定するのに対し、本文書�
             [myorg.myapp.user.core :as core]))
 
 (m/=> find-user [:=> [:cat :any :uuid] [:maybe core/User]])
-(defn find-user [db id] (core/find-user db id))
+(defn ^{:trace/requirements ["REQ-001"]
+        :trace/use-cases ["UC-1"]}
+  find-user
+  [db id]
+  (core/find-user db id))
 ```
 
 #### 2.1.2 境界での `m/validate`
@@ -682,6 +690,28 @@ CLAUDE.md §1.1.1 全域性・§1.1.3 副作用隔離の具体化。
 
 **Rule**: 完全一致不要な場面では `match?` を使う。
 
+### 13.4.1 test obligation trace metadata
+
+DESIGN 由来の test obligation を検証する `deftest` には、`design-ir.edn` の ID を metadata で付ける。これは「テストが存在すること」ではなく、「どの仕様義務を検証するテストか」を機械照合するための trace である。
+
+```clojure
+(deftest ^{:trace/test-obligations ["AC-001"]
+           :trace/requirements ["REQ-001"]
+           :trace/use-cases ["UC-1"]}
+  create-user-test
+  (testing "有効な入力からユーザーを作成する"
+    (is true)))
+```
+
+**Rule**:
+
+- `:trace/test-obligations` は `deftest` にだけ置く。実装関数に置かない
+- `:trace/requirements` / `:trace/use-cases` は test の補助 metadata として併記してよい
+- `deftest` に `:trace/requirements` / `:trace/use-cases` を付ける場合、必ず `:trace/test-obligations` も付ける
+- `:trace/requirements` / `:trace/use-cases` を併記する場合、対象 test obligation の `:related-requirements` / `:related-use-cases` と整合させる
+- `comment` 内の REPL 試行や private helper test に trace を付けない。trace は実行される `deftest` に集約する
+- ID が曖昧な場合は metadata を捏造せず、test obligation 側または DESIGN 側を先に明確化する
+
 ### 13.5 closed map 由来の branch condition は各枝を陽に検証
 
 **背景**: `m/=>` は引数の型のみを検証する。read-side で map から読むキーの**存在**は契約の検出範囲外で、未定義キーが `nil` を返して分岐ロジックを破壊するバグ（§1.15）は契約・lint・`poly check` すべてをすり抜ける。
@@ -736,6 +766,8 @@ CLAUDE.md §1.1.1 全域性・§1.1.3 副作用隔離の具体化。
 §1.2.1 機械化で自動検出されるもの（clj-kondo、cljfmt、Polylith の `poly check`、Malli instrumentation）に加えて、LLM が手動で確認する項目：
 
 - [ ] 公開関数すべてに Malli `m/=>` 契約あり（§2.1.1）
+- [ ] 仕様対応がある public boundary に `:trace/requirements` / `:trace/use-cases` があり、内部実装には trace metadata がない
+- [ ] DESIGN の test obligation を検証する `deftest` に `:trace/test-obligations` がある
 - [ ] 副作用が最外層に隔離されている（§2.3）
 - [ ] `defrecord` を使っている場合、§3.1 の 3 条件のいずれかを満たす
 - [ ] `loop/recur` を使っている場合、`reduce` で書けないことを確認した

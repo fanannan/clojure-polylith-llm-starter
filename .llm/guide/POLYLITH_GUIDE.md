@@ -94,13 +94,20 @@ brick の機能分担は Markdown を正本にしない。各 brick 直下の `b
 
 `brick.edn` はコードの代替正本ではない。公開 API と Malli 契約の正本は `interface.clj`、実装事実の正本は `core.clj` / `system.clj` 等、ライブラリ依存の正本は brick の `deps.edn` である。`brick.edn` が担うのは、コードだけから安全に復元できない責務・capability ownership・not-for・要求対応である。
 
+`:brick/group` を導入する場合、その役割は類似 brick の検索・俯瞰・再分割 smell の発見に限定する。group は Polylith の構造単位ではなく、依存境界、capability ownership、project inclusion、テスト範囲、deploy 単位を決める正本にしてはならない。構造事実は component / base / project、`interface.clj`、`workspace.edn`、`deps.edn`、`project.edn`、`poly check` に残す。
+
+`:brick/group` は任意の単数 keyword とする。set や vector は許容しない。複数 group を許すと brick の主責務が曖昧になり、group が tag 的に使われて構造判断へ流れやすい。補助的な検索軸が必要になった場合は、`:brick/group` を多値化せず、別概念として採否を判断する。
+
 新規 brick では、実装より先に `brick.edn` を作る。`brick.edn` で capability ownership を決めてから `interface.clj` の公開 API と `m/=>` 契約を設計し、実装を進める。
+
+仕様 trace metadata は `brick.edn` より細かい関数単位の対応を表す。`brick.edn :brick/requirements` は brick 全体の粗い ownership、`interface.clj` / base boundary の `:trace/requirements` / `:trace/use-cases` は公開関数単位の対応である。component の `core.clj`、private helper、base の `system.clj` や orchestration sub-ns には trace metadata を置かない。base boundary として trace metadata を許可するのは、外部 entrypoint に近い `core.clj` / `handler.clj` の公開 `defn` に限定する。
 
 component の `brick.edn` は capability の所有を表す。
 
 ```clojure
 {:brick/name :invoice
  :brick/type :component
+ :brick/group :billing
  :brick/purpose "請求書エンティティの生成・検証・金額計算"
  :brick/provides #{:invoice/create :invoice/validate :invoice/total-amount}
  :brick/not-for #{:pdf/render :email/send :http/response}
@@ -114,6 +121,7 @@ base の `brick.edn` は外部 entrypoint と利用 capability を表す。base 
 ```clojure
 {:brick/name :web-api
  :brick/type :base
+ :brick/group :public-api
  :brick/purpose "HTTP API として外部リクエストを受け、component の機能へ委譲する"
  :brick/entrypoint :http-api
  :brick/uses #{:invoice/create :invoice/validate}
@@ -303,8 +311,16 @@ Project / Workspace Map の検査は、`workspace.edn :projects` と `projects/*
 (m/=> validate [:=> [:cat :any] :boolean])
 
 ;; --- API（委譲）---
-(defn create [input] (core/create input))
-(defn validate [entity] (core/validate entity))
+(defn ^{:trace/requirements ["REQ-001"]
+        :trace/use-cases ["UC-1"]}
+  create
+  [input]
+  (core/create input))
+
+(defn ^{:trace/requirements ["REQ-002"]}
+  validate
+  [entity]
+  (core/validate entity))
 ```
 
 #### `components/<domain>/src/myorg/myapp/<domain>/core.clj`
@@ -379,7 +395,10 @@ base / orchestration / REPL fixture などの外側で生成し、値として c
 
 (use-fixtures :once with-malli-instrumentation)
 
-(deftest create-test
+(deftest ^{:trace/test-obligations ["AC-001"]
+           :trace/requirements ["REQ-001"]
+           :trace/use-cases ["UC-1"]}
+  create-test
   (testing "create は必須項目から Entity を構築する"
     (let [id #uuid "00000000-0000-0000-0000-000000000001"
           created-at #inst "2026-01-01T00:00:00.000-00:00"

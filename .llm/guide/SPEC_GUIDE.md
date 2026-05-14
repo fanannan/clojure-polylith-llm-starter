@@ -373,14 +373,14 @@ test obligation は「実テストを書く前に、何を検証すべきか」�
 | 性能条件 | benchmark / smoke test |
 | UI 制約 | UI / E2E test |
 
-現段階では、design-ir が受入チェックリストから test obligation を生成する。実テスト本体の自動書き換えと trace metadata 検査は次段階の機械化候補である。
+design-ir は受入チェックリストから test obligation を生成する。実テスト本体は LLM が通常の実装差分として作成・更新するが、対応関係は Clojure metadata で機械検査する。
 
 DESIGN 更新時の責務境界:
 
 - 自動更新するもの: `.llm/data/design-ir.edn`
-- LLM が更新案を作るもの: capability plan、Malli 契約、実テスト本体、関連 KNOWLEDGE / QUESTIONS / ADR
-- script が検出するもの: design-ir drift、ID 重複、既存分析 EDN との coverage 差分
-- script がまだ保証しないもの: test obligation と実テストファイルの 1:1 trace、テスト本体の自動生成、自然言語仕様の完全整合
+- LLM が更新案を作るもの: capability plan、Malli 契約、public boundary の trace metadata、実テスト本体、`deftest` の test obligation metadata、関連 KNOWLEDGE / QUESTIONS / ADR
+- script が検出するもの: design-ir drift、ID 重複、既存分析 EDN との coverage 差分、trace metadata の未知 ID / 空 ID / 重複 ID / 誤配置、未対応 test obligation、test metadata と test obligation の related IDs 不整合
+- script がまだ保証しないもの: テスト本体の自動生成、テスト本文が本当に義務内容を満たすこと、自然言語仕様の完全整合、手動・benchmark・外部 E2E の実行完了
 
 ID 規則:
 
@@ -389,6 +389,53 @@ ID 規則:
 - 明示 ID がない場合、design-ir は正規化した文言から `TO-XXXXXXXX` 形式の安定 hash ID を作る
 - hash ID は行番号には依存しないが、文言を変えると変わる。継続的に追う基準は明示 ID にする
 - 重複した test obligation ID は check 時に失敗させる
+
+### 8.1 Trace Metadata
+
+trace metadata は、仕様 ID と Clojure の安定境界をつなぐための機械可読な対応表である。本文コメントや命名規約ではなく metadata にするのは、lint / script が構造として読めるようにするためである。
+
+| 対応対象 | 置き場所 | 使用キー |
+|---|---|---|
+| requirement / use case と実装 public API | component `interface.clj` の公開 `defn`、base `core.clj` / `handler.clj` の公開 boundary `defn` | `:trace/requirements`, `:trace/use-cases` |
+| test obligation と実テスト | `deftest` | `:trace/test-obligations` |
+| brick 全体の ownership | `brick.edn` | `:brick/requirements` |
+
+実装関数の例:
+
+```clojure
+(defn ^{:trace/requirements ["REQ-001"]
+        :trace/use-cases ["UC-1"]}
+  create-invoice
+  [input]
+  (core/create-invoice input))
+```
+
+テストの例:
+
+```clojure
+(deftest ^{:trace/test-obligations ["AC-001"]
+           :trace/requirements ["REQ-001"]
+           :trace/use-cases ["UC-1"]}
+  create-invoice-test
+  (is true))
+```
+
+禁止:
+
+- component の `core.clj`、private helper、adapter 内部に trace metadata を付ける
+- base の `system.clj` や orchestration sub-ns に trace metadata を付ける
+- 実装関数に `:trace/test-obligations` を付ける
+- `deftest` に `:trace/requirements` / `:trace/use-cases` だけを付け、`:trace/test-obligations` を省く
+- `comment` 内の REPL 試行や補助関数に trace metadata を付ける
+- DESIGN にない ID を推測で作る
+- 空 vector、空文字、重複 ID を metadata に入れる
+
+検査:
+
+- `.llm/scripts/check-trace-metadata.sh` は `design-ir.edn` を正本として ID を照合する
+- 未知 ID、空 ID、重複 ID、実装内部への trace、実装関数への `:trace/test-obligations` は error
+- `deftest` の `:trace/requirements` / `:trace/use-cases` は、参照する test obligation の `:related-requirements` / `:related-use-cases` と照合する
+- design-ir に存在する test obligation がどの `deftest` からも参照されない場合、`:adoption-mode :complete` では error、`:retrofit` / `:partial` では warning とする
 
 ---
 

@@ -10,17 +10,19 @@
 ```bash
 ./.llm/scripts/template-tests/check-map-scenarios.sh
 ./.llm/scripts/template-tests/check-design-ir-scenarios.sh
+./.llm/scripts/template-tests/check-trace-metadata-scenarios.sh
 ```
 
 この検査は `/tmp` に synthetic Polylith-like repos を作成し、`brick.edn` / `project.edn` / generated map の移行・生成・検査・修復シナリオを確認する。
 DESIGN IR 検査は `/tmp` に synthetic repos を作成し、DESIGN 抽出・既存分析 EDN 連携・stale IR 検出を確認する。
+trace metadata 検査は `/tmp` に synthetic repos を作成し、public boundary / deftest への trace metadata と誤配置検出を確認する。
 
 ## 位置づけ
 
 - 日常ゲート: `../check-workspace-integrity.sh`
-- テンプレート保守 E2E: `./check-map-scenarios.sh`, `./check-design-ir-scenarios.sh`
+- テンプレート保守 E2E: `./check-map-scenarios.sh`, `./check-design-ir-scenarios.sh`, `./check-trace-metadata-scenarios.sh`
 
-`check-map-scenarios.sh` と `check-design-ir-scenarios.sh` は、日常作業の高速ループに入れない。テンプレート配布物の信頼性を確認するための重い保守テストとして扱う。
+`check-map-scenarios.sh`、`check-design-ir-scenarios.sh`、`check-trace-metadata-scenarios.sh` は、日常作業の高速ループに入れない。テンプレート配布物の信頼性を確認するための重い保守テストとして扱う。
 
 ## 常備する観点
 
@@ -42,3 +44,6 @@ DESIGN IR 検査は `/tmp` に synthetic repos を作成し、DESIGN 抽出・�
 - constraint ID と実装 requirement ID の coverage 分離
 - test obligation の明示 ID / hash ID / 重複検出
 - test obligation から related requirement / use case trace を抽出し、未知参照を diagnostics に出すこと
+- trace metadata は public boundary `defn` と `deftest` にだけ許可すること
+- trace metadata の未知 ID と test obligation の誤配置を検出すること
+- trace metadata の空 ID、重複 ID、base 内部誤配置、`:adoption-mode :complete` の未対応 obligation error、related IDs 不整合を検出すること

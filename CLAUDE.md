@@ -17,6 +17,8 @@
 - 権限と承認: `COLLABORATION_GUIDE.md`
 - 仕様翻案: `SPEC_GUIDE.md`
 - 初期化手順: `BOOTSTRAP_GUIDE.md`
+- テンプレート利用後の参照入口: guide 側に置く
+¤ .llm/guide/TEMPLATE_USAGE_GUIDE.md
 - テンプレート保守原則: `MAINTAINERS_GUIDE.md`
 
 ## 本文書群の参照関係
@@ -38,6 +40,7 @@
 | `.llm/guide/POLYLITH_GUIDE.md` | Polylith 構造の詳細運用、brick 追加手順、境界判断 | brick 追加時・`poly check` で詰まった時 |
 | `.llm/guide/SPEC_GUIDE.md` | IDEA から DESIGN への翻案、reconciliation、test obligation、DESIGN 更新 impact 分類 | 着想整理・仕様変更時 |
 | `.llm/guide/STACK_GUIDE.md` | 技術選定の判断済み推奨集（必須技術基盤、用途別機能カテゴリ、禁止・非推奨ライブラリ） | ライブラリ採用検討時、技術選定根拠の確認時 |
+| `.llm/guide/TEMPLATE_USAGE_GUIDE.md` | 派生後も読めるテンプレート由来・参照導線の入口。プロダクト README にテンプレート説明を残さないための逃がし先 | README 置換後にテンプレート利用手順や由来を確認する時 |
 | `.llm/guide/COLLABORATION_GUIDE.md` | LLM と人間の協働プロトコル（役割分担・曖昧性解消・対話） | 協働方針・質問粒度・役割優先順位で迷った時 |
 | `.llm/guide/BOOTSTRAP_GUIDE.md` | プロジェクト初期化手順 | **初期化期のみ**（完了後は §0 の参照指示で自然にスキップされる） |
 | `.llm/guide/MAINTAINERS_GUIDE.md` | テンプレート自体の設計原則・保守者向け | テンプレート改修・ライブラリ更新・規約追加時 |
@@ -318,6 +321,7 @@ Integrant・FlowStorm・Portal は必須技術基盤ではない。前者はプ�
 失敗を契約に持ち上げ、境界で検証する。
 
 - **`interface.clj` の公開 `defn` に `m/=>` 契約を付ける**（境界契約は境界に集約。`core.clj` には置かない。`check-interface-contracts.sh` が機械検証）。`defn-` / `^:private` は原則として `interface.clj` に置かない。マクロ生成関数や可変長引数など契約表現で迷う場合は、`.llm/memory/QUESTIONS.md` に Q を立てる
+- 仕様 trace metadata は stable public boundary にだけ置く。実装コードでは component の `interface.clj` 公開 `defn`、base の公開 boundary `defn` に `:trace/requirements` / `:trace/use-cases` を付ける。`core.clj`、private helper、adapter 内部には付けない。test obligation への対応は `deftest` の `:trace/test-obligations` で表す
 - 外部入力（HTTP リクエスト、DB 行、外部 API レスポンス、設定ファイル）は**入口で `m/validate`**
 - 開発時は Malli instrumentation を有効化（`dev/user.clj` の `(malli-on!)` を REPL 起動後に呼ぶ。ライフサイクル管理を使うプロジェクトでは起動 helper が内部的に呼ぶ）。契約違反は REPL 評価で即座に例外化
 - 関数が失敗し得るなら、戻り値の型を一貫させる（常に `nil` を返すか、`{:error ...}` 形式か、一つに決める）
@@ -381,6 +385,32 @@ Malli は必須技術基盤。`dev/user.clj` で `(malli-on!)` helper を提供�
 `poly test` / `poly test :all` の通過は回帰確認であり、契約検証完了を意味しない。
 特に `interface.clj`、`m/=>` 契約、外部入力 schema の変更では、Malli instrumentation を有効化した REPL eval、または instrumentation を有効化した test fixture で契約を別途確認する。
 
+### 5.4.1 仕様 trace metadata
+
+仕様とコードの対応は、人間が記憶で追うのではなく Clojure metadata と `design-ir.edn` の照合で検査する。
+
+実装側の trace は **stable public boundary のみ**に置く。component では `interface.clj` の公開 `defn`、base では外部 entrypoint に近い `core.clj` / `handler.clj` の公開 `defn` が対象である。component の `core.clj`、private helper、base の `system.clj`、orchestration sub-ns、adapter 内部には trace metadata を付けない。内部実装にタグを撒くと、refactor のたびに仕様 trace が壊れ、疲労最小化に反する。
+
+```clojure
+(defn ^{:trace/requirements ["REQ-001"]
+        :trace/use-cases ["UC-1"]}
+  create
+  [input]
+  (core/create input))
+```
+
+test obligation への対応は実装関数ではなく `deftest` に置く。
+
+```clojure
+(deftest ^{:trace/test-obligations ["AC-001"]
+           :trace/requirements ["REQ-001"]
+           :trace/use-cases ["UC-1"]}
+  create-test
+  (is true))
+```
+
+`.llm/scripts/check-trace-metadata.sh` は未知 ID、空 ID、重複 ID、内部実装への trace metadata、実装関数への `:trace/test-obligations`、未対応 test obligation、test obligation の related IDs と test metadata の不整合を検出する。`:adoption-mode :complete` では未対応 test obligation と related IDs 不整合を error、`:retrofit` / `:partial` では warning とする。誤配置と未知 ID は常に error とする。
+
 ### 5.5 完了条件（以下全通過で初めて完了報告）
 
 完了条件はプロジェクト状態で分岐する。LLM は自分の状況を次の表で判定してからコマンドを実行する。
@@ -389,13 +419,13 @@ Malli は必須技術基盤。`dev/user.clj` で `(malli-on!)` helper を提供�
 
 **即判定**:
 
-1. `workspace.edn` に `"myorg.myapp"` が残るなら、まだ初期化未完了
+1. 派生プロジェクトで `workspace.edn` に `"myorg.myapp"` が残るなら、まだ初期化未完了。テンプレート repo では配布用 placeholder として許容する
 2. `projects/<deploy>` が無い、またはビルド定義が未確定なら、uber ビルドだけ外す
 3. `projects/<deploy>` があり、ビルド定義もあるなら、全行を実行する
 
 | 状態 | 実行する完了条件 |
 |---|---|
-| `workspace.edn` に配布時プレースホルダ `"myorg.myapp"` が残る | 初期化未完了。`.llm/guide/BOOTSTRAP_GUIDE.md` §2.1 を先に完了する。`check-workspace-integrity.sh` は失敗してよい状態ではなく、未完了状態の検出である |
+| 派生プロジェクトの `workspace.edn` に配布時プレースホルダ `"myorg.myapp"` が残る | 初期化未完了。`.llm/guide/BOOTSTRAP_GUIDE.md` §2.1 を先に完了する。`check-workspace-integrity.sh` は失敗してよい状態ではなく、未完了状態の検出である。テンプレート repo では `.llm/repo-context.edn :repo-kind :template` を根拠に許容する |
 | `projects/` が未作成（`BOOTSTRAP_GUIDE.md` §2.9 前） | 下記コマンドのうち uber ビルドだけスキップ。その他は通す |
 | `projects/<deploy>` が存在し、DESIGN.md §8.4 にビルドコマンドが定義済み | 下記全行を実行 |
 
@@ -778,7 +808,7 @@ clj -M:poly create component name:<name>
    - 承認必須相当（L1、ユースケース追加・受入基準改訂）→ ADR 推奨
    - 実施後報告/独断可相当（L2/L3、記述の明確化、誤字修正）→ ADR 不要
 3. **DESIGN.md の書き換え**: 該当節を**現在形で新仕様に書き換える**（差分表示・追記形式にしない、過去の記述は残さない）
-4. **DESIGN IR の再生成と照合**: `./.llm/scripts/gen-design-ir.sh` を実行し、`.llm/data/design-ir.edn` を更新する。既存の `brick-map.edn` / `workspace-map.edn` / `libs.edn` がある場合は coverage / implementation-index の差分を読み、実装 requirement、constraint reference、unknown/orphan を分けて説明する。受入基準の追加・変更があれば test obligation ID と既存テストへの影響を確認する。現時点で script が自動更新するのは design-ir までであり、実テスト本体は LLM が差分を作成して通常の検証ゲートで通す
+4. **DESIGN IR の再生成と照合**: `./.llm/scripts/gen-design-ir.sh` を実行し、`.llm/data/design-ir.edn` を更新する。既存の `brick-map.edn` / `workspace-map.edn` / `libs.edn` がある場合は coverage / implementation-index の差分を読み、実装 requirement、constraint reference、unknown/orphan を分けて説明する。受入基準の追加・変更があれば test obligation ID と既存テストへの影響を確認し、public boundary の `:trace/requirements` / `:trace/use-cases` と `deftest` の `:trace/test-obligations` を更新する。script が自動更新するのは design-ir までであり、コード・テスト・trace metadata は LLM が差分を作成して通常の検証ゲートで通す
 5. **関連文書の更新**:
    - KNOWLEDGE: 新仕様と整合しないエントリを上書き or 廃止
    ∵ .llm/memory/KNOWLEDGE.md §0.5

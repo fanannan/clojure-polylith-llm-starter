@@ -31,19 +31,21 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 | スクリプト | 目的 |
 |---|---|
 | `check-workspace-integrity.sh` | 下記の workspace 整合性検査を束ねる総合検査（完了条件から呼ぶ） |
-| `check-placeholders.sh` | `workspace.edn` / `deps.edn` のプレースホルダ `myorg.myapp` 残存検査 |
+| `check-placeholders.sh` | `workspace.edn` / `deps.edn` のプレースホルダ `myorg.myapp` 残存検査。template repo では `.llm/repo-context.edn :repo-kind :template` を根拠に配布用 placeholder を許容 |
 | `check-brick-registration.sh` | `components/` / `bases/` の brick が `deps.edn` に登録されているか検査 |
 | `check-brick-map.sh` | 全 brick の `brick.edn` を検査し、`docs/BRICKS.md` / `.llm/data/brick-map.edn` が `brick.edn` / `interface.clj` からの生成結果と同期しているか検査 |
 | `check-workspace-map.sh` | `projects/*/project.edn` と workspace/project 生成物を検査し、`docs/PROJECTS.md` / `docs/WORKSPACE.md` / `.llm/data/workspace-map.edn` の drift を検出 |
 | `gen-design-ir.sh` | `DESIGN.md` と既存 `.llm/data/*.edn` 分析情報から `.llm/data/design-ir.edn` を生成 |
 | `check-design-ir.sh` | `.llm/data/design-ir.edn` が `DESIGN.md` および既存分析 EDN と同期しているか検査 |
 | `gen_design_ir.clj` | `gen-design-ir.sh` / `check-design-ir.sh` の Clojure 実装。明示 requirement / use case / acceptance item と `[REQ-001]` / `[UC-1]` trace を抽出し、constraint と実装 requirement を分けて brick-map / workspace-map / libs と照合 |
+| `check-trace-metadata.sh` | Clojure コード / テストコードの `:trace/*` metadata を `.llm/data/design-ir.edn` と照合。実装コード側は stable public boundary のみ許可し、AC/TO は `deftest` 側へ限定。`:adoption-mode :complete` では未対応 test obligation も失敗 |
+| `check_trace_metadata.clj` | `check-trace-metadata.sh` の Clojure 実装。top-level form を読み、public boundary `defn` と `deftest` の var metadata / attr-map に置かれた `:trace/requirements` / `:trace/use-cases` / `:trace/test-obligations` を検査。空 ID・重複 ID・related IDs 不整合も検出 |
 | `check-deprecated-libs.sh` | `STACK_GUIDE.md` に埋め込まれた `;; lib-catalog` EDN block 由来の非推奨ライブラリを検知（`.llm/data/deprecated-libs.patterns` を読む） |
 | `check-forbidden-requires.sh` | `STACK_GUIDE.md` に埋め込まれた `;; lib-catalog` EDN block 由来の非推奨 namespace を検知（`.llm/data/forbidden-requires.patterns` を読む） |
 | `check-conflicting-libs.sh` | `STACK_GUIDE.md` に埋め込まれた `;; lib-catalog` EDN block 由来の併用禁止ペアを検知（`.llm/data/conflicts.patterns` を読む） |
 | `check-doc-references.sh` | Markdown 間参照が `¤ / ∵ / ⚠` で型付けされているか検査。通常は default scope、保守監査では `--all` |
 | `gen_lib_catalog.clj` | `STACK_GUIDE.md` に埋め込まれた `;; lib-catalog` EDN block 群を合成し `.llm/data/{libs.edn, deprecated-libs.patterns, forbidden-requires.patterns, conflicts.patterns}` を生成（`clj -X:gen-lib-catalog`）。schema 検証 + uniqueness 検査付き |
-| `gen_brick_map.clj` | `components/*/brick.edn` / `bases/*/brick.edn` と `interface.clj` から `docs/BRICKS.md` / `.llm/data/brick-map.edn` を生成。component/base の意味違反、重複 capability、base の未提供 capability 参照、`:brick/not-for` 衝突、要求 ID 対応、capability と公開 API 名の対応も検査 |
+| `gen_brick_map.clj` | `components/*/brick.edn` / `bases/*/brick.edn` と `interface.clj` から `docs/BRICKS.md` / `.llm/data/brick-map.edn` を生成。component/base の意味違反、重複 capability、base の未提供 capability 参照、`:brick/not-for` 衝突、要求 ID 対応、任意 `:brick/group` の形式、capability と公開 API 名の対応も検査 |
 | `gen_workspace_map.clj` | `projects/*/project.edn` / `workspace.edn` / `deps.edn` / `brick.edn` から `docs/PROJECTS.md` / `docs/WORKSPACE.md` / `.llm/data/workspace-map.edn` を生成。project の deploy intent、entrypoint、includes、deps との整合を検査 |
 | `propose-brick-edn.sh` | `brick.edn` を持たない既存 brick に対し、`interface.clj` から分かる範囲で skeleton 案を表示する移行補助（書き込みなし） |
 | `ensure-brick-map.sh` | 欠落した `brick.edn` skeleton を自動作成し、`docs/BRICKS.md` / `.llm/data/brick-map.edn` を再生成する。TODO は警告として表示 |

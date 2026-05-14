@@ -73,6 +73,7 @@ complete_metadata() {
   cat > "$repo/components/invoice/brick.edn" <<'EOF'
 {:brick/name :invoice
  :brick/type :component
+ :brick/group :billing
  :brick/purpose "Invoice creation and validation"
  :brick/provides #{:invoice/create :invoice/validate}
  :brick/not-for #{:http/response}
@@ -81,6 +82,7 @@ EOF
   cat > "$repo/bases/web-api/brick.edn" <<'EOF'
 {:brick/name :web-api
  :brick/type :base
+ :brick/group :public-api
  :brick/purpose "HTTP API entrypoint delegating to component capabilities"
  :brick/entrypoint :http-api
  :brick/uses #{:invoice/create}
@@ -444,6 +446,28 @@ EOF
   run_check_all "$repo"
 }
 
+scenario_23_brick_group_index() {
+  local repo="$BASE/23-brick-group-index"
+  base_files "$repo" complete
+  complete_metadata "$repo"
+  run_generate_all "$repo"
+  grep -q ':groups' "$repo/.llm/data/brick-map.edn"
+  grep -q ':billing \["components/invoice"\]' "$repo/.llm/data/brick-map.edn"
+  grep -q ':public-api \["bases/web-api"\]' "$repo/.llm/data/brick-map.edn"
+  run_check_all "$repo"
+}
+
+scenario_24_brick_group_must_be_keyword() {
+  local repo="$BASE/24-brick-group-must-be-keyword"
+  base_files "$repo" complete
+  complete_metadata "$repo"
+  sed -i 's/:brick\/group :billing/:brick\/group #{:billing :reporting}/' "$repo/components/invoice/brick.edn"
+  expect_fail "$repo" "./.llm/scripts/check-brick-map.sh" "must have keyword :brick/group" "24-brick-group-set"
+  sed -i 's/:brick\/group #{:billing :reporting}/:brick\/group :billing/' "$repo/components/invoice/brick.edn"
+  run_generate_all "$repo"
+  run_check_all "$repo"
+}
+
 scenario "01 new complete" scenario_01_new_complete
 scenario "02 retrofit skeleton" scenario_02_retrofit_skeleton
 scenario "03 partial todo" scenario_03_partial_todo
@@ -466,5 +490,7 @@ scenario "19 empty interface repair" scenario_19_empty_interface_repair
 scenario "20 project capability ownership repair" scenario_20_project_capability_ownership_repair
 scenario "21 legacy project type repair" scenario_21_legacy_project_type_repair
 scenario "22 DESIGN code block ids ignored" scenario_22_design_code_block_ids_ignored
+scenario "23 brick group index" scenario_23_brick_group_index
+scenario "24 brick group must be keyword" scenario_24_brick_group_must_be_keyword
 
 echo "ALL TEMPLATE MAP SCENARIOS PASSED"
