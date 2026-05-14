@@ -88,7 +88,7 @@ handler.clj は入出力変換のみに薄く保ち、実処理は orchestration
 
 ### 1.1 Brick Map と `brick.edn`
 
-brick の機能分担は Markdown を正本にしない。各 brick 直下の `brick.edn` を機械可読な設計意図の正本とし、閲覧用の `docs/BRICKS.md` と検索用の `.llm/data/brick-map.edn` は `brick.edn` と `interface.clj` から生成する。
+brick の機能分担は Markdown を正本にしない。各 brick 直下の `brick.edn` を機械可読な設計意図の正本とし、閲覧用 Brick Map と検索用の `.llm/data/brick-map.edn` は `brick.edn` と `interface.clj` から生成する。
 
 目的は、必要な機能をどの component に頼ればよいか、base がどの entrypoint からどの component capability を使うか、重複実装が発生していないかを常に機械検査できる状態にすることである。
 
@@ -126,7 +126,7 @@ base の `brick.edn` は外部 entrypoint と利用 capability を表す。base 
 clj -Sdeps '{:paths [".llm/scripts"]}' -X gen-brick-map/generate
 ```
 
-`./.llm/scripts/check-workspace-integrity.sh` は、全 brick の `brick.edn` 存在、component/base の意味違反、重複 capability、base の未提供 capability 参照、`:brick/not-for` との衝突、capability 命名、capability と公開 API 名の対応、`docs/BRICKS.md` / `.llm/data/brick-map.edn` の drift を検査する。
+`./.llm/scripts/check-workspace-integrity.sh` は、全 brick の `brick.edn` 存在、component/base の意味違反、重複 capability、base の未提供 capability 参照、`:brick/not-for` との衝突、capability 命名、capability と公開 API 名の対応、閲覧用 Brick Map / `.llm/data/brick-map.edn` の drift を検査する。
 
 `check-interface-contracts.sh` が検査するのは、`interface.clj` の公開 `defn` に対応する `m/=>` が存在することまでである。arity 整合、schema の意味妥当性、失敗表現の妥当性はこの gate では保証しない。これらは Malli instrumentation 下の REPL eval、interface test、必要に応じた property test で検証する。
 
@@ -148,8 +148,8 @@ TODO・空の `:brick/provides`・曖昧な capability / API 対応は、`:adopt
 
 要求 ID 対応の検査順序:
 
-1. `brick.edn` が参照する `:brick/requirements` の ID が `DESIGN.md` に存在するかを検査する。存在しない ID 参照は誤リンクなので ERROR
-2. `DESIGN.md` にある要求 ID がどの brick にも参照されていない場合は WARN。初期仕様・将来機能・未実装要求があり得るため、ただちに ERROR にはしない
+1. `brick.edn` が参照する `:brick/requirements` の ID が DESIGN に存在するかを検査する。存在しない ID 参照は誤リンクなので ERROR
+2. DESIGN にある要求 ID がどの brick にも参照されていない場合は WARN。初期仕様・将来機能・未実装要求があり得るため、ただちに ERROR にはしない
 3. 未割当要求を実装対象にする時は、先に対応する component capability または base entrypoint を決め、`brick.edn` に ID を記録してから実装する
 
 ### 1.2 既存機能の探索手順
@@ -231,7 +231,7 @@ project には capability を持たせない。project は deploy / build 単位
 
 `project.edn` は deploy intent の正本であり、classpath や依存の正本ではない。実際の project 依存は `projects/<name>/deps.edn` が正本であり、Polylith の構造事実は `poly check` に委譲する。`project.edn` と `deps.edn` の includes がずれている場合は生成検査で警告する。
 
-workspace については、手書きの追加正本を増やさない。`workspace.edn`、`deps.edn`、`.llm/repo-context.edn`、`brick.edn`、`project.edn` から、閲覧用の `docs/WORKSPACE.md` と検索用の `.llm/data/workspace-map.edn` を生成する。
+workspace については、手書きの追加正本を増やさない。`workspace.edn`、`deps.edn`、`.llm/repo-context.edn`、`brick.edn`、`project.edn` から、閲覧用 Workspace Map と検索用の `.llm/data/workspace-map.edn` を生成する。
 
 生成:
 

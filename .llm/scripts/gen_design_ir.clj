@@ -64,6 +64,12 @@
 (def acceptance-item-pattern
   #"^[ \t]{0,3}[-*][ \t]+\[[ xX]\][ \t]+(.+)$")
 
+(def explicit-obligation-id-pattern
+  #"^((?:AC|TO)-[0-9]+)[:：][ \t]*(.*)$")
+
+(def constraint-kinds
+  #{:non-functional :external-interface :technical-constraints})
+
 (defn- section-number [{:keys [id]}]
   (some->> id (re-find #"^([0-9]+)") second))
 
@@ -125,18 +131,38 @@
 
 (defn- constraints [requirements]
   (->> requirements
-       (filter #(contains? #{:non-functional :external-interface :technical-constraints}
-                           (:kind %)))
+       (filter #(contains? constraint-kinds (:kind %)))
        vec))
 
+(defn- implementation-requirements [requirements]
+  (->> requirements
+       (remove #(contains? constraint-kinds (:kind %)))
+       vec))
+
+(defn- fallback-obligation-id [text]
+  (let [normalized (-> text str/trim str/lower-case)]
+    (format "TO-%08X" (bit-and 0xffffffff (.hashCode normalized)))))
+
+(defn- test-obligation [item]
+  (let [text (:text item)
+        [_ explicit-id explicit-text] (re-matches explicit-obligation-id-pattern text)
+        text' (if explicit-id (str/trim explicit-text) text)]
+    (assoc item
+           :id (or explicit-id (fallback-obligation-id text'))
+           :text text'
+           :source :acceptance-criteria
+           :verification :unspecified)))
+
 (defn- test-obligations [acceptance]
-  (mapv (fn [idx item]
-          (assoc item
-                 :id (format "TO-%03d" (inc idx))
-                 :source :acceptance-criteria
-                 :verification :unspecified))
-        (range)
-        acceptance))
+  (mapv test-obligation acceptance))
+
+(defn- duplicate-test-obligation-ids [obligations]
+  (->> obligations
+       (map :id)
+       frequencies
+       (keep (fn [[id n]] (when (< 1 n) id)))
+       sort
+       vec))
 
 (defn- read-analysis []
   {:brick-map (read-edn-if-exists ".llm/data/brick-map.edn")
@@ -163,18 +189,26 @@
      :library-categories (sorted-keywords (mapcat :purpose libs))}))
 
 (defn- coverage [design analysis-index]
-  (let [design-ids (set (map :id (:requirements design)))
+  (let [requirements (:requirements design)
+        design-ids (set (map :id requirements))
+        constraint-ids (set (map :id (constraints requirements)))
+        implementation-ids (set (map :id (implementation-requirements requirements)))
         implemented (set (concat (:brick-requirements analysis-index)
                                  (:project-requirements analysis-index)))]
     {:design-requirements (sorted-strings design-ids)
-     :implemented-requirements (sorted-strings (set/intersection design-ids implemented))
-     :unassigned-requirements (sorted-strings (set/difference design-ids implemented))
+     :implementation-requirements (sorted-strings implementation-ids)
+     :constraint-requirements (sorted-strings constraint-ids)
+     :implemented-requirements (sorted-strings (set/intersection implementation-ids implemented))
+     :unassigned-implementation-requirements (sorted-strings (set/difference implementation-ids implemented))
+     :unassigned-requirements (sorted-strings (set/difference implementation-ids implemented))
+     :constraint-implementation-references (sorted-strings (set/intersection constraint-ids implemented))
      :unknown-implementation-requirements (sorted-strings (set/difference implemented design-ids))}))
 
 (defn ir []
   (let [design (parse-design)
         analysis (read-analysis)
-        index (implementation-index analysis)]
+        index (implementation-index analysis)
+        obligations (test-obligations (:acceptance-criteria design))]
     (into (sorted-map)
           {:source "DESIGN.md"
            :generated-by "gen-design-ir"
@@ -185,10 +219,11 @@
            :use-cases (:use-cases design)
            :acceptance-criteria (:acceptance-criteria design)
            :constraints (constraints (:requirements design))
-           :test-obligations (test-obligations (:acceptance-criteria design))
+           :test-obligations obligations
            :implementation-index index
            :coverage (coverage design index)
-           :diagnostics {:duplicate-requirement-ids (duplicate-ids (:requirements design))}})))
+           :diagnostics {:duplicate-requirement-ids (duplicate-ids (:requirements design))
+                         :duplicate-test-obligation-ids (duplicate-test-obligation-ids obligations)}})))
 
 (defn- render [data]
   (str ";; GENERATED - do not edit by hand.\n"
@@ -203,6 +238,9 @@
 (defn- validate! [data]
   (when-let [dups (seq (get-in data [:diagnostics :duplicate-requirement-ids]))]
     (error! "ERROR: DESIGN.md has duplicate requirement ids:"
+            (str/join "\n" (map #(str "  " %) dups))))
+  (when-let [dups (seq (get-in data [:diagnostics :duplicate-test-obligation-ids]))]
+    (error! "ERROR: DESIGN.md has duplicate test obligation ids:"
             (str/join "\n" (map #(str "  " %) dups)))))
 
 (defn generate

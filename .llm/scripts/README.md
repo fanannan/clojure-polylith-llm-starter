@@ -37,7 +37,7 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 | `check-workspace-map.sh` | `projects/*/project.edn` と workspace/project 生成物を検査し、`docs/PROJECTS.md` / `docs/WORKSPACE.md` / `.llm/data/workspace-map.edn` の drift を検出 |
 | `gen-design-ir.sh` | `DESIGN.md` と既存 `.llm/data/*.edn` 分析情報から `.llm/data/design-ir.edn` を生成 |
 | `check-design-ir.sh` | `.llm/data/design-ir.edn` が `DESIGN.md` および既存分析 EDN と同期しているか検査 |
-| `gen_design_ir.clj` | `gen-design-ir.sh` / `check-design-ir.sh` の Clojure 実装。明示 requirement / use case / acceptance item を抽出し、brick-map / workspace-map / libs と照合 |
+| `gen_design_ir.clj` | `gen-design-ir.sh` / `check-design-ir.sh` の Clojure 実装。明示 requirement / use case / acceptance item を抽出し、constraint と実装 requirement を分けて brick-map / workspace-map / libs と照合 |
 | `check-deprecated-libs.sh` | `STACK_GUIDE.md` に埋め込まれた `;; lib-catalog` EDN block 由来の非推奨ライブラリを検知（`.llm/data/deprecated-libs.patterns` を読む） |
 | `check-forbidden-requires.sh` | `STACK_GUIDE.md` に埋め込まれた `;; lib-catalog` EDN block 由来の非推奨 namespace を検知（`.llm/data/forbidden-requires.patterns` を読む） |
 | `check-conflicting-libs.sh` | `STACK_GUIDE.md` に埋め込まれた `;; lib-catalog` EDN block 由来の併用禁止ペアを検知（`.llm/data/conflicts.patterns` を読む） |
@@ -73,6 +73,7 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 | `check_repo_context_consistency.clj` | `check-repo-context-consistency.sh` の Clojure 実装 |
 | `check-adoption-mode-scenarios.sh` | テンプレ本体では実運用されにくい `:retrofit` / `:partial` / `:complete` の manifest 段階挙動を fixture で検査 |
 | `template-tests/check-map-scenarios.sh` | テンプレート自身の Brick / Project / Workspace Map E2E。synthetic repo で生成・移行・エラー検出・自力修復を検査する。通常ゲート外 |
+| `template-tests/check-design-ir-scenarios.sh` | DESIGN IR 生成・drift 検出・既存分析 EDN 連携の E2E。通常ゲート外 |
 | `apply-repo-context-migration.sh` | 人間承認後に `.llm/repo-context.edn` を作成する migration wrapper。既定では `APPLY` 入力を要求 |
 | `install-llm-template.sh` | 本テンプレート未導入の既存 repo に `.llm/` / root guide を持ち込む dry-run first の installer。`--apply` でも既存ファイルは上書きせず candidate を作る |
 | `repl-eval.sh` | 稼働中 nREPL に eval / load-file を送る LLM 向け client（CLAUDE.md §9 Live Workbench Protocol）。`.nrepl-port` 自動発見、永続 session 再利用（`.nrepl-session`）、`--expr` / `--load-file` / `--interrupt` / `--describe` / `--reset-session` / `--fresh` 対応 |

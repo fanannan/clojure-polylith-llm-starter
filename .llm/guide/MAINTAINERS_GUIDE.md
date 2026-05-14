@@ -100,6 +100,7 @@
 |---|---|---|
 | .llm/guide/CODING_GUIDE.md | A | Clojure 書き方詳細、LLM 特有の落とし穴 |
 | .llm/guide/POLYLITH_GUIDE.md | A | Polylith 運用詳細、brick コード例 |
+| .llm/guide/SPEC_GUIDE.md | A | IDEA / DESIGN / design-ir / reconciliation / test obligation の翻案規律。仕様駆動開発のうち本テンプレートで使う最小限だけを扱う |
 | .llm/guide/STACK_GUIDE.md | A（継続充実） | 技術スタック選定の論理と実装。**他ガイドと異なり、テンプレート側で継続的に充実される**（STACK_GUIDE.md §1.2、本文書 §5.9）。派生プロジェクトでは更新しない |
 | .llm/guide/COLLABORATION_GUIDE.md | A | LLM と人間の協働プロトコル。「判断とプロセスの対称性」の具体実装 |
 | .llm/guide/BOOTSTRAP_GUIDE.md | A | プロジェクト初期化手順。初期化完了後も移動せず、以後は通常作業で参照頻度が下がるだけ |
@@ -973,6 +974,7 @@ LLM が `.llm/repo-context.edn` を直接編集する経路は技術的には塞
 | **CLAUDE.md** | 日常使用の常時制約。§1 に疲労最小化原則が展開。本文書 §4.原則 1 の結果。§0 は DESIGN.md への導線のみに極小化 |
 | **IDEA.md** | 任意の着想メモ雛形。仕様正本ではなく、DESIGN.md へ構造化するための低負荷入力。§0 はテンプレート説明、§1+ は派生プロジェクトの自由記載 |
 | **DESIGN.md** | プロダクト仕様の雛形。テンプレートは骨組みのみ、プロジェクトで埋める。§8 にプロジェクト固有情報を集約。分類管理の原則の実装 |
+| **.llm/guide/SPEC_GUIDE.md** | IDEA から DESIGN への翻案規律。reconciliation は保存しない一時レビュー表、design-ir / test obligation / impact analysis への接続を定義 |
 
 #### .llm/guide/
 

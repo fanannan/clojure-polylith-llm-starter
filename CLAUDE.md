@@ -15,6 +15,7 @@
 
 詳細の正本:
 - 権限と承認: `COLLABORATION_GUIDE.md`
+- 仕様翻案: `SPEC_GUIDE.md`
 - 初期化手順: `BOOTSTRAP_GUIDE.md`
 - テンプレート保守原則: `MAINTAINERS_GUIDE.md`
 
@@ -35,6 +36,7 @@
 |---|---|---|
 | `.llm/guide/CODING_GUIDE.md` | Clojure の書き方詳細、LLM 特有の落とし穴 | コーディング判断に迷った時 |
 | `.llm/guide/POLYLITH_GUIDE.md` | Polylith 構造の詳細運用、brick 追加手順、境界判断 | brick 追加時・`poly check` で詰まった時 |
+| `.llm/guide/SPEC_GUIDE.md` | IDEA から DESIGN への翻案、reconciliation、test obligation、DESIGN 更新 impact 分類 | 着想整理・仕様変更時 |
 | `.llm/guide/STACK_GUIDE.md` | 技術選定の判断済み推奨集（必須技術基盤、用途別機能カテゴリ、禁止・非推奨ライブラリ） | ライブラリ採用検討時、技術選定根拠の確認時 |
 | `.llm/guide/COLLABORATION_GUIDE.md` | LLM と人間の協働プロトコル（役割分担・曖昧性解消・対話） | 協働方針・質問粒度・役割優先順位で迷った時 |
 | `.llm/guide/BOOTSTRAP_GUIDE.md` | プロジェクト初期化手順 | **初期化期のみ**（完了後は §0 の参照指示で自然にスキップされる） |
@@ -82,7 +84,7 @@ Markdown 文書から別の Markdown 文書を指す時は、本文中に裸で�
 | 状況 | 主に読むべき文書 |
 |---|---|
 | **プロジェクト初期化中** | `.llm/guide/BOOTSTRAP_GUIDE.md` |
-| **着想整理** | `IDEA.md`（存在し実内容がある場合）→ `DESIGN.md` |
+| **着想整理** | `IDEA.md`（存在し実内容がある場合）→ `.llm/guide/SPEC_GUIDE.md` → `DESIGN.md` |
 | **日常開発** | CLAUDE.md（本文書） |
 | **仕様確認** | DESIGN.md |
 | **契約・不変条件の確認** | `.llm/memory/KNOWLEDGE.md` |
@@ -110,7 +112,7 @@ IDEA は、未整理の着想や要望を DESIGN へ構造化するための任�
 |---|---|
 | `IDEA.md` が存在しない | 従来通り DESIGN から開始 |
 | `IDEA.md` が雛形だけ | IDEA を無視し、DESIGN から開始 |
-| `IDEA.md` に実内容がある | DESIGN への反映案、矛盾、質問候補へ分解 |
+| `IDEA.md` に実内容がある | reconciliation table と DESIGN 反映案、矛盾、質問候補へ分解 |
 | `DESIGN.md` が更新された | DESIGN 由来の中間表現を再生成し、既存の `.llm/data/*.edn` 分析情報と照合して drift を検出 |
 
 > **プロジェクト初期化が未完了の場合、BOOTSTRAP_GUIDE に従って完了させる**。
@@ -776,13 +778,14 @@ clj -M:poly create component name:<name>
    - 承認必須相当（L1、ユースケース追加・受入基準改訂）→ ADR 推奨
    - 実施後報告/独断可相当（L2/L3、記述の明確化、誤字修正）→ ADR 不要
 3. **DESIGN.md の書き換え**: 該当節を**現在形で新仕様に書き換える**（差分表示・追記形式にしない、過去の記述は残さない）
-4. **関連文書の更新**:
+4. **DESIGN IR の再生成と照合**: `./.llm/scripts/gen-design-ir.sh` を実行し、`.llm/data/design-ir.edn` を更新する。既存の `brick-map.edn` / `workspace-map.edn` / `libs.edn` がある場合は coverage / implementation-index の差分を読み、実装 requirement、constraint reference、unknown/orphan を分けて説明する。受入基準の追加・変更があれば test obligation ID と既存テストへの影響を確認する。現時点で script が自動更新するのは design-ir までであり、実テスト本体は LLM が差分を作成して通常の検証ゲートで通す
+5. **関連文書の更新**:
    - KNOWLEDGE: 新仕様と整合しないエントリを上書き or 廃止
    ∵ .llm/memory/KNOWLEDGE.md §0.5
    - QUESTIONS: 関連する未対応(open) Q を解決済み(resolved) に遷移して事後報告、または新規 Q を起票（解決根拠が曖昧な場合のみ確認を求める）
    ∵ .llm/memory/QUESTIONS.md
-5. **実装反映**: §8.1〜§8.2 の作業プロトコル適用
-6. **コミット**: ADR 番号をメッセージに含める（例: `Revise DESIGN.md §3 for streaming inference (ADR-0012)`）
+6. **実装反映**: §8.1〜§8.2 の作業プロトコル適用
+7. **コミット**: ADR 番号をメッセージに含める（例: `Revise DESIGN.md §3 for streaming inference (ADR-0012)`）
 
 **DESIGN は「現在の仕様」の一次情報源**であり、変更履歴は ADR・git・QUESTIONS アーカイブで保全される（分類管理の原則による 4 種文書分離）。DESIGN 内に差分表記・追記・変更履歴を残さない（「文書の自己整合性」、疲労最小化原則）。同じ原則は KNOWLEDGE にも適用される。
 

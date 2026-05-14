@@ -10,10 +10,15 @@
  :constraints [],
  :coverage
  {:design-requirements [],
+  :implementation-requirements [],
+  :constraint-requirements [],
   :implemented-requirements [],
+  :unassigned-implementation-requirements [],
   :unassigned-requirements [],
+  :constraint-implementation-references [],
   :unknown-implementation-requirements []},
- :diagnostics {:duplicate-requirement-ids []},
+ :diagnostics
+ {:duplicate-requirement-ids [], :duplicate-test-obligation-ids []},
  :generated-by "gen-design-ir",
  :implementation-index
  {:brick-requirements [],

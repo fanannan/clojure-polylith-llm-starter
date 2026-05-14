@@ -21,6 +21,7 @@ else
     "./README.md" \
     "./IDEA.md" \
     "./DESIGN.md" \
+    "./.llm/guide/SPEC_GUIDE.md" \
     "./.llm/guide/BOOTSTRAP_GUIDE.md" \
     "./.llm/memory/QUESTIONS.md" \
     "./.llm/memory/KNOWLEDGE.md" \

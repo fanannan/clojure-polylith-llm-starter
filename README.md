@@ -57,6 +57,7 @@
 | 日常開発を進める | `CLAUDE.md` | 毎セッション最初から |
 | 着想から仕様を起こす | `IDEA.md` → `DESIGN.md` | IDEA は自由記載、DESIGN は仕様正本 |
 | 仕様を埋める・直す | `DESIGN.md` | §0 と該当節 |
+| IDEA から仕様へ翻案する | `.llm/guide/SPEC_GUIDE.md` | reconciliation と test obligation の節 |
 | 技術選定を決める | `.llm/guide/STACK_GUIDE.md` | 冒頭の位置づけ + 該当機能節 |
 | Polylith 構造を決める | `.llm/guide/POLYLITH_GUIDE.md` | 冒頭の前提 + 該当手順節 |
 | 権限や承認で迷う | `.llm/guide/COLLABORATION_GUIDE.md` | §2 を正本として読む |
@@ -77,21 +78,22 @@
 
 ### 着想メモから始める低負荷フロー
 
-人間は最初から完成した仕様を書く必要はない。自由な着想メモに、目的・背景・避けたいこと・制約・思いつきだけを書けばよい。LLM はそれを DESIGN への反映案、矛盾、質問候補に分解する。
+人間は最初から完成した仕様を書く必要はない。自由な着想メモに、目的・背景・避けたいこと・制約・思いつきだけを書けばよい。LLM はそれを reconciliation table、DESIGN への反映案、矛盾、質問候補に分解する。
 
 | 文書 | 扱い |
 |---|---|
 | `IDEA.md` | 任意の入力補助。存在しない場合・雛形だけの場合はスキップ |
-| `DESIGN.md` | 仕様正本。実装判断、IR 生成、capability plan、テスト生成の起点 |
+| `DESIGN.md` | 仕様正本。実装判断、IR 生成、capability plan、テスト生成の起点。長期追跡する受入基準は `AC-001:` 形式にする |
 | `.llm/data/*.edn` | 既存の分析情報。DESIGN 由来の中間表現と照合し、仕様と実装の drift を検出 |
 
 #### 着想メモ先行キックオフプロンプト
 
 ```
 このプロジェクトのテンプレートを使って初期化を行う。
-まず CLAUDE.md、IDEA.md、DESIGN.md、.llm/guide/BOOTSTRAP_GUIDE.md を読んでから着手してほしい。
+まず CLAUDE.md、IDEA.md、DESIGN.md、.llm/guide/SPEC_GUIDE.md、.llm/guide/BOOTSTRAP_GUIDE.md を読んでから着手してほしい。
 
 IDEA.md の内容を整理し、DESIGN.md への反映案を作ってください。
+reconciliation table を提示し、反映済み / 保留 / 却下 / 質問化を明確にしてください。
 IDEA.md が雛形だけなら、通常の最小版キックオフとして扱ってください。
 DESIGN.md と食い違う内容があれば、実装へ進まず 1 点ずつ確認してください。
 ```

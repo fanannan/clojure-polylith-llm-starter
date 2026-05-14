@@ -79,7 +79,7 @@
     (when-let [content (slurp-if-exists path)]
       (let [n (second (re-matches #"§([0-9]+(?:\.[0-9]+)*)" section))]
         (boolean
-         (or (re-find (re-pattern (str "^##+ +" (java.util.regex.Pattern/quote n) "(\\.| |$)")) content)
+         (or (re-find (re-pattern (str "(?m)^##+ +" (java.util.regex.Pattern/quote n) "(\\.| |$)")) content)
              (re-find (re-pattern (str "§" (java.util.regex.Pattern/quote n))) content)))))))
 
 (defn- check-target [entry target]
