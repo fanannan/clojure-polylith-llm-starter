@@ -1,4 +1,4 @@
-# ＜TODO: プロジェクト名＞
+# Clojure Polylith LLM Starter
 
 **Clojure + Polylith プロジェクト**（LLM と人間の仕様共同開発フレームワーク）
 
@@ -7,11 +7,14 @@
 - 技術選定の判断済み推奨集は `.llm/guide/STACK_GUIDE.md`
 - 未整理の着想メモから開始できる。仕様正本は DESIGN に集約する
 
-> ⚠️ **このファイルはテンプレート配布時のものです。**
+> ⚠️ **このファイルはテンプレート配布時の入口です。**
 >
-> プロジェクト初期化完了時に、**プロダクト README として完全に書き換えてください**。
-> 初期化中だけ入口として使い、完了後はこの索引的役割を残さない。
+> 派生プロジェクトではこの README を編集し続けず、初期化完了時に **プロダクト README として完全置換**する。
+> プロダクト README は DESIGN / design-ir / 技術選定 / 起動手順から LLM が半自動生成し、人間が外向け説明としてレビューする。
+> 完全置換後にテンプレートの由来や使い方を読み返す場合は、guide 側の参照入口を使う。
 ¤ .llm/guide/BOOTSTRAP_GUIDE.md §4
+¤ .llm/templates/PROJECT_README.md
+¤ .llm/guide/TEMPLATE_USAGE_GUIDE.md
 
 ## まず読む場所
 
@@ -24,6 +27,7 @@
 | **まだ仕様を書けない人** | `IDEA.md` | 自由な着想メモ。雛形だけなら無視される |
 | **仕様を埋める人** | `DESIGN.md` | どこを埋めるかの導線 |
 | **技術選定で迷う人** | `STACK_GUIDE.md` | 参照先の案内 |
+| **派生後にテンプレートの由来を読み返す人** | `TEMPLATE_USAGE_GUIDE.md` | プロダクト README 置換後のテンプレート参照入口 |
 
 **優先順位**:
 - 初期化フローの入口は **README**
@@ -34,7 +38,7 @@
 - 初期化の詳細手順の正本は別紙
 ¤ .llm/guide/BOOTSTRAP_GUIDE.md
 
-初期化完了後は、本ファイルを運用ルールの正本として使わない。プロダクト README に置き換える。
+初期化完了後は、本ファイルを運用ルールの正本として使わない。派生プロジェクト用 README を半自動生成して完全置換する。
 
 ---
 
@@ -167,7 +171,7 @@ DESIGN.md と食い違う内容があれば、実装へ進まず 1 点ずつ確�
 
 | ゲート | 承認対象 | 権限根拠 |
 |---|---|---|
-| 1. 仕様 + 技術選定 | DESIGN.md 反映案／workspace.edn :top-namespace 差分／README.md 冒頭差分／必要な用途別機能カテゴリと推奨ライブラリ案 | 承認必須 (L1)。未記載領域の技術採用は人間専権 (L0) |
+| 1. 仕様 + 技術選定 | DESIGN.md 反映案／workspace.edn :top-namespace 差分／プロダクト README 生成方針／必要な用途別機能カテゴリと推奨ライブラリ案 | 承認必須 (L1)。未記載領域の技術採用は人間専権 (L0) |
 | 2. 構造 + 依存 | `poly create component/base/project` 3 コマンド／brick deps.edn 追加内容（実コード） | 判断権限と実行主体を分けて扱う。component 作成は承認必須 (L1)、base/project 作成と依存採否は人間専権 (L0)。実行は承認内容に従う |
 
 **条件付き承認必須 (L1) 成果物**（まとめて提示し、全承認または全修正指示で受ける）:
@@ -277,7 +281,7 @@ cd /path/to/repo
 
 ```
 <project-root>/
-├── README.md                    ← 本ファイル（書き換え対象）
+├── README.md                    ← テンプレート入口（派生時はプロダクト README へ完全置換）
 ├── CLAUDE.md                    ← LLM 向け作業規約（毎セッション必読）
 ├── DESIGN.md                    ← プロダクト仕様（初期化時に埋める）
 │
@@ -285,6 +289,7 @@ cd /path/to/repo
 │   ├── CODING_GUIDE.md          Clojure 書き方詳細
 │   ├── POLYLITH_GUIDE.md        Polylith 運用・brick コード例
 │   ├── STACK_GUIDE.md           技術選定の判断済み推奨集（判断結果の記録）
+│   ├── TEMPLATE_USAGE_GUIDE.md  派生後も読めるテンプレート由来・参照導線の入口
 │   ├── COLLABORATION_GUIDE.md   LLM と人間の協働プロトコル
 │   ├── BOOTSTRAP_GUIDE.md       初期化手順詳細（LLM 向け、完了後は CLAUDE.md §0 の参照指示で自然にスキップ）
 │   └── MAINTAINERS_GUIDE.md     テンプレート自体の保守・設計原則
@@ -328,9 +333,10 @@ cd /path/to/repo
 │   ├── forbidden-requires.patterns   require 検知用パターン
 │   └── conflicts.patterns            併用禁止ペアパターン
 │
-├── .llm/templates/           ← platform-neutral fragment（派生プロジェクトの PR / MR / wiki に貼り付ける成果物断片。**正本は guide / CLAUDE**、本ディレクトリは規約の運用補助）
-│   ├── README.md                    ディレクトリの位置づけと fragment 一覧
-│   └── fixture-state-summary.md     越境 UC PR 本文 fragment（POLYLITH_GUIDE §7.4.1 関連）
+├── .llm/templates/           ← 派生プロジェクトへコピー/貼り付ける Markdown 雛形 / 断片。**正本は guide / CLAUDE**、本ディレクトリは規約の運用補助
+│   ├── README.md                    ディレクトリの位置づけと雛形 / 断片一覧
+│   ├── PROJECT_README.md            派生プロジェクト README の半自動生成雛形
+│   └── fixture-state-summary.md     越境 UC PR 本文断片（POLYLITH_GUIDE §7.4.1 関連）
 │
 ├── docs/BRICKS.md            ← brick.edn / interface.clj から生成される閲覧用 Brick Map（派生プロジェクトで brick 作成後に生成、直接編集しない）
 ├── docs/PROJECTS.md          ← project.edn / project deps から生成される閲覧用 Project Map（project 作成後に生成、直接編集しない）

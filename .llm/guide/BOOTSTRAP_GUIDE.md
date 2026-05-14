@@ -88,7 +88,7 @@ README のキックオフプロンプトを受信した LLM は、以下のゲ�
 
 | ゲート | 直前で提示する内容（実テキスト / 実操作） | 承認後に実施する節 |
 |---|---|---|
-| ★ゲート 1（仕様 + 技術選定） | reconciliation table（IDEA に実内容がある場合）／`../DESIGN.md` 反映案／`.llm/data/design-ir.edn` 生成結果／既存分析 EDN との照合結果／`workspace.edn` :top-namespace 差分／`../README.md` 冒頭差分／必要な用途別機能カテゴリと推奨ライブラリ案 | §2.1 |
+| ★ゲート 1（仕様 + 技術選定） | reconciliation table（IDEA に実内容がある場合）／`../DESIGN.md` 反映案／`.llm/data/design-ir.edn` 生成結果／既存分析 EDN との照合結果／`workspace.edn` :top-namespace 差分／プロダクト README 生成方針／必要な用途別機能カテゴリと推奨ライブラリ案 | §2.1 |
 | ★ゲート 2（構造 + 依存） | `poly create component/base/project` 3 コマンド／brick `deps.edn` 追加内容（実コード） | §2.3, §2.4 |
 
 ゲート 3 は**縮退**（`COLLABORATION_GUIDE.md` §2.2 で ADR 発行を実施後報告 (L2) 化済）:
@@ -409,10 +409,14 @@ I/O リソースの起動・停止管理が必要な場合のみ実施する。�
 
 初期化が完了したら、以下を実施する。**BOOTSTRAP_GUIDE の移動や CLAUDE 文書参照表の編集は不要**。
 
-1. **`../README.md` をプロダクト向け README として完全に書き換える**（承認必須 (L1)、ゲート 3 承認対象）
-   - テンプレート配布時の README.md は本テンプレートの説明に特化している
-   - プロダクト README には、プロダクトの機能紹介・利用者向けビルド手順・API 紹介等を記述
-   - 迷ったら `../DESIGN.md` §1 目的と §3 主要ユースケースをベースに書き起こす
+1. **`../README.md` をプロダクト向け README として半自動生成し、完全置換する**（承認必須 (L1)、ゲート 3 承認対象）
+   - テンプレート配布時の README.md は本テンプレートの説明に特化しているため、派生プロジェクトでは編集継続しない
+   - LLM は README 雛形、`../DESIGN.md` §1 目的、§3 主要ユースケース、§4 受入基準、design-ir、workspace / brick / project map、採用済み技術選定、実際の起動手順を材料に全文案を作る
+   - 人間は外向け説明、利用者に見せる粒度、公開してよい情報、起動手順の正しさをレビューする
+   - プロダクト README には、プロダクトの機能紹介・利用者向けビルド手順・API 紹介等を記述する。テンプレート説明は残さない
+   - 完全置換後にテンプレートの由来・初期化思想・参照導線を読み返す入口は guide 側に残る
+¤ ../.llm/templates/PROJECT_README.md
+¤ TEMPLATE_USAGE_GUIDE.md
 2. 初期化中に立てた `../.llm/memory/QUESTIONS.md` の `未対応(open)` Q を点検し、解決したものを `解決済み(resolved)` に
 3. 解決した Q の結果が継続参照されるものは KNOWLEDGE へ反映（承認必須 (L1)、ゲート 3 承認対象、実テキストで提示）
 ¤ ../.llm/memory/KNOWLEDGE.md

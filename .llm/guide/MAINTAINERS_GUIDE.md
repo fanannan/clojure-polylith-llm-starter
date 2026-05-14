@@ -89,7 +89,7 @@
 
 | ファイル | 区分 | 役割 |
 |---|---|---|
-| README.md | D（テンプレートでは雛形）→ プロジェクトで完全書換 | 初見者・GitHub 訪問者向けの入口。配布時は警告付き雛形、プロジェクトで完全に書き換え |
+| README.md | A（テンプレート入口）→ プロジェクトで完全置換 | テンプレート配布物の入口。派生プロジェクトでは編集継続せず、半自動生成したプロダクト README で完全置換 |
 | CLAUDE.md | A | 毎セッション必読、第一原理と常時制約。§0 は極小（DESIGN.md への導線のみ） |
 | IDEA.md | A（テンプレートでは雛形）→ E（プロジェクトでは任意更新対象） | 未整理の着想メモ。仕様正本ではなく、DESIGN.md へ構造化するための入力補助。雛形だけなら無視される |
 | DESIGN.md | A（テンプレートでは雛形）→ E（プロジェクトでは継続更新対象） | プロダクト仕様。テンプレートは必須/推奨/任意項目の骨組みのみ。プロジェクト固有情報（§8）もここに集約 |
@@ -102,18 +102,20 @@
 | .llm/guide/POLYLITH_GUIDE.md | A | Polylith 運用詳細、brick コード例 |
 | .llm/guide/SPEC_GUIDE.md | A | IDEA / DESIGN / design-ir / reconciliation / test obligation の翻案規律。仕様駆動開発のうち本テンプレートで使う最小限だけを扱う |
 | .llm/guide/STACK_GUIDE.md | A（継続充実） | 技術スタック選定の論理と実装。**他ガイドと異なり、テンプレート側で継続的に充実される**（STACK_GUIDE.md §1.2、本文書 §5.9）。派生プロジェクトでは更新しない |
+| .llm/guide/TEMPLATE_USAGE_GUIDE.md | A | 派生プロジェクトで README を完全置換した後も読めるテンプレート由来・参照導線の入口 |
 | .llm/guide/COLLABORATION_GUIDE.md | A | LLM と人間の協働プロトコル。「判断とプロセスの対称性」の具体実装 |
 | .llm/guide/BOOTSTRAP_GUIDE.md | A | プロジェクト初期化手順。初期化完了後も移動せず、以後は通常作業で参照頻度が下がるだけ |
 | .llm/guide/MAINTAINERS_GUIDE.md（本文書） | A | テンプレート保守の羅針盤 |
 
-#### .llm/templates/（platform-neutral fragment）
+#### .llm/templates/（Markdown 雛形 / プラットフォーム非依存断片）
 
 | ファイル | 区分 | 役割 |
 |---|---|---|
-| .llm/templates/README.md | A | ディレクトリの位置づけと fragment 一覧、fragment 規約 |
-| .llm/templates/fixture-state-summary.md | A | 越境 UC PR 本文 fragment。POLYLITH_GUIDE.md §7.4.1 / §7.4.2 と COLLABORATION_GUIDE.md §7.9 規律 2' / §7.10 の運用補助 |
+| .llm/templates/README.md | A | ディレクトリの位置づけと雛形 / 断片一覧、断片規約 |
+| .llm/templates/PROJECT_README.md | A | 派生プロジェクト README を半自動生成するための雛形。テンプレート README とは別物 |
+| .llm/templates/fixture-state-summary.md | A | 越境 UC PR 本文断片。POLYLITH_GUIDE.md §7.4.1 / §7.4.2 と COLLABORATION_GUIDE.md §7.9 規律 2' / §7.10 の運用補助 |
 
-正本は guide / CLAUDE 側。`.llm/templates/` は派生プロジェクトの成果物（PR / MR / wiki）に貼り付けるための platform-neutral fragment を集約する。`.github/` 等の platform 固有ディレクトリは置かず、派生プロジェクトが自前で各 platform 用ファイルへコピーする運用とする。新 fragment 追加時は本表に登録し、`check-doc-references.sh` の検証対象に含まれていることを確認する。
+正本は guide / CLAUDE 側。`.llm/templates/` は派生プロジェクトの成果物（README / PR / MR / wiki）に使う Markdown 雛形 / プラットフォーム非依存断片を集約する。`.github/` 等の platform 固有ディレクトリは置かず、派生プロジェクトが自前で各 platform 用ファイルへコピーする運用とする。新しい雛形 / 断片を追加する時は本表に登録し、`check-doc-references.sh` の検証対象に含まれていることを確認する。
 
 ### 3.2 ツール設定（B: 機械化）
 
@@ -444,21 +446,31 @@ STACK_GUIDE.md §3 機能別節で判断済み推奨集として配布されて�
 3. 自己停止プロトコルとの連携（§0.9）に影響がないか確認
 ∵ ../CLAUDE.md §7.3
 
-### 5.8 README.md 雛形の保守
+### 5.8 README.md と派生プロジェクト README 雛形の保守
 
-README.md はテンプレート配布時と派生プロジェクト運用中で**役割が正反対**（前者は内部向け説明、後者は外部向け説明）。両者の混在防止が保守の要点。
+ルートの `README.md` は、テンプレート repo ではテンプレート利用開始時の入口である。派生プロジェクトでは、同じファイル名をプロダクト入口として使うが、内容は半自動生成したプロダクト README に完全置換する。`TEMPLATE_README.md` のような別名ファイルは置かない。GitHub / GitLab / ローカル閲覧で最初に開かれる標準入口は `README.md` であり、別名にするとテンプレート利用開始時の発見性が落ちるためである。
+
+混乱防止はファイル名ではなく、以下の役割分離で実現する：
+
+- テンプレート側の `README.md`: テンプレートの入口、索引、初期化キックオフの説明に限定する
+- 派生プロジェクト側の `README.md`: `PROJECT_README.md` を雛形として、DESIGN / design-ir / map 生成物 / 採用技術 / 起動手順から LLM が半自動生成し、人間がレビューしたプロダクト入口にする
+- 派生後のテンプレート参照入口: guide 側に置く。プロダクト README にテンプレート説明を残さない
+∵ TEMPLATE_USAGE_GUIDE.md
+
+この分離により、派生プロジェクトにテンプレート説明が残ること、テンプレート README がプロダクト README の placeholder で汚れることを避ける。
 
 #### 5.8.1 テンプレートの README.md 改訂時
 
-- 冒頭の**警告ブロック**（書き換え前提の明示）は**絶対に消さない**
+- 冒頭の**役割ブロック**（テンプレート配布時の入口であり、派生プロジェクトでは完全置換する旨）は**絶対に消さない**
 - ファイル構成図・導線表・開始手順はテンプレート全体の変更に応じて更新
-- プロダクト機能の説明は書かない（それは DESIGN.md の役割）
-- 書き換え手順への参照を維持
+- プロダクト機能の説明は書かない（それは派生プロジェクトの README と DESIGN.md の役割）
+- 半自動生成手順とプロダクト README 生成雛形への参照を維持
+∵ ../templates/PROJECT_README.md
 ∵ .llm/guide/BOOTSTRAP_GUIDE.md §4
 
 #### 5.8.2 派生プロジェクトでの書き換え検証
 
-年 1 回の統合検証（§5.6.2）で、**検証用派生プロジェクトで README.md を実際に書き換える**ことを手順に含める。書き換え手順が煩雑すぎたり、書くべき内容が不明瞭な場合は、テンプレート側の BOOTSTRAP_GUIDE.md §4 を改善する。
+年 1 回の統合検証（§5.6.2）で、**検証用派生プロジェクトで README.md を実際に半自動生成し、完全置換する**ことを手順に含める。生成手順が煩雑すぎたり、書くべき内容が不明瞭な場合は、テンプレート側の BOOTSTRAP_GUIDE.md §4 または `PROJECT_README.md` を改善する。
 
 #### 5.8.3 README.md と DESIGN.md の重複回避
 
@@ -467,7 +479,7 @@ README.md はテンプレート配布時と派生プロジェクト運用中で*
 - **README.md**: プロジェクトに初めて触れる人向けの入口、ファイル構成・開始手順・ビルド方法
 - **DESIGN.md**: 実装者・保守者向けのプロダクト仕様、目的・スコープ・機能要件・受入基準
 
-派生プロジェクトで書き換える時、両者に同じ内容を書かない。README.md は DESIGN.md への導線を提供する形にする。
+派生プロジェクトで生成する時、両者に同じ内容を書かない。README.md は DESIGN.md の要点を読者向けに要約し、詳細仕様への導線を提供する形にする。
 
 ### 5.9 STACK_GUIDE.md の保守
 
@@ -970,11 +982,10 @@ LLM が `.llm/repo-context.edn` を直接編集する経路は技術的には塞
 
 | 文書 | 本文書との関係 |
 |---|---|
-| **README.md** | 初見者向けの入口。配布時は警告付き雛形、プロジェクト初期化完了時に完全書換。§5.8 で保守規則 |
+| **README.md** | テンプレート repo の入口。派生プロジェクトではプロダクト README として半自動生成・完全置換。テンプレート由来の読み返しは TEMPLATE_USAGE_GUIDE.md に置く。§5.8 で保守規則 |
 | **CLAUDE.md** | 日常使用の常時制約。§1 に疲労最小化原則が展開。本文書 §4.原則 1 の結果。§0 は DESIGN.md への導線のみに極小化 |
 | **IDEA.md** | 任意の着想メモ雛形。仕様正本ではなく、DESIGN.md へ構造化するための低負荷入力。§0 はテンプレート説明、§1+ は派生プロジェクトの自由記載 |
 | **DESIGN.md** | プロダクト仕様の雛形。テンプレートは骨組みのみ、プロジェクトで埋める。§8 にプロジェクト固有情報を集約。分類管理の原則の実装 |
-| **.llm/guide/SPEC_GUIDE.md** | IDEA から DESIGN への翻案規律。reconciliation は保存しない一時レビュー表、design-ir / test obligation / impact analysis への接続を定義 |
 
 #### .llm/guide/
 
@@ -982,7 +993,9 @@ LLM が `.llm/repo-context.edn` を直接編集する経路は技術的には塞
 |---|---|
 | **.llm/guide/CODING_GUIDE.md** | Clojure 書き方詳細。§1 に LLM 落とし穴、§2 に三基底原則の詳細展開 |
 | **.llm/guide/POLYLITH_GUIDE.md** | Polylith 運用詳細。brick コード例を埋め込み |
+| **.llm/guide/SPEC_GUIDE.md** | IDEA から DESIGN への翻案規律。reconciliation は保存しない一時レビュー表、design-ir / test obligation / impact analysis への接続を定義 |
 | **.llm/guide/STACK_GUIDE.md** | 技術選定の一次情報源。機能領域ごとの選定根拠、プロジェクト用途構成、禁止・非推奨ライブラリを保持。本文書 §5.9 で保守規律を規定 |
+| **.llm/guide/TEMPLATE_USAGE_GUIDE.md** | 派生プロジェクトで README をプロダクト向けに完全置換した後も読めるテンプレート参照入口 |
 | **.llm/guide/COLLABORATION_GUIDE.md** | LLM と人間の協働プロトコル。判断とプロセスの対称性の具体実装、仕様書開発の両輪 |
 | **.llm/guide/BOOTSTRAP_GUIDE.md** | プロジェクト初期化手順。完了後も移動しない。原則 1 の効率性・判断とプロセスの対称性の実装 |
 
