@@ -91,6 +91,7 @@
 |---|---|---|
 | README.md | D（テンプレートでは雛形）→ プロジェクトで完全書換 | 初見者・GitHub 訪問者向けの入口。配布時は警告付き雛形、プロジェクトで完全に書き換え |
 | CLAUDE.md | A | 毎セッション必読、第一原理と常時制約。§0 は極小（DESIGN.md への導線のみ） |
+| IDEA.md | A（テンプレートでは雛形）→ E（プロジェクトでは任意更新対象） | 未整理の着想メモ。仕様正本ではなく、DESIGN.md へ構造化するための入力補助。雛形だけなら無視される |
 | DESIGN.md | A（テンプレートでは雛形）→ E（プロジェクトでは継続更新対象） | プロダクト仕様。テンプレートは必須/推奨/任意項目の骨組みのみ。プロジェクト固有情報（§8）もここに集約 |
 
 #### .llm/guide/（プロジェクト運営ガイド）
@@ -756,8 +757,8 @@ Brick / Project / Workspace Map は、Polylith 構造に対するテンプレー
 
 - 全 brick に `brick.edn` があり、全 project に `project.edn` がある
 - `brick.edn` / `project.edn` に TODO が残っていない
-- `DESIGN.md` の requirement ID に重複がない
-- `brick.edn` / `project.edn` の requirement 参照が `DESIGN.md` に存在する
+- DESIGN の requirement ID に重複がない
+- `brick.edn` / `project.edn` の requirement 参照が DESIGN に存在する
 - component/base の責務分離違反がない
 - component capability の重複がない
 - base の `:brick/uses` が存在する component capability を指す
@@ -970,6 +971,7 @@ LLM が `.llm/repo-context.edn` を直接編集する経路は技術的には塞
 |---|---|
 | **README.md** | 初見者向けの入口。配布時は警告付き雛形、プロジェクト初期化完了時に完全書換。§5.8 で保守規則 |
 | **CLAUDE.md** | 日常使用の常時制約。§1 に疲労最小化原則が展開。本文書 §4.原則 1 の結果。§0 は DESIGN.md への導線のみに極小化 |
+| **IDEA.md** | 任意の着想メモ雛形。仕様正本ではなく、DESIGN.md へ構造化するための低負荷入力。§0 はテンプレート説明、§1+ は派生プロジェクトの自由記載 |
 | **DESIGN.md** | プロダクト仕様の雛形。テンプレートは骨組みのみ、プロジェクトで埋める。§8 にプロジェクト固有情報を集約。分類管理の原則の実装 |
 
 #### .llm/guide/

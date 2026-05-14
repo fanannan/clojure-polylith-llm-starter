@@ -66,9 +66,12 @@ README のキックオフプロンプトを受信した LLM は、以下のゲ�
 - CLAUDE、DESIGN、本文書を読む
 ¤ ../CLAUDE.md
 ¤ ../DESIGN.md
+- IDEA が存在し実内容がある場合だけ読む。存在しない場合、または雛形だけの場合はスキップする
+¤ ../IDEA.md
 - ライブラリ選定が必要な時だけ STACK_GUIDE を読む
 ¤ STACK_GUIDE.md
-- キックオフから人間が記入済の人間専権 (L0) コンテンツ（目的・ユースケース・受入基準・エントリ種別・組織名・ドメイン名候補・デプロイ構成・環境別設定）を抽出
+- キックオフまたは IDEA から人間が提示した人間専権 (L0) コンテンツ（目的・ユースケース・受入基準・エントリ種別・組織名・ドメイン名候補・デプロイ構成・環境別設定）を抽出
+- IDEA 由来の内容は DESIGN 反映案、矛盾、質問候補に分解する。DESIGN と食い違う場合、実装判断では DESIGN を優先し、意図不明な差分だけ質問する
 - 不足・矛盾は 1 点ずつ確認する
 
 #### 主要バッチゲート
@@ -83,7 +86,7 @@ README のキックオフプロンプトを受信した LLM は、以下のゲ�
 
 | ゲート | 直前で提示する内容（実テキスト / 実操作） | 承認後に実施する節 |
 |---|---|---|
-| ★ゲート 1（仕様 + 技術選定） | `../DESIGN.md` 反映案／`workspace.edn` :top-namespace 差分／`../README.md` 冒頭差分／必要な用途別機能カテゴリと推奨ライブラリ案 | §2.1 |
+| ★ゲート 1（仕様 + 技術選定） | `../DESIGN.md` 反映案／`.llm/data/design-ir.edn` 生成結果／既存分析 EDN との照合結果／`workspace.edn` :top-namespace 差分／`../README.md` 冒頭差分／必要な用途別機能カテゴリと推奨ライブラリ案 | §2.1 |
 | ★ゲート 2（構造 + 依存） | `poly create component/base/project` 3 コマンド／brick `deps.edn` 追加内容（実コード） | §2.3, §2.4 |
 
 ゲート 3 は**縮退**（`COLLABORATION_GUIDE.md` §2.2 で ADR 発行を実施後報告 (L2) 化済）:
@@ -133,8 +136,11 @@ ADR の発行（§4）は実施後報告 (L2) として LLM が自動実施し�
 - [ ] デプロイ構成（単一 uberjar / 複数 uberjar / Docker / Lambda）を決定
 - [ ] `workspace.edn` の `:top-namespace` を実プロジェクト名に変更（`myorg.myapp` から）
 - [ ] **`../DESIGN.md` の必須項目（§1 目的、§2 スコープ、§3 主要ユースケース、§4 受入基準、§8 プロジェクト固有情報）を埋める**
+- [ ] `../IDEA.md` に実内容がある場合は、DESIGN 反映案・矛盾・質問候補に分解し、反映済み / 保留 / 却下を明確にする
 - [ ] **DESIGN.md §8.3 技術選定欄にエントリ種別・追加する用途別機能カテゴリ・採用ライブラリを記録**
 - [ ] DESIGN.md の推奨項目（§5〜§7）のうち該当するものを埋める
+- [ ] DESIGN 更新後に `./.llm/scripts/gen-design-ir.sh` を実行し、`.llm/data/design-ir.edn` を生成する
+- [ ] 既存の `.llm/data/brick-map.edn` / `.llm/data/workspace-map.edn` / `.llm/data/libs.edn` が存在する場合は、design-ir の coverage / implementation-index を確認する
 
 **ここで決めたことを `../.llm/memory/QUESTIONS.md` に `Q` として記録する必要はない**（確定事項として扱う）。
 ただし、決定できずに保留した事項があれば Q として記録し、ブロッカーとして明示する。

@@ -25,6 +25,7 @@
 | 文書 | 役割 | いつ読むか |
 |---|---|---|
 | **CLAUDE.md（本文書）** | 第一原理と常時制約 | **毎セッション必読** |
+| **IDEA.md** | 任意の着想メモ。仕様化前の要望・背景・制約を DESIGN へ構造化する入口 | 初期化時、仕様変更の相談時、存在し実内容がある時 |
 | **DESIGN.md** | プロダクト仕様（何を作るか） | 実装に着手する前、仕様を確認する時 |
 | **AGENTS.md** | 非 Claude エージェント（Codex、GitHub Copilot 等が読む標準慣習、OpenAI 提唱）向けリダイレクタ。内容は「CLAUDE.md に従え」の 1 行のみ | 他エージェント実行時 |
 
@@ -56,6 +57,7 @@
 | 何が起きたか | 更新先 |
 |---|---|
 | まだ判断が確定していない | `QUESTIONS.md` |
+| 未整理の着想・要望・制約を受け取った | `IDEA.md` へ素材として整理し、必要に応じて `DESIGN.md` への反映案を作る |
 | 継続参照する契約・不変条件が確定した | `KNOWLEDGE.md` |
 | 「なぜそう決めたか」を将来辿れるように残したい | `adr/NNNN-topic.md` |
 | 何を作るか自体が変わった | `DESIGN.md` |
@@ -80,6 +82,7 @@ Markdown 文書から別の Markdown 文書を指す時は、本文中に裸で�
 | 状況 | 主に読むべき文書 |
 |---|---|
 | **プロジェクト初期化中** | `.llm/guide/BOOTSTRAP_GUIDE.md` |
+| **着想整理** | `IDEA.md`（存在し実内容がある場合）→ `DESIGN.md` |
 | **日常開発** | CLAUDE.md（本文書） |
 | **仕様確認** | DESIGN.md |
 | **契約・不変条件の確認** | `.llm/memory/KNOWLEDGE.md` |
@@ -96,11 +99,19 @@ Markdown 文書から別の Markdown 文書を指す時は、本文中に裸で�
 ## 0. プロジェクトについて
 
 プロダクトの目的・スコープ・仕様・プロジェクト固有情報（識別子・ランタイム・配布形態）はすべて **DESIGN.md** に置く。
+IDEA は、未整理の着想や要望を DESIGN へ構造化するための任意入力である。存在しない場合、または雛形だけの場合はスキップする。IDEA と DESIGN が食い違う場合、実装判断では DESIGN を優先し、意図不明な差分だけ QUESTIONS に切り出す。
 本ファイル（CLAUDE.md）は**どう作るかの規約**のみを扱う（分類管理の原則）。
 **LLM は実装に着手する前に、必ず DESIGN の関連セクションを確認する**。
 ¤ DESIGN.md
 仕様が曖昧・矛盾を含む場合は QUESTIONS に Q を立てる（自己解釈で進めない）。
 ¤ .llm/memory/QUESTIONS.md
+
+| 入力状態 | LLM の扱い |
+|---|---|
+| `IDEA.md` が存在しない | 従来通り DESIGN から開始 |
+| `IDEA.md` が雛形だけ | IDEA を無視し、DESIGN から開始 |
+| `IDEA.md` に実内容がある | DESIGN への反映案、矛盾、質問候補へ分解 |
+| `DESIGN.md` が更新された | DESIGN 由来の中間表現を再生成し、既存の `.llm/data/*.edn` 分析情報と照合して drift を検出 |
 
 > **プロジェクト初期化が未完了の場合、BOOTSTRAP_GUIDE に従って完了させる**。
 > ¤ .llm/guide/BOOTSTRAP_GUIDE.md
@@ -605,7 +616,7 @@ subagent / tool 呼び出し / 長い shell 実行は、ユーザへの最終応
 
 1. **仕様の確認**: DESIGN の関連節（特に §3 主要ユースケース、§4 受入基準）を読む
 ¤ DESIGN.md
-2. **Brick / Project Map の確認（brick・機能配置・deploy 構成に関わる作業のみ）**: `docs/BRICKS.md` / `.llm/data/brick-map.edn` が存在する場合、既存 capability・担当 component・entrypoint base を確認する。project / deploy に関わる場合は `docs/PROJECTS.md` / `docs/WORKSPACE.md` / `.llm/data/workspace-map.edn` も確認する。既存 capability が見つかった場合は新規実装せず、該当 `interface.clj` 経由で利用する。生成物が無い、または drift している場合は対応する generator の再生成対象として扱う
+2. **Brick / Project Map の確認（brick・機能配置・deploy 構成に関わる作業のみ）**: 閲覧用 Map と `.llm/data/brick-map.edn` が存在する場合、既存 capability・担当 component・entrypoint base を確認する。project / deploy に関わる場合は Project / Workspace Map と `.llm/data/workspace-map.edn` も確認する。既存 capability が見つかった場合は新規実装せず、該当 `interface.clj` 経由で利用する。生成物が無い、または drift している場合は対応する generator の再生成対象として扱う
 3. **既存知識の確認**: KNOWLEDGE の関連節（対象ドメイン・境界契約・運用制約）を読む
 ¤ .llm/memory/KNOWLEDGE.md
 4. **未決判断の確認**: QUESTIONS の `未対応(open)` / `議論中(in-discussion)` に関連する Q がないか確認する。関連 Q があれば、その解決を待つか、Q のコンテキストで作業する

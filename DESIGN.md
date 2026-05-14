@@ -20,6 +20,26 @@
 
 本節は**人間と LLM が協働で本ファイルを埋めるための作業ガイド**である。初期化時および継続的な改訂時の両方に適用される。
 
+### 0.0 IDEA.md との関係
+
+本ファイルは仕様正本である。任意の着想メモは、本ファイルへ構造化するための入力補助として扱う。
+
+| 状態 | 扱い |
+|---|---|
+| `IDEA.md` が存在しない | 従来通り、本ファイルを直接埋める |
+| `IDEA.md` が雛形だけ | 着想入力なしとしてスキップする |
+| `IDEA.md` に実内容がある | LLM が本ファイルへの反映案、矛盾、質問候補へ分解する |
+| `IDEA.md` と本ファイルが食い違う | 実装判断では本ファイルを優先し、意図不明な差分のみ質問する |
+
+本ファイルが更新されたら、DESIGN 由来の中間表現を再生成し、既存の分析情報 EDN と照合する。分析情報 EDN は実装側の観測済み index であり、仕様正本ではない。
+
+| 生成・照合対象 | 役割 |
+|---|---|
+| `design-ir.edn` | 本ファイルから抽出した requirement / flow / constraint / test obligation |
+| `brick-map.edn` | brick の capability ownership / entrypoint / requirement 対応 |
+| `workspace-map.edn` | project / base / component の束ね方と deploy intent |
+| `libs.edn` | 用途別機能カテゴリと推奨・非推奨ライブラリ |
+
 ### 0.1 セクション区分（凡例）
 
 - 🔴 **必須**: 空白だと LLM は実装判断ができない。初期化完了の条件
@@ -28,8 +48,10 @@
 
 ### 0.2 埋める順序と担当
 
-**LLM が独断で本ファイルを編集することは禁止**（`.llm/guide/COLLABORATION_GUIDE.md` §2.3）。
-以下の順序で、**人間の意思決定 → LLM による文章化・整形 → 人間の最終承認**のサイクルで進める：
+**LLM が承認なしに本ファイルを仕様確定として扱うことは禁止**。ただし、着想メモや人間の自由記載から反映案を作ることは推奨する。
+∵ .llm/guide/COLLABORATION_GUIDE.md §2.3
+
+以下の順序で、**人間の意思決定または着想入力 → LLM による構造化・文章化 → 人間の最終承認**のサイクルで進める：
 
 | 順序 | セクション | 区分 | 主な担当 | LLM の役割 |
 |---|---|---|---|---|
@@ -96,7 +118,7 @@ LLM は本ファイルを読むたびに、以下の観点で**能動的に曖�
 
 ### 0.6 Requirement ID の定義形式
 
-`brick.edn` / `project.edn` の `:brick/requirements` / `:project/requirements` から参照する ID は、DESIGN.md 内で明示的に定義する。
+`brick.edn` / `project.edn` の `:brick/requirements` / `:project/requirements` から参照する ID は、本ファイル内で明示的に定義する。
 
 定義として扱う形式:
 
@@ -268,8 +290,8 @@ LLM は本ファイルを読むたびに、以下の観点で**能動的に曖�
 ### 8.5 アーキテクチャ構造
 
 - **Polylith**（components / bases / projects / development）
-- **Brick Map**: brick 構成・機能分担・公開 API は `docs/BRICKS.md`（閲覧用生成物）と `.llm/data/brick-map.edn`（検索用生成物）で確認する。正本は各 `brick.edn` と `interface.clj`
-- **Project / Workspace Map**: deploy 単位と workspace 全体の構成は `docs/PROJECTS.md` / `docs/WORKSPACE.md`（閲覧用生成物）と `.llm/data/workspace-map.edn`（検索用生成物）で確認する。正本は `project.edn`、`workspace.edn`、`deps.edn`、`brick.edn`
+- **Brick Map**: brick 構成・機能分担・公開 API は閲覧用生成物と `.llm/data/brick-map.edn`（検索用生成物）で確認する。正本は各 `brick.edn` と `interface.clj`
+- **Project / Workspace Map**: deploy 単位と workspace 全体の構成は閲覧用生成物と `.llm/data/workspace-map.edn`（検索用生成物）で確認する。正本は `project.edn`、`workspace.edn`、`deps.edn`、`brick.edn`
 - 構造詳細は別紙に置く
 ∵ .llm/guide/POLYLITH_GUIDE.md
 

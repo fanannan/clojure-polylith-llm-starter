@@ -35,6 +35,9 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 | `check-brick-registration.sh` | `components/` / `bases/` の brick が `deps.edn` に登録されているか検査 |
 | `check-brick-map.sh` | 全 brick の `brick.edn` を検査し、`docs/BRICKS.md` / `.llm/data/brick-map.edn` が `brick.edn` / `interface.clj` からの生成結果と同期しているか検査 |
 | `check-workspace-map.sh` | `projects/*/project.edn` と workspace/project 生成物を検査し、`docs/PROJECTS.md` / `docs/WORKSPACE.md` / `.llm/data/workspace-map.edn` の drift を検出 |
+| `gen-design-ir.sh` | `DESIGN.md` と既存 `.llm/data/*.edn` 分析情報から `.llm/data/design-ir.edn` を生成 |
+| `check-design-ir.sh` | `.llm/data/design-ir.edn` が `DESIGN.md` および既存分析 EDN と同期しているか検査 |
+| `gen_design_ir.clj` | `gen-design-ir.sh` / `check-design-ir.sh` の Clojure 実装。明示 requirement / use case / acceptance item を抽出し、brick-map / workspace-map / libs と照合 |
 | `check-deprecated-libs.sh` | `STACK_GUIDE.md` に埋め込まれた `;; lib-catalog` EDN block 由来の非推奨ライブラリを検知（`.llm/data/deprecated-libs.patterns` を読む） |
 | `check-forbidden-requires.sh` | `STACK_GUIDE.md` に埋め込まれた `;; lib-catalog` EDN block 由来の非推奨 namespace を検知（`.llm/data/forbidden-requires.patterns` を読む） |
 | `check-conflicting-libs.sh` | `STACK_GUIDE.md` に埋め込まれた `;; lib-catalog` EDN block 由来の併用禁止ペアを検知（`.llm/data/conflicts.patterns` を読む） |
@@ -85,7 +88,7 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 ./.llm/scripts/check-workspace-integrity.sh
 ```
 
-これで brick 登録 / Brick Map 生成物 / Project・Workspace Map 生成物 / プレースホルダ / 非推奨ライブラリ / interface 契約 / test instrumentation / 1 ファイル 1 ns の検査 + 併存検査 + `:local/root` / `:projects` 実在検査が一括で走る。個別スクリプトを手動で呼ぶ必要はない。
+これで brick 登録 / Brick Map 生成物 / Project・Workspace Map 生成物 / DESIGN IR 生成物 / プレースホルダ / 非推奨ライブラリ / interface 契約 / test instrumentation / 1 ファイル 1 ns の検査 + 併存検査 + `:local/root` / `:projects` 実在検査が一括で走る。個別スクリプトを手動で呼ぶ必要はない。
 
 ### release 前の追加検査（週次 CI / release 時）
 
@@ -185,7 +188,7 @@ Malli / cljfmt / clj-kondo / Polylith は本テンプレートの必須基盤で
 - 生成物は `.llm/data/` に配置、ヘッダに `;; GENERATED — do not edit by hand` を入れる 
 - `check-workspace-integrity.sh` に「一時領域に再生成 → diff で drift 検知」のステップを追加し、元文書と生成物の同期を保証
 
-`.llm/data/` 配下は source 文書からの生成物である。テンプレート本体では `clj -X:gen-lib-catalog` で再生成し、`check-workspace-integrity.sh` が drift を検出する。派生プロジェクトは通常そのまま消費するだけでよいが、STACK_GUIDE や capability 定義を派生側で意図的に変更するなら、同じ生成コマンドで `.llm/data/` を再生成し、source 文書変更と同一コミットにまとめる。
+`.llm/data/` 配下は source 文書からの生成物である。テンプレート本体では `clj -X:gen-lib-catalog` や `gen-design-ir.sh` で再生成し、`check-workspace-integrity.sh` が drift を検出する。派生プロジェクトは通常そのまま消費するだけでよいが、STACK_GUIDE、DESIGN、capability 定義を派生側で意図的に変更するなら、対応する生成コマンドで `.llm/data/` を再生成し、source 文書変更と同一コミットにまとめる。
 
 ## 新しい検査の追加手順
 

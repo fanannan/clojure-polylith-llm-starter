@@ -5,6 +5,7 @@
 - 必須技術: Clojure + tools.deps + Polylith + Malli 契約 + clj-kondo + cljfmt + Splint + clj-watson + `.llm/scripts/`
 - 追加ライブラリは必要な用途別機能カテゴリごとに最小選択し、各 brick の `deps.edn` に記録する
 - 技術選定の判断済み推奨集は `.llm/guide/STACK_GUIDE.md`
+- 未整理の着想メモから開始できる。仕様正本は DESIGN に集約する
 
 > ⚠️ **このファイルはテンプレート配布時のものです。**
 >
@@ -20,6 +21,7 @@
 | **これから初期化する人** | 本ファイル → `BOOTSTRAP_GUIDE.md` | キックオフとゲート確認 |
 | **既存 Clojure / Polylith repo に導入する人** | 本ファイル → `BOOTSTRAP_GUIDE.md` §4.1 | retrofit 手順の入口 |
 | **日常開発に入った LLM** | `CLAUDE.md` | 初期化後は索引だけ残る |
+| **まだ仕様を書けない人** | `IDEA.md` | 自由な着想メモ。雛形だけなら無視される |
 | **仕様を埋める人** | `DESIGN.md` | どこを埋めるかの導線 |
 | **技術選定で迷う人** | `STACK_GUIDE.md` | 参照先の案内 |
 
@@ -53,6 +55,7 @@
 | 初期化の詳細手順を実行する | `.llm/guide/BOOTSTRAP_GUIDE.md` | ゲートと対象節だけ |
 | 既存 repo に後から導入する | `README.md` → `.llm/guide/BOOTSTRAP_GUIDE.md` §4.1 | 本ファイルの「既存 repo への導入」まで |
 | 日常開発を進める | `CLAUDE.md` | 毎セッション最初から |
+| 着想から仕様を起こす | `IDEA.md` → `DESIGN.md` | IDEA は自由記載、DESIGN は仕様正本 |
 | 仕様を埋める・直す | `DESIGN.md` | §0 と該当節 |
 | 技術選定を決める | `.llm/guide/STACK_GUIDE.md` | 冒頭の位置づけ + 該当機能節 |
 | Polylith 構造を決める | `.llm/guide/POLYLITH_GUIDE.md` | 冒頭の前提 + 該当手順節 |
@@ -72,10 +75,32 @@
 
 **最小着手条件**: `DESIGN.md` の §1/§2/§3/§4/§8 の骨格と `workspace.edn` の `:top-namespace` が確定すれば、初期化を次へ進めてよい。
 
+### 着想メモから始める低負荷フロー
+
+人間は最初から完成した仕様を書く必要はない。自由な着想メモに、目的・背景・避けたいこと・制約・思いつきだけを書けばよい。LLM はそれを DESIGN への反映案、矛盾、質問候補に分解する。
+
+| 文書 | 扱い |
+|---|---|
+| `IDEA.md` | 任意の入力補助。存在しない場合・雛形だけの場合はスキップ |
+| `DESIGN.md` | 仕様正本。実装判断、IR 生成、capability plan、テスト生成の起点 |
+| `.llm/data/*.edn` | 既存の分析情報。DESIGN 由来の中間表現と照合し、仕様と実装の drift を検出 |
+
+#### 着想メモ先行キックオフプロンプト
+
+```
+このプロジェクトのテンプレートを使って初期化を行う。
+まず CLAUDE.md、IDEA.md、DESIGN.md、.llm/guide/BOOTSTRAP_GUIDE.md を読んでから着手してほしい。
+
+IDEA.md の内容を整理し、DESIGN.md への反映案を作ってください。
+IDEA.md が雛形だけなら、通常の最小版キックオフとして扱ってください。
+DESIGN.md と食い違う内容があれば、実装へ進まず 1 点ずつ確認してください。
+```
+
 ### 1 回のキックオフで始める
 
 以下のいずれかのキックオフプロンプトを LLM エージェントに送信する。以降、LLM は `.llm/guide/BOOTSTRAP_GUIDE.md` に従い、仕様確定・構造作成・依存追加の承認を求めながら進める。
 
+- **着想メモ先行版**（人間にとって最も軽いタイプ）: `IDEA.md` に自由記載してから送信。LLM が DESIGN 反映案と質問候補を作る
 - **完全版**（事前に人間専権 (L0) 項目を決めてから送信するタイプ）: 目的・ユースケース・受入基準・エントリ種別・組織名・ドメイン名候補・デプロイ構成・環境別設定を 1 通に収める。往復数最小
 - **最小版**（対話しながら埋めるタイプ）: 目的 1-2 行のみ記載して送信。残りは LLM が 1 点ずつ確認する
 
@@ -341,8 +366,8 @@ cd /path/to/repo
 - **疲労最小化**: LLM の誤りを構造的に封じる（全域性・不変性・副作用の隔離）
 - **機械化 5 層**: 第 1 層 clj-kondo 組込 linter / 第 2 層 `.clj-kondo/polyguard/` custom hook / 第 3 層 Splint / 第 4 層 `.llm/scripts/check-*.sh`（設定・構造検査）+ Polylith `poly check` + Malli instrumentation / 第 5 層 clj-watson（時間軸脆弱性）。規約を人間の注意力ではなくツールで強制（詳細は `MAINTAINERS_GUIDE.md` §5.10）
 - **単一の正本（SSOT）生成**: `.llm/scripts/gen_lib_catalog.clj` が `STACK_GUIDE` の `;; lib-catalog` EDN block 群を検証・合成し `.llm/data/` 配下に生成物を出力する。shell script はその生成物を読む
-- **Brick Map 生成**: 各 `brick.edn` と `interface.clj` を正本として `docs/BRICKS.md` / `.llm/data/brick-map.edn` を生成し、component/base の意味違反・重複 capability・drift を検査する
-- **Project / Workspace Map 生成**: 各 `project.edn`、`workspace.edn`、`deps.edn`、`brick.edn` から `docs/PROJECTS.md` / `docs/WORKSPACE.md` / `.llm/data/workspace-map.edn` を生成し、deploy intent と project deps の整合を検査する
+- **Brick Map 生成**: 各 `brick.edn` と `interface.clj` を正本として閲覧用 Map / `.llm/data/brick-map.edn` を生成し、component/base の意味違反・重複 capability・drift を検査する
+- **Project / Workspace Map 生成**: 各 `project.edn`、`workspace.edn`、`deps.edn`、`brick.edn` から閲覧用 Map / `.llm/data/workspace-map.edn` を生成し、deploy intent と project deps の整合を検査する
 - **REPL as Primary Workbench**: `.llm/scripts/repl-eval.sh` により LLM が稼働中 nREPL に eval / load-file を送信。永続 session で状態を継続し、編集から検証までを同一ターンで閉じる
 - **技術選定の判断済み推奨集**: 必須技術基盤はワークスペースルートで常に採用し、追加ライブラリは必要な brick の `deps.edn` に配置する。判断済み推奨集は `.llm/guide/STACK_GUIDE.md`
 - **4 種の文書分離**: 仕様（DESIGN）/ 知識（KNOWLEDGE）/ 決定履歴（ADR）/ 判断保留（QUESTIONS）

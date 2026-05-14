@@ -6,6 +6,7 @@
 #   `CLAUDE.md §5.5` 完了条件にこの 1 行を追加するだけで、以下が必須通過ゲートに入る:
 #     - プレースホルダ残存（check-placeholders.sh）
 #     - brick 登録漏れ（check-brick-registration.sh）
+#     - DESIGN IR 生成物 drift（check-design-ir.sh）
 #     - 非推奨ライブラリ採用（check-deprecated-libs.sh）
 #     - interface_test.clj の Malli instrumentation fixture 欠落
 #     - 追加: deps.edn :local/root 実在、workspace.edn :projects 実在、.gitkeep と brick 併存
@@ -111,6 +112,10 @@ run_step_if_capability "polylith" "Brick Map 生成物検査" \
 # --- project metadata / workspace generated map drift ---
 run_step_if_capability "polylith" "Project / Workspace Map 生成物検査" \
   "$SCRIPT_DIR/check-workspace-map.sh"
+
+# --- DESIGN.md 由来 IR と既存分析 EDN の同期検証 ---
+run_step_if_capability "llm-guides" "DESIGN IR 生成物検査" \
+  "$SCRIPT_DIR/check-design-ir.sh"
 
 # --- lib-catalog 生成物の同期検証 ---
 # STACK_GUIDE.md §8 の ;; lib-catalog EDN block と .llm/data/ 配下の生成物が

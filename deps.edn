@@ -279,4 +279,20 @@
   ;; ----------------------------------------------------------------
   :gen-lib-catalog
   {:extra-paths [".llm/scripts"]
-   :exec-fn     gen-lib-catalog/generate}}}
+   :exec-fn     gen-lib-catalog/generate}
+
+  ;; ----------------------------------------------------------------
+  ;; :gen-design-ir — DESIGN.md 由来の中間表現を生成
+  ;;   DESIGN.md の明示 ID / use case / acceptance item を抽出し、
+  ;;   既存の .llm/data/{brick-map.edn,workspace-map.edn,libs.edn} があれば
+  ;;   coverage / implementation-index として照合する。
+  ;;   shell wrapper `.llm/scripts/gen-design-ir.sh` / `check-design-ir.sh`
+  ;;   からも利用される。
+  ;; ----------------------------------------------------------------
+  :gen-design-ir
+  {:extra-paths [".llm/scripts"]
+   :exec-fn     gen-design-ir/generate}
+
+  :check-design-ir
+  {:extra-paths [".llm/scripts"]
+   :exec-fn     gen-design-ir/check}}}

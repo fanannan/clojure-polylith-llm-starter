@@ -40,6 +40,7 @@
    :section-scoped
    {".llm/memory/KNOWLEDGE.md" {:template ["§0"]      :project ["§1+"]}
     ".llm/memory/QUESTIONS.md" {:template ["§0" "§1"] :project ["§2+"]}
+    "IDEA.md"                  {:template ["§0"]      :project ["§1+"]}
     "DESIGN.md"                {:template ["§0"]      :project ["§1+"]}}})
 
 (defn- slurp-if-exists [path]

@@ -19,6 +19,7 @@ else
   printf '%s\0' \
     "./CLAUDE.md" \
     "./README.md" \
+    "./IDEA.md" \
     "./DESIGN.md" \
     "./.llm/guide/BOOTSTRAP_GUIDE.md" \
     "./.llm/memory/QUESTIONS.md" \

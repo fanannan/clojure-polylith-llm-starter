@@ -1,0 +1,156 @@
+;; GENERATED - do not edit by hand.
+;; Source of truth: DESIGN.md
+;; Analysis inputs when present: .llm/data/brick-map.edn, .llm/data/workspace-map.edn, .llm/data/libs.edn
+;; Regenerate with: clj -Sdeps '{:paths [".llm/scripts"]}' -X gen-design-ir/generate
+{:acceptance-criteria [],
+ :analysis-sources
+ {:brick-map {:path ".llm/data/brick-map.edn", :exists false},
+  :workspace-map {:path ".llm/data/workspace-map.edn", :exists false},
+  :libs {:path ".llm/data/libs.edn", :exists true}},
+ :constraints [],
+ :coverage
+ {:design-requirements [],
+  :implemented-requirements [],
+  :unassigned-requirements [],
+  :unknown-implementation-requirements []},
+ :diagnostics {:duplicate-requirement-ids []},
+ :generated-by "gen-design-ir",
+ :implementation-index
+ {:brick-requirements [],
+  :project-requirements [],
+  :capabilities [],
+  :entrypoints [],
+  :library-categories
+  [:arg-parse
+   :assert
+   :ast
+   :async
+   :auth
+   :aws
+   :benchmark
+   :bot
+   :build
+   :cache
+   :cider
+   :cli
+   :config
+   :connection-pool
+   :content-negotiation
+   :core
+   :csrf
+   :csv
+   :data
+   :dataset
+   :db
+   :deps-scan
+   :deps-update
+   :desktop
+   :dev
+   :discord
+   :dl
+   :document-db
+   :dropwizard
+   :dropwizard-ring
+   :dynamodb
+   :e2e
+   :edge
+   :elasticsearch
+   :email
+   :excel
+   :exception
+   :ffmpeg
+   :format
+   :framework
+   :fullstack
+   :gpio
+   :graphql
+   :grpc
+   :gui
+   :html-dsl
+   :html-transform
+   :http-client
+   :http-core
+   :http-server
+   :i18n
+   :inspect
+   :integration
+   :javafx
+   :jdbc
+   :jdk-wrapper
+   :json
+   :json-output
+   :jwt
+   :kafka
+   :language
+   :lifecycle
+   :lint
+   :llm
+   :logging
+   :malli
+   :markdown
+   :media
+   :memory-measure
+   :messaging
+   :metrics
+   :migration
+   :ml
+   :mongodb
+   :mqtt
+   :nippy
+   :notebook
+   :nrepl
+   :ocr
+   :openai
+   :opencv
+   :ordered-map
+   :orm
+   :parser
+   :password-hashing
+   :pdf
+   :pigpio
+   :pipeline
+   :pipeline-dataset
+   :platform
+   :prometheus
+   :property-testing
+   :python-interop
+   :queue
+   :rabbitmq
+   :redis
+   :refactor
+   :reload
+   :repl
+   :repl-debugger
+   :report
+   :resilience
+   :retry
+   :ring
+   :ring-integration
+   :routing
+   :s3
+   :saas
+   :scheduling
+   :search
+   :security
+   :serialization
+   :server
+   :smtp
+   :sql-builder
+   :sqs
+   :ssr
+   :style
+   :svg
+   :templating
+   :testing
+   :text
+   :time
+   :tooling
+   :transit
+   :validation
+   :web
+   :workspace
+   :xml]},
+ :requirements [],
+ :source "DESIGN.md",
+ :test-obligations [],
+ :use-cases []}
