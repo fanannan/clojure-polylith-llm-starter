@@ -436,6 +436,8 @@ trace metadata は、仕様 ID と Clojure の安定境界をつなぐための�
 - 未知 ID、空 ID、重複 ID、実装内部への trace、実装関数への `:trace/test-obligations` は error
 - `deftest` の `:trace/requirements` / `:trace/use-cases` は、参照する test obligation の `:related-requirements` / `:related-use-cases` と照合する
 - design-ir に存在する test obligation がどの `deftest` からも参照されない場合、`:adoption-mode :complete` では error、`:retrofit` / `:partial` では warning とする
+- `.llm/scripts/gen-trace-index.sh` は `docs/TRACE.md` / `.llm/data/trace-index.edn` を生成する。DESIGN 更新時は trace-index の impact map を使い、修正対象の public boundary と `deftest` を先に特定する
+- `.llm/scripts/trace-impact.sh` は ID / file / var / `--changed` / `--health` から trace-index を引く標準入口である。仕様変更時は実装前に該当 ID の impact を出し、修正対象を説明してからコードへ入る
 
 ---
 
@@ -460,6 +462,7 @@ DESIGN が承認された後、実装前に capability plan を作る。自然�
 - `:adapter` 相当は外部システムや技術境界を扱う
 - `:entry` 相当は base / entrypoint として外部からの入力を受ける
 - 既存 capability があれば新規 brick を作らない
+- 候補 group が分かる場合は Brick Map の `:groups` index で同一 group の既存 brick を確認し、既存 brick に入れない理由を capability plan に含める
 
 ---
 

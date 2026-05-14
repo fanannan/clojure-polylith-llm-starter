@@ -183,6 +183,9 @@ run_step_if_capability "polylith" "test instrumentation 検査" \
 run_step_if_capability "llm-guides" "trace metadata 検査" \
   "$SCRIPT_DIR/check-trace-metadata.sh"
 
+run_step_if_capability "llm-guides" "Trace Index 生成物検査" \
+  "$SCRIPT_DIR/check-trace-index.sh"
+
 # --- Markdown 参照マーカー検査 ---
 run_step_if_capability "llm-guides" "Markdown 参照マーカー検査" \
   "$SCRIPT_DIR/check-doc-references.sh"

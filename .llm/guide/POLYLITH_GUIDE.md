@@ -107,7 +107,7 @@ component の `brick.edn` は capability の所有を表す。
 ```clojure
 {:brick/name :invoice
  :brick/type :component
- :brick/group :billing
+ :brick/group :invoice
  :brick/purpose "請求書エンティティの生成・検証・金額計算"
  :brick/provides #{:invoice/create :invoice/validate :invoice/total-amount}
  :brick/not-for #{:pdf/render :email/send :http/response}
@@ -166,11 +166,22 @@ TODO・空の `:brick/provides`・曖昧な capability / API 対応は、`:adopt
 
 1. capability 名が分かる場合は `.llm/data/brick-map.edn` の `:capabilities` を見る
 2. 機能名・要求 ID・自然言語の語彙しか分からない場合は `docs/BRICKS.md` と `.llm/data/brick-map.edn` を検索する
-3. 見つかった capability は、提供元 component の `interface.clj` 経由で利用する
-4. 見つからない場合だけ、新規 component capability の追加候補として扱う
-5. 新規追加前に、既存 component の `:brick/not-for` も確認し、意図的に対象外とされていないか確認する
+3. 候補 group が分かる場合は `.llm/data/brick-map.edn` の `:groups` と閲覧用 Brick Map の `Groups` を見て、同一 group の既存 brick を確認する
+4. 見つかった capability は、提供元 component の `interface.clj` 経由で利用する
+5. 見つからない場合だけ、新規 component capability の追加候補として扱う
+6. 新規追加前に、同一 group の既存 component の `:brick/provides` / `:brick/not-for` も確認し、既存 brick に入れるべきか、意図的に対象外とされていないかを確認する
 
 この順序を飛ばして新規 component を作ると、同じ capability の重複実装を誘発する。`check-workspace-integrity.sh` は重複 capability を検出するが、探索手順は編集前に重複を避けるためのプロトコルである。
+
+新規 brick を提案する場合は、少なくとも次を説明する。
+
+```text
+- 候補 group: :billing
+- 同一 group の既存 brick: components/invoice, components/payment
+- 既存 brick に入れない理由: 既存 brick の :brick/not-for に該当、または capability domain が異なる
+- 新規 brick 候補: components/refund
+- 提供 capability: #{:refund/create :refund/cancel}
+```
 
 ### 1.3 公開関数名の規律
 
@@ -694,19 +705,20 @@ components/<name>/
 
 その後の手順：
 
-1. 実装前に `brick.edn` を作成し、`:brick/type :component`、`:brick/provides`、`:brick/requirements` を記録する
-2. `deps.edn` に必要な依存を追加（**ライブラリ依存はここに書く**、project には書かない）
-3. 本文書 §2.1 component コード例を参照して以下を埋める：
+1. 実装前に §1.2 の探索手順を再実行し、候補 group、同一 group の既存 brick、既存 brick に入れない理由を確認する
+2. `brick.edn` を作成し、`:brick/type :component`、`:brick/provides`、`:brick/requirements`、必要に応じて任意の `:brick/group` を記録する
+3. `deps.edn` に必要な依存を追加（**ライブラリ依存はここに書く**、project には書かない）
+4. 本文書 §2.1 component コード例を参照して以下を埋める：
    - `core.clj`: Malli スキーマ + 純粋関数（`m/=>` 契約は置かない）
    - `interface.clj`: core への薄い委譲 + `m/=>` 契約集約（境界契約、§1.1.1）（100 行超えたら実装漏れ、core に戻す）
    - `interface_test.clj`: clojure.test + プロパティテスト
-4. Integrant key を提供する場合は entry base の `system.clj`（§2.2 のコード例）の defmethod 集約に追加
-5. project の `deps.edn` に `:local/root` で登録
-6. development の `deps.edn` の `:dev` エイリアス `:extra-paths` にソースパスを追加（`components/<name>/src` 等）
-7. **development の `deps.edn` の `:dev` エイリアス `:extra-deps` に `:local/root` で登録**（`poly/<name> {:local/root "components/<name>"}`）。これにより brick deps.edn の `:deps` が推移的解決され、REPL で利用可能になる
-8. `clj -Sdeps '{:paths [".llm/scripts"]}' -X gen-brick-map/generate` で `docs/BRICKS.md` を再生成
-9. `clj -M:poly check` で構造検証
-10. `clj -M:poly test project:<project-name>` で特定 project 配下の brick テストを実行（全 project・全 brick を流すなら `clj -M:poly test :all`）
+5. Integrant key を提供する場合は entry base の `system.clj`（§2.2 のコード例）の defmethod 集約に追加
+6. project の `deps.edn` に `:local/root` で登録
+7. development の `deps.edn` の `:dev` エイリアス `:extra-paths` にソースパスを追加（`components/<name>/src` 等）
+8. **development の `deps.edn` の `:dev` エイリアス `:extra-deps` に `:local/root` で登録**（`poly/<name> {:local/root "components/<name>"}`）。これにより brick deps.edn の `:deps` が推移的解決され、REPL で利用可能になる
+9. `clj -Sdeps '{:paths [".llm/scripts"]}' -X gen-brick-map/generate` で `docs/BRICKS.md` を再生成
+10. `clj -M:poly check` で構造検証
+11. `clj -M:poly test project:<project-name>` で特定 project 配下の brick テストを実行（全 project・全 brick を流すなら `clj -M:poly test :all`）
 
 ### 3.2 新規ベース追加（**人間専権**）
 

@@ -321,7 +321,7 @@ Integrant・FlowStorm・Portal は必須技術基盤ではない。前者はプ�
 失敗を契約に持ち上げ、境界で検証する。
 
 - **`interface.clj` の公開 `defn` に `m/=>` 契約を付ける**（境界契約は境界に集約。`core.clj` には置かない。`check-interface-contracts.sh` が機械検証）。`defn-` / `^:private` は原則として `interface.clj` に置かない。マクロ生成関数や可変長引数など契約表現で迷う場合は、`.llm/memory/QUESTIONS.md` に Q を立てる
-- 仕様 trace metadata は stable public boundary にだけ置く。実装コードでは component の `interface.clj` 公開 `defn`、base の公開 boundary `defn` に `:trace/requirements` / `:trace/use-cases` を付ける。`core.clj`、private helper、adapter 内部には付けない。test obligation への対応は `deftest` の `:trace/test-obligations` で表す
+- 仕様 trace metadata は stable public boundary にだけ置く。実装コードでは component の `interface.clj` 公開 `defn`、base の `core.clj` / `handler.clj` 公開 boundary `defn` に `:trace/requirements` / `:trace/use-cases` を付ける。component の `core.clj`、private helper、base の `system.clj` / orchestration sub-ns、adapter 内部には付けない。test obligation への対応は `deftest` の `:trace/test-obligations` で表す
 - 外部入力（HTTP リクエスト、DB 行、外部 API レスポンス、設定ファイル）は**入口で `m/validate`**
 - 開発時は Malli instrumentation を有効化（`dev/user.clj` の `(malli-on!)` を REPL 起動後に呼ぶ。ライフサイクル管理を使うプロジェクトでは起動 helper が内部的に呼ぶ）。契約違反は REPL 評価で即座に例外化
 - 関数が失敗し得るなら、戻り値の型を一貫させる（常に `nil` を返すか、`{:error ...}` 形式か、一つに決める）
@@ -410,6 +410,8 @@ test obligation への対応は実装関数ではなく `deftest` に置く。
 ```
 
 `.llm/scripts/check-trace-metadata.sh` は未知 ID、空 ID、重複 ID、内部実装への trace metadata、実装関数への `:trace/test-obligations`、未対応 test obligation、test obligation の related IDs と test metadata の不整合を検出する。`:adoption-mode :complete` では未対応 test obligation と related IDs 不整合を error、`:retrofit` / `:partial` では warning とする。誤配置と未知 ID は常に error とする。
+
+`.llm/scripts/gen-trace-index.sh` は trace metadata から `docs/TRACE.md` と `.llm/data/trace-index.edn` を生成する。LLM は DESIGN 更新時や requirement / use case / test obligation を触る前に trace-index を読み、影響する public boundary と `deftest` を先に列挙してから実装する。
 
 ### 5.5 完了条件（以下全通過で初めて完了報告）
 
@@ -648,7 +650,7 @@ subagent / tool 呼び出し / 長い shell 実行は、ユーザへの最終応
 
 1. **仕様の確認**: DESIGN の関連節（特に §3 主要ユースケース、§4 受入基準）を読む
 ¤ DESIGN.md
-2. **Brick / Project Map の確認（brick・機能配置・deploy 構成に関わる作業のみ）**: 閲覧用 Map と `.llm/data/brick-map.edn` が存在する場合、既存 capability・担当 component・entrypoint base を確認する。project / deploy に関わる場合は Project / Workspace Map と `.llm/data/workspace-map.edn` も確認する。既存 capability が見つかった場合は新規実装せず、該当 `interface.clj` 経由で利用する。生成物が無い、または drift している場合は対応する generator の再生成対象として扱う
+2. **Brick / Project Map の確認（brick・機能配置・deploy 構成に関わる作業のみ）**: 閲覧用 Map と `.llm/data/brick-map.edn` が存在する場合、既存 capability・担当 component・entrypoint base を確認する。候補 capability が見つからない場合でも、候補 `:brick/group` が分かるなら `:groups` index から同一 group の既存 brick を確認し、各 brick の `:brick/provides` / `:brick/not-for` を見る。新規 brick を提案する時は、候補 group、同一 group の既存 brick、既存 brick に入れない理由を説明する。project / deploy に関わる場合は Project / Workspace Map と `.llm/data/workspace-map.edn` も確認する。既存 capability が見つかった場合は新規実装せず、該当 `interface.clj` 経由で利用する。生成物が無い、または drift している場合は対応する generator の再生成対象として扱う
 3. **既存知識の確認**: KNOWLEDGE の関連節（対象ドメイン・境界契約・運用制約）を読む
 ¤ .llm/memory/KNOWLEDGE.md
 4. **未決判断の確認**: QUESTIONS の `未対応(open)` / `議論中(in-discussion)` に関連する Q がないか確認する。関連 Q があれば、その解決を待つか、Q のコンテキストで作業する
@@ -665,7 +667,7 @@ subagent / tool 呼び出し / 長い shell 実行は、ユーザへの最終応
 |---|---|---|
 | L0 | `session-briefing.sh` の MODE と次に読む文書を確認 | 作業 mode と所有権が分かる |
 | L1 | DESIGN / KNOWLEDGE / QUESTIONS / ADR の見出し・状態欄を scan | 対象ドメイン・未決 Q・関連 ADR の有無が分かる |
-| L2 | タスク語彙・対象 namespace・機能名で `.llm/data/brick-map.edn` / `docs/BRICKS.md` / repo 全体を `rg` する | 既存 capability・担当 brick・関連節または「該当なし」を説明できる |
+| L2 | タスク語彙・対象 namespace・機能名で `.llm/data/brick-map.edn` / `docs/BRICKS.md` / repo 全体を `rg` する。候補 `:brick/group` が分かる場合は `:groups` index と同一 group の既存 brick も見る | 既存 capability・担当 brick・候補 group・同一 group の既存 brick・関連節または「該当なし」を説明できる |
 | L3 | 触るファイル周辺の ns/docstring/comment、`interface.clj`、近接 test を読む | コード内の局所規約と既存境界が分かる |
 | L4 | README・直近対話・Issue 由来の上位文脈を確認 | 上位プロジェクトや外部合意の有無が分かる |
 
@@ -808,7 +810,7 @@ clj -M:poly create component name:<name>
    - 承認必須相当（L1、ユースケース追加・受入基準改訂）→ ADR 推奨
    - 実施後報告/独断可相当（L2/L3、記述の明確化、誤字修正）→ ADR 不要
 3. **DESIGN.md の書き換え**: 該当節を**現在形で新仕様に書き換える**（差分表示・追記形式にしない、過去の記述は残さない）
-4. **DESIGN IR の再生成と照合**: `./.llm/scripts/gen-design-ir.sh` を実行し、`.llm/data/design-ir.edn` を更新する。既存の `brick-map.edn` / `workspace-map.edn` / `libs.edn` がある場合は coverage / implementation-index の差分を読み、実装 requirement、constraint reference、unknown/orphan を分けて説明する。受入基準の追加・変更があれば test obligation ID と既存テストへの影響を確認し、public boundary の `:trace/requirements` / `:trace/use-cases` と `deftest` の `:trace/test-obligations` を更新する。script が自動更新するのは design-ir までであり、コード・テスト・trace metadata は LLM が差分を作成して通常の検証ゲートで通す
+4. **DESIGN IR / Trace Index の再生成と照合**: `./.llm/scripts/gen-design-ir.sh` を実行し、`.llm/data/design-ir.edn` を更新する。既存の `brick-map.edn` / `workspace-map.edn` / `libs.edn` がある場合は coverage / implementation-index の差分を読み、実装 requirement、constraint reference、unknown/orphan を分けて説明する。受入基準の追加・変更があれば `./.llm/scripts/trace-impact.sh --health` と該当 ID の `trace-impact.sh` を実行し、影響する public boundary / `deftest` / test obligation を列挙する。その後、public boundary の `:trace/requirements` / `:trace/use-cases` と `deftest` の `:trace/test-obligations` を更新し、`./.llm/scripts/gen-trace-index.sh` を実行する。script が自動更新するのは design-ir / trace-index までであり、コード・テスト・trace metadata は LLM が差分を作成して通常の検証ゲートで通す
 5. **関連文書の更新**:
    - KNOWLEDGE: 新仕様と整合しないエントリを上書き or 廃止
    ∵ .llm/memory/KNOWLEDGE.md §0.5

@@ -766,6 +766,8 @@ Brick / Project / Workspace Map は、Polylith 構造に対するテンプレー
 
 機械が自動生成してよいのは skeleton / proposal / generated docs / index までである。責務説明、capability の意味、not-for、requirement 対応は設計意図なので、推測で確定しない。不明点は TODO に残し、`:adoption-mode :retrofit` / `:partial` では WARN、`:complete` では ERROR とする。
 
+`:brick/group` は Brick Map intent layer の任意補助 metadata であり、単数 keyword のみを許可する。目的は類似 brick の探索・俯瞰・再分割 smell の advisory warning である。group は Polylith の構造単位ではなく、依存制約、capability ownership、project inclusion、test / deploy 範囲を導出する正本にしてはならない。group 由来の検査は形式不備を除き WARN に留め、ERROR 化する場合は group を構造制約へ変質させていないかを先に点検する。
+
 `:complete` へ昇格できる条件:
 
 - 全 brick に `brick.edn` があり、全 project に `project.edn` がある

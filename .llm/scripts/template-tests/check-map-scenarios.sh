@@ -73,7 +73,7 @@ complete_metadata() {
   cat > "$repo/components/invoice/brick.edn" <<'EOF'
 {:brick/name :invoice
  :brick/type :component
- :brick/group :billing
+ :brick/group :invoice
  :brick/purpose "Invoice creation and validation"
  :brick/provides #{:invoice/create :invoice/validate}
  :brick/not-for #{:http/response}
@@ -127,6 +127,15 @@ expect_fail() {
     echo "$label unexpectedly passed" >&2
     exit 1
   fi
+  grep -q "$pattern" "$BASE/$label.out"
+}
+
+expect_warn_success() {
+  local repo="$1"
+  local cmd="$2"
+  local pattern="$3"
+  local label="$4"
+  (cd "$repo" && eval "$cmd" >"$BASE/$label.out" 2>&1)
   grep -q "$pattern" "$BASE/$label.out"
 }
 
@@ -451,8 +460,10 @@ scenario_23_brick_group_index() {
   base_files "$repo" complete
   complete_metadata "$repo"
   run_generate_all "$repo"
+  grep -q '## Groups' "$repo/docs/BRICKS.md"
+  grep -q '### `:invoice`' "$repo/docs/BRICKS.md"
   grep -q ':groups' "$repo/.llm/data/brick-map.edn"
-  grep -q ':billing \["components/invoice"\]' "$repo/.llm/data/brick-map.edn"
+  grep -q ':invoice \["components/invoice"\]' "$repo/.llm/data/brick-map.edn"
   grep -q ':public-api \["bases/web-api"\]' "$repo/.llm/data/brick-map.edn"
   run_check_all "$repo"
 }
@@ -461,11 +472,75 @@ scenario_24_brick_group_must_be_keyword() {
   local repo="$BASE/24-brick-group-must-be-keyword"
   base_files "$repo" complete
   complete_metadata "$repo"
-  sed -i 's/:brick\/group :billing/:brick\/group #{:billing :reporting}/' "$repo/components/invoice/brick.edn"
+  sed -i 's/:brick\/group :invoice/:brick\/group #{:invoice :reporting}/' "$repo/components/invoice/brick.edn"
   expect_fail "$repo" "./.llm/scripts/check-brick-map.sh" "must have keyword :brick/group" "24-brick-group-set"
-  sed -i 's/:brick\/group #{:billing :reporting}/:brick\/group :billing/' "$repo/components/invoice/brick.edn"
+  sed -i 's/:brick\/group #{:invoice :reporting}/:brick\/group :invoice/' "$repo/components/invoice/brick.edn"
   run_generate_all "$repo"
   run_check_all "$repo"
+}
+
+scenario_25_brick_group_mismatch_is_advisory() {
+  local repo="$BASE/25-brick-group-mismatch-is-advisory"
+  base_files "$repo" complete
+  complete_metadata "$repo"
+  sed -i 's/:brick\/group :invoice/:brick\/group :inventory/' "$repo/components/invoice/brick.edn"
+  (cd "$repo" && clj -Sdeps '{:paths [".llm/scripts"]}' -X gen-brick-map/generate >/dev/null 2>&1)
+  expect_warn_success "$repo" "./.llm/scripts/check-brick-map.sh" "none of its capability domains match" "25-group-mismatch"
+}
+
+scenario_26_same_group_operation_is_advisory() {
+  local repo="$BASE/26-same-group-operation-is-advisory"
+  base_files "$repo" complete
+  complete_metadata "$repo"
+  mkdir -p "$repo/components/payment/src/example/app/payment"
+  cat > "$repo/components/payment/brick.edn" <<'EOF'
+{:brick/name :payment
+ :brick/type :component
+ :brick/group :invoice
+ :brick/purpose "Payment creation"
+ :brick/provides #{:payment/create}
+ :brick/requirements []}
+EOF
+  cat > "$repo/components/payment/src/example/app/payment/interface.clj" <<'EOF'
+(ns example.app.payment.interface)
+(defn create [input] input)
+EOF
+  (cd "$repo" && clj -Sdeps '{:paths [".llm/scripts"]}' -X gen-brick-map/generate >/dev/null 2>&1)
+  expect_warn_success "$repo" "./.llm/scripts/check-brick-map.sh" "multiple component capabilities with operation" "26-same-group-operation"
+}
+
+scenario_27_multi_group_base_is_advisory() {
+  local repo="$BASE/27-multi-group-base-is-advisory"
+  base_files "$repo" complete
+  complete_metadata "$repo"
+  mkdir -p "$repo/components/customer/src/example/app/customer" "$repo/components/inventory/src/example/app/inventory"
+  cat > "$repo/components/customer/brick.edn" <<'EOF'
+{:brick/name :customer
+ :brick/type :component
+ :brick/group :customer
+ :brick/purpose "Customer lookup"
+ :brick/provides #{:customer/find}
+ :brick/requirements []}
+EOF
+  cat > "$repo/components/customer/src/example/app/customer/interface.clj" <<'EOF'
+(ns example.app.customer.interface)
+(defn find [id] id)
+EOF
+  cat > "$repo/components/inventory/brick.edn" <<'EOF'
+{:brick/name :inventory
+ :brick/type :component
+ :brick/group :inventory
+ :brick/purpose "Inventory lookup"
+ :brick/provides #{:inventory/find}
+ :brick/requirements []}
+EOF
+  cat > "$repo/components/inventory/src/example/app/inventory/interface.clj" <<'EOF'
+(ns example.app.inventory.interface)
+(defn find [id] id)
+EOF
+  sed -i 's/:brick\/uses #{:invoice\/create}/:brick\/uses #{:invoice\/create :customer\/find :inventory\/find}/' "$repo/bases/web-api/brick.edn"
+  (cd "$repo" && clj -Sdeps '{:paths [".llm/scripts"]}' -X gen-brick-map/generate >/dev/null 2>&1)
+  expect_warn_success "$repo" "./.llm/scripts/check-brick-map.sh" "uses capabilities across 3 groups" "27-multi-group-base"
 }
 
 scenario "01 new complete" scenario_01_new_complete
@@ -492,5 +567,8 @@ scenario "21 legacy project type repair" scenario_21_legacy_project_type_repair
 scenario "22 DESIGN code block ids ignored" scenario_22_design_code_block_ids_ignored
 scenario "23 brick group index" scenario_23_brick_group_index
 scenario "24 brick group must be keyword" scenario_24_brick_group_must_be_keyword
+scenario "25 brick group mismatch is advisory" scenario_25_brick_group_mismatch_is_advisory
+scenario "26 same group operation is advisory" scenario_26_same_group_operation_is_advisory
+scenario "27 multi group base is advisory" scenario_27_multi_group_base_is_advisory
 
 echo "ALL TEMPLATE MAP SCENARIOS PASSED"

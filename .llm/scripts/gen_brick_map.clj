@@ -100,6 +100,9 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
 (defn- capability-op [capability]
   (some-> capability str (subs 1) (str/split #"/") second))
 
+(defn- capability-domain [capability]
+  (some-> capability str (subs 1) (str/split #"/") first))
+
 (defn- todo-skeleton? [data]
   (contains-todo? data))
 
@@ -245,6 +248,52 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
     [(str "WARN: " (:brick/path brick)
           " has empty :brick/provides; fill capability ownership before migration is complete")]))
 
+(defn- group-capability-domain-warnings [bricks]
+  (for [b (filter #(and (= :component (:brick/type %))
+                        (:brick/group %)
+                        (seq (:brick/provides %)))
+                  bricks)
+        :let [group-name (name (:brick/group b))
+              capability-domains (set (keep capability-domain (:brick/provides b)))]
+        :when (not (contains? capability-domains group-name))]
+    (str "WARN: " (:brick/path b) " is in group `" (:brick/group b)
+         "` but none of its capability domains match the group: "
+         (str/join ", " (sort (map str (:brick/provides b))))
+         ". Keep only if this group is an intentional navigation aid.")))
+
+(defn- same-group-operation-warnings [bricks]
+  (->> (filter #(and (= :component (:brick/type %)) (:brick/group %)) bricks)
+       (mapcat (fn [b]
+                 (for [cap (:brick/provides b)
+                       :let [op (capability-op cap)]
+                       :when op]
+                   [[(:brick/group b) op] b cap])))
+       (group-by first)
+       (keep (fn [[[group op] entries]]
+               (let [paths (set (map #(-> % second :brick/path) entries))]
+                 (when (< 1 (count paths))
+                   (str "WARN: group `" group "` has multiple component capabilities with operation `"
+                        op "`: "
+                        (str/join ", "
+                                  (sort (map (fn [[_ b cap]]
+                                               (str (:brick/path b) " " cap))
+                                             entries)))
+                        ". Review whether these are distinct responsibilities or a split/merge smell.")))))))
+
+(defn- multi-group-base-warnings [bricks]
+  (let [capability->group (->> (filter #(= :component (:brick/type %)) bricks)
+                               (mapcat (fn [b]
+                                         (for [cap (:brick/provides b)
+                                               :when (:brick/group b)]
+                                           [cap (:brick/group b)])))
+                               (into {}))]
+    (for [b (filter #(= :base (:brick/type %)) bricks)
+          :let [groups (set (keep capability->group (:brick/uses b)))]
+          :when (<= 3 (count groups))]
+      (str "WARN: " (:brick/path b) " uses capabilities across "
+           (count groups) " groups: " (str/join ", " (sort (map str groups)))
+           ". Review whether the base is carrying too much orchestration."))))
+
 (defn- brick-name [path]
   (keyword (.getName (io/file path))))
 
@@ -380,6 +429,12 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
    (mapcat #(api-name-warnings (:brick/path %) (:brick/public-api %)) bricks)
    (duplicate-public-api-name-warnings bricks)))
 
+(defn- group-advisory-warnings [bricks]
+  (concat
+   (group-capability-domain-warnings bricks)
+   (same-group-operation-warnings bricks)
+   (multi-group-base-warnings bricks)))
+
 (defn- report-migration-quality! [bricks {:keys [strict?]}]
   (let [warnings (vec (migration-quality-warnings bricks))]
     (if (and strict? (seq warnings))
@@ -389,10 +444,39 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
       (doseq [warning warnings]
         (warn! warning)))))
 
+(defn- report-group-advisories! [bricks]
+  (doseq [warning (group-advisory-warnings bricks)]
+    (warn! warning)))
+
 (defn- bullet-list [items empty-text]
   (if (seq items)
     (str/join "\n" (map #(str "- `" % "`") items))
     empty-text))
+
+(defn- render-group-section [bricks]
+  (let [grouped (->> bricks
+                     (filter :brick/group)
+                     (group-by :brick/group)
+                     (into (sorted-map)))
+        ungrouped (->> bricks
+                       (remove :brick/group)
+                       (map :brick/path)
+                       sort
+                       vec)]
+    (str
+     "\n## Groups\n\n"
+     (if (or (seq grouped) (seq ungrouped))
+       (str
+        (apply str
+               (for [[group bs] grouped]
+                 (str "### `" group "`\n\n"
+                      (bullet-list (sort (map :brick/path bs)) "- none")
+                      "\n\n")))
+        (when (seq ungrouped)
+          (str "### Ungrouped\n\n"
+               (bullet-list ungrouped "- none")
+               "\n\n")))
+       "No bricks are present yet.\n\n"))))
 
 (defn- render-brick [b]
   (let [kind (:brick/type b)]
@@ -417,7 +501,8 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
 (defn- render [bricks]
   (str generated-header
        (if (seq bricks)
-         (apply str (map render-brick (sort-by :brick/path bricks)))
+         (str (render-group-section bricks)
+              (apply str (map render-brick (sort-by :brick/path bricks))))
          "\nNo bricks are present yet.\n")))
 
 (defn- write-file! [path content]
@@ -488,6 +573,7 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
         bricks (mapv load-brick (brick-dirs))]
     (validate-cross-brick! bricks)
     (report-migration-quality! bricks {:strict? false})
+    (report-group-advisories! bricks)
     (write-file! out-file (render bricks))
     (write-file! index-file (render-index bricks))
     (println "generated" out-file)
@@ -523,6 +609,7 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
             expected-index (render-index bricks)]
         (validate-cross-brick! bricks)
         (report-migration-quality! bricks {:strict? (= :complete (adoption-mode))})
+        (report-group-advisories! bricks)
         (when-not (file? "docs/BRICKS.md")
           (error! "ERROR: docs/BRICKS.md is missing. Run gen-brick-map/generate after adding bricks."))
         (when-not (file? ".llm/data/brick-map.edn")

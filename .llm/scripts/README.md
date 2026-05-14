@@ -40,12 +40,17 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 | `gen_design_ir.clj` | `gen-design-ir.sh` / `check-design-ir.sh` の Clojure 実装。明示 requirement / use case / acceptance item と `[REQ-001]` / `[UC-1]` trace を抽出し、constraint と実装 requirement を分けて brick-map / workspace-map / libs と照合 |
 | `check-trace-metadata.sh` | Clojure コード / テストコードの `:trace/*` metadata を `.llm/data/design-ir.edn` と照合。実装コード側は stable public boundary のみ許可し、AC/TO は `deftest` 側へ限定。`:adoption-mode :complete` では未対応 test obligation も失敗 |
 | `check_trace_metadata.clj` | `check-trace-metadata.sh` の Clojure 実装。top-level form を読み、public boundary `defn` と `deftest` の var metadata / attr-map に置かれた `:trace/requirements` / `:trace/use-cases` / `:trace/test-obligations` を検査。空 ID・重複 ID・related IDs 不整合も検出 |
+| `gen-trace-index.sh` | `design-ir.edn` と Clojure `:trace/*` metadata から `docs/TRACE.md` / `.llm/data/trace-index.edn` を生成 |
+| `check-trace-index.sh` | `docs/TRACE.md` / `.llm/data/trace-index.edn` が `design-ir.edn` と trace metadata からの生成結果と同期しているか検査 |
+| `gen_trace_index.clj` | trace index 生成 / 検査の Clojure 実装。requirement / use case / test obligation ごとの implementation / test 対応と impact index を作る |
+| `trace-impact.sh` | `trace-index.edn` を検索し、REQ / UC / AC / TO / file / var / `--changed` / `--health` から影響 public boundary・test・test obligation を表示 |
+| `trace_impact.clj` | `trace-impact.sh` の Clojure 実装。DESIGN 更新前後の探索、commit 前の変更差分確認、session briefing の trace health に使う |
 | `check-deprecated-libs.sh` | `STACK_GUIDE.md` に埋め込まれた `;; lib-catalog` EDN block 由来の非推奨ライブラリを検知（`.llm/data/deprecated-libs.patterns` を読む） |
 | `check-forbidden-requires.sh` | `STACK_GUIDE.md` に埋め込まれた `;; lib-catalog` EDN block 由来の非推奨 namespace を検知（`.llm/data/forbidden-requires.patterns` を読む） |
 | `check-conflicting-libs.sh` | `STACK_GUIDE.md` に埋め込まれた `;; lib-catalog` EDN block 由来の併用禁止ペアを検知（`.llm/data/conflicts.patterns` を読む） |
 | `check-doc-references.sh` | Markdown 間参照が `¤ / ∵ / ⚠` で型付けされているか検査。通常は default scope、保守監査では `--all` |
 | `gen_lib_catalog.clj` | `STACK_GUIDE.md` に埋め込まれた `;; lib-catalog` EDN block 群を合成し `.llm/data/{libs.edn, deprecated-libs.patterns, forbidden-requires.patterns, conflicts.patterns}` を生成（`clj -X:gen-lib-catalog`）。schema 検証 + uniqueness 検査付き |
-| `gen_brick_map.clj` | `components/*/brick.edn` / `bases/*/brick.edn` と `interface.clj` から `docs/BRICKS.md` / `.llm/data/brick-map.edn` を生成。component/base の意味違反、重複 capability、base の未提供 capability 参照、`:brick/not-for` 衝突、要求 ID 対応、任意 `:brick/group` の形式、capability と公開 API 名の対応も検査 |
+| `gen_brick_map.clj` | `components/*/brick.edn` / `bases/*/brick.edn` と `interface.clj` から `docs/BRICKS.md` / `.llm/data/brick-map.edn` を生成。group-first view と `:groups` index を出力し、component/base の意味違反、重複 capability、base の未提供 capability 参照、`:brick/not-for` 衝突、要求 ID 対応、任意 `:brick/group` の形式、capability と公開 API 名の対応も検査。group 由来の再分割 smell は advisory warning に留める |
 | `gen_workspace_map.clj` | `projects/*/project.edn` / `workspace.edn` / `deps.edn` / `brick.edn` から `docs/PROJECTS.md` / `docs/WORKSPACE.md` / `.llm/data/workspace-map.edn` を生成。project の deploy intent、entrypoint、includes、deps との整合を検査 |
 | `propose-brick-edn.sh` | `brick.edn` を持たない既存 brick に対し、`interface.clj` から分かる範囲で skeleton 案を表示する移行補助（書き込みなし） |
 | `ensure-brick-map.sh` | 欠落した `brick.edn` skeleton を自動作成し、`docs/BRICKS.md` / `.llm/data/brick-map.edn` を再生成する。TODO は警告として表示 |

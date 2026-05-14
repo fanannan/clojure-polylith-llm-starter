@@ -8,7 +8,7 @@
 #
 # 設計規律:
 #   - 副作用なし（stdout のみ、ファイル改変せず）
-#   - 依存なし（coreutils + git のみ。Babashka / Clojure ランタイム不要）
+#   - 原則は coreutils + git のみ。trace health だけは clj が存在する時に 5 秒上限で実行
 #   - 終了コードは常に 0（失敗でセッション起動をブロックしない）
 #   - 軽量チェックのみ実施（`check-workspace-integrity.sh` のような重検査は含まない）
 #
@@ -220,6 +220,24 @@ recent_commits() {
   echo "$log" | sed 's/^/- /'
 }
 
+trace_health_brief() {
+  if [ ! -x ".llm/scripts/trace-impact.sh" ]; then
+    echo "- trace health: skipped（trace-impact.sh がありません）"
+    return
+  fi
+  if ! command -v clj >/dev/null 2>&1; then
+    echo "- trace health: skipped（clj コマンドがありません）"
+    return
+  fi
+  if command -v timeout >/dev/null 2>&1; then
+    timeout 5 ./.llm/scripts/trace-impact.sh --health --brief 2>/dev/null \
+      || echo "- trace health: skipped（5 秒以内に取得できませんでした）"
+  else
+    ./.llm/scripts/trace-impact.sh --health --brief 2>/dev/null \
+      || echo "- trace health: skipped（取得に失敗しました）"
+  fi
+}
+
 tcp_port_open() {
   local host="$1"
   local port="$2"
@@ -357,6 +375,11 @@ else
   echo "## 直近のコミット（git log -5 --oneline）"
   echo ""
   recent_commits
+  echo ""
+
+  echo "## Trace Health"
+  echo ""
+  trace_health_brief
   echo ""
 fi
 

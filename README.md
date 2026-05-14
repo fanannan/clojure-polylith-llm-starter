@@ -4,7 +4,7 @@
 
 このテンプレートは、LLM に大量のコードを書かせるための雛形ではありません。LLM が間違えたときに、人間が監視役として消耗せず、仕様・境界・契約・REPL・自動検査で早く修復できるようにするための開発基盤です。
 
-人間は最初から完全な仕様を書く必要はありません。未整理の着想を IDEA に書くと、LLM が DESIGN への反映案、質問、受入基準、test obligation、Polylith 構造候補へ分解します。DESIGN は仕様正本として扱われ、design-ir、brick map、workspace map、Malli 契約、自動テスト、README 生成へ接続されます。
+人間は最初から完全な仕様を書く必要はありません。未整理の着想を IDEA に書くと、LLM が DESIGN への反映案、質問、受入基準、test obligation、Polylith 構造候補へ分解します。DESIGN は仕様正本として扱われ、design-ir、brick map、workspace map、trace-index、Malli 契約、自動テスト、README 生成へ接続されます。
 
 > ⚠️ **このファイルはテンプレート配布時の入口です。**
 >
@@ -37,7 +37,7 @@ Polylith 構造・Malli 契約・trace metadata・REPL 検証・自動テスト
 - **DESIGN を仕様正本にする**: 実装判断、IR 生成、capability plan、受入基準、テスト義務の起点を 1 箇所に集約する
 - **design-ir で仕様を機械可読化する**: requirement、use case、constraint、test obligation を EDN として抽出し、実装側の分析情報と照合する
 - **Polylith 境界へ落とす**: LLM が触る範囲を brick 単位に局所化し、interface と Malli 契約で境界を明示する
-- **仕様とコード・テストを trace する**: public boundary の `:trace/requirements` / `:trace/use-cases` と `deftest` の `:trace/test-obligations` を design-ir と照合し、仕様 drift を早く検出する
+- **仕様とコード・テストを trace する**: public boundary の `:trace/requirements` / `:trace/use-cases` と `deftest` の `:trace/test-obligations` を design-ir と照合し、仕様 drift を早く検出する。`trace-impact.sh` で「この要件に関係するコードとテスト」「この公開関数が満たす仕様」「今回の変更で影響する要件」を確認できる
 - **REPL を主作業台にする**: 永続 nREPL と Malli instrumentation により、編集から検証までを短いループで閉じる
 - **多層の機械検査で止める**: clj-kondo、polyguard hook、Splint、Polylith、Malli、`.llm/scripts/`、clj-watson で advisory ではなく fail させる
 - **記憶を混ぜない**: DESIGN、KNOWLEDGE、ADR、QUESTIONS を分離し、現在形仕様・現時点知識・不変決定履歴・判断保留を別々に扱う
@@ -426,6 +426,9 @@ cd /path/to/repo
 │   ├── check-conflicting-libs.sh     併用禁止ライブラリペアの検知
 │   ├── check-interface-contracts.sh  interface.clj の m/=> 契約網羅
 │   ├── check-trace-metadata.sh       仕様 ID と public boundary / deftest metadata の照合
+│   ├── gen-trace-index.sh            trace metadata から docs/TRACE.md / trace-index.edn を生成
+│   ├── check-trace-index.sh          Trace Map 生成物の drift 検査
+│   ├── trace-impact.sh               要件・公開関数・変更差分から仕様上の影響範囲を表示
 │   ├── check-single-ns-per-file.sh   1 ファイル 1 ns
 │   ├── check-vulnerabilities.sh      clj-watson による脆弱性スキャン（release 前）
 │   ├── gen_lib_catalog.clj           技術選定の判断済み推奨集の EDN block から生成物を生成
@@ -442,8 +445,10 @@ cd /path/to/repo
 │   ├── repl-eval.sh                  稼働中 nREPL へ eval 送信（LLM 向け、CLAUDE.md §9）
 │   └── repl_eval.clj                 repl-eval.sh の Clojure 実装（clj -X:repl-eval）
 │
-├── .llm/data/                ← gen-lib-catalog が生成する生成物（単一の正本から生成される成果物）
+├── .llm/data/                ← 仕様・構造・技術選定から生成される機械可読 index
 │   ├── libs.edn                      lib-catalog 全 entry（Malli 検証済）
+│   ├── design-ir.edn                 DESIGN 由来の requirement / use case / test obligation
+│   ├── trace-index.edn               仕様 ID と public boundary / deftest の impact index（trace metadata 追加後に生成）
 │   ├── deprecated-libs.patterns      deps.edn 採用検知用パターン
 │   ├── forbidden-requires.patterns   require 検知用パターン
 │   └── conflicts.patterns            併用禁止ペアパターン
@@ -456,6 +461,7 @@ cd /path/to/repo
 ├── docs/BRICKS.md            ← brick.edn / interface.clj から生成される閲覧用 Brick Map（派生プロジェクトで brick 作成後に生成、直接編集しない）
 ├── docs/PROJECTS.md          ← project.edn / project deps から生成される閲覧用 Project Map（project 作成後に生成、直接編集しない）
 ├── docs/WORKSPACE.md         ← workspace 全体の生成ビュー（直接編集しない）
+├── docs/TRACE.md             ← trace metadata から生成される仕様 impact map（直接編集しない）
 │
 ├── .clj-kondo/config.edn        lint 機械化（polyguard hook 同梱）
 ├── .clj-kondo/polyguard/        custom hook（機械化第 2 層: 本テンプレート固有パターン）
@@ -490,7 +496,7 @@ cd /path/to/repo
 - **疲労最小化**: LLM の誤りを構造的に封じる（全域性・不変性・副作用の隔離）
 - **機械化 5 層**: 第 1 層 clj-kondo 組込 linter / 第 2 層 `.clj-kondo/polyguard/` custom hook / 第 3 層 Splint / 第 4 層 `.llm/scripts/check-*.sh`（設定・構造検査）+ Polylith `poly check` + Malli instrumentation / 第 5 層 clj-watson（時間軸脆弱性）。規約を人間の注意力ではなくツールで強制（詳細は `MAINTAINERS_GUIDE.md` §5.10）
 - **単一の正本（SSOT）生成**: `.llm/scripts/gen_lib_catalog.clj` が `STACK_GUIDE` の `;; lib-catalog` EDN block 群を検証・合成し `.llm/data/` 配下に生成物を出力する。shell script はその生成物を読む
-- **Brick Map 生成**: 各 `brick.edn` と `interface.clj` を正本として閲覧用 Map / `.llm/data/brick-map.edn` を生成し、component/base の意味違反・重複 capability・drift を検査する
+- **Brick Map 生成**: 各 `brick.edn` と `interface.clj` を正本として閲覧用 Map / `.llm/data/brick-map.edn` を生成し、component/base の意味違反・重複 capability・drift を検査する。任意の `:brick/group` は類似 brick の俯瞰用 index として生成し、再分割 smell は advisory warning に留める
 - **Project / Workspace Map 生成**: 各 `project.edn`、`workspace.edn`、`deps.edn`、`brick.edn` から閲覧用 Map / `.llm/data/workspace-map.edn` を生成し、deploy intent と project deps の整合を検査する
 - **REPL as Primary Workbench**: `.llm/scripts/repl-eval.sh` により LLM が稼働中 nREPL に eval / load-file を送信。永続 session で状態を継続し、編集から検証までを同一ターンで閉じる
 - **技術選定の判断済み推奨集**: 必須技術基盤はワークスペースルートで常に採用し、追加ライブラリは必要な brick の `deps.edn` に配置する。判断済み推奨集は `.llm/guide/STACK_GUIDE.md`

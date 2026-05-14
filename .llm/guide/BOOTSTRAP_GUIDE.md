@@ -175,6 +175,8 @@ brick 作成前に、DESIGN の要求から **capability plan** を短く作り�
 
 提示前に既存の Brick Map 生成物を確認し、既存 capability で足りる場合は新規 brick を作らない。新規が必要な場合だけ、component / base / project の候補名、`brick.edn` に入れる `:brick/provides` または `:brick/uses`、対応 requirement ID をまとめて提示する。類似 brick の俯瞰に役立つ場合は任意の `:brick/group` 候補も提示してよいが、group 未確定なら空のまま進める。group は構造判断や project inclusion の根拠にしない。
 
+新規 brick 候補を提示する時は、候補 group、同一 group の既存 brick、既存 brick に入れない理由を併記する。group 近傍を説明できない場合は、新規 brick 作成ではなく既存探索不足として扱う。
+
 ```bash
 # ドメインコンポーネント（承認必須 (L1)）
 clj -M:poly create component name:<domain>
@@ -191,7 +193,7 @@ clj -M:poly create project name:<deploy>
 公開関数名は `brick.edn` の capability と対応して理解できる名前にする。短い `create` / `validate` などは、単一 entity の主要操作として自明な場合だけ使う。
 ∵ POLYLITH_GUIDE.md §1.3
 
-初期 brick の公開境界には、DESIGN 由来の trace metadata を最初から付ける。component では `interface.clj` の公開 `defn`、base では外部 entrypoint に近い `core.clj` / `handler.clj` の公開 `defn` が対象である。`core.clj` の内部実装、private helper、base の `system.clj` や orchestration sub-ns には trace metadata を付けない。DESIGN の受入基準から生成された test obligation を検証する `deftest` には `:trace/test-obligations` を付ける。
+初期 brick の公開境界には、DESIGN 由来の trace metadata を最初から付ける。component では `interface.clj` の公開 `defn`、base では外部 entrypoint に近い `core.clj` / `handler.clj` の公開 `defn` が対象である。component の `core.clj`、private helper、base の `system.clj` や orchestration sub-ns には trace metadata を付けない。DESIGN の受入基準から生成された test obligation を検証する `deftest` には `:trace/test-obligations` を付ける。
 ∵ POLYLITH_GUIDE.md §1.1
 ∵ SPEC_GUIDE.md §8.1
 
@@ -245,7 +247,7 @@ deps.edn へ入れるライブラリは必要な用途別機能カテゴリ単�
 
 ### 2.5.1 Brick Map の生成
 
-brick 構成・機能分担・公開 API は、閲覧用の `docs/BRICKS.md` と検索用の `.llm/data/brick-map.edn` に生成する。これらのファイルは自動生成物であり、直接編集しない。
+brick 構成・機能分担・公開 API は、閲覧用の `docs/BRICKS.md` と検索用の `.llm/data/brick-map.edn` に生成する。閲覧用 Brick Map は group-first view を持ち、検索用 index は `:groups` を持つ。これらは類似 brick の探索と再分割 smell の発見に使う補助 index であり、構造境界ではない。これらのファイルは自動生成物であり、直接編集しない。
 
 ```bash
 clj -Sdeps '{:paths [".llm/scripts"]}' -X gen-brick-map/generate
@@ -360,7 +362,7 @@ I/O リソースの起動・停止管理が必要な場合のみ実施する。�
   ```bash
   ./.llm/scripts/check-workspace-integrity.sh
   ```
-  この検査には trace metadata 検査も含まれる。`:adoption-mode :complete` では、未対応 test obligation も失敗として扱う。
+  この検査には trace metadata 検査と Trace Index 生成物検査も含まれる。`:adoption-mode :complete` では、未対応 test obligation も失敗として扱う。trace metadata を追加・変更した場合は `./.llm/scripts/gen-trace-index.sh` で `docs/TRACE.md` / `.llm/data/trace-index.edn` を再生成する。
 
 **workspace 全体の品質確認**:
 
