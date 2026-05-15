@@ -833,6 +833,7 @@ Derive First, Declare Residual, Preserve Only What Reduces Future Fatigue, Audit
 初期 MVP:
 
 - `evidence.sh status`: session 開始時・任意時点で Evidence Plane を query
+- `evidence.sh search`: scope 語彙で closed evidence record を検索
 - `evidence.sh predict`: 着手前 intent を binding し、予測 scope / required evidence / pre-flight context を保存
 - `evidence.sh declare`: 導出不能 residual を `none` または具体値として active packet に明示
 - `evidence.sh run`: command-backed evidence の exit code、repo revision、duration、失敗時 tail を active packet に記録

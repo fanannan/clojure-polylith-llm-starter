@@ -973,6 +973,30 @@
            vec)
       [])))
 
+(defn- read-packet-file [path]
+  (try
+    (edn/read-string (slurp path))
+    (catch Throwable _
+      nil)))
+
+(defn- closed-records []
+  (->> (closed-record-files)
+       (keep (fn [path]
+               (when-let [packet (read-packet-file path)]
+                 (assoc packet :record/path path))))
+       vec))
+
+(defn- latest-evidence-by-id []
+  (->> (closed-records)
+       (sort-by #(or (:closed-at %) ""))
+       (mapcat (fn [packet]
+                 (for [entry (:evidence packet)]
+                   [(:id entry)
+                    (assoc entry
+                           :task/id (:task/id packet)
+                           :closed-at (:closed-at packet))])))
+       (reduce (fn [m [id entry]] (assoc m id entry)) {})))
+
 (defn- status-line-for-packet [path]
   (let [packet (edn/read-string (slurp path))
         missing (missing-residual-fields packet)]
@@ -982,10 +1006,32 @@
          ", residual: " (if (seq missing) "pending" "declared")
          ")")))
 
+(defn- evidence-status-suffix [latest entry]
+  (if-let [result (get latest (:id entry))]
+    (str " last=" (name (or (:status result) :unknown))
+         " task=" (:task/id result)
+         (when-let [rev (:repo-rev result)]
+           (str " rev=" (subs rev 0 (min 8 (count rev)))))
+         (when-let [duration (:duration-ms result)]
+           (str " duration-ms=" duration)))
+    " last=none"))
+
+(defn- record-matches-terms? [packet terms]
+  (let [terms* (map normalize-token terms)
+        values (map normalize-token (scalars packet))]
+    (boolean
+     (some (fn [term]
+             (some #(or (= term %)
+                        (str/includes? % term)
+                        (str/includes? term %))
+                   values))
+           terms*))))
+
 (defn run-status [opts]
   (let [packet (derive-packet opts)
         active (active-packet-files)
-        closed (closed-record-files)]
+        closed (closed-record-files)
+        latest-evidence (latest-evidence-by-id)]
     (println "== Evidence Status at HEAD ==")
     (println)
     (println "Authority Plane:")
@@ -1008,7 +1054,9 @@
     (println)
     (println "Verification Plane:")
     (doseq [{:keys [id tier command]} (:required-evidence packet)]
-      (println " -" id "[" (name tier) "]" (or command "(manual command required)")))
+      (println " -" id "[" (name tier) "]"
+               (or command "(manual command required)")
+               (evidence-status-suffix latest-evidence {:id id})))
     (println)
     (println "Evidence Plane:")
     (println "  Active Review Fatigue Packets:")
@@ -1023,6 +1071,36 @@
         (doseq [[k items] gaps :when (seq items)]
           (println " -" k ":" (count items)))
         (println " - none in current derived scope")))))
+
+(defn- record-summary-line [packet]
+  (str "- " (:task/id packet)
+       " (" (name (or (:status packet) :unknown-status))
+       ", " (name (or (:save-policy packet) :unknown-save))
+       ", paths=" (count (get-in packet [:actual-scope :paths]))
+       ", evidence=" (count (:evidence packet))
+       ")"
+       (when-let [closed-at (:closed-at packet)]
+         (str " closed-at=" closed-at))))
+
+(defn search-records [opts]
+  (let [terms (vec (or (:scope-terms opts) (:extra-args opts)))
+        records (closed-records)
+        matches (if (seq terms)
+                  (filter #(record-matches-terms? % terms) records)
+                  records)]
+    (println "== Evidence Record Search ==")
+    (println "Scope terms:" (if (seq terms) (str/join ", " terms) "(all)"))
+    (println)
+    (if (seq matches)
+      (doseq [packet matches]
+        (println (record-summary-line packet))
+        (when-let [override (get-in packet [:llm-declared :override])]
+          (when (declared-value? override)
+            (println "  override:" (pr-str override))))
+        (let [must-review (take 3 (get-in packet [:human-attention :must-review]))]
+          (when (seq must-review)
+            (println "  must-review:" (str/join ", " must-review)))))
+      (println "- none"))))
 
 (defn predict [opts]
   (let [task-id (or (:task/id opts)
@@ -1296,6 +1374,7 @@
         "inspect" (inspect opts)
         "check-residual" (check-residual-declared opts)
         "status" (run-status opts)
+        "search" (search-records opts)
         "predict" (predict opts)
         "declare" (declare-residual opts)
         "run" (run-evidence opts)
@@ -1309,6 +1388,7 @@
             (println "  structural-evidence inspect [--base BASE] [--head HEAD] [--from PATH]")
             (println "  structural-evidence check-residual --packet PATH")
             (println "  structural-evidence status [--scope TERM[,TERM...]] [--base BASE] [--head HEAD]")
+            (println "  structural-evidence search [--scope TERM[,TERM...]]")
             (println "  structural-evidence predict --task TASK-ID --intent TEXT [--changed-file PATH]")
             (println "  structural-evidence declare --task TASK-ID [--all-none|--semantic-impact TEXT ...]")
             (println "  structural-evidence run --task TASK-ID")

@@ -84,6 +84,12 @@ packet を close する前に、EDN view で residual が明示されている�
 
 `session-briefing.sh` は Evidence Plane を表示し、`.llm/work/` の active packet と residual pending を冒頭に出す。packet は「書いた人の記録」ではなく、次セッションの LLM が再確認疲労を避けるための inter-session memory である。
 
+過去の closed record を scope 語彙で探す場合:
+
+```bash
+./.llm/scripts/evidence.sh search --scope foo,REQ-001
+```
+
 ## 詳細
 
 ¤ .llm/scripts/README.md
