@@ -3,7 +3,6 @@
 **Clojure + Polylith に特化した、LLM 協働型の仕様駆動開発テンプレート。**
 
 このテンプレートは、LLM に大量のコードを書かせるための雛形ではありません。LLM が間違えたときに、人間が監視役として消耗せず、仕様・境界・契約・REPL・自動検査で早く修復できるようにするための開発基盤です。
-
 人間は最初から完全な仕様を書く必要はありません。未整理の着想を IDEA に書くと、LLM が DESIGN への反映案、質問、受入基準、test obligation、Polylith 構造候補へ分解します。DESIGN は仕様正本として扱われ、design-ir、brick map、workspace map、trace-index、Malli 契約、自動テスト、README 生成へ接続されます。
 
 > ⚠️ **このファイルはテンプレート配布時の入口です。**
@@ -28,6 +27,8 @@ design-ir.edn
   ↓ brick-map / workspace-map / libs.edn と照合
 Polylith 構造・Malli 契約・trace metadata・REPL 検証・自動テスト
   ↓
+Structural Evidence View / Review Fatigue Packet
+  ↓
 継続的な drift 検出と README 半自動生成
 ```
 
@@ -38,6 +39,8 @@ Polylith 構造・Malli 契約・trace metadata・REPL 検証・自動テスト
 - **design-ir で仕様を機械可読化する**: requirement、use case、constraint、test obligation を EDN として抽出し、実装側の分析情報と照合する
 - **Polylith 境界へ落とす**: LLM が触る範囲を brick 単位に局所化し、interface と Malli 契約で境界を明示する
 - **仕様とコード・テストを trace する**: public boundary の `:trace/requirements` / `:trace/use-cases` と `deftest` の `:trace/test-obligations` を design-ir と照合し、仕様 drift を早く検出する。`trace-impact.sh` で「この要件に関係するコードとテスト」「この公開関数が満たす仕様」「今回の変更で影響する要件」を確認できる
+- **scope と evidence を構造から導出する**: LLM に変更範囲を自己申告させず、git diff、repo-kind、Polylith 境界、生成 index から actual scope / archetype / required evidence を導出する。`derive-change-scope.sh` と `inspect-derivation.sh` で、なぜその scope と evidence が必要なのかを確認できる
+- **次セッションの足場を残す**: `propose-review-packet.sh` が Review Fatigue Packet を生成し、未来の LLM / 人間が「何を見ればよく、何を見なくてよいか」を短時間で復元できるようにする。これは第 5 の正本ではなく、既存正本・構造・検証結果への生成 view である
 - **REPL を主作業台にする**: 永続 nREPL と Malli instrumentation により、編集から検証までを短いループで閉じる
 - **多層の機械検査で止める**: clj-kondo、polyguard hook、Splint、Polylith、Malli、`.llm/scripts/`、clj-watson で advisory ではなく fail させる
 - **記憶を混ぜない**: DESIGN、KNOWLEDGE、ADR、QUESTIONS を分離し、現在形仕様・現時点知識・不変決定履歴・判断保留を別々に扱う
@@ -58,6 +61,8 @@ LLM は大量のコードを生成できますが、人間がその出力を常�
 - Malli 契約と REPL 検証で、動的言語でも短いフィードバックループを作る
 - 仕様、知識、決定履歴、判断保留を混ぜない
 - 仕様と実装の対応を EDN 生成物で追跡する
+- scope / evidence は LLM の宣言ではなく、可能な限り構造から導出する
+- LLM が残すのは、導出不能な意図・未知・残疲労だけに絞る
 - 迷走した LLM を人間が後から救うのではなく、早めに止める
 
 Clojure の不変データ、REPL 駆動、データ指向設計、Polylith の明示的な境界は、この目的と相性が良い。Rust のように静的型で閉じる方向ではなく、Clojure では Malli 契約、REPL、Polylith、lint、生成 EDN を組み合わせて、実用上の検査可能性と局所推論性を作ります。
@@ -108,6 +113,7 @@ Clojure の不変データ、REPL 駆動、データ指向設計、Polylith の�
 | モジュール境界 | 設計規約に依存しがち | Polylith brick と interface で物理的に区切る |
 | 仕様と実装の照合 | ツール依存、または手動 | design-ir、brick/workspace map、Clojure trace metadata で照合 |
 | 仕様とテストの照合 | 受入基準とテストの対応をレビューで追う | test obligation と `deftest` metadata を照合 |
+| task close の根拠 | PR 説明や会話に残りがち | Structural Evidence View で actual scope / required evidence / review attention を導出 |
 | 知識管理 | spec / plan / tasks に集約しがち | DESIGN / KNOWLEDGE / ADR / QUESTIONS を分離 |
 | 開発ループ | テスト・CI 中心 | REPL primary workbench + Malli instrumentation + CI |
 | 人間の役割 | 仕様作成者・レビュー者 | L0 判断と承認に集中し、検査は機械へ寄せる |
@@ -178,6 +184,7 @@ HTTP、永続化、ライフサイクル管理などの追加技術は、必要�
 | IDEA から仕様へ翻案する | `.llm/guide/SPEC_GUIDE.md` | reconciliation と test obligation の節 |
 | 技術選定を決める | `.llm/guide/STACK_GUIDE.md` | 冒頭の位置づけ + 該当機能節 |
 | Polylith 構造を決める | `.llm/guide/POLYLITH_GUIDE.md` | 冒頭の前提 + 該当手順節 |
+| scope と evidence を導出する | `.llm/scripts/README.md` | Structural Evidence View の節 |
 | 権限や承認で迷う | `.llm/guide/COLLABORATION_GUIDE.md` | §2 を正本として読む |
 | 何を記録するか迷う | `.llm/memory/QUESTIONS.md` / `.llm/memory/KNOWLEDGE.md` / `.llm/memory/adr/README.md` | 各文書冒頭の更新トリガー表 |
 

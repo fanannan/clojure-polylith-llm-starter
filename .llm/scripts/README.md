@@ -45,6 +45,11 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 | `gen_trace_index.clj` | trace index 生成 / 検査の Clojure 実装。requirement / use case / test obligation ごとの implementation / test 対応と impact index を作る |
 | `trace-impact.sh` | `trace-index.edn` を検索し、要件・受入基準・公開関数・変更差分から、影響する public boundary・test・test obligation を表示 |
 | `trace_impact.clj` | `trace-impact.sh` の Clojure 実装。DESIGN 更新前後の探索、commit 前の変更差分確認、session briefing の trace health に使う |
+| `derive-change-scope.sh` | git diff と repo-kind 別 derivation rules から Structural Evidence の actual scope / archetype / required evidence を導出する。LLM の scope 自己申告を正本にしないための入口 |
+| `inspect-derivation.sh` | `derive-change-scope.sh` の導出理由を path ごとに表示する。matched rule、plane、archetype、public boundary、required evidence を説明する debug / 教材用 view |
+| `propose-review-packet.sh` | `.llm/work/` に Review Fatigue Packet の EDN view と Markdown view を生成する。これは生成 view であり、Authority source ではない |
+| `check-structural-evidence-self-test.sh` | Structural Evidence derivation rules の fixture self-test。template ADR 禁止、project interface change、DESIGN spec change の代表ケースを検査する |
+| `structural_evidence.clj` | Structural Evidence MVP の Clojure 実装。repo-kind 分岐、evidence tier、none regulator、Review Fatigue Packet 生成を扱う |
 | `check-deprecated-libs.sh` | `STACK_GUIDE.md` に埋め込まれた `;; lib-catalog` EDN block 由来の非推奨ライブラリを検知（`.llm/data/deprecated-libs.patterns` を読む） |
 | `check-forbidden-requires.sh` | `STACK_GUIDE.md` に埋め込まれた `;; lib-catalog` EDN block 由来の非推奨 namespace を検知（`.llm/data/forbidden-requires.patterns` を読む） |
 | `check-conflicting-libs.sh` | `STACK_GUIDE.md` に埋め込まれた `;; lib-catalog` EDN block 由来の併用禁止ペアを検知（`.llm/data/conflicts.patterns` を読む） |
@@ -197,6 +202,26 @@ Malli / cljfmt / clj-kondo / Polylith は本テンプレートの必須基盤で
 - `check-workspace-integrity.sh` に「一時領域に再生成 → diff で drift 検知」のステップを追加し、元文書と生成物の同期を保証
 
 `.llm/data/` 配下は source 文書からの生成物である。テンプレート本体では `clj -X:gen-lib-catalog` や `gen-design-ir.sh` で再生成し、`check-workspace-integrity.sh` が drift を検出する。派生プロジェクトは通常そのまま消費するだけでよいが、STACK_GUIDE、DESIGN、capability 定義を派生側で意図的に変更するなら、対応する生成コマンドで `.llm/data/` を再生成し、source 文書変更と同一コミットにまとめる。
+
+### Structural Evidence View
+
+Structural Evidence View は、LLM が scope / evidence を自己申告する代わりに、git diff・repo-kind・Polylith 構造・生成 index から review 用 view を導出する仕組みである。目的は trust score ではなく、次セッションが検証済みの足場を復元するための Review Fatigue Packet を作ること。
+
+最小運用:
+
+```bash
+./.llm/scripts/derive-change-scope.sh
+./.llm/scripts/inspect-derivation.sh
+./.llm/scripts/propose-review-packet.sh --task-id 2026-05-15-example
+./.llm/scripts/check-structural-evidence-self-test.sh
+```
+
+生成物:
+
+- `.llm/work/<task-id>.edn`: 機械可読の generated view
+- `.llm/work/<task-id>.md`: 人間が読む Review Fatigue Packet
+
+`.llm/work/` は active generated view であり、git 管理しない。closed evidence record を残す場合は、派生プロジェクトの privacy / commit policy に従って `.llm/evidence/closed/` 等に移す。Structural Evidence View は第 5 の正本ではなく、Authority / Structure / Index / Verification plane への索引である。
 
 ## 新しい検査の追加手順
 

@@ -798,6 +798,51 @@ Requirement ID の検査順序:
 
 テンプレート保守で `gen_brick_map.clj` / `gen_workspace_map.clj` / wrapper / migration policy を変更した場合、通常ゲートとは別に `.llm/scripts/template-tests/check-map-scenarios.sh` を実行対象にする。この E2E は `/tmp` の synthetic repo で生成・移行・エラー検出・自力修復を検査するもので、派生プロジェクトのアプリケーションテストではない。
 
+### 5.15 Structural Evidence View の保守
+
+Structural Evidence View は、LLM が scope / evidence を自己申告する疲労と誤差を減らすための生成 view である。正本を増やすものではない。既存の Authority / Structure / Index / Verification の各 plane から、次セッションが「どこまで検証済みか」を復元するための Review Fatigue Packet を導出する。
+
+中心原則:
+
+```text
+Derive First, Declare Residual, Preserve Only What Reduces Future Fatigue, Audit Derivation.
+```
+
+役割分担:
+
+- Authority Plane: 現在仕様・有効知識・未決判断・決定履歴の正本
+- Structure Plane: Polylith と公開境界の構造定義
+- Index Plane: 生成 index。直接編集禁止
+- Verification Plane: Malli、tests、`poly check`、`.llm/scripts/check-*.sh`
+- Evidence View: `.llm/work/` の Review Fatigue Packet。生成 view であり、正本ではない
+
+運用規律:
+
+- scope / archetype / required evidence は、まず `derive-change-scope.sh` で git diff と repo 構造から導出する。LLM が宣言するのは semantic impact、override、unknown、remaining fatigue など、導出不能な residual だけである
+- Review Fatigue Packet は `.llm/work/` に生成し、git 管理しない。closed evidence record を永続化するかは派生プロジェクトの evidence commit policy に従う
+- 重要な claim を T-Procedural evidence のみで閉じない。public boundary、Malli contract、template governance には T-Mechanical または T-Linkage evidence を要求する
+- `none` regulator を使う。LLM-declared field は空欄禁止で、`none` または具体 list のいずれかを明示する
+- derivation pipeline は agent 非依存 primitive である。Claude / Codex / subagent は独自推定を正本化せず、`.llm/scripts/` の同一 script を呼ぶ
+- derivation の理由は `inspect-derivation.sh` で説明可能でなければならない。導出結果が debug 不能な black box になった場合、仕組み自体が新しい疲労源になる
+
+初期 MVP:
+
+- `derive-change-scope.sh`: actual scope と archetype 候補を導出
+- `inspect-derivation.sh`: path ごとの matched rule、plane、archetype、required evidence を表示
+- `propose-review-packet.sh`: EDN + Markdown の Review Fatigue Packet を `.llm/work/` に生成
+- `check-structural-evidence-self-test.sh`: repo-kind 分岐と代表 derivation rule の fixture self-test
+
+保存条件:
+
+- 保存必須候補: `:interface-change`、`:spec-change`、`:dependency-change`、`:template-governance-change`、`:brick-ownership-change`、`:project-ownership-change`
+- 保存任意候補: `:internal-refactor` のみ、かつ触ったファイルが少数。ただし public capability / behavior に影響するなら保存必須側へ倒す
+- 保存不要候補: typo、generated-only、comment-only、semantic-impact 0
+
+境界:
+
+- Packet が新しい requirement / knowledge / decision を定義してはならない。unknown は QUESTIONS 候補、反復 residual は KNOWLEDGE / derivation rule / ADR または maintainer archive 候補として昇格する
+- Template Migration Ledger は「どの template migration を適用済みか」を扱う。Evidence Close Record は「その task をなぜ close できたか」を扱う。Close Record が migration ledger を evidence として参照することは許すが、migration ledger から Close Record へ逆参照して二重管理しない
+
 ---
 
 ## 6. 避けるべきアンチパターン

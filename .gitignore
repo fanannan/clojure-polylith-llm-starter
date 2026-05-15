@@ -50,5 +50,9 @@ node_modules/
 /.claude/*
 !/.claude/settings.json
 
+# --- LLM generated active views ---
+/.llm/work/*
+!/.llm/work/.gitignore
+
 # --- clj-kondo runtime lock ---
 .clj-kondo/.lock
