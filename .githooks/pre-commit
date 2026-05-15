@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Git pre-commit wrapper for the Structural Evidence gate.
+#
+# The hook is intentionally thin. The gate implementation lives in
+# .llm/scripts/check-evidence-gate.sh so all agents and CI can call the same
+# primitive.
+
+set -euo pipefail
+
+exec ./.llm/scripts/check-evidence-gate.sh --staged
