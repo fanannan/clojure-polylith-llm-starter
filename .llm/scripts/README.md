@@ -236,7 +236,7 @@ git add <changed-files>
 ./.llm/scripts/check-evidence-gate.sh --staged
 ```
 
-`run` は login shell ではなく固定した最小環境で command-backed evidence を実行し、`tool-version`、`env-hash`、`repo-rev`、`duration-ms`、失敗時 tail を record に残す。`invalidated-by` は touched path / brick / requirement / public boundary から導出され、後続の event staleness 判定の根拠になる。
+`run` は login shell ではなく固定した最小環境で command-backed evidence を実行し、`tool-version`、`env-hash`、`repo-rev`、`duration-ms`、失敗時 tail を record に残す。`tool-version` は選択 runtime だけでなく、検出できた `clj` / `bb` の利用可否とバージョンも含める。`invalidated-by` は touched path / brick / requirement / public boundary から導出され、後続の event staleness 判定の根拠になる。
 
 `what-now` は active packet / staged diff / residual / evidence run / closed record staleness を見て、次に実行すべき 1 action を返す。`status` は gap 集約 view、`is-verified` は requirement や public boundary の検証 matrix、`why` は claim を支える evidence chain を返す。
 

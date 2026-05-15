@@ -843,7 +843,7 @@ Derive First, Declare Residual, Preserve Only What Reduces Future Fatigue, Audit
 - `check-evidence-gate.sh`: staged/range diff の fingerprint と packet / close record を照合する正本 gate
 - `evidence.sh predict`: 高リスク作業の任意 pre-flight として intent を binding し、予測 scope / required evidence / pre-flight context を保存
 - `evidence.sh declare`: 導出不能 residual を `none` または具体値として active packet に明示
-- `evidence.sh run`: command-backed evidence の exit code、repo revision、tool-version、env-hash、duration、失敗時 tail を active packet に記録。login shell は使わず、固定した最小環境で実行する
+- `evidence.sh run`: command-backed evidence の exit code、repo revision、tool-version、env-hash、duration、失敗時 tail を active packet に記録。`tool-version` には選択 runtime と検出できた `clj` / `bb` の利用可否・バージョンを含める。login shell は使わず、固定した最小環境で実行する
 - `evidence.sh close`: close 直前に predicted scope と actual scope を照合し、residual 未宣言なら close を block
 - `derive-change-scope.sh`: actual scope と archetype 候補を導出
 - `inspect-derivation.sh`: path ごとの matched rule、plane、archetype、required evidence を表示

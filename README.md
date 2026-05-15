@@ -209,6 +209,7 @@ Runtime の選択は `LLM_CLJ_RUNTIME` で制御できる。
 | `clj` | Clojure CLI を強制 |
 
 bb 実行で失敗した場合、暗黙に `clj` へ fallback しない。失敗を隠さず、必要なら `LLM_CLJ_RUNTIME=clj` を明示して再実行する。
+Structural Evidence の `run` が記録する `:tool-version` には、実際に選択された runtime に加えて、その環境で検出できた `clj` / `bb` の利用可否とバージョンも入る。これにより、bb で得た evidence と clj で得た evidence を後から区別できる。
 
 ---
 

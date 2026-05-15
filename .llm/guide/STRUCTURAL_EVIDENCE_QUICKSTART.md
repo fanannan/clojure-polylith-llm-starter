@@ -77,7 +77,7 @@ Residual は EDN を手編集せず、必ず `evidence.sh declare` で更新す�
 ```
 
 `run` は packet 内の command-backed evidence を実行し、exit code、repo revision、duration、失敗時の tail を active packet に記録する。command が定義されていない evidence は `:not-run` として残る。実行コストが高い場合は必要な検査を手動で走らせ、その結果を close 報告に含める。
-`run` は login shell を使わず、固定した最小環境で command を実行する。`tool-version` と `env-hash` も record に残るため、T-Mechanical evidence は「どの環境で再実行可能な結果か」を後から確認できる。
+`run` は login shell を使わず、固定した最小環境で command を実行する。`tool-version` と `env-hash` も record に残るため、T-Mechanical evidence は「どの環境で再実行可能な結果か」を後から確認できる。`tool-version` には実際に選ばれた runtime と、その環境で検出できた `clj` / `bb` の利用可否・バージョンが含まれる。
 
 ## Task / Commit / Session
 

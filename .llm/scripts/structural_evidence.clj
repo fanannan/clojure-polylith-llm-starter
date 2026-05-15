@@ -207,6 +207,17 @@
            vec)
       [])))
 
+(defn- command-result [& args]
+  (try
+    (let [{:keys [exit out err]} (apply shell/sh args)]
+      {:exit exit
+       :out (str/trim (str out))
+       :err (str/trim (str err))})
+    (catch Throwable t
+      {:exit 127
+       :out ""
+       :err (.getMessage t)})))
+
 (defn- tail-lines [s n]
   (->> (str/split-lines (str s))
        (take-last n)
@@ -256,10 +267,36 @@
 (defn- env-hash [env]
   (sha1-hex (pr-str (into (sorted-map) env))))
 
+(defn- clj-runtime-version []
+  (let [{:keys [exit out err]} (command-result "clj" "-Sdescribe")]
+    (if (zero? exit)
+      (let [description (try
+                          (edn/read-string out)
+                          (catch Throwable _ nil))]
+        {:available true
+         :version (or (:version description)
+                      (:clojure-version description)
+                      :unknown)})
+      {:available false
+       :error (tail-lines (str out "\n" err) 5)})))
+
+(defn- bb-runtime-version []
+  (let [{:keys [exit out err]} (command-result "bb" "--version")]
+    (if (zero? exit)
+      {:available true
+       :version (or (first (str/split-lines out)) :unknown)}
+      {:available false
+       :error (tail-lines (str out "\n" err) 5)})))
+
+(def ^:private runtime-versions
+  (delay {:clj (clj-runtime-version)
+          :bb (bb-runtime-version)}))
+
 (defn- tool-version []
   {:runtime (or (some-> (System/getenv "LLM_CLJ_RUNTIME_SELECTED") keyword)
                 :unknown)
    :requested-runtime (or (System/getenv "LLM_CLJ_RUNTIME") "auto")
+   :runtimes @runtime-versions
    :clojure (clojure-version)
    :babashka (System/getProperty "babashka.version")
    :jvm (System/getProperty "java.version")
@@ -2297,6 +2334,7 @@
                                            closed-records (constantly [])
                                            closed-record-staleness (constantly [])]
                                (what-now-plan {:changed-files ["DESIGN.md"]}))
+        tool-info (tool-version)
         boundary-file (java.io.File/createTempFile "structural-evidence-boundary" ".edn")
         boundary-path (.getPath boundary-file)]
     (spit boundary-file (pr-str {:task/id "fixture-boundary"
@@ -2336,6 +2374,11 @@
 	             (= :unknown (:status (record-staleness no-deps-record project-design))))
 	    (assert! "what-now packet-required blocked-on is structured"
 	             (= [{:type :packet-required}] (:blocked-on packet-required-plan)))
+	    (assert! "tool-version records both clj and bb runtime probes"
+	             (and (contains? (:runtimes tool-info) :clj)
+	                  (contains? (:runtimes tool-info) :bb)
+	                  (boolean? (get-in tool-info [:runtimes :clj :available]))
+	                  (boolean? (get-in tool-info [:runtimes :bb :available]))))
 	    (assert! "boundary check catches unknown requirement IDs in LLM-written fields"
 	             (seq (packet-boundary-violations boundary-path)))
     (.delete boundary-file)
