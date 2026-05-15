@@ -677,7 +677,7 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
 | **目的** | `CLAUDE.md §8.0`「実装着手前に DESIGN.md / KNOWLEDGE.md / QUESTIONS.md / adr/ を確認」を規律依存から機械化バックアップへ引き上げる |
 | **実装手段** | `.llm/scripts/session-briefing.sh`（副作用なし、stdout のみ、常に exit 0）|
 | **起動経路** | Claude Code は `SessionStart` hook で自動、Codex 等は `AGENTS.md` 経由で LLM が手動実行 |
-| **出力内容** | フェーズ判定（initialization / development）、未完了指標、未対応(open) Q 一覧、最新 ADR、直近コミット、`§8.0` チェックリスト |
+| **出力内容** | フェーズ判定（initialization / development）、未完了指標、未対応(open) Q 一覧、最新 ADR、直近コミット、Evidence Plane（active/closed packet、staged gate、last commit gate）、`§8.0` チェックリスト |
 
 機械化第 1〜第 5 層との関係:
 
@@ -685,7 +685,7 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
 - **セッション状態ブリーフィングは現状を見せる**（LLM が何を読むべきかの判断材料を提供）
 - 両者は排他ではなく、併用によって「規約違反の早期検知」と「着手前の文脈確立」の両方を機械化する
 
-**Codex 側の非対称性**: Codex には SessionStart hook 機構が存在しないため、`AGENTS.md` に「起動時に `bash .llm/scripts/session-briefing.sh` を実行してから CLAUDE.md に従え」を明記することで、**文書経由の規律依存**にとどまる。構造的制約であり回避しない（`CLAUDE.md §1.2.5` 失敗早期検知と承認設計の思想と整合。LLM の規律逸脱は可逆、AGENTS.md の記述は明示的、Codex 実行頻度も Claude Code より低い、の 3 点で許容範囲）。
+**Codex 側の非対称性**: Codex には SessionStart hook 機構が存在しないため、`AGENTS.md` に「起動時に `bash .llm/scripts/session-briefing.sh` を実行してから CLAUDE.md に従え」「Structural Evidence は `.llm/scripts/` の共有 primitive を使え」を明記することで、**文書経由の規律依存**にとどまる。構造的制約であり回避しない（`CLAUDE.md §1.2.5` 失敗早期検知と承認設計の思想と整合。LLM の規律逸脱は可逆、AGENTS.md の記述は明示的、Codex 実行頻度も Claude Code より低い、の 3 点で許容範囲）。
 
 **セッション状態ブリーフィングを追加する際の規律**:
 

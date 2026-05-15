@@ -87,7 +87,7 @@ Clojure の不変データ、REPL 駆動、データ指向設計、Polylith の�
 | 作業計画ファイルと並列マーカー | 作業計画が会話で消える | brick = 再利用単位 + `poly check` + `:brick/requirements` で REQ-ID 紐付け |
 | 外部 issue tracker との双方向同期 | repo 内 markdown を読まない文化 | `QUESTIONS.md` / `ADR` を repo 内 markdown として保持、git 履歴と一体管理 |
 | proposal → apply → archive の状態機械 | 仕様変更の所在が分散 | `QUESTIONS.md` の状態遷移 + `:adoption-mode :retrofit/:partial/:complete` |
-| エージェント規約ファイルの拡張 | エージェントごとの規約分散 | `CLAUDE.md` に一極集中、`AGENTS.md` は 1 行リダイレクタ |
+| エージェント規約ファイルの拡張 | エージェントごとの規約分散 | `CLAUDE.md` に一極集中、`AGENTS.md` は session briefing と共有 `.llm/scripts/` primitive への最小 bootstrap |
 | マルチエージェント orchestration | 単一 LLM の context 限界 | 自己停止プロトコル + subagent 分離 + REPL primary workbench |
 
 一般的な機能が「無い」のではなく、本テンプレでは**別の構造でそもそも問題が発生しない**設計になっています。

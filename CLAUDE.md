@@ -30,7 +30,7 @@
 | **CLAUDE.md（本文書）** | 第一原理と常時制約 | **毎セッション必読** |
 | **IDEA.md** | 任意の着想メモ。仕様化前の要望・背景・制約を DESIGN へ構造化する入口 | 初期化時、仕様変更の相談時、存在し実内容がある時 |
 | **DESIGN.md** | プロダクト仕様（何を作るか） | 実装に着手する前、仕様を確認する時 |
-| **AGENTS.md** | 非 Claude エージェント（Codex、GitHub Copilot 等が読む標準慣習、OpenAI 提唱）向けリダイレクタ。内容は「CLAUDE.md に従え」の 1 行のみ | 他エージェント実行時 |
+| **AGENTS.md** | 非 Claude エージェント（Codex、GitHub Copilot 等が読む標準慣習、OpenAI 提唱）向け bootstrap redirect。session briefing 実行、`CLAUDE.md` 正本、Structural Evidence は `.llm/scripts/` の共有 primitive を使うことだけを指示する。ポリシー正本ではない | 他エージェント実行時 |
 
 ### .llm/guide/（プロジェクト運営ガイド）
 
