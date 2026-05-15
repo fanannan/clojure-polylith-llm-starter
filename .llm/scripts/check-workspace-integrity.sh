@@ -211,6 +211,9 @@ run_step_if_capability "llm-guides" "maintainer archive staging 検査" \
 run_step_if_capability "llm-guides" "撤去済みテンプレ ADR 参照検査" \
   "$SCRIPT_DIR/check-no-dead-adr-refs.sh"
 
+run_step_if_capability "llm-guides" "Structural Evidence derivation self-test" \
+  "$SCRIPT_DIR/check-structural-evidence-self-test.sh"
+
 # --- 1 ファイル 1 ns ---
 run_step_if_capability "deps-edn" "1 ファイル 1 ns 検査" \
   "$SCRIPT_DIR/check-single-ns-per-file.sh"

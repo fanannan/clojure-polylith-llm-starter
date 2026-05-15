@@ -43,6 +43,10 @@ packet を close する前に、EDN view で residual が明示されている�
 
 `:status :closed` の packet に未宣言 residual が残っている場合、この検査は失敗する。`:status :active` の間は pending field を表示する。
 
+## 次セッションでの扱い
+
+`session-briefing.sh` は Evidence Plane を表示し、`.llm/work/` の active packet と residual pending を冒頭に出す。packet は「書いた人の記録」ではなく、次セッションの LLM が再確認疲労を避けるための inter-session memory である。
+
 ## 詳細
 
 ¤ .llm/scripts/README.md

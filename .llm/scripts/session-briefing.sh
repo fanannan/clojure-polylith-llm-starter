@@ -238,6 +238,55 @@ trace_health_brief() {
   fi
 }
 
+evidence_plane_brief() {
+  echo "## Evidence Plane"
+  echo ""
+
+  echo "### Active Review Fatigue Packets (.llm/work/)"
+  local found_active=0
+  if [ -d ".llm/work" ]; then
+    local f
+    for f in .llm/work/*.edn; do
+      [ -e "$f" ] || continue
+      found_active=1
+      local name
+      name="$(basename "$f" .edn)"
+      local save_policy
+      save_policy="$(grep -m1 -oE ':save-policy[[:space:]]+:[a-z-]+' "$f" 2>/dev/null | sed -E 's/.*:([a-z-]+)$/\1/')"
+      local derivation
+      derivation="$(grep -m1 -oE ':status[[:space:]]+:[a-z-]+' "$f" 2>/dev/null | sed -E 's/.*:([a-z-]+)$/\1/')"
+      local residual
+      if grep -qE ':semantic-impact-not-derived[[:space:]]+nil|:unknowns-not-captured-by-derivation[[:space:]]+nil|:cross-brick-effects-not-in-trace-index[[:space:]]+nil|:override[[:space:]]+nil|:remaining-fatigue[[:space:]]+nil' "$f" 2>/dev/null; then
+        residual="residual: pending"
+      else
+        residual="residual: declared"
+      fi
+      echo "- $name (${save_policy:-save:?}, ${derivation:-derive:?}, $residual)"
+    done
+  fi
+  if [ "$found_active" -eq 0 ]; then
+    echo "- （active packet はありません）"
+  fi
+
+  echo ""
+  echo "### Closed Evidence Records (.llm/evidence/closed/)"
+  local found_closed=0
+  if [ -d ".llm/evidence/closed" ]; then
+    local c
+    for c in $(find .llm/evidence/closed -maxdepth 1 -type f -name '*.edn' 2>/dev/null | sort | tail -5); do
+      found_closed=1
+      echo "- $(basename "$c" .edn)"
+    done
+  fi
+  if [ "$found_closed" -eq 0 ]; then
+    echo "- （closed record はありません）"
+  fi
+
+  echo ""
+  echo "### Stale / Expired Evidence"
+  echo "- event-based staleness detection は後続 phase。現時点では active packet と residual pending を優先確認。"
+}
+
 tcp_port_open() {
   local host="$1"
   local port="$2"
@@ -331,6 +380,8 @@ if [ "$REPO_KIND" = "template" ]; then
   echo ""
   recent_commits
   echo ""
+  evidence_plane_brief
+  echo ""
 else
   # 4. PROJECT モード
   if [ -n "$PROJECT_NAME" ]; then
@@ -375,6 +426,9 @@ else
   echo "## 直近のコミット（git log -5 --oneline）"
   echo ""
   recent_commits
+  echo ""
+
+  evidence_plane_brief
   echo ""
 
   echo "## Trace Health"

@@ -46,6 +46,14 @@
    {:tier :mechanical
     :label "Workspace integrity aggregate check"
     :command "./.llm/scripts/check-workspace-integrity.sh"}
+   :no-format-drift
+   {:tier :mechanical
+    :label "No formatting drift"
+    :command "clj -M:format check"}
+   :no-new-lint
+   {:tier :mechanical
+    :label "No new clj-kondo lint findings"
+    :command "clj -M:lint"}
    :check-interface-contracts
    {:tier :mechanical
     :label "Public interface defn has Malli m/=> contract"
@@ -80,6 +88,10 @@
    {:tier :mechanical
     :label "No conflicting libraries are co-adopted"
     :command "./.llm/scripts/check-conflicting-libs.sh"}
+   :check-vulnerabilities
+   {:tier :mechanical
+    :label "No known dependency vulnerabilities"
+    :command "./.llm/scripts/check-vulnerabilities.sh"}
    :check-brick-map
    {:tier :linkage
     :label "Brick Map generated index is synchronized"
@@ -94,14 +106,14 @@
 
 (def archetype-evidence
   {:template-governance-change [:check-doc-references :check-mode-scope]
-   :script-change [:script-single-run :check-workspace-integrity]
+   :script-change [:script-single-run :check-workspace-integrity :no-format-drift :no-new-lint]
    :maintainer-archive-change [:check-archive-staleness :check-doc-references]
    :error-adr-not-in-template [:check-mode-scope]
-   :interface-change [:check-interface-contracts :check-trace-metadata :poly-check :relevant-tests]
-   :internal-refactor [:poly-check :relevant-tests]
-   :base-entrypoint-change [:poly-check :relevant-tests :check-workspace-map]
+   :interface-change [:check-interface-contracts :check-trace-metadata :poly-check :relevant-tests :no-format-drift :no-new-lint]
+   :internal-refactor [:poly-check :relevant-tests :no-format-drift :no-new-lint]
+   :base-entrypoint-change [:poly-check :relevant-tests :check-workspace-map :no-format-drift :no-new-lint]
    :spec-change [:check-design-ir :check-trace-index :check-trace-metadata]
-   :dependency-change [:dependency-resolution :check-deprecated-libs :check-conflicting-libs]
+   :dependency-change [:dependency-resolution :check-deprecated-libs :check-conflicting-libs :check-vulnerabilities]
    :brick-ownership-change [:check-brick-map :poly-check]
    :project-ownership-change [:check-workspace-map :poly-check]
    :generated-index-change [:source-regeneration-check]
@@ -133,6 +145,46 @@
     (try
       (edn/read-string (slurp path))
       (catch Throwable _ nil))))
+
+(defn- scalars [x]
+  (->> (tree-seq coll? seq x)
+       (remove coll?)
+       (keep (fn [v]
+               (cond
+                 (keyword? v) (name v)
+                 (symbol? v) (str v)
+                 (string? v) v
+                 (number? v) (str v)
+                 :else nil)))))
+
+(defn- as-coll [x]
+  (cond
+    (nil? x) []
+    (and (coll? x) (not (map? x))) x
+    :else [x]))
+
+(defn- normalize-token [x]
+  (some-> x str str/lower-case))
+
+(defn- intersects-tokens? [x tokens]
+  (let [token-set (set (map normalize-token tokens))]
+    (boolean
+     (some token-set (map normalize-token (scalars x))))))
+
+(defn- maps-matching-tokens [x tokens]
+  (when (seq tokens)
+    (->> (tree-seq coll? seq x)
+         (filter map?)
+         (filter #(intersects-tokens? % tokens)))))
+
+(defn- values-for-keys [maps keys]
+  (->> maps
+       (mapcat (fn [m]
+                 (mapcat #(as-coll (get m %)) keys)))
+       (mapcat scalars)
+       distinct
+       sort
+       vec))
 
 (defn- repo-context []
   (or (read-edn-if-exists ".llm/repo-context.edn") {}))
@@ -324,6 +376,137 @@
          sort
          vec)))
 
+(defn- brick-context-for-bricks [bricks]
+  (let [idx (read-edn-if-exists ".llm/data/brick-map.edn")
+        maps (maps-matching-tokens idx (map name bricks))]
+    {:available (boolean idx)
+     :provides (values-for-keys maps [:brick/provides :provides :capabilities])
+     :groups (values-for-keys maps [:brick/group :group])
+     :not-for (values-for-keys maps [:brick/not-for :not-for])}))
+
+(defn- trace-context-for-boundaries [public-boundaries]
+  (let [idx (read-edn-if-exists ".llm/data/trace-index.edn")
+        maps (maps-matching-tokens idx public-boundaries)]
+    {:available (boolean idx)
+     :matched-boundaries (vec (sort public-boundaries))
+     :requirements (values-for-keys maps [:requirements :requirement :requirement-id :trace/requirements])
+     :tests (values-for-keys maps [:tests :test :test-var :test-vars :implementation-tests])
+     :test-obligations (values-for-keys maps [:test-obligations
+                                              :test-obligation
+                                              :trace/test-obligations])
+     :matched-records (count maps)}))
+
+(defn- workspace-projects-for-bricks [bricks]
+  (let [idx (read-edn-if-exists ".llm/data/workspace-map.edn")
+        maps (maps-matching-tokens idx (map name bricks))]
+    (values-for-keys maps [:project/name :project :project-id :name])))
+
+(defn- in-scope-items [items requirements]
+  (let [tokens (set requirements)]
+    (if (seq tokens)
+      (->> items
+           (filter #(intersects-tokens? % tokens))
+           vec)
+      [])))
+
+(defn- design-coverage-context [requirements]
+  (let [ir (read-edn-if-exists ".llm/data/design-ir.edn")
+        coverage (:coverage ir)
+        gap-keys [:unassigned-requirements
+                  :unassigned-implementation-requirements
+                  :unknown-implementation-requirements]]
+    {:available (boolean ir)
+     :scope-requirements (vec (sort requirements))
+     :gaps (into {}
+                 (for [k gap-keys]
+                   [k (in-scope-items (get coverage k) requirements)]))}))
+
+(defn- markdown-files-under [path]
+  (let [f (io/file path)]
+    (cond
+      (and (.isFile f) (str/ends-with? (.getName f) ".md")) [(.getPath f)]
+      (.isDirectory f) (->> (file-seq f)
+                            (filter #(.isFile %))
+                            (map #(.getPath %))
+                            (filter #(str/ends-with? % ".md")))
+      :else [])))
+
+(defn- matching-lines [paths terms limit]
+  (let [tokens (->> terms (remove str/blank?) distinct vec)]
+    (if (seq tokens)
+      (->> paths
+           (mapcat (fn [path]
+                     (when (file? path)
+                       (keep-indexed
+                        (fn [idx line]
+                          (when (let [line* (str/lower-case line)]
+                                  (some #(str/includes? line* (str/lower-case %)) tokens))
+                            {:file path
+                             :line (inc idx)
+                             :text (str/trim line)}))
+                        (str/split-lines (slurp path))))))
+           (take limit)
+           vec)
+      [])))
+
+(defn- cross-document-context [repo-kind bricks requirements public-boundaries archetypes files]
+  (let [terms (->> (concat (map name bricks)
+                           requirements
+                           public-boundaries
+                           (map #(last (str/split % #"/")) public-boundaries)
+                           (map name archetypes)
+                           (map #(.getName (io/file %)) files))
+                   (remove str/blank?)
+                   distinct
+                   vec)
+        decision-paths (if (= :template repo-kind)
+                         (markdown-files-under ".llm/memory/archive/maintainer-discussions")
+                         (markdown-files-under ".llm/memory/adr"))]
+    {:terms terms
+     :related-open-questions (matching-lines [".llm/memory/QUESTIONS.md"] terms 8)
+     :related-knowledge (matching-lines [".llm/memory/KNOWLEDGE.md"] terms 8)
+     :related-decisions (matching-lines decision-paths terms 8)}))
+
+(defn- dependency-coords-in-file [path]
+  (when (and (file? path) (str/ends-with? path "deps.edn"))
+    (let [text (slurp path)]
+      (->> (re-seq #"([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)\s+(\{|\")" text)
+           (map second)
+           distinct
+           sort
+           vec))))
+
+(defn- dependency-context [files archetypes]
+  (if (contains? (set archetypes) :dependency-change)
+    (let [coords (->> files
+                      (mapcat dependency-coords-in-file)
+                      distinct
+                      sort
+                      vec)
+          libs-text (when (file? ".llm/data/libs.edn") (slurp ".llm/data/libs.edn"))
+          deprecated-text (when (file? ".llm/data/deprecated-libs.patterns")
+                            (slurp ".llm/data/deprecated-libs.patterns"))]
+      {:available (boolean libs-text)
+       :coords coords
+       :in-catalog (->> coords
+                        (filter #(and libs-text (str/includes? libs-text %)))
+                        vec)
+       :deprecated-candidates (->> coords
+                                   (filter #(and deprecated-text (str/includes? deprecated-text %)))
+                                   vec)})
+    {:available (file? ".llm/data/libs.edn")
+     :coords []
+     :in-catalog []
+     :deprecated-candidates []}))
+
+(defn- enrich-required-evidence [required trace-context]
+  (mapv (fn [e]
+          (if (= :relevant-tests (:id e))
+            (assoc e :derived-tests (:tests trace-context)
+                     :derived-test-obligations (:test-obligations trace-context))
+            e))
+        required))
+
 (defn- evidence-set [archetypes]
   (->> archetypes
        (mapcat #(get archetype-evidence % []))
@@ -405,11 +588,25 @@
                     distinct
                     sort
                     vec)
-        projects (->> entries (keep :project) (map keyword) distinct sort vec)
         public-boundaries (->> entries (mapcat :public-boundaries) distinct sort vec)
         archetypes (->> entries (map :archetype) distinct sort vec)
-        requirements (requirement-ids-for-bricks bricks)
-        required-evidence (evidence-set archetypes)
+        brick-requirements (requirement-ids-for-bricks bricks)
+        brick-context (brick-context-for-bricks bricks)
+        trace-context (trace-context-for-boundaries public-boundaries)
+        requirements (->> (concat brick-requirements (:requirements trace-context))
+                          distinct
+                          sort
+                          vec)
+        direct-projects (->> entries (keep :project) (map keyword) distinct sort vec)
+        affected-projects (->> (concat (map name direct-projects)
+                                       (workspace-projects-for-bricks bricks))
+                               distinct
+                               sort
+                               vec)
+        design-coverage (design-coverage-context requirements)
+        cross-doc-context (cross-document-context kind bricks requirements public-boundaries archetypes files)
+        dependency-context (dependency-context files archetypes)
+        required-evidence (enrich-required-evidence (evidence-set archetypes) trace-context)
         failure (failure-mode opts adoption entries)]
     {:schema/version schema-version
      :kind :review-fatigue-packet
@@ -434,9 +631,11 @@
                   :rules-version schema-version}
      :actual-scope {:paths files
                     :bricks bricks
-                    :projects projects
+                    :projects direct-projects
+                    :affected-projects affected-projects
                     :public-boundaries public-boundaries
                     :requirements requirements
+                    :brick-context brick-context
                     :archetypes archetypes}
      :save-policy (save-policy archetypes (count files))
      :required-evidence required-evidence
@@ -455,8 +654,13 @@
                             (map :path)
                             distinct
                             sort
-                            vec)}
+                            vec)
+                       :coverage-gaps (:gaps design-coverage)}
      :derivation/audit entries
+     :trace-context trace-context
+     :design-coverage design-coverage
+     :cross-document-context cross-doc-context
+     :dependency-context dependency-context
      :evidence-tier-spec-version schema-version}))
 
 (defn- print-edn [x]
@@ -480,6 +684,17 @@
             (when command (str "\n  - command: `" command "`")))))
     "- none"))
 
+(defn- matching-line-list [items]
+  (if (seq items)
+    (str/join
+     "\n"
+     (for [{:keys [file line text]} items]
+       (str "- `" file ":" line "` " text)))
+    "- none"))
+
+(defn- named-list [items]
+  (bullet-list (map str items)))
+
 (defn- declared-value-markdown [v]
   (cond
     (nil? v)
@@ -502,6 +717,15 @@
        (declared-value-markdown (get-in packet [:llm-declared key]))
        "\n\n"))
 
+(defn- coverage-gap-markdown [gaps]
+  (if (some seq (vals gaps))
+    (str/join
+     "\n\n"
+     (for [[k items] gaps
+           :when (seq items)]
+       (str "### `" k "`\n" (bullet-list (map pr-str items)))))
+    "- none"))
+
 (defn markdown [packet]
   (str "# Review Fatigue Packet\n\n"
        "- Task: `" (:task/id packet) "`\n"
@@ -514,14 +738,52 @@
        (bullet-list (get-in packet [:actual-scope :paths]))
        "\n\n### Bricks\n"
        (bullet-list (map name (get-in packet [:actual-scope :bricks])))
+       "\n\n### Affected Projects\n"
+       (bullet-list (get-in packet [:actual-scope :affected-projects]))
        "\n\n### Public Boundaries\n"
        (bullet-list (get-in packet [:actual-scope :public-boundaries]))
+       "\n\n### Requirements\n"
+       (bullet-list (get-in packet [:actual-scope :requirements]))
        "\n\n### Archetypes\n"
        (bullet-list (map name (get-in packet [:actual-scope :archetypes])))
+       "\n\n### Brick Context\n"
+       "- provides: "
+       (pr-str (get-in packet [:actual-scope :brick-context :provides]))
+       "\n- groups: "
+       (pr-str (get-in packet [:actual-scope :brick-context :groups]))
+       "\n- not-for: "
+       (pr-str (get-in packet [:actual-scope :brick-context :not-for]))
        "\n\n## Must Review\n\n"
        (bullet-list (get-in packet [:human-attention :must-review]))
        "\n\n## Safe To Skim\n\n"
        (bullet-list (get-in packet [:human-attention :safe-to-skim]))
+       "\n\n## Trace Context\n\n"
+       "- trace-index available: "
+       (pr-str (get-in packet [:trace-context :available]))
+       "\n- matched records: "
+       (pr-str (get-in packet [:trace-context :matched-records]))
+       "\n\n### Trace-Derived Tests\n"
+       (named-list (get-in packet [:trace-context :tests]))
+       "\n\n### Trace-Derived Test Obligations\n"
+       (named-list (get-in packet [:trace-context :test-obligations]))
+       "\n\n## Design Coverage Gaps In Scope\n\n"
+       (coverage-gap-markdown (get-in packet [:human-attention :coverage-gaps]))
+       "\n\n## Cross-Document Context\n\n"
+       "### Related Open Questions\n"
+       (matching-line-list (get-in packet [:cross-document-context :related-open-questions]))
+       "\n\n### Related Knowledge\n"
+       (matching-line-list (get-in packet [:cross-document-context :related-knowledge]))
+       "\n\n### Related Decisions / Archive Entries\n"
+       (matching-line-list (get-in packet [:cross-document-context :related-decisions]))
+       "\n\n## Dependency Context\n\n"
+       "- lib catalog available: "
+       (pr-str (get-in packet [:dependency-context :available]))
+       "\n\n### Touched Coordinates\n"
+       (named-list (get-in packet [:dependency-context :coords]))
+       "\n\n### Coordinates In Catalog\n"
+       (named-list (get-in packet [:dependency-context :in-catalog]))
+       "\n\n### Deprecated Candidates\n"
+       (named-list (get-in packet [:dependency-context :deprecated-candidates]))
        "\n\n## Required Evidence\n\n"
        (evidence-list (:required-evidence packet))
        "\n\n"

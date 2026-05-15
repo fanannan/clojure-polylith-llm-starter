@@ -821,8 +821,10 @@ Derive First, Declare Residual, Preserve Only What Reduces Future Fatigue, Audit
 運用規律:
 
 - scope / archetype / required evidence は、まず `derive-change-scope.sh` で git diff と repo 構造から導出する。LLM が宣言するのは semantic impact、override、unknown、remaining fatigue など、導出不能な residual だけである
+- packet は touched path の分類表で終わらせない。存在する場合は `brick-map.edn`、`workspace-map.edn`、`trace-index.edn`、`design-ir.edn`、`libs.edn`、QUESTIONS / KNOWLEDGE / ADR / maintainer archive を読み、review attention に必要な context を同じ view に surface する
 - `llm-declared` residual は自動で `none` にしない。packet 生成時は `nil` / `TBD` とし、close 前に LLM または人間が `none` または具体 list を明示する。closed packet に未宣言 residual が残る場合は `check-residual-declared.sh` が失敗する
 - Review Fatigue Packet は `.llm/work/` に生成し、git 管理しない。closed evidence record を永続化するかは派生プロジェクトの evidence commit policy に従う
+- `session-briefing.sh` は Evidence Plane を表示し、active packet と residual pending を次セッションの冒頭に surface する。packet が briefing に出ない状態は inter-session memory として未完成とみなす
 - 重要な claim を T-Procedural evidence のみで閉じない。public boundary、Malli contract、template governance には T-Mechanical または T-Linkage evidence を要求する
 - `none` regulator を使う。LLM-declared field は空欄禁止で、`none` または具体 list のいずれかを明示する
 - derivation pipeline は agent 非依存 primitive である。Claude / Codex / subagent は独自推定を正本化せず、`.llm/scripts/` の同一 script を呼ぶ
@@ -835,6 +837,7 @@ Derive First, Declare Residual, Preserve Only What Reduces Future Fatigue, Audit
 - `propose-review-packet.sh`: EDN + Markdown の Review Fatigue Packet を `.llm/work/` に生成
 - `check-residual-declared.sh`: close 前 residual 宣言の検査
 - `check-structural-evidence-self-test.sh`: repo-kind 分岐と代表 derivation rule の fixture self-test
+- `session-briefing.sh`: Evidence Plane の active packet / closed record surface
 
 保存条件:
 
