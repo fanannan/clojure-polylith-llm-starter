@@ -7,11 +7,13 @@
 #   search  - search closed evidence records
 #   is-verified - query requirement / public boundary verification state
 #   why     - explain the evidence chain for a claim
+#   stale   - list stale or unknown closed evidence records
 #   gate    - enforce staged/range evidence gate
 #   predict - bind task intent before implementation
 #   declare - fill residual fields safely
 #   run     - record command-backed evidence results
 #   close   - compare predicted and actual scope before close
+#   backfill-invalidated-by - migrate older closed records to event staleness metadata
 
 set -euo pipefail
 

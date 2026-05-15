@@ -838,6 +838,8 @@ Derive First, Declare Residual, Preserve Only What Reduces Future Fatigue, Audit
 - `evidence.sh search`: scope 語彙で closed evidence record を検索
 - `evidence.sh is-verified`: requirement / public boundary / 任意 claim 語彙について、trace、design coverage、passing evidence、gap を集約して verified / partially verified / unverified を返す
 - `evidence.sh why`: claim を支える evidence chain と不足 gap を説明する。LLM が「なぜ信じてよいか」を再読ではなく query で取得する入口
+- `evidence.sh stale`: closed evidence record の stale / unknown freshness を一覧する
+- `evidence.sh backfill-invalidated-by`: 古い closed record に `invalidated-by` と推定 `closed-git-rev` を後発充填する migration command
 - `check-evidence-gate.sh`: staged/range diff の fingerprint と packet / close record を照合する正本 gate
 - `evidence.sh predict`: 高リスク作業の任意 pre-flight として intent を binding し、予測 scope / required evidence / pre-flight context を保存
 - `evidence.sh declare`: 導出不能 residual を `none` または具体値として active packet に明示
@@ -862,6 +864,7 @@ Derive First, Declare Residual, Preserve Only What Reduces Future Fatigue, Audit
 - Packet が新しい requirement / knowledge / decision を定義してはならない。unknown は QUESTIONS 候補、反復 residual は KNOWLEDGE / derivation rule / ADR または maintainer archive 候補として昇格する
 - packet 非正本性は文書宣言だけにしない。`check-evidence-boundary.sh` を workspace integrity に組み込み、違反を機械的に検出する
 - closed record の evidence は `invalidated-by` を持つ。後続変更が依存 path / brick / requirement / public boundary に触れた場合、stale candidate として `status` / `what-now` / `search` に surface する
+- gate は matching clean close record があっても stale evidence があれば pass しない。freshness は briefing 表示だけでなく commit 前の構造条件である
 - Task は 1 つの intent と 1 つの close mode を持つ atomic working set とする。1 task が複数 commit に分かれることは許容するが、1 commit に複数 task を混ぜない。session を跨ぐ場合は active packet を resume し、新規 packet で同じ intent を再作成しない
 - Template Migration Ledger は「どの template migration を適用済みか」を扱う。Evidence Close Record は「その task をなぜ close できたか」を扱う。Close Record が migration ledger を evidence として参照することは許すが、migration ledger から Close Record へ逆参照して二重管理しない
 

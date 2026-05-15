@@ -46,7 +46,7 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 | `trace-impact.sh` | `trace-index.edn` を検索し、要件・受入基準・公開関数・変更差分から、影響する public boundary・test・test obligation を表示 |
 | `trace_impact.clj` | `trace-impact.sh` の Clojure 実装。DESIGN 更新前後の探索、commit 前の変更差分確認、session briefing の trace health に使う |
 | `install-git-hooks.sh` | repo-local hooks を `git config core.hooksPath .githooks` で有効化する。Claude Code / Codex / human 共通 |
-| `evidence.sh` | Structural Evidence workflow の主入口。`what-now` / `status` / `search` / `is-verified` / `why` / `gate` / `predict` / `declare` / `run` / `close` で次 action、現在状態、過去 record、claim 検証、staged gate、residual 宣言、command-backed evidence 記録、close 直前の evidence state を扱う |
+| `evidence.sh` | Structural Evidence workflow の主入口。`what-now` / `status` / `search` / `is-verified` / `why` / `stale` / `gate` / `predict` / `declare` / `run` / `close` / `backfill-invalidated-by` で次 action、現在状態、過去 record、claim 検証、stale record、staged gate、residual 宣言、command-backed evidence 記録、close 直前の evidence state、旧 record migration を扱う |
 | `check-evidence-gate.sh` | Structural Evidence gate の正本 primitive。pre-commit hook / CI / briefing / workspace check から同じ script を呼ぶ |
 | `check-evidence-boundary.sh` | Review Fatigue Packet が第 5 の正本になっていないかを検査する。packet 内で新しい requirement / knowledge / decision を定義することを禁止する |
 | `derive-change-scope.sh` | git diff、repo-kind 別 derivation rules、brick-map / workspace-map / trace-index / design-ir / lib-catalog から Structural Evidence の actual scope / archetype / required evidence / 関連 context を導出する。LLM の scope 自己申告を正本にしないための入口 |
@@ -222,6 +222,7 @@ Structural Evidence View は、LLM が scope / evidence を自己申告する代
 ./.llm/scripts/evidence.sh search --scope foo,REQ-001
 ./.llm/scripts/evidence.sh is-verified REQ-001
 ./.llm/scripts/evidence.sh why REQ-001
+./.llm/scripts/evidence.sh stale
 git add <changed-files>
 ./.llm/scripts/check-evidence-gate.sh --staged
 ./.llm/scripts/propose-review-packet.sh --task 2026-05-15-example --staged
@@ -234,6 +235,8 @@ git add <changed-files>
 `run` は login shell ではなく固定した最小環境で command-backed evidence を実行し、`tool-version`、`env-hash`、`repo-rev`、`duration-ms`、失敗時 tail を record に残す。`invalidated-by` は touched path / brick / requirement / public boundary から導出され、後続の event staleness 判定の根拠になる。
 
 `what-now` は active packet / staged diff / residual / evidence run / closed record staleness を見て、次に実行すべき 1 action を返す。`status` は gap 集約 view、`is-verified` は requirement や public boundary の検証 matrix、`why` は claim を支える evidence chain を返す。
+
+`backfill-invalidated-by` は古い closed record に `invalidated-by` と推定 `closed-git-rev` を後から充填する migration command である。通常はテンプレート更新時や evidence schema 更新時だけ実行する。
 
 Git hook を使う場合:
 

@@ -95,6 +95,19 @@ packet は Authority source ではない。packet 内で新しい requirement、
 
 過去 record の evidence は、`invalidated-by` に記録された path / brick / requirement / public boundary が後続変更に触れた場合、stale candidate として surface される。stale は「即無効」ではなく、「再利用前に再検証すべき」という signal である。
 
+stale / unknown record を一覧する場合:
+
+```bash
+./.llm/scripts/evidence.sh stale
+```
+
+古い closed record に `invalidated-by` が無い場合は、テンプレート更新時に一度だけ backfill する。
+
+```bash
+./.llm/scripts/evidence.sh backfill-invalidated-by --dry-run
+./.llm/scripts/evidence.sh backfill-invalidated-by
+```
+
 高リスク作業や大きい変更では、着手前に任意で `predict` を使う。
 
 ```bash
