@@ -828,13 +828,15 @@ Derive First, Declare Residual, Preserve Only What Reduces Future Fatigue, Audit
 - 重要な claim を T-Procedural evidence のみで閉じない。public boundary、Malli contract、template governance には T-Mechanical または T-Linkage evidence を要求する
 - `none` regulator を使う。LLM-declared field は空欄禁止で、`none` または具体 list のいずれかを明示する
 - derivation pipeline は agent 非依存 primitive である。Claude / Codex / subagent は独自推定を正本化せず、`.llm/scripts/` の同一 script を呼ぶ
+- `check-evidence-gate.sh` が Evidence gate の正本である。pre-commit hook、CI、briefing、workspace integrity はこの script の wrapper としてだけ振る舞う。`predict` は任意 pre-flight であり、actual staged diff fingerprint を gate する方を正本とする
 - derivation の理由は `inspect-derivation.sh` で説明可能でなければならない。導出結果が debug 不能な black box になった場合、仕組み自体が新しい疲労源になる
 
 初期 MVP:
 
 - `evidence.sh status`: session 開始時・任意時点で Evidence Plane を query
 - `evidence.sh search`: scope 語彙で closed evidence record を検索
-- `evidence.sh predict`: 着手前 intent を binding し、予測 scope / required evidence / pre-flight context を保存
+- `check-evidence-gate.sh`: staged/range diff の fingerprint と packet / close record を照合する正本 gate
+- `evidence.sh predict`: 高リスク作業の任意 pre-flight として intent を binding し、予測 scope / required evidence / pre-flight context を保存
 - `evidence.sh declare`: 導出不能 residual を `none` または具体値として active packet に明示
 - `evidence.sh run`: command-backed evidence の exit code、repo revision、duration、失敗時 tail を active packet に記録
 - `evidence.sh close`: close 直前に predicted scope と actual scope を照合し、residual 未宣言なら close を block

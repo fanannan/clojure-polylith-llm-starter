@@ -7,22 +7,31 @@ Structural Evidence View は、LLM が scope と evidence を自己申告する�
 1. LLM の出力は claim であり、trust ではない。
 2. scope と required evidence は、まず機械が導出する。
 3. LLM は導出不能な residual だけを `none` または具体 list で明示する。
-4. Review Fatigue Packet は正本ではなく、次セッションの足場である。
+4. 正本 gate は `check-evidence-gate.sh` であり、hook はその wrapper である。
+5. Review Fatigue Packet は正本ではなく、次セッションの足場である。
 
 ## 最小手順
 
+Git hook を使う場合は一度だけ有効化する。Claude Code / Codex / human で同じ hook が使われる。
+
+```bash
+./.llm/scripts/install-git-hooks.sh
+```
+
+通常は着手前の `predict` を必須にしない。staged diff を正本として gate する。
+
 ```bash
 ./.llm/scripts/evidence.sh status
-./.llm/scripts/evidence.sh predict --task 2026-05-15-example --intent "このタスクで何を変えるか"
 ```
 
-変更完了後、close 直前に実態と予測を照合する。
+変更後、commit 前に staged diff を gate する。
 
 ```bash
-./.llm/scripts/propose-review-packet.sh --task 2026-05-15-example
+git add <changed-files>
+./.llm/scripts/check-evidence-gate.sh --staged
 ```
 
-生成された `.llm/work/<task-id>.md` を見て、次の `TBD` を宣言する。
+save-required な差分で packet が無い場合、gate は `.llm/work/<task-id>.edn` と `.md` を自動生成して block する。生成された `.llm/work/<task-id>.md` を見て、次の `TBD` を宣言する。
 
 - Semantic Impact Not Derived By Structure: 構造解析では見えない仕様・運用・意味上の影響
 - Unknowns Not Captured By Derivation: 残った未知、QUESTIONS 候補
@@ -32,7 +41,7 @@ Structural Evidence View は、LLM が scope と evidence を自己申告する�
 
 該当がなければ空欄にせず、必ず `none` と明示する。空欄と `none` は異なる。空欄は書き忘れ、`none` は確認済みの無である。
 
-Residual は EDN を手編集せず、必ず `evidence.sh declare` で更新する。active packet がまだ無い場合でも、同じ task の `.predict.edn` があれば `declare` が `.llm/work/<task-id>.edn` を安全に作成する。`propose-review-packet.sh` を再実行しても既存の residual declaration は保持される。
+Residual は EDN を手編集せず、必ず `evidence.sh declare` で更新する。active packet がまだ無い場合でも、同じ task の `.predict.edn` があれば `declare` が `.llm/work/<task-id>.edn` を安全に作成する。`propose-review-packet.sh --staged` を再実行しても既存の residual declaration は保持される。
 
 全て `none` として宣言できる場合:
 
@@ -55,12 +64,19 @@ Residual は EDN を手編集せず、必ず `evidence.sh declare` で更新す�
 
 ```bash
 ./.llm/scripts/evidence.sh run --task 2026-05-15-example
-./.llm/scripts/evidence.sh close --task 2026-05-15-example
+./.llm/scripts/evidence.sh close --task 2026-05-15-example --staged
+./.llm/scripts/check-evidence-gate.sh --staged
 ```
 
 `run` は packet 内の command-backed evidence を実行し、exit code、repo revision、duration、失敗時の tail を active packet に記録する。command が定義されていない evidence は `:not-run` として残る。実行コストが高い場合は必要な検査を手動で走らせ、その結果を close 報告に含める。
 
 close が blocked になった場合でも、`.llm/work/<task-id>.edn` と `.llm/work/<task-id>.md` は最新の actual scope / blocked-close state で更新される。表示された `declare` コマンドで pending residual を埋め、必要な修正を行ってから close を再実行する。
+
+高リスク作業や大きい変更では、着手前に任意で `predict` を使う。
+
+```bash
+./.llm/scripts/evidence.sh predict --task 2026-05-15-example --intent "このタスクで何を変えるか"
+```
 
 ## 触らなくてよいもの
 

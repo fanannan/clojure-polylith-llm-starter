@@ -293,6 +293,15 @@ evidence_plane_brief() {
   fi
 
   echo ""
+  echo "### Staged Evidence Gate"
+  if [ -x ".llm/scripts/check-evidence-gate.sh" ]; then
+    ./.llm/scripts/check-evidence-gate.sh --staged --advisory --no-write 2>/dev/null \
+      | sed 's/^/- /'
+  else
+    echo "- check-evidence-gate.sh がありません"
+  fi
+
+  echo ""
   echo "### Stale / Expired Evidence"
   echo "- event-based staleness detection は後続 phase。現時点では active packet と residual pending を優先確認。"
 }

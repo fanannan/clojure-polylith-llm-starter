@@ -4,6 +4,7 @@
 # Main subcommands:
 #   status  - query current evidence state
 #   search  - search closed evidence records
+#   gate    - enforce staged/range evidence gate
 #   predict - bind task intent before implementation
 #   declare - fill residual fields safely
 #   run     - record command-backed evidence results

@@ -8,7 +8,9 @@
    [clojure.java.io :as io]
    [clojure.java.shell :as shell]
    [clojure.pprint :as pprint]
-   [clojure.string :as str]))
+   [clojure.string :as str])
+  (:import
+   [java.security MessageDigest]))
 
 (def schema-version "structural-evidence.1")
 
@@ -224,6 +226,14 @@
 (defn- parse-bool [s]
   (contains? #{"1" "true" "yes" "on"} (str/lower-case (str s))))
 
+(defn- bytes->hex [bytes]
+  (apply str (map #(format "%02x" (bit-and % 0xff)) bytes)))
+
+(defn- sha1-hex [s]
+  (let [digest (MessageDigest/getInstance "SHA-1")]
+    (.update digest (.getBytes (str s) "UTF-8"))
+    (bytes->hex (.digest digest))))
+
 (defn- split-scope [s]
   (->> (str/split (str s) #"[,\s]+")
        (map str/trim)
@@ -243,6 +253,10 @@
       "--intent" (recur (assoc m :intent (first xs)) (next xs))
       "--task" (recur (assoc m :task/id (first xs)) (next xs))
       "--scope" (recur (update m :scope-terms (fnil into []) (split-scope (first xs))) (next xs))
+      "--staged" (recur (assoc m :diff-source :staged) xs)
+      "--working-tree" (recur (assoc m :diff-source :working-tree) xs)
+      "--advisory" (recur (assoc m :advisory true) xs)
+      "--no-write" (recur (assoc m :no-write true) xs)
       "--all-none" (recur (assoc m :all-none true) xs)
       "--semantic-impact" (recur (assoc-in m [:declare :semantic-impact-not-derived] (first xs)) (next xs))
       "--unknowns" (recur (assoc-in m [:declare :unknowns-not-captured-by-derivation] (first xs)) (next xs))
@@ -259,22 +273,83 @@
       "--changed-file" (recur (update m :changed-files (fnil conj []) (first xs)) (next xs))
       (recur (update m :extra-args (fnil conj []) x) xs))))
 
+(defn- parse-name-status-line [line]
+  (let [[status & paths] (str/split line #"\t")
+        path (last paths)]
+    (when (seq path)
+      {:status status
+       :path path})))
+
+(defn- git-name-status [opts]
+  (let [source (:diff-source opts)
+        base (:base opts)
+        head (or (:head opts) "HEAD")
+        lines (cond
+                (= :staged source)
+                (shell-lines "git" "diff" "--cached" "--name-status")
+
+                base
+                (shell-lines "git" "diff" "--name-status" (str base "..." head))
+
+                :else
+                (concat (shell-lines "git" "diff" "--name-status")
+                        (shell-lines "git" "diff" "--cached" "--name-status")
+                        (map #(str "A\t" %) (shell-lines "git" "ls-files" "--others" "--exclude-standard"))))]
+    (->> lines
+         (keep parse-name-status-line)
+         (group-by :path)
+         (map (fn [[_ entries]] (last entries)))
+         (sort-by :path)
+         vec)))
+
 (defn- changed-files [opts]
   (if (seq (:changed-files opts))
     (->> (:changed-files opts) distinct sort vec)
-    (let [base (:base opts)
-          head (or (:head opts) "HEAD")]
-      (if base
-        (->> (shell-lines "git" "diff" "--name-only" (str base "..." head))
-             distinct
-             sort
-             vec)
-        (->> (concat (shell-lines "git" "diff" "--name-only")
-                     (shell-lines "git" "diff" "--cached" "--name-only")
-                     (shell-lines "git" "ls-files" "--others" "--exclude-standard"))
-             distinct
-             sort
-             vec)))))
+    (->> (git-name-status opts)
+         (map :path)
+         distinct
+         sort
+         vec)))
+
+(defn- object-id-for-path [opts path status]
+  (cond
+    (str/starts-with? (str status) "D")
+    "deleted"
+
+    (= :staged (:diff-source opts))
+    (or (first (shell-lines "git" "rev-parse" (str ":" path))) "missing")
+
+    (:base opts)
+    (or (first (shell-lines "git" "rev-parse" (str (or (:head opts) "HEAD") ":" path))) "missing")
+
+    (file? path)
+    (or (first (shell-lines "git" "hash-object" path)) "missing")
+
+    :else
+    "missing"))
+
+(defn- change-fingerprint [opts files]
+  (let [statuses (if (seq (:changed-files opts))
+                   (mapv (fn [path] {:status "M" :path path}) files)
+                   (git-name-status opts))
+        status-by-path (into {} (map (juxt :path :status) statuses))
+        path-hashes (into (sorted-map)
+                          (for [path files]
+                            [path (object-id-for-path opts path (get status-by-path path))]))
+        source (cond
+                 (= :staged (:diff-source opts)) :staged-diff
+                 (:base opts) :git-diff
+                 :else :working-tree)
+        data {:source source
+              :base (:base opts)
+              :head (or (:head opts) "HEAD")
+              :paths (vec files)
+              :path-status (into (sorted-map) status-by-path)
+              :path-hashes path-hashes}
+        digest (sha1-hex (pr-str data))]
+    (assoc data
+           :digest digest
+           :derived-at (.toString (java.time.Instant/now)))))
 
 (defn- component-name [path]
   (second (re-matches #"components/([^/]+)/.*" path)))
@@ -634,6 +709,7 @@
         adoption (adoption-mode)
         explicit-scope-terms (vec (:scope-terms opts))
         files (changed-files opts)
+        fingerprint (change-fingerprint opts files)
         entries (mapv #(classify-path kind %) files)
         bricks (->> entries
                     (mapcat (fn [{:keys [component base]}] [component base]))
@@ -675,6 +751,7 @@
      :repo-kind kind
      :adoption-mode adoption
      :mode (:mode opts)
+     :change/fingerprint fingerprint
      :baseline (cond-> {:type (if (:base opts) :git-diff :working-tree)
                         :git-rev (git-rev)
                         :default-branch (default-branch)
@@ -792,6 +869,10 @@
        "- Repo kind: `" (name (:repo-kind packet)) "`\n"
        "- Derivation: `" (name (get-in packet [:derivation :status])) "`\n"
        "- Save policy: `" (name (:save-policy packet)) "`\n\n"
+       "## Change Fingerprint\n\n"
+       "- source: `" (name (get-in packet [:change/fingerprint :source])) "`\n"
+       "- digest: `" (get-in packet [:change/fingerprint :digest]) "`\n"
+       "- paths: " (count (get-in packet [:change/fingerprint :paths])) "\n\n"
        "## Actual Scope\n\n"
        "### Paths\n"
        (bullet-list (get-in packet [:actual-scope :paths]))
@@ -1102,6 +1183,125 @@
             (println "  must-review:" (str/join ", " must-review)))))
       (println "- none"))))
 
+(defn- fingerprint-matches? [packet fingerprint]
+  (= (:digest (:change/fingerprint packet))
+     (:digest fingerprint)))
+
+(defn- gate-task-id [fingerprint]
+  (str (.toString (java.time.LocalDate/now))
+       "-evidence-gate-"
+       (subs (:digest fingerprint) 0 10)))
+
+(defn- active-packets []
+  (->> (active-packet-files)
+       (keep read-packet-file)
+       vec))
+
+(defn- clean-close? [packet]
+  (contains? #{:clean-close :closed} (:status packet)))
+
+(defn- matching-packets [packets fingerprint]
+  (filter #(fingerprint-matches? % fingerprint) packets))
+
+(defn- packet-failed-evidence [packet]
+  (failed-evidence-statuses packet))
+
+(defn- gate-fail! [opts lines]
+  (doseq [line lines]
+    (println line))
+  (if (:advisory opts)
+    (println "Evidence gate advisory mode: not blocking.")
+    (System/exit 1)))
+
+(defn- gate-pass! [message]
+  (println message))
+
+(defn- write-gate-packet! [packet]
+  (let [task-id (:task/id packet)
+        edn-path (str default-out-dir "/" task-id ".edn")
+        md-path (str default-out-dir "/" task-id ".md")]
+    (write-edn! edn-path packet)
+    (write-markdown! md-path packet)
+    {:edn edn-path :md md-path}))
+
+(defn run-gate [opts]
+  (let [packet0 (derive-packet opts)
+        fingerprint (:change/fingerprint packet0)
+        task-id (or (:task/id opts) (gate-task-id fingerprint))
+        packet (assoc packet0 :task/id task-id)
+        save-policy (:save-policy packet)
+        files (get-in packet [:actual-scope :paths])
+        closed-matches (matching-packets (closed-records) fingerprint)
+        active-matches (matching-packets (active-packets) fingerprint)
+        clean-record (first (filter clean-close? closed-matches))
+        active (first active-matches)]
+    (println "== Structural Evidence Gate ==")
+    (println "Source:" (name (get-in packet [:change/fingerprint :source])))
+    (println "Fingerprint:" (:digest fingerprint))
+    (println "Changed paths:" (count files))
+    (println "Save policy:" (name save-policy))
+    (cond
+      (empty? files)
+      (gate-pass! "Evidence gate: no changed paths; pass.")
+
+      (not= :required save-policy)
+      (gate-pass! "Evidence gate: save policy is not required; pass.")
+
+      (= :cannot-derive (get-in packet [:derivation :status]))
+      (gate-fail! opts
+                  ["Evidence gate blocked: derivation failed."
+                   "Run ./.llm/scripts/inspect-derivation.sh --staged for details."])
+
+      clean-record
+      (let [missing (missing-residual-fields clean-record)
+            failed (packet-failed-evidence clean-record)]
+        (if (or (seq missing) (seq failed))
+          (gate-fail! opts
+                      (concat
+                       ["Evidence gate blocked: matching close record is incomplete."]
+                       (when (seq missing)
+                         [(str "Missing residual fields: " (pr-str missing))])
+                       (when (seq failed)
+                         [(str "Failed evidence: " (pr-str failed))])))
+          (gate-pass! (str "Evidence gate: matching close record found for task "
+                           (:task/id clean-record)
+                           "; pass."))))
+
+      active
+      (let [missing (missing-residual-fields active)
+            failed (packet-failed-evidence active)]
+        (gate-fail! opts
+                    (concat
+                     ["Evidence gate blocked: matching active packet is not closed."
+                      (str "Task: " (:task/id active))]
+                     (when (seq missing)
+                       [(str "Missing residual fields: " (pr-str missing))
+                        (str "Declare residuals: ./.llm/scripts/evidence.sh declare --task "
+                             (:task/id active)
+                             " --all-none")])
+                     (when (seq failed)
+                       [(str "Failed evidence: " (pr-str failed))])
+                     [(str "Run evidence, then close: ./.llm/scripts/evidence.sh run --task "
+                           (:task/id active)
+                           " && ./.llm/scripts/evidence.sh close --task "
+                           (:task/id active))])))
+
+      :else
+      (let [paths (when-not (:no-write opts)
+                    (write-gate-packet! packet))]
+        (gate-fail! opts
+                    (concat
+                     ["Evidence gate blocked: save-required change has no matching packet or close record."
+                      (str "Task: " task-id)]
+                     (when paths
+                       [(str "Active packet created: " (:edn paths))
+                        (str "Review packet: " (:md paths))])
+                     [(str "Declare residuals: ./.llm/scripts/evidence.sh declare --task "
+                           task-id
+                           " --all-none")
+                      (str "Record evidence: ./.llm/scripts/evidence.sh run --task " task-id)
+                      (str "Close: ./.llm/scripts/evidence.sh close --task " task-id)]))))))
+
 (defn predict [opts]
   (let [task-id (or (:task/id opts)
                     (str (.toString (java.time.LocalDate/now)) "-evidence-task"))
@@ -1375,6 +1575,7 @@
         "check-residual" (check-residual-declared opts)
         "status" (run-status opts)
         "search" (search-records opts)
+        "gate" (run-gate opts)
         "predict" (predict opts)
         "declare" (declare-residual opts)
         "run" (run-evidence opts)
@@ -1389,6 +1590,7 @@
             (println "  structural-evidence check-residual --packet PATH")
             (println "  structural-evidence status [--scope TERM[,TERM...]] [--base BASE] [--head HEAD]")
             (println "  structural-evidence search [--scope TERM[,TERM...]]")
+            (println "  structural-evidence gate [--staged|--base BASE --head HEAD] [--advisory] [--no-write]")
             (println "  structural-evidence predict --task TASK-ID --intent TEXT [--changed-file PATH]")
             (println "  structural-evidence declare --task TASK-ID [--all-none|--semantic-impact TEXT ...]")
             (println "  structural-evidence run --task TASK-ID")
