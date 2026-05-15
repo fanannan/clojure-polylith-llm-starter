@@ -677,7 +677,7 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
 | **目的** | `CLAUDE.md §8.0`「実装着手前に DESIGN.md / KNOWLEDGE.md / QUESTIONS.md / adr/ を確認」を規律依存から機械化バックアップへ引き上げる |
 | **実装手段** | `.llm/scripts/session-briefing.sh`（副作用なし、stdout のみ、常に exit 0）|
 | **起動経路** | Claude Code は `SessionStart` hook で自動、Codex 等は `AGENTS.md` 経由で LLM が手動実行 |
-| **出力内容** | フェーズ判定（initialization / development）、未完了指標、未対応(open) Q 一覧、最新 ADR、直近コミット、Evidence Plane（active/closed packet、staged gate、last commit gate）、`§8.0` チェックリスト |
+| **出力内容** | フェーズ判定（initialization / development）、未完了指標、未対応(open) Q 一覧、最新 ADR、直近コミット、Evidence Plane（active/closed packet、`what-now`、staged gate、last commit gate）、`§8.0` チェックリスト |
 
 機械化第 1〜第 5 層との関係:
 
@@ -834,7 +834,10 @@ Derive First, Declare Residual, Preserve Only What Reduces Future Fatigue, Audit
 初期 MVP:
 
 - `evidence.sh status`: session 開始時・任意時点で Evidence Plane を query
+- `evidence.sh what-now`: active packet、staged diff、未宣言 residual、未実行 evidence、stale candidate から、次に実行すべき 1 action を返す。LLM は手順暗記ではなくこの操作面を優先する
 - `evidence.sh search`: scope 語彙で closed evidence record を検索
+- `evidence.sh is-verified`: requirement / public boundary / 任意 claim 語彙について、trace、design coverage、passing evidence、gap を集約して verified / partially verified / unverified を返す
+- `evidence.sh why`: claim を支える evidence chain と不足 gap を説明する。LLM が「なぜ信じてよいか」を再読ではなく query で取得する入口
 - `check-evidence-gate.sh`: staged/range diff の fingerprint と packet / close record を照合する正本 gate
 - `evidence.sh predict`: 高リスク作業の任意 pre-flight として intent を binding し、予測 scope / required evidence / pre-flight context を保存
 - `evidence.sh declare`: 導出不能 residual を `none` または具体値として active packet に明示
@@ -844,8 +847,9 @@ Derive First, Declare Residual, Preserve Only What Reduces Future Fatigue, Audit
 - `inspect-derivation.sh`: path ごとの matched rule、plane、archetype、required evidence を表示
 - `propose-review-packet.sh`: EDN + Markdown の Review Fatigue Packet を `.llm/work/` に生成
 - `check-residual-declared.sh`: close 前 residual 宣言の検査
+- `check-evidence-boundary.sh`: packet が新しい requirement / knowledge / decision を定義して第 5 の正本化していないか検査
 - `check-structural-evidence-self-test.sh`: repo-kind 分岐と代表 derivation rule の fixture self-test
-- `session-briefing.sh`: Evidence Plane の active packet / closed record surface
+- `session-briefing.sh`: Evidence Plane の active packet / closed record / `what-now` / stale candidate surface
 
 保存条件:
 
@@ -856,6 +860,8 @@ Derive First, Declare Residual, Preserve Only What Reduces Future Fatigue, Audit
 境界:
 
 - Packet が新しい requirement / knowledge / decision を定義してはならない。unknown は QUESTIONS 候補、反復 residual は KNOWLEDGE / derivation rule / ADR または maintainer archive 候補として昇格する
+- packet 非正本性は文書宣言だけにしない。`check-evidence-boundary.sh` を workspace integrity に組み込み、違反を機械的に検出する
+- closed record の evidence は `invalidated-by` を持つ。後続変更が依存 path / brick / requirement / public boundary に触れた場合、stale candidate として `status` / `what-now` / `search` に surface する
 - Task は 1 つの intent と 1 つの close mode を持つ atomic working set とする。1 task が複数 commit に分かれることは許容するが、1 commit に複数 task を混ぜない。session を跨ぐ場合は active packet を resume し、新規 packet で同じ intent を再作成しない
 - Template Migration Ledger は「どの template migration を適用済みか」を扱う。Evidence Close Record は「その task をなぜ close できたか」を扱う。Close Record が migration ledger を evidence として参照することは許すが、migration ledger から Close Record へ逆参照して二重管理しない
 

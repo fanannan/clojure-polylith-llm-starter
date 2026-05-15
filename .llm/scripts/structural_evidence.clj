@@ -8,6 +8,7 @@
    [clojure.java.io :as io]
    [clojure.java.shell :as shell]
    [clojure.pprint :as pprint]
+   [clojure.set :as set]
    [clojure.string :as str])
   (:import
    [java.security MessageDigest]))
@@ -1200,6 +1201,133 @@
                    values))
            terms*))))
 
+(defn- set-intersects? [xs ys]
+  (boolean (seq (set/intersection (set xs) (set ys)))))
+
+(defn- changed-paths-since [rev]
+  (if (str/blank? (str rev))
+    nil
+    (set (concat (shell-lines "git" "diff" "--name-only" rev "HEAD")
+                 (changed-files {})))))
+
+(defn- invalidation-hit? [dep changed-paths current-packet]
+  (case (:type dep)
+    :path-changed
+    (if changed-paths
+      (set-intersects? (:paths dep) changed-paths)
+      :unknown)
+
+    :brick-changed
+    (set-intersects? (:bricks dep)
+                     (map name (get-in current-packet [:actual-scope :bricks])))
+
+    :requirement-changed
+    (set-intersects? (:requirements dep)
+                     (get-in current-packet [:actual-scope :requirements]))
+
+    :public-boundary-changed
+    (set-intersects? (:public-boundaries dep)
+                     (get-in current-packet [:actual-scope :public-boundaries]))
+
+    false))
+
+(defn- evidence-staleness [entry record current-packet]
+  (let [deps (:invalidated-by entry)
+        rev (or (:closed-git-rev record) (:repo-rev entry))
+        changed-paths (changed-paths-since rev)
+        hits (map #(invalidation-hit? % changed-paths current-packet) deps)]
+    (cond
+      (empty? deps) {:status :unknown
+                     :reason "no invalidated-by dependencies recorded"}
+      (some true? hits) {:status :stale-candidate
+                         :reason "a dependency changed after the evidence was recorded"}
+      (some #{:unknown} hits) {:status :unknown
+                               :reason "missing close revision for dependency comparison"}
+      :else {:status :valid
+             :reason "no invalidating change detected"})))
+
+(defn- record-staleness [record current-packet]
+  (if (= (get-in record [:change/fingerprint :digest])
+         (get-in current-packet [:change/fingerprint :digest]))
+    {:status :valid
+     :checks (mapv (fn [entry]
+                     {:id (:id entry)
+                      :status :valid
+                      :reason "record fingerprint matches current change"})
+                   (:evidence record))}
+    (let [checks (mapv #(assoc (evidence-staleness % record current-packet)
+                               :id (:id %))
+                       (:evidence record))
+          statuses (set (map :status checks))]
+      {:status (cond
+                 (contains? statuses :stale-candidate) :stale-candidate
+                 (contains? statuses :unknown) :unknown
+                 :else :valid)
+       :checks checks})))
+
+(defn- closed-record-staleness [current-packet]
+  (->> (closed-records)
+       (map (fn [record]
+              (assoc (record-staleness record current-packet)
+                     :task/id (:task/id record)
+                     :record/path (:record/path record)
+                     :closed-at (:closed-at record))))
+       vec))
+
+(defn- interface-entry? [{:keys [path]}]
+  (and path (str/ends-with? path "interface.clj") (file? path)))
+
+(defn- public-defn-name [boundary]
+  (last (str/split (str boundary) #"/")))
+
+(defn- missing-malli-contracts [entries]
+  (->> entries
+       (filter interface-entry?)
+       (mapcat (fn [{:keys [path public-boundaries]}]
+                 (let [text (slurp path)]
+                   (for [boundary public-boundaries
+                         :let [defn-name (public-defn-name boundary)]
+                         :when (not (re-find (re-pattern (str "\\(m/=>\\s+"
+                                                               (java.util.regex.Pattern/quote defn-name)
+                                                               "\\b"))
+                                             text))]
+                     boundary))))
+       distinct
+       sort
+       vec))
+
+(defn- scope-gap-items [packet]
+  (let [coverage-gaps (get-in packet [:human-attention :coverage-gaps])
+        public-boundaries (get-in packet [:actual-scope :public-boundaries])
+        trace-available? (get-in packet [:trace-context :available])
+        trace-records (get-in packet [:trace-context :matched-records])
+        missing-contracts (missing-malli-contracts (:derivation/audit packet))
+        open-q (get-in packet [:cross-document-context :related-open-questions])
+        knowledge (get-in packet [:cross-document-context :related-knowledge])]
+    (vec
+     (concat
+      (for [[k items] coverage-gaps
+            :when (seq items)]
+        {:type k :severity :warn :count (count items)})
+      (when (and (seq public-boundaries)
+                 trace-available?
+                 (zero? trace-records))
+        [{:type :public-boundary-without-trace
+          :severity :warn
+          :items public-boundaries}])
+      (when (seq missing-contracts)
+        [{:type :public-boundary-without-malli-contract
+          :severity :warn
+          :items missing-contracts}])
+      (when (seq open-q)
+        [{:type :open-questions-in-scope
+          :severity :info
+          :count (count open-q)}])
+      (when (seq knowledge)
+        [{:type :knowledge-in-scope
+          :severity :info
+          :count (count knowledge)}])))))
+
 (defn run-status [opts]
   (let [packet (derive-packet opts)
         active (active-packet-files)
@@ -1243,12 +1371,20 @@
       (doseq [path active] (println " " (status-line-for-packet path)))
       (println "  - none"))
     (println "  Closed records:" (count closed))
+    (let [staleness (closed-record-staleness packet)
+          stale-count (count (filter #(= :stale-candidate (:status %)) staleness))
+          unknown-count (count (filter #(= :unknown (:status %)) staleness))]
+      (println "  Stale candidates:" stale-count)
+      (println "  Unknown freshness:" unknown-count))
     (println)
     (println "Trust Diff / Gaps:")
-    (let [gaps (get-in packet [:human-attention :coverage-gaps])]
-      (if (some seq (vals gaps))
-        (doseq [[k items] gaps :when (seq items)]
-          (println " -" k ":" (count items)))
+    (let [gaps (scope-gap-items packet)]
+      (if (seq gaps)
+        (doseq [{:keys [type severity count items]} gaps]
+          (println " -" type "[" (name severity) "]"
+                   (or count (count items))
+                   (when (seq items)
+                     (str " " (str/join ", " (take 5 items))))))
         (println " - none in current derived scope")))))
 
 (defn- record-summary-line [packet]
@@ -1266,6 +1402,7 @@
 (defn search-records [opts]
   (let [terms (vec (or (:scope-terms opts) (:extra-args opts)))
         records (closed-records)
+        current-packet (derive-packet opts)
         matches (if (seq terms)
                   (filter #(record-matches-terms? % terms) records)
                   records)]
@@ -1274,7 +1411,9 @@
     (println)
     (if (seq matches)
       (doseq [packet matches]
-        (println (record-summary-line packet))
+        (let [staleness (record-staleness packet current-packet)]
+          (println (record-summary-line packet)
+                   "staleness=" (name (:status staleness))))
         (when-let [override (get-in packet [:llm-declared :override])]
           (when (declared-value? override)
             (println "  override:" (pr-str override))))
@@ -1282,6 +1421,165 @@
           (when (seq must-review)
             (println "  must-review:" (str/join ", " must-review)))))
       (println "- none"))))
+
+(defn- evidence-packet-files []
+  (let [work-dir (io/file default-out-dir)]
+    (vec
+     (sort
+      (concat
+       (when (.isDirectory work-dir)
+         (->> (file-seq work-dir)
+              (filter #(.isFile %))
+              (map #(.getPath %))
+              (filter #(str/ends-with? % ".edn"))
+              (remove #(str/includes? % ".intent.edn"))
+              (remove #(str/includes? % ".predict.edn"))))
+       (closed-record-files))))))
+
+(defn- string-values [x]
+  (->> (tree-seq coll? seq x)
+       (filter string?)))
+
+(def requirement-definition-pattern
+  #"(?m)\b(?:REQ|AC|UC|TO)-[0-9A-Za-z_-]+\s*:")
+
+(def decision-definition-pattern
+  #"(?i)\b(?:decision|status)\s*:\s*(?:accepted|rejected|superseded)\b")
+
+(def knowledge-definition-pattern
+  #"(?m)\bK-[0-9A-Za-z_-]+\s*:")
+
+(defn- packet-boundary-violations [path]
+  (when-let [packet (read-packet-file path)]
+    (let [declared-text (str/join "\n" (string-values (:llm-declared packet)))]
+      (vec
+       (concat
+        (when (re-find requirement-definition-pattern declared-text)
+          [{:file path
+            :type :requirement-defined-in-packet
+            :message "packet residual text appears to define a requirement; move it to DESIGN/QUESTIONS"}])
+        (when (re-find decision-definition-pattern declared-text)
+          [{:file path
+            :type :decision-finalized-in-packet
+            :message "packet residual text appears to finalize a decision; move it to ADR or maintainer archive"}])
+        (when (re-find knowledge-definition-pattern declared-text)
+          [{:file path
+            :type :knowledge-defined-in-packet
+            :message "packet residual text appears to define knowledge; move it to KNOWLEDGE or maintainer archive"}]))))))
+
+(defn check-boundary [opts]
+  (let [violations (->> (evidence-packet-files)
+                        (mapcat packet-boundary-violations)
+                        vec)]
+    (if (seq violations)
+      (do
+        (println "Evidence boundary violations:")
+        (doseq [{:keys [file type message]} violations]
+          (println "-" file type)
+          (println " " message))
+        (System/exit 1))
+      (println "evidence boundary: OK"))))
+
+(defn- verification-context [term]
+  (let [terms [term]
+        design-ir (read-edn-if-exists ".llm/data/design-ir.edn")
+        trace-index (read-edn-if-exists ".llm/data/trace-index.edn")
+        design-maps (vec (maps-matching-tokens design-ir terms))
+        trace-maps (vec (maps-matching-tokens trace-index terms))
+        records (->> (closed-records)
+                     (filter #(record-matches-terms? % terms))
+                     vec)
+        current-packet (derive-packet {:scope-terms terms})
+        stale-by-task (into {}
+                            (map (fn [record]
+                                   [(:task/id record) (record-staleness record current-packet)])
+                                 records))
+        tests (values-for-keys trace-maps [:tests :test :test-var :test-vars :implementation-tests])
+        requirements (values-for-keys trace-maps [:requirements :requirement :requirement-id :trace/requirements])
+        boundaries (values-for-keys trace-maps [:public-boundaries :public-boundary :var :vars :implementation])
+        passing-evidence (->> records
+                              (mapcat :evidence)
+                              (filter #(= :pass (:status %)))
+                              (map :id)
+                              distinct
+                              sort
+                              vec)
+        status (cond
+                 (and (seq trace-maps) (seq tests) (seq passing-evidence)) :verified
+                 (or (seq design-maps) (seq trace-maps) (seq records)) :partially-verified
+                 :else :unverified)]
+    {:term term
+     :status status
+     :design {:available (boolean design-ir)
+              :matched-records (count design-maps)}
+     :trace {:available (boolean trace-index)
+             :matched-records (count trace-maps)
+             :requirements requirements
+             :public-boundaries boundaries
+             :tests tests}
+     :evidence {:closed-records (mapv (fn [record]
+                                        {:task/id (:task/id record)
+                                         :status (:status record)
+                                         :staleness (get-in stale-by-task [(:task/id record) :status])
+                                         :closed-at (:closed-at record)})
+                                      records)
+                :passing-evidence passing-evidence}}))
+
+(defn- verification-term [opts]
+  (or (first (:extra-args opts))
+      (first (:scope-terms opts))))
+
+(defn run-is-verified [opts]
+  (let [term (verification-term opts)]
+    (when-not term
+      (binding [*out* *err*]
+        (println "Usage: structural-evidence is-verified REQ-ID|public-boundary"))
+      (System/exit 2))
+    (let [ctx (verification-context term)]
+      (if (= :edn (:format opts))
+        (print-edn {:verification ctx})
+        (do
+          (println "== Evidence Verification ==")
+          (println "Term:" term)
+          (println "Status:" (name (:status ctx)))
+          (println "Design matches:" (get-in ctx [:design :matched-records]))
+          (println "Trace matches:" (get-in ctx [:trace :matched-records]))
+          (println "Requirements:" (str/join ", " (get-in ctx [:trace :requirements])))
+          (println "Public boundaries:" (str/join ", " (get-in ctx [:trace :public-boundaries])))
+          (println "Tests:" (str/join ", " (get-in ctx [:trace :tests])))
+          (println "Passing evidence:" (str/join ", " (get-in ctx [:evidence :passing-evidence])))
+          (println "Closed records:" (count (get-in ctx [:evidence :closed-records]))))))))
+
+(defn run-why [opts]
+  (let [term (verification-term opts)]
+    (when-not term
+      (binding [*out* *err*]
+        (println "Usage: structural-evidence why REQ-ID|public-boundary|task-id"))
+      (System/exit 2))
+    (let [ctx (verification-context term)]
+      (if (= :edn (:format opts))
+        (print-edn {:why ctx})
+        (do
+          (println "== Evidence Why ==")
+          (println "Claim:" term)
+          (println "Overall:" (name (:status ctx)))
+          (println)
+          (println "Evidence chain:")
+          (println "- Design records matched:" (get-in ctx [:design :matched-records]))
+          (println "- Trace records matched:" (get-in ctx [:trace :matched-records]))
+          (doseq [req (get-in ctx [:trace :requirements])]
+            (println "  - requirement:" req))
+          (doseq [boundary (get-in ctx [:trace :public-boundaries])]
+            (println "  - public boundary:" boundary))
+          (doseq [test (get-in ctx [:trace :tests])]
+            (println "  - test:" test))
+          (doseq [record (get-in ctx [:evidence :closed-records])]
+            (println "  - closed record:" (:task/id record)
+                     "[" (name (or (:staleness record) :unknown)) "]"))
+          (when-not (or (pos? (get-in ctx [:design :matched-records]))
+                        (pos? (get-in ctx [:trace :matched-records]))
+                        (seq (get-in ctx [:evidence :closed-records])))
+            (println "- no supporting evidence found")))))))
 
 (defn- none-declaration? [v]
   (or (= :none v)
@@ -1333,6 +1631,149 @@
 
 (defn- packet-failed-evidence [packet]
   (failed-evidence-statuses packet))
+
+(defn- latest-clean-record [records]
+  (->> records
+       (filter clean-close?)
+       (sort-by #(or (:closed-at %) ""))
+       last))
+
+(defn- diff-source-flag [packet]
+  (case (get-in packet [:change/fingerprint :source])
+    :staged-diff " --staged"
+    ""))
+
+(defn- action [command rationale]
+  {:command command
+   :rationale rationale})
+
+(defn- current-task-id [packet]
+  (or (:task/id packet)
+      (gate-task-id (:change/fingerprint packet))))
+
+(defn- what-now-plan [opts]
+  (let [packet0 (derive-packet opts)
+        task-id (current-task-id packet0)
+        packet (assoc packet0 :task/id task-id)
+        fingerprint (:change/fingerprint packet)
+        files (get-in packet [:actual-scope :paths])
+        save-policy (:save-policy packet)
+        closed-matches (matching-packets (closed-records) fingerprint)
+        active-matches (matching-packets (active-packets) fingerprint)
+        active-any (first (active-packets))
+        active (or (first active-matches) active-any)
+        clean-record (latest-clean-record closed-matches)
+        stale-summary (when clean-record (record-staleness clean-record packet))
+        stale-candidates (->> (closed-record-staleness packet)
+                              (filter #(= :stale-candidate (:status %)))
+                              (take 5)
+                              vec)
+        source-flag (diff-source-flag packet)]
+    (cond
+      active
+      (let [task (:task/id active)
+            missing (missing-residual-fields active)
+            failed (failed-evidence-statuses active)
+            not-run (missing-evidence-statuses active)]
+        (cond
+          (seq missing)
+          {:state :active-packet-pending-residual
+           :task-id task
+           :packet-path (str default-out-dir "/" task ".edn")
+           :blocked-on [:residual]
+           :next-action (action (str "./.llm/scripts/evidence.sh declare --task " task " --all-none")
+                                "residual fields are still nil; use concrete field declarations when residual impact exists")
+           :stale-candidates stale-candidates}
+
+          (seq failed)
+          {:state :active-packet-failed-evidence
+           :task-id task
+           :packet-path (str default-out-dir "/" task ".edn")
+           :blocked-on failed
+           :next-action (action (str "fix failed evidence: " (str/join ", " failed))
+                                "command-backed evidence failed")
+           :stale-candidates stale-candidates}
+
+          (seq not-run)
+          {:state :active-packet-needs-evidence-run
+           :task-id task
+           :packet-path (str default-out-dir "/" task ".edn")
+           :blocked-on not-run
+           :next-action (action (str "./.llm/scripts/evidence.sh run --task " task)
+                                "some command-backed evidence has not been recorded")
+           :stale-candidates stale-candidates}
+
+          :else
+          {:state :active-packet-ready-to-close
+           :task-id task
+           :packet-path (str default-out-dir "/" task ".edn")
+           :blocked-on []
+           :next-action (action (str "./.llm/scripts/evidence.sh close --task " task source-flag)
+                                "residual declarations and command-backed evidence are complete")
+           :stale-candidates stale-candidates}))
+
+      (and clean-record (= :stale-candidate (:status stale-summary)))
+      {:state :matching-close-record-stale-candidate
+       :task-id (:task/id clean-record)
+       :record-path (:record/path clean-record)
+       :blocked-on [:stale-candidate]
+       :next-action (action (str "./.llm/scripts/propose-review-packet.sh --task " task-id source-flag)
+                            "a matching close record exists, but one or more evidence dependencies changed")
+       :stale-candidates stale-candidates}
+
+      clean-record
+      {:state :commit-ready
+       :task-id (:task/id clean-record)
+       :record-path (:record/path clean-record)
+       :blocked-on []
+       :next-action (action "git commit"
+                            "matching clean close record exists for the current change fingerprint")
+       :stale-candidates stale-candidates}
+
+      (empty? files)
+      {:state :no-change
+       :blocked-on []
+       :next-action (action "none"
+                            "no changed paths and no active packet")
+       :stale-candidates stale-candidates}
+
+      (not= :required save-policy)
+      {:state :evidence-optional
+       :blocked-on []
+       :next-action (action "git commit"
+                            "current change is not save-required by Structural Evidence policy")
+       :stale-candidates stale-candidates}
+
+      :else
+      {:state :packet-required
+       :task-id task-id
+       :blocked-on [:packet]
+       :next-action (action (str "./.llm/scripts/propose-review-packet.sh --task " task-id source-flag)
+                            "save-required change has no active packet or close record")
+       :stale-candidates stale-candidates})))
+
+(defn run-what-now [opts]
+  (let [plan (what-now-plan opts)]
+    (if (= :edn (:format opts))
+      (print-edn {:what-now plan})
+      (do
+        (println "== Evidence What Now ==")
+        (println "State:" (name (:state plan)))
+        (when-let [task (:task-id plan)]
+          (println "Task:" task))
+        (when-let [packet-path (:packet-path plan)]
+          (println "Packet:" packet-path))
+        (when-let [record-path (:record-path plan)]
+          (println "Record:" record-path))
+        (println "Next:" (get-in plan [:next-action :command]))
+        (println "Reason:" (get-in plan [:next-action :rationale]))
+        (when (seq (:blocked-on plan))
+          (println "Blocked on:" (str/join ", " (map name (:blocked-on plan)))))
+        (when (seq (:stale-candidates plan))
+          (println "Stale candidates:" (count (:stale-candidates plan)))
+          (doseq [candidate (:stale-candidates plan)]
+            (println " -" (:task/id candidate)
+                     (str "(" (name (:status candidate)) ")"))))))))
 
 (defn- gate-fail! [opts lines]
   (doseq [line lines]
@@ -1728,6 +2169,10 @@
         "check-residual" (check-residual-declared opts)
         "status" (run-status opts)
         "search" (search-records opts)
+        "what-now" (run-what-now opts)
+        "is-verified" (run-is-verified opts)
+        "why" (run-why opts)
+        "check-boundary" (check-boundary opts)
         "gate" (run-gate opts)
         "predict" (predict opts)
         "declare" (declare-residual opts)
@@ -1743,6 +2188,10 @@
             (println "  structural-evidence check-residual --packet PATH")
             (println "  structural-evidence status [--scope TERM[,TERM...]] [--base BASE] [--head HEAD]")
             (println "  structural-evidence search [--scope TERM[,TERM...]]")
+            (println "  structural-evidence what-now [--format edn]")
+            (println "  structural-evidence is-verified REQ-ID|public-boundary [--format edn]")
+            (println "  structural-evidence why REQ-ID|public-boundary|task-id [--format edn]")
+            (println "  structural-evidence check-boundary")
             (println "  structural-evidence gate [--staged|--base BASE --head HEAD] [--advisory] [--no-write]")
             (println "  structural-evidence predict --task TASK-ID --intent TEXT [--changed-file PATH]")
             (println "  structural-evidence declare --task TASK-ID [--all-none|--semantic-impact TEXT ...]")

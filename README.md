@@ -27,12 +27,12 @@ design-ir.edn
   ↓ brick-map / workspace-map / libs.edn と照合
 Polylith 構造・Malli 契約・trace metadata・REPL 検証・自動テスト
   ↓
-Structural Evidence workflow (`status` / `search` / `gate` / `declare` / `run` / `close`)
+Structural Evidence workflow (`what-now` / `status` / `search` / `is-verified` / `why` / `gate` / `declare` / `run` / `close`)
   ↓
 継続的な drift 検出と README 半自動生成
 ```
 
-ここでいう **Structural Evidence workflow** は、変更範囲・変更種別・必要な検証を LLM の自己申告ではなく git diff、Polylith 構造、生成 index、検査 script から導出し、`status` / `search` / `gate` / `declare` / `run` / `close` で作業を進める仕組みです。**Review Fatigue Packet** はその途中で生成される人間向け view であり、新しい正本ではありません。
+ここでいう **Structural Evidence workflow** は、変更範囲・変更種別・必要な検証を LLM の自己申告ではなく git diff、Polylith 構造、生成 index、検査 script から導出し、`what-now` / `status` / `search` / `is-verified` / `why` / `gate` / `declare` / `run` / `close` で作業を進める仕組みです。**Review Fatigue Packet** はその途中で生成される人間向け view であり、新しい正本ではありません。
 
 主な機能:
 
@@ -41,7 +41,7 @@ Structural Evidence workflow (`status` / `search` / `gate` / `declare` / `run` /
 - **design-ir で仕様を機械可読化する**: requirement、use case、constraint、test obligation を EDN として抽出し、実装側の分析情報と照合する
 - **Polylith 境界へ落とす**: LLM が触る範囲を brick 単位に局所化し、interface と Malli 契約で境界を明示する
 - **仕様とコード・テストを trace する**: public boundary の `:trace/requirements` / `:trace/use-cases` と `deftest` の `:trace/test-obligations` を design-ir と照合し、仕様 drift を早く検出する。`trace-impact.sh` で「この要件に関係するコードとテスト」「この公開関数が満たす仕様」「今回の変更で影響する要件」を確認できる
-- **scope と evidence を workflow に組み込む**: `evidence.sh status` で現在状態を query し、`search` で過去 close record を引き、`check-evidence-gate.sh --staged` で staged diff を gate し、`declare` で導出不能 residual を明示し、`run` で command-backed evidence を記録し、`close` で実態との差分と residual 未宣言を検出する。`predict` は高リスク作業の任意 pre-flight として使う
+- **scope と evidence を workflow に組み込む**: `evidence.sh what-now` で次の 1 action を取得し、`status` で現在状態を query し、`search` で過去 close record を引き、`is-verified` / `why` で claim の検証状況と evidence chain を確認し、`check-evidence-gate.sh --staged` で staged diff を gate し、`declare` で導出不能 residual を明示し、`run` で command-backed evidence を記録し、`close` で実態との差分と residual 未宣言を検出する。`predict` は高リスク作業の任意 pre-flight として使う
 - **Claude Code / Codex / human で同じ gate を使う**: `./.llm/scripts/install-git-hooks.sh` で repo-local pre-commit hook を有効化できる。hook は薄い wrapper で、正本は `.llm/scripts/check-evidence-gate.sh`
 - **次セッションの足場を briefing に出す**: 未完了の Review Fatigue Packet と直近の closed evidence record は、`session-briefing.sh` の Evidence Plane で次セッション冒頭に surface される。これは第 5 の正本ではなく、既存正本・構造・検証結果への生成 view である
 - **REPL を主作業台にする**: 永続 nREPL と Malli instrumentation により、編集から検証までを短いループで閉じる
@@ -187,7 +187,7 @@ HTTP、永続化、ライフサイクル管理などの追加技術は、必要�
 | IDEA から仕様へ翻案する | `.llm/guide/SPEC_GUIDE.md` | reconciliation と test obligation の節 |
 | 技術選定を決める | `.llm/guide/STACK_GUIDE.md` | 冒頭の位置づけ + 該当機能節 |
 | Polylith 構造を決める | `.llm/guide/POLYLITH_GUIDE.md` | 冒頭の前提 + 該当手順節 |
-| Structural Evidence workflow を使う | `.llm/guide/STRUCTURAL_EVIDENCE_QUICKSTART.md` | `status` / `search` / `gate` / `declare` / `run` / `close` |
+| Structural Evidence workflow を使う | `.llm/guide/STRUCTURAL_EVIDENCE_QUICKSTART.md` | `what-now` / `status` / `search` / `is-verified` / `why` / `gate` / `declare` / `run` / `close` |
 | scope と evidence を導出する | `.llm/scripts/README.md` | Structural Evidence View の節 |
 | 権限や承認で迷う | `.llm/guide/COLLABORATION_GUIDE.md` | §2 を正本として読む |
 | 何を記録するか迷う | `.llm/memory/QUESTIONS.md` / `.llm/memory/KNOWLEDGE.md` / `.llm/memory/adr/README.md` | 各文書冒頭の更新トリガー表 |

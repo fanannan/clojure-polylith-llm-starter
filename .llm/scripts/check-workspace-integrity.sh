@@ -214,6 +214,9 @@ run_step_if_capability "llm-guides" "撤去済みテンプレ ADR 参照検査" 
 run_step_if_capability "llm-guides" "Structural Evidence derivation self-test" \
   "$SCRIPT_DIR/check-structural-evidence-self-test.sh"
 
+run_step_if_capability "llm-guides" "Structural Evidence packet boundary 検査" \
+  "$SCRIPT_DIR/check-evidence-boundary.sh"
+
 run_step_if_capability "llm-guides" "Structural Evidence staged gate advisory" \
   "$SCRIPT_DIR/check-evidence-gate.sh" --staged --advisory
 

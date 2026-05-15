@@ -12,6 +12,14 @@ Structural Evidence View は、LLM が scope と evidence を自己申告する�
 
 ## 最小手順
 
+迷ったら、まず次の 1 アクションを query する。
+
+```bash
+./.llm/scripts/evidence.sh what-now
+```
+
+`what-now` は active packet、staged diff、未宣言 residual、未実行 evidence、stale candidate を見て、次に実行すべき command を 1 つ返す。LLM / human は workflow 手順を暗記せず、ここを作業面として使う。
+
 Git hook を使う場合は一度だけ有効化する。Claude Code / Codex / human で同じ hook が使われる。
 
 ```bash
@@ -75,9 +83,17 @@ Residual は EDN を手編集せず、必ず `evidence.sh declare` で更新す�
 
 - Task: 1 つの intent と 1 つの close mode を持つ atomic working set。
 - Commit: 1 つの task に属する。1 task が複数 commit に分かれることは許容するが、1 commit に複数 task を混ぜない。
-- Session: active packet が残っていれば次セッションで resume する。新しい task を始める前に `evidence.sh status` と briefing の Evidence Plane を確認する。
+- Session: active packet が残っていれば次セッションで resume する。新しい task を始める前に briefing の Evidence Plane と `evidence.sh what-now` を確認し、必要に応じて `status` で詳細を見る。
 
 close が blocked になった場合でも、`.llm/work/<task-id>.edn` と `.llm/work/<task-id>.md` は最新の actual scope / blocked-close state で更新される。表示された `declare` コマンドで pending residual を埋め、必要な修正を行ってから close を再実行する。
+
+packet は Authority source ではない。packet 内で新しい requirement、decision、knowledge を定義してはいけない。close 前や workspace check では次の validator がこれを確認する。
+
+```bash
+./.llm/scripts/check-evidence-boundary.sh
+```
+
+過去 record の evidence は、`invalidated-by` に記録された path / brick / requirement / public boundary が後続変更に触れた場合、stale candidate として surface される。stale は「即無効」ではなく、「再利用前に再検証すべき」という signal である。
 
 高リスク作業や大きい変更では、着手前に任意で `predict` を使う。
 
@@ -105,12 +121,19 @@ packet を close する前に、EDN view で residual が明示されている�
 
 ## 次セッションでの扱い
 
-`session-briefing.sh` は Evidence Plane を表示し、`.llm/work/` の active packet と residual pending を冒頭に出す。packet は「書いた人の記録」ではなく、次セッションの LLM が再確認疲労を避けるための inter-session memory である。
+`session-briefing.sh` は Evidence Plane を表示し、`.llm/work/` の active packet、residual pending、closed record、`what-now` を冒頭に出す。packet は「書いた人の記録」ではなく、次セッションの LLM が再確認疲労を避けるための inter-session memory である。
 
 過去の closed record を scope 語彙で探す場合:
 
 ```bash
 ./.llm/scripts/evidence.sh search --scope foo,REQ-001
+```
+
+claim の検証状況や支えている証跡を query する場合:
+
+```bash
+./.llm/scripts/evidence.sh is-verified REQ-001
+./.llm/scripts/evidence.sh why REQ-001
 ```
 
 ## 詳細

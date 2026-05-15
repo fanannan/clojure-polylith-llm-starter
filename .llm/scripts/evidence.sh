@@ -2,8 +2,11 @@
 # Structural Evidence workflow command.
 #
 # Main subcommands:
+#   what-now     - return the next evidence workflow action
 #   status  - query current evidence state
 #   search  - search closed evidence records
+#   is-verified - query requirement / public boundary verification state
+#   why     - explain the evidence chain for a claim
 #   gate    - enforce staged/range evidence gate
 #   predict - bind task intent before implementation
 #   declare - fill residual fields safely

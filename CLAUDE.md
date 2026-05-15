@@ -647,7 +647,7 @@ subagent / tool 呼び出し / 長い shell 実行は、ユーザへの最終応
 
 §1.2.3 小単位分解の実装。
 
-**Evidence gate の義務**: ファイル編集を伴う bounded task では、commit 前に `./.llm/scripts/check-evidence-gate.sh --staged` を通す。save-required な staged diff は Structural Evidence packet / residual declaration / close record が無いと block される。通常は `./.llm/scripts/propose-review-packet.sh --task <id> --staged` → `./.llm/scripts/evidence.sh declare ...` → `./.llm/scripts/evidence.sh run --task <id>` → `./.llm/scripts/evidence.sh close --task <id> --staged` の順で閉じる。`predict` は高リスク作業の pre-flight 用であり、actual staged diff gate が正本である。
+**Evidence gate の義務**: ファイル編集を伴う bounded task では、commit 前に `./.llm/scripts/check-evidence-gate.sh --staged` を通す。save-required な staged diff は Structural Evidence packet / residual declaration / close record が無いと block される。迷ったら `./.llm/scripts/evidence.sh what-now` で次 action を確認する。通常は `./.llm/scripts/propose-review-packet.sh --task <id> --staged` → `./.llm/scripts/evidence.sh declare ...` → `./.llm/scripts/evidence.sh run --task <id>` → `./.llm/scripts/evidence.sh close --task <id> --staged` の順で閉じる。claim の根拠確認には `is-verified` / `why` を使う。`predict` は高リスク作業の pre-flight 用であり、actual staged diff gate が正本である。
 ¤ .llm/guide/STRUCTURAL_EVIDENCE_QUICKSTART.md
 
 ### 8.0 実装着手前の確認（すべての作業に共通）

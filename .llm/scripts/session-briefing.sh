@@ -299,6 +299,19 @@ evidence_plane_brief() {
   fi
 
   echo ""
+  echo "### What Now"
+  if [ -x ".llm/scripts/evidence.sh" ]; then
+    local what_now_output
+    if what_now_output="$(./.llm/scripts/evidence.sh what-now 2>/dev/null)"; then
+      printf '%s\n' "$what_now_output" | sed 's/^/- /'
+    else
+      echo "- evidence.sh what-now は取得できませんでした"
+    fi
+  else
+    echo "- evidence.sh がありません"
+  fi
+
+  echo ""
   echo "### Staged Evidence Gate"
   if [ -x ".llm/scripts/check-evidence-gate.sh" ]; then
     ./.llm/scripts/check-evidence-gate.sh --staged --advisory --no-write 2>/dev/null \
@@ -318,7 +331,7 @@ evidence_plane_brief() {
 
   echo ""
   echo "### Stale / Expired Evidence"
-  echo "- event-based staleness detection は後続 phase。現時点では active packet と residual pending を優先確認。"
+  echo "- what-now と status は closed record の invalidated-by から stale candidate を surface する。"
 }
 
 tcp_port_open() {
