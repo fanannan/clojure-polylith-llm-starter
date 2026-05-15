@@ -234,6 +234,28 @@
     (.update digest (.getBytes (str s) "UTF-8"))
     (bytes->hex (.digest digest))))
 
+(defn- stable-evidence-env []
+  {"PATH" (or (System/getenv "EVIDENCE_PATH")
+              "/usr/local/bin:/usr/bin:/bin")
+   "HOME" (or (System/getenv "HOME") "")
+   "LANG" "C.UTF-8"
+   "LC_ALL" "C.UTF-8"
+   "CI" "true"})
+
+(defn- env-assignment [k v]
+  (str k "=" v))
+
+(defn- env-hash [env]
+  (sha1-hex (pr-str (into (sorted-map) env))))
+
+(defn- tool-version []
+  {:clojure (clojure-version)
+   :jvm (System/getProperty "java.version")
+   :java-vm (System/getProperty "java.vm.name")
+   :os (System/getProperty "os.name")
+   :os-version (System/getProperty "os.version")
+   :shell "env -i ... bash -c"})
+
 (defn- split-scope [s]
   (->> (str/split (str s) #"[,\s]+")
        (map str/trim)
@@ -457,6 +479,26 @@
             :public-boundaries (public-boundaries path)}
            rule)))
 
+(def rule-match-explanations
+  {:template-governance "template repo: CLAUDE.md, .gitignore, .llm/repo-context.edn, or .llm/guide/*"
+   :script-change "template repo: .llm/scripts/*"
+   :maintainer-archive "template repo: .llm/memory/archive/*"
+   :template-adr-forbidden "template repo: .llm/memory/adr/* except README.md/template.md is forbidden"
+   :generated-index ".llm/data/*"
+   :docs-only "markdown or documentation path"
+   :component-interface "project repo: components/<brick>/src/**/interface.clj"
+   :component-internal "project repo: components/<brick>/src/**/*.clj|cljc|cljs"
+   :component-brick-intent "project repo: components/<brick>/brick.edn"
+   :base-entrypoint "project repo: bases/<brick>/src/**/*.clj|cljc|cljs"
+   :base-brick-intent "project repo: bases/<brick>/brick.edn"
+   :project-intent "project repo: projects/<project>/project.edn"
+   :spec-memory "project repo: DESIGN.md or .llm/memory/*"
+   :dependency-change "deps.edn or nested */deps.edn"
+   :uncategorized "no derivation rule matched"})
+
+(defn- rule-match-explanation [rule]
+  (get rule-match-explanations rule "rule explanation unavailable"))
+
 (defn- requirement-ids-for-bricks [bricks]
   ;; Best-effort extraction. Different generated maps may evolve; missing maps
   ;; simply mean no linkage is derived at this stage.
@@ -527,8 +569,20 @@
                             (filter #(str/ends-with? % ".md")))
       :else [])))
 
+(def generic-context-terms
+  #{"README.md" "DESIGN.md" "interface.clj" "core.clj" "deps.edn" "md" "clj"})
+
+(defn- context-search-term? [term]
+  (let [t (str/trim (str term))]
+    (and (not (str/blank? t))
+         (>= (count t) 3)
+         (not (contains? generic-context-terms t)))))
+
 (defn- matching-lines [paths terms limit]
-  (let [tokens (->> terms (remove str/blank?) distinct vec)]
+  (let [tokens (->> terms
+                    (filter context-search-term?)
+                    distinct
+                    vec)]
     (if (seq tokens)
       (->> paths
            (mapcat (fn [path]
@@ -549,9 +603,9 @@
   (let [terms (->> (concat (map name bricks)
                            requirements
                            public-boundaries
-                           (map #(last (str/split % #"/")) public-boundaries)
-                           explicit-scope-terms)
-                   (remove str/blank?)
+                   (map #(last (str/split % #"/")) public-boundaries)
+                   explicit-scope-terms)
+                   (filter context-search-term?)
                    distinct
                    vec)
         decision-paths (if (= :template repo-kind)
@@ -638,10 +692,41 @@
       :else :ok)))
 
 (defn- residual-declaration-placeholders []
-  (assoc (zipmap residual-fields (repeat nil))
-         :_required {:before-close residual-fields}))
+  (zipmap residual-fields (repeat nil)))
 
-(defn- evidence-placeholders [required-evidence]
+(defn- evidence-invalidated-by [{:keys [id]} {:keys [paths bricks requirements public-boundaries]}]
+  (let [paths* (vec (sort (distinct paths)))
+        bricks* (vec (sort (map name (distinct bricks))))
+        requirements* (vec (sort (distinct requirements)))
+        boundaries* (vec (sort (distinct public-boundaries)))]
+    (vec
+     (concat
+      (when (seq paths*)
+        [{:type :path-changed :paths paths*}])
+      (when (and (seq bricks*)
+                 (contains? #{:poly-check
+                              :relevant-tests
+                              :check-interface-contracts
+                              :check-trace-metadata
+                              :check-brick-map
+                              :check-workspace-map}
+                            id))
+        [{:type :brick-changed :bricks bricks*}])
+      (when (and (seq requirements*)
+                 (contains? #{:check-design-ir
+                              :check-trace-index
+                              :check-trace-metadata
+                              :relevant-tests}
+                            id))
+        [{:type :requirement-changed :requirements requirements*}])
+      (when (and (seq boundaries*)
+                 (contains? #{:check-interface-contracts
+                              :check-trace-metadata
+                              :relevant-tests}
+                            id))
+        [{:type :public-boundary-changed :public-boundaries boundaries*}])))))
+
+(defn- evidence-placeholders [required-evidence scope]
   (mapv (fn [{:keys [id tier command]}]
           {:id id
            :tier tier
@@ -654,7 +739,7 @@
            :started-at nil
            :duration-ms nil
            :tail nil
-           :invalidated-by []})
+           :invalidated-by (evidence-invalidated-by {:id id} scope)})
         required-evidence))
 
 (defn- merge-evidence-by-id [new-evidence old-evidence]
@@ -741,6 +826,10 @@
                                                   explicit-scope-terms)
         dependency-context (dependency-context files archetypes)
         required-evidence (enrich-required-evidence (evidence-set archetypes) trace-context)
+        evidence-scope {:paths files
+                        :bricks bricks
+                        :requirements requirements
+                        :public-boundaries public-boundaries}
         failure (failure-mode opts adoption entries)]
     {:schema/version schema-version
      :kind :review-fatigue-packet
@@ -775,7 +864,7 @@
                     :archetypes archetypes}
      :save-policy (save-policy archetypes (count files))
      :required-evidence required-evidence
-     :evidence (evidence-placeholders required-evidence)
+     :evidence (evidence-placeholders required-evidence evidence-scope)
      :llm-declared (residual-declaration-placeholders)
      :human-attention {:must-review
                        (->> entries
@@ -984,6 +1073,7 @@
     (doseq [{:keys [path rule archetype plane component base project public-boundaries severity]} (:derivation/audit packet)]
       (println "Touched path:" path)
       (println "  Matched rule:" rule)
+      (println "  Matched by:" (rule-match-explanation rule))
       (println "  Plane:" plane)
       (println "  Archetype:" archetype)
       (when severity (println "  Severity:" severity))
@@ -1098,7 +1188,9 @@
     " last=none"))
 
 (defn- record-matches-terms? [packet terms]
-  (let [terms* (map normalize-token terms)
+  (let [terms* (->> terms
+                    (filter context-search-term?)
+                    (map normalize-token))
         values (map normalize-token (scalars packet))]
     (boolean
      (some (fn [term]
@@ -1127,6 +1219,12 @@
     (println "  Touched bricks:" (str/join ", " (map name (get-in packet [:actual-scope :bricks]))))
     (println "  Affected projects:" (str/join ", " (get-in packet [:actual-scope :affected-projects])))
     (println "  Public boundaries:" (str/join ", " (get-in packet [:actual-scope :public-boundaries])))
+    (println "  Archetype breakdown:")
+    (let [by-archetype (group-by :archetype (:derivation/audit packet))]
+      (if (seq by-archetype)
+        (doseq [[archetype entries] (sort-by (comp name key) by-archetype)]
+          (println "   -" archetype "->" (str/join ", " (map :path entries))))
+        (println "   - none")))
     (println)
     (println "Index Plane:")
     (println "  design-ir.edn:" (if (get-in packet [:design-coverage :available]) "available" "missing"))
@@ -1161,7 +1259,9 @@
        ", evidence=" (count (:evidence packet))
        ")"
        (when-let [closed-at (:closed-at packet)]
-         (str " closed-at=" closed-at))))
+         (str " closed-at=" closed-at))
+       (when-let [rev (:closed-git-rev packet)]
+         (str " closed-rev=" (subs rev 0 (min 8 (count rev)))))))
 
 (defn search-records [opts]
   (let [terms (vec (or (:scope-terms opts) (:extra-args opts)))
@@ -1183,7 +1283,22 @@
             (println "  must-review:" (str/join ", " must-review)))))
       (println "- none"))))
 
-(declare failed-evidence-statuses)
+(defn- none-declaration? [v]
+  (or (= :none v)
+      (and (string? v)
+           (= "none" (str/lower-case (str/trim v))))))
+
+(defn- missing-evidence-statuses [packet]
+  (->> (:evidence packet)
+       (filter #(nil? (:status %)))
+       (map :id)
+       vec))
+
+(defn- failed-evidence-statuses [packet]
+  (->> (:evidence packet)
+       (filter #(= :fail (:status %)))
+       (map :id)
+       vec))
 
 (defn- fingerprint-matches? [packet fingerprint]
   (= (:digest (:change/fingerprint packet))
@@ -1192,12 +1307,23 @@
 (defn- gate-task-id [fingerprint]
   (str (.toString (java.time.LocalDate/now))
        "-evidence-gate-"
-       (subs (:digest fingerprint) 0 10)))
+       (subs (:digest fingerprint) 0 16)))
 
 (defn- active-packets []
   (->> (active-packet-files)
        (keep read-packet-file)
        vec))
+
+(defn- predict-packets []
+  (let [dir (io/file default-out-dir)]
+    (if (.isDirectory dir)
+      (->> (file-seq dir)
+           (filter #(.isFile %))
+           (map #(.getPath %))
+           (filter #(str/ends-with? % ".predict.edn"))
+           (keep read-packet-file)
+           vec)
+      [])))
 
 (defn- clean-close? [packet]
   (contains? #{:clean-close :closed} (:status packet)))
@@ -1235,7 +1361,11 @@
         files (get-in packet [:actual-scope :paths])
         closed-matches (matching-packets (closed-records) fingerprint)
         active-matches (matching-packets (active-packets) fingerprint)
-        clean-record (first (filter clean-close? closed-matches))
+        predict-matches (matching-packets (predict-packets) fingerprint)
+        clean-record (->> closed-matches
+                          (filter clean-close?)
+                          (sort-by #(or (:closed-at %) ""))
+                          last)
         active (first active-matches)]
     (println "== Structural Evidence Gate ==")
     (println "Source:" (name (get-in packet [:change/fingerprint :source])))
@@ -1287,6 +1417,23 @@
                            (:task/id active)
                            " && ./.llm/scripts/evidence.sh close --task "
                            (:task/id active))])))
+
+      (seq predict-matches)
+      (let [predicted (first predict-matches)]
+        (gate-fail! opts
+                    ["Evidence gate blocked: matching predict record exists but no active/closed packet matches this diff."
+                     (str "Task: " (:task/id predicted))
+                     (str "Create packet: ./.llm/scripts/propose-review-packet.sh --task "
+                          (:task/id predicted)
+                          " --staged")
+                     (str "Declare residuals: ./.llm/scripts/evidence.sh declare --task "
+                          (:task/id predicted)
+                          " --all-none")
+                     (str "Record evidence: ./.llm/scripts/evidence.sh run --task "
+                          (:task/id predicted))
+                     (str "Close: ./.llm/scripts/evidence.sh close --task "
+                          (:task/id predicted)
+                          " --staged")]))
 
       :else
       (let [paths (when-not (:no-write opts)
@@ -1363,15 +1510,25 @@
       (assoc entry
              :status :not-run
              :repo-rev (git-rev)
+             :tool-version (tool-version)
+             :env-hash (env-hash (stable-evidence-env))
              :tail "No command is defined for this evidence item.")
-      (let [started (now-ms)
+      (let [env (stable-evidence-env)
+            started (now-ms)
             started-at (.toString (java.time.Instant/now))
-            {:keys [exit out err]} (shell/sh "bash" "-lc" cmd)
+            {:keys [exit out err]} (apply shell/sh
+                                          (concat ["env" "-i"]
+                                                  (map (fn [[k v]]
+                                                         (env-assignment k v))
+                                                       env)
+                                                  ["bash" "-c" cmd]))
             output (str out (when (seq err) (str "\n" err)))]
         (assoc entry
                :status (if (zero? exit) :pass :fail)
                :exit exit
                :repo-rev (git-rev)
+               :tool-version (tool-version)
+               :env-hash (env-hash env)
                :started-at started-at
                :duration-ms (elapsed-ms started)
                :tail (when-not (zero? exit) (tail-lines output 40)))))))
@@ -1419,21 +1576,6 @@
 (defn- scope-expanded? [diffs]
   (boolean
    (some seq (map :actual-only (vals diffs)))))
-
-(defn- none-declaration? [v]
-  (= :none v))
-
-(defn- missing-evidence-statuses [packet]
-  (->> (:evidence packet)
-       (filter #(nil? (:status %)))
-       (map :id)
-       vec))
-
-(defn- failed-evidence-statuses [packet]
-  (->> (:evidence packet)
-       (filter #(= :fail (:status %)))
-       (map :id)
-       vec))
 
 (defn- print-residual-actions [task-id missing diffs]
   (println "Next actions:")
@@ -1488,6 +1630,7 @@
         record (assoc actual
                       :status (if (seq missing) :blocked-close :clean-close)
                       :closed-at (.toString (java.time.Instant/now))
+                      :closed-git-rev (git-rev)
                       :predict-vs-actual diffs)]
     (println "== Evidence Close ==")
     (println "Task:" task-id)
@@ -1545,8 +1688,7 @@
         closed-declared (assoc project-design
                                :status :closed
                                :llm-declared
-                               (assoc (zipmap residual-fields (repeat :none))
-                                      :_required {:before-close residual-fields}))]
+                               (zipmap residual-fields (repeat :none)))]
     (assert! "template ADR file is forbidden"
              (= :cannot-derive (get-in template-adr [:derivation :status])))
     (assert! "project interface change is classified"
@@ -1564,6 +1706,15 @@
              (seq (missing-residual-fields closed-missing)))
     (assert! "closed packet with explicit none residual fields is valid"
              (empty? (missing-residual-fields closed-declared)))
+    (assert! "string none is accepted as none declaration"
+             (none-declaration? "none"))
+    (assert! "residual declaration placeholders do not persist schema metadata"
+             (not (contains? (:llm-declared project-design) :_required)))
+    (assert! "gate task id uses 64-bit digest prefix"
+             (re-find #"-evidence-gate-[0-9a-f]{16}$"
+                      (gate-task-id (:change/fingerprint project-design))))
+    (assert! "required evidence records invalidation dependencies"
+             (every? #(seq (:invalidated-by %)) (:evidence project-design)))
     (println "structural-evidence self-test: OK")))
 
 (defn -main [& args]

@@ -227,6 +227,8 @@ git add <changed-files>
 ./.llm/scripts/check-evidence-gate.sh --staged
 ```
 
+`run` は login shell ではなく固定した最小環境で command-backed evidence を実行し、`tool-version`、`env-hash`、`repo-rev`、`duration-ms`、失敗時 tail を record に残す。`invalidated-by` は touched path / brick / requirement / public boundary から導出され、後続の event staleness 判定の根拠になる。
+
 Git hook を使う場合:
 
 ```bash

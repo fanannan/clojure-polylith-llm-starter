@@ -838,7 +838,7 @@ Derive First, Declare Residual, Preserve Only What Reduces Future Fatigue, Audit
 - `check-evidence-gate.sh`: staged/range diff の fingerprint と packet / close record を照合する正本 gate
 - `evidence.sh predict`: 高リスク作業の任意 pre-flight として intent を binding し、予測 scope / required evidence / pre-flight context を保存
 - `evidence.sh declare`: 導出不能 residual を `none` または具体値として active packet に明示
-- `evidence.sh run`: command-backed evidence の exit code、repo revision、duration、失敗時 tail を active packet に記録
+- `evidence.sh run`: command-backed evidence の exit code、repo revision、tool-version、env-hash、duration、失敗時 tail を active packet に記録。login shell は使わず、固定した最小環境で実行する
 - `evidence.sh close`: close 直前に predicted scope と actual scope を照合し、residual 未宣言なら close を block
 - `derive-change-scope.sh`: actual scope と archetype 候補を導出
 - `inspect-derivation.sh`: path ごとの matched rule、plane、archetype、required evidence を表示
@@ -856,6 +856,7 @@ Derive First, Declare Residual, Preserve Only What Reduces Future Fatigue, Audit
 境界:
 
 - Packet が新しい requirement / knowledge / decision を定義してはならない。unknown は QUESTIONS 候補、反復 residual は KNOWLEDGE / derivation rule / ADR または maintainer archive 候補として昇格する
+- Task は 1 つの intent と 1 つの close mode を持つ atomic working set とする。1 task が複数 commit に分かれることは許容するが、1 commit に複数 task を混ぜない。session を跨ぐ場合は active packet を resume し、新規 packet で同じ intent を再作成しない
 - Template Migration Ledger は「どの template migration を適用済みか」を扱う。Evidence Close Record は「その task をなぜ close できたか」を扱う。Close Record が migration ledger を evidence として参照することは許すが、migration ledger から Close Record へ逆参照して二重管理しない
 
 利用者向けの最小手順:

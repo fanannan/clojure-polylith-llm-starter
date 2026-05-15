@@ -69,6 +69,13 @@ Residual は EDN を手編集せず、必ず `evidence.sh declare` で更新す�
 ```
 
 `run` は packet 内の command-backed evidence を実行し、exit code、repo revision、duration、失敗時の tail を active packet に記録する。command が定義されていない evidence は `:not-run` として残る。実行コストが高い場合は必要な検査を手動で走らせ、その結果を close 報告に含める。
+`run` は login shell を使わず、固定した最小環境で command を実行する。`tool-version` と `env-hash` も record に残るため、T-Mechanical evidence は「どの環境で再実行可能な結果か」を後から確認できる。
+
+## Task / Commit / Session
+
+- Task: 1 つの intent と 1 つの close mode を持つ atomic working set。
+- Commit: 1 つの task に属する。1 task が複数 commit に分かれることは許容するが、1 commit に複数 task を混ぜない。
+- Session: active packet が残っていれば次セッションで resume する。新しい task を始める前に `evidence.sh status` と briefing の Evidence Plane を確認する。
 
 close が blocked になった場合でも、`.llm/work/<task-id>.edn` と `.llm/work/<task-id>.md` は最新の actual scope / blocked-close state で更新される。表示された `declare` コマンドで pending residual を埋め、必要な修正を行ってから close を再実行する。
 

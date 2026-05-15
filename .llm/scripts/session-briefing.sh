@@ -271,6 +271,12 @@ evidence_plane_brief() {
       if [ "$residual" = "residual: pending" ]; then
         echo "  → declare: ./.llm/scripts/evidence.sh declare --task $name --all-none"
         echo "    （残影響がある場合は --all-none ではなく個別 field に具体値を入れる）"
+      else
+        if grep -qE ':status[[:space:]]+nil' "$f" 2>/dev/null; then
+          echo "  → run: ./.llm/scripts/evidence.sh run --task $name"
+        else
+          echo "  → close: ./.llm/scripts/evidence.sh close --task $name --staged"
+        fi
       fi
     done
   fi
