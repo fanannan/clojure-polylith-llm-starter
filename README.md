@@ -1,100 +1,160 @@
 # Clojure Polylith LLM Starter
 
-**Clojure + Polylith に特化した、LLM 協働型の仕様駆動開発テンプレート。**
+**IDEA.md にアイデアを書くだけで、Polylith Architecture の Clojure コードを LLM が極めて効率良く構築するためのテンプレート。**
 
-このテンプレートは、LLM に大量のコードを書かせるための雛形ではありません。LLM が間違えたときに、人間が監視役として消耗せず、仕様・境界・契約・REPL・自動検査で早く修復できるようにするための開発基盤です。
-人間は最初から完全な仕様を書く必要はありません。未整理の着想を IDEA に書くと、LLM が DESIGN への反映案、質問、受入基準、test obligation、Polylith 構造候補へ分解します。DESIGN は仕様正本として扱われ、design-ir、brick map、workspace map、trace-index、Malli 契約、自動テスト、README 生成へ接続されます。
+_A Clojure + Polylith template for building production code from a free-form idea, with an LLM as your primary collaborator._
 
-> ⚠️ **このファイルはテンプレート配布時の入口です。**
->
-> 派生プロジェクトではこの README を編集し続けず、初期化完了時に **プロダクト README として完全置換**する。
-> プロダクト README は DESIGN / design-ir / 技術選定 / 起動手順から LLM が半自動生成し、人間が外向け説明としてレビューする。
-> 完全置換後にテンプレートの由来や使い方を読み返す場合は、guide 側の参照入口を使う。
-¤ .llm/guide/BOOTSTRAP_GUIDE.md §4
-¤ .llm/templates/PROJECT_README.md
-¤ .llm/guide/TEMPLATE_USAGE_GUIDE.md
-
-## 何ができるか
-
-このテンプレートは、Clojure + Polylith プロジェクトの立ち上げと継続開発に、次の流れを用意します。
+## このテンプレートが提供する一本道
 
 ```text
-IDEA
-  ↓ LLM が整理・質問・反映案を作る
-DESIGN
-  ↓ requirement / use case / acceptance criteria / constraint を抽出
-design-ir.edn
-  ↓ brick-map / workspace-map / libs.edn と照合
-Polylith 構造・Malli 契約・trace metadata・REPL 検証・自動テスト
-  ↓
-Structural Evidence workflow (`what-now` / `status` / `search` / `is-verified` / `why` / `stale` / `gate` / `declare` / `run` / `close`)
-  ↓
-継続的な drift 検出と README 半自動生成
+IDEA.md（自由記述の着想）
+   ↓ LLM が翻案
+DESIGN.md(仕様正本: 目的・ユースケース・受入基準)
+   ↓ 機械抽出
+design-ir.edn（要件・使用例・テスト義務の EDN）
+   ↓ Polylith 構造へ落とす
+components / bases / projects（brick 単位の物理境界）
+   ↓ Malli 契約と REPL で検証
+公開関数 + interface + テスト + trace metadata
+   ↓ 自動 gate と機械検査
+commit → release
 ```
 
-ここでいう **Structural Evidence workflow** は、変更範囲・変更種別・必要な検証を LLM の自己申告ではなく git diff、Polylith 構造、生成 index、検査 script から導出し、`what-now` / `status` / `search` / `is-verified` / `why` / `stale` / `gate` / `declare` / `run` / `close` で作業を進める仕組みです。**Review Fatigue Packet** はその途中で生成される人間向け view であり、新しい正本ではありません。
+各ステップで、LLM が判断する箇所と機械が導出する箇所が明確に分離されている。人間が止めるのは不可逆な判断と曖昧性だけである。
 
-主な機能:
+## なぜ「IDEA を書くだけ」で成立するのか
 
-- **IDEA から始められる**: 自由記載の着想メモを LLM が DESIGN 反映案、矛盾、質問候補へ分解する
-- **DESIGN を仕様正本にする**: 実装判断、IR 生成、capability plan、受入基準、テスト義務の起点を 1 箇所に集約する
-- **design-ir で仕様を機械可読化する**: requirement、use case、constraint、test obligation を EDN として抽出し、実装側の分析情報と照合する
-- **Polylith 境界へ落とす**: LLM が触る範囲を brick 単位に局所化し、interface と Malli 契約で境界を明示する
-- **仕様とコード・テストを trace する**: public boundary の `:trace/requirements` / `:trace/use-cases` と `deftest` の `:trace/test-obligations` を design-ir と照合し、仕様 drift を早く検出する。`trace-impact.sh` で「この要件に関係するコードとテスト」「この公開関数が満たす仕様」「今回の変更で影響する要件」を確認できる
-- **scope と evidence を workflow に組み込む**: `evidence.sh what-now` で次の 1 action を取得し、`status` で現在状態を query し、`search` で過去 close record を引き、`is-verified` / `why` で claim の検証状況と evidence chain を確認し、`stale` で再検証候補を一覧し、`check-evidence-gate.sh --staged` で staged diff を gate し、`declare` で導出不能 residual を明示し、`run` で command-backed evidence を記録し、`close` で実態との差分と residual 未宣言を検出する。`predict` は高リスク作業の任意 pre-flight として使う
-- **Claude Code / Codex / human で同じ gate を使う**: `./.llm/scripts/install-git-hooks.sh` で repo-local pre-commit hook を有効化できる。hook は薄い wrapper で、正本は `.llm/scripts/check-evidence-gate.sh`
-- **次セッションの足場を briefing に出す**: 未完了の Review Fatigue Packet と直近の closed evidence record は、`session-briefing.sh` の Evidence Plane で次セッション冒頭に surface される。これは第 5 の正本ではなく、既存正本・構造・検証結果への生成 view である
-- **REPL を主作業台にする**: 永続 nREPL と Malli instrumentation により、編集から検証までを短いループで閉じる
-- **多層の機械検査で止める**: clj-kondo、polyguard hook、Splint、Polylith、Malli、`.llm/scripts/`、clj-watson で advisory ではなく fail させる
-- **記憶を混ぜない**: DESIGN、KNOWLEDGE、ADR、QUESTIONS を分離し、現在形仕様・現時点知識・不変決定履歴・判断保留を別々に扱う
-- **承認権限を分ける**: L0 人間専権、L1 承認必須、L2 実施後報告、L3 独断可を明示し、人間の判断を不可逆部分に集中させる
-- **派生プロジェクト README を生成する**: 初期化完了時に、テンプレート README をプロダクト README として半自動生成・完全置換する
+5 つの仕組みが**同時に**揃っているから、LLM 単独でこの一本道が動く。
 
-## 背景にある哲学
+### ① IDEA → DESIGN の自動翻案
 
-このテンプレートの最上位目標は、LLM 時代の開発で人間が消耗しないことです。
+`IDEA.md` に「何を作りたいか」「避けたいこと」「制約」を自由に書く。LLM は次のセッションでそれを読み、`DESIGN.md` への反映案、矛盾、質問候補、受入基準、テスト義務に分解する。仕様を完成形で書く必要はない。
 
-LLM は大量のコードを生成できますが、人間がその出力を常時監視し、微妙な誤りを見つけ続ける構造は長続きしません。問題はコードを書く速さではなく、生成されたコードを信頼できるか、誤りを早く局所化できるか、手戻りを小さくできるかです。
+### ② 仕様の機械可読化
 
-そのため、このテンプレートは次の方針を取ります。
+`DESIGN.md` から requirement / use case / acceptance criteria / constraint を EDN として抽出する（`design-ir.edn`）。実装側の公開関数とテストには `:trace/requirements` / `:trace/use-cases` / `:trace/test-obligations` という metadata を付ける。`trace-impact.sh` で「この要件に関係するコードとテスト」「今回の変更が影響する要件」を逆引きできる。
+
+### ③ Polylith による物理的境界
+
+[Polylith](https://polylith.gitbook.io/) は brick（components / bases）と interface で物理的に境界を区切るアーキテクチャ。LLM が触る範囲が brick 単位に局所化され、`poly check` が境界違反を CI で fail させる。LLM が「ついでに別領域を直す」誘惑が構造的に封じられる。
+
+### ④ Malli による動的契約
+
+[Malli](https://github.com/metosin/malli) で関数の入出力契約 (`m/=>`) を書き、instrumentation を有効化すると、契約違反が即例外化する。動的言語のまま境界を fail-closed にできる。LLM が型を捏造しても、REPL を 1 回叩けば顕在化する。
+
+### ⑤ 「次に何をすべきか」を機械が返す
+
+迷ったら 1 コマンド:
+
+```bash
+$ ./.llm/scripts/evidence.sh what-now
+```
+
+このコマンドは git diff・Polylith 構造・検証履歴を見て、**今やるべき次の 1 アクションを 1 つだけ返す**。
+
+```text
+== Evidence What Now ==
+State: gate-blocked
+Task: 2026-05-16-evidence-gate-8eaa73b417494283
+Next: ./.llm/scripts/evidence.sh declare --task 2026-05-16-evidence-gate-8eaa73b417494283 --all-none
+Reason: save-required change has no matching packet or close record
+```
+
+`git commit` を打つと pre-commit hook が走り、「この変更にはどの検証が必要か」を変更内容から判定する。必要な検証が記録されていなければ commit は止まり、何を埋めるべきかが指示される。
+
+LLM は workflow 手順を暗記しない。人間も暗記しない。
+
+## Why Clojure × LLM
+
+静的型に頼らずに「短いループで誤りを顕在化させる」道具立てが、Clojure には揃っている。
+
+- **REPL**: 編集から検証までを 1 ターン内で閉じる。LLM の出力をそのターンで反証できる
+- **Malli**: 関数契約と instrumentation で、動的言語でも境界を fail-closed にできる
+- **Polylith**: brick / interface で物理的に境界を区切る
+- **不変データ・データ指向**: 副作用を最外層に寄せ、内側を純粋に保つ。LLM が触る範囲を局所推論できる
+
+このテンプレートは、この 4 つの上に「**変更範囲と必要な検証を、LLM の自己申告ではなく構造から機械的に導出する**」層を重ねている（**Structural Evidence View**、構造的証拠ビュー）。LLM は導出できなかった部分だけを自然言語で明示する。
+
+## 実用性 — 人間が覚えること
+
+人間側の認知負荷は次の 5 項目に圧縮されている。
+
+1. アイデアを `IDEA.md` に書く（仕様完成形でなくてよい）
+2. 着手前に `evidence.sh what-now` を見る
+3. 迷ったら `.llm/memory/QUESTIONS.md` に質問を立てる
+4. commit は pre-commit hook に任せる（順序を覚えない）
+5. 仕様変更は `DESIGN.md` を直接書き換える（履歴は git と決定記録が保全）
+
+これ以外はガイドとスクリプトとフックが肩代わりする。LLM は毎セッション `CLAUDE.md` を読むことが機械強制されており、変更種別ごとの検査・完了条件・REPL 必須トリガ・自己停止プロトコルは本文内で全て参照可能。
+
+## 開発の自律性 — LLM はどこまで走るか
+
+LLM は次の連鎖で自走する。**人間が止めるのは不可逆な判断と、自己解釈できない曖昧性だけ**である。
+
+```text
+session 開始
+  └→ briefing が「直近の検証済変更」「次の 1 アクション」を冒頭で表示
+edit
+  └→ evidence.sh what-now が次の 1 アクションを返す
+git add / git commit
+  └→ pre-commit hook が変更内容を見て必要な検証を判定。未検証なら止める
+       └→ 止まったら、何を埋めるべきかも機械が指示する
+LLM が埋める
+  └→ 機械が導出できなかった「意味的影響」「残った未知」「他 brick への影響」を自然言語で書く
+検証を実行
+  └→ どのコマンドが、どの環境で、何秒で、どの exit code で終わったかを自動記録
+完了
+  └→ 「予測した変更範囲」と「実際の変更範囲」を機械が照合し、ズレがあれば指摘する
+```
+
+LLM が独断で進めてよい範囲と、必ず人間に渡す範囲は 4 段階の権限階層（人間専権 / 承認必須 / 実施後報告 / 独断可）で機械的に判定される。
+∵ .llm/guide/COLLABORATION_GUIDE.md
+
+### Claude / Codex / 人間で同じ仕組み
+
+`./.llm/scripts/` 配下のスクリプト群は、Claude Code でも Codex でも人間でも同じものを使う。pre-commit hook は repo-local で 1 回有効化すれば、誰が commit しても同じ gate を通る。
+
+## 結果として — 監視疲労が消える
+
+このテンプレートが目指す副次効果は、**LLM の出力を人間が常時監視しなくても済む構造**である。LLM が大量にコードを書ける時代に、人間がレビュー役として消耗し続ける構造は持続しない。
+
+このテンプレートは:
 
 - 機械が検査できるものは機械に検査させる
-- 人間はプロダクト判断、仕様判断、不可逆な設計判断に集中する
+- 人間はプロダクト判断・仕様判断・不可逆な設計判断に集中する
 - LLM が触る範囲を Polylith brick 単位に小さく保つ
 - Malli 契約と REPL 検証で、動的言語でも短いフィードバックループを作る
-- 仕様、知識、決定履歴、判断保留を混ぜない
+- 仕様 / 知識 / 決定履歴 / 判断保留を混ぜない
 - 仕様と実装の対応を EDN 生成物で追跡する
-- scope / evidence は LLM の宣言ではなく、可能な限り構造から導出する
-- LLM が残すのは、導出不能な意図・未知・残疲労だけに絞る
+- 検証は LLM の自己申告ではなく、可能な限り構造から導出する
 - 迷走した LLM を人間が後から救うのではなく、早めに止める
 
-Clojure の不変データ、REPL 駆動、データ指向設計、Polylith の明示的な境界は、この目的と相性が良い。Rust のように静的型で閉じる方向ではなく、Clojure では Malli 契約、REPL、Polylith、lint、生成 EDN を組み合わせて、実用上の検査可能性と局所推論性を作ります。
+Rust のように静的型で閉じる方向ではなく、Clojure では Malli 契約・REPL・Polylith・lint・生成 EDN・構造的証拠ビューを組み合わせて、実用上の検査可能性と局所推論性を作る。
 
 ## 一般的な仕様駆動開発との違い
 
-一般的な SDD ツールは、仕様を first-class artifact として扱い、要件 → 設計 → タスク → 実装の流れを整えます。本テンプレートもその思想を共有しますが、**異なる前提**から**異なる構造**で同じ目的に到達しています。
+一般的な SDD ツールは仕様を first-class artifact として扱い、要件 → 設計 → タスク → 実装の流れを整える。本テンプレートもその思想を共有するが、**異なる前提**から**異なる構造**で同じ目的に到達している。
 
-一般的な SDD ツールの多くは、「LLM やステークホルダーが repo 内文書を読まないチームでも仕様駆動を維持する」ことを目的とし、dashboard・外部 issue tracker 同期・tasks ファイル等の**外部表示による補償機構**を備えます。
+一般的な SDD ツールの多くは「LLM やステークホルダーが repo 内文書を読まないチームでも仕様駆動を維持する」ことを目的とし、dashboard / 外部 issue tracker 同期 / tasks ファイル等の**外部表示による補償機構**を備える。
 
-本テンプレートは前提を逆に取ります。「**LLM が毎セッション必ず repo 内文書を読む**」ことを `session-briefing.sh` と `.llm/data/*.edn`、および毎セッション必読規約で機械化し、補償機構そのものを不要にします。
+本テンプレートは前提を逆に取る。「**LLM が毎セッション必ず repo 内文書を読む**」ことを `session-briefing.sh` と `.llm/data/*.edn`、および毎セッション必読規約で機械化し、補償機構そのものを不要にする。
 ∵ CLAUDE.md
 
 ### 一般的な補償機構と本テンプレの対応
 
 | 一般的な SDD の機能 | 想定されている弱点 | 本テンプレの構造的封じ込め |
 |---|---|---|
-| 進捗 dashboard / status 表示 | 人間ステークホルダーが repo を読まない | 毎セッション必読 + L0-L3 権限階層で LLM の自律度を判定 |
-| 作業計画ファイルと並列マーカー | 作業計画が会話で消える | brick = 再利用単位 + `poly check` + `:brick/requirements` で REQ-ID 紐付け |
+| 進捗 dashboard / status 表示 | 人間ステークホルダーが repo を読まない | 毎セッション必読 + 権限階層で LLM の自律度を判定 |
+| 作業計画ファイルと並列マーカー | 作業計画が会話で消える | brick = 再利用単位 + `poly check` + brick metadata で要件紐付け |
 | 外部 issue tracker との双方向同期 | repo 内 markdown を読まない文化 | `QUESTIONS.md` / `ADR` を repo 内 markdown として保持、git 履歴と一体管理 |
-| proposal → apply → archive の状態機械 | 仕様変更の所在が分散 | `QUESTIONS.md` の状態遷移 + `:adoption-mode :retrofit/:partial/:complete` |
-| エージェント規約ファイルの拡張 | エージェントごとの規約分散 | `CLAUDE.md` に一極集中、`AGENTS.md` は session briefing と共有 `.llm/scripts/` primitive への最小 bootstrap |
+| proposal → apply → archive の状態機械 | 仕様変更の所在が分散 | `QUESTIONS.md` の状態遷移 + 採用モード分類 |
+| エージェント規約ファイルの拡張 | エージェントごとの規約分散 | `CLAUDE.md` に一極集中、`AGENTS.md` は最小 bootstrap |
 | マルチエージェント orchestration | 単一 LLM の context 限界 | 自己停止プロトコル + subagent 分離 + REPL primary workbench |
+| task / evidence の記録 | PR description や会話に散逸 | 構造的証拠ビューが actual scope / required evidence / 残った未知を機械導出し台帳化 |
 
-一般的な機能が「無い」のではなく、本テンプレでは**別の構造でそもそも問題が発生しない**設計になっています。
+一般的な機能が「無い」のではなく、本テンプレでは**別の構造でそもそも問題が発生しない**設計になっている。
 
 ### 「読む」前提と「読まない」前提の分岐
-
-一般的な SDD と本テンプレの最も深い違いは、LLM とステークホルダーが repo 内文書を**読むか読まないか**の前提にあります。
 
 | | 一般的な SDD の暗黙前提 | 本テンプレの明示前提 |
 |---|---|---|
@@ -103,7 +163,7 @@ Clojure の不変データ、REPL 駆動、データ指向設計、Polylith の�
 | LLM の repo 読み込み | 部分的・任意 | 毎セッション必須・機械強制 |
 | 仕様変更の伝達 | 外部通知・同期 | git 履歴と repo 内文書で完結 |
 
-この分岐により、本テンプレは「読む」前提でしか成立しない強み (4 種文書純度 / IR 機械照合 / 多層機械検査 / REPL primary workbench) を獲得する代わりに、「読まないチーム」へのスケールを意図的に放棄しています。これは**トレードオフではなく設計選択**です。
+この分岐により、本テンプレは「読む」前提でしか成立しない強み（4 種文書純度 / IR 機械照合 / 多層機械検査 / REPL primary workbench / 構造的証拠ビューによる機械導出）を獲得する代わりに、「読まないチーム」へのスケールを意図的に放棄している。**トレードオフではなく設計選択**。
 
 ### 重点の違い
 
@@ -112,16 +172,22 @@ Clojure の不変データ、REPL 駆動、データ指向設計、Polylith の�
 | 対象 | 多言語・汎用 | Clojure + Polylith に特化 |
 | 仕様の役割 | 実装前の合意文書 | 実装判断・IR 生成・テスト義務・構造検査の起点 |
 | LLM との関係 | 仕様を LLM に渡して実装させる | LLM が IDEA を DESIGN へ構造化し、検査結果で自己修正する |
-| 強制力 | 文書・タスク管理・レビュー中心 | clj-kondo / Splint / Polylith / Malli / scripts / clj-watson で fail させる |
+| 強制力 | 文書・タスク管理・レビュー中心 | clj-kondo / Splint / Polylith / Malli / scripts / clj-watson / hook で fail させる |
 | モジュール境界 | 設計規約に依存しがち | Polylith brick と interface で物理的に区切る |
-| 仕様と実装の照合 | ツール依存、または手動 | design-ir、brick/workspace map、Clojure trace metadata で照合 |
+| 仕様と実装の照合 | ツール依存、または手動 | design-ir、brick/workspace map、trace metadata で照合 |
 | 仕様とテストの照合 | 受入基準とテストの対応をレビューで追う | test obligation と `deftest` metadata を照合 |
-| task close の根拠 | PR 説明や会話に残りがち | Structural Evidence View で actual scope / required evidence / review attention を導出 |
+| task close の根拠 | PR 説明や会話に残りがち | 構造的証拠ビューで actual scope / required evidence / review attention を導出 |
 | 知識管理 | spec / plan / tasks に集約しがち | DESIGN / KNOWLEDGE / ADR / QUESTIONS を分離 |
-| 開発ループ | テスト・CI 中心 | REPL primary workbench + Malli instrumentation + CI |
-| 人間の役割 | 仕様作成者・レビュー者 | L0 判断と承認に集中し、検査は機械へ寄せる |
+| 開発ループ | テスト・CI 中心 | REPL primary workbench + Malli instrumentation + CI + hook gate |
+| 人間の役割 | 仕様作成者・レビュー者 | 不可逆判断と承認に集中し、検査は機械へ寄せる |
 
-つまり、本テンプレートは「仕様をよく書くための道具」ではなく、「仕様から実装・検査・記憶・承認までをつなぎ、人間の注意力に依存する箇所を減らすための Clojure Polylith 向け実装」です。
+つまり、本テンプレートは「仕様をよく書くための道具」ではなく、**IDEA から実装・検査・記憶・承認・検証記録までをつなぎ、人間の注意力に依存する箇所を減らすための Clojure Polylith 向け実装**である。
+
+> ⚠️ **このファイルはテンプレート配布時の入口。**
+> 派生プロジェクトでは初期化完了時にプロダクト README として完全置換する。
+¤ .llm/guide/BOOTSTRAP_GUIDE.md §4
+¤ .llm/templates/PROJECT_README.md
+¤ .llm/guide/TEMPLATE_USAGE_GUIDE.md
 
 ## 向いているプロジェクト
 
@@ -441,7 +507,7 @@ cd /path/to/repo
 │
 ├── .llm/scripts/             ← ワークスペース整合性検査・EDN 生成スクリプト
 │   ├── README.md                スクリプト一覧・機械化 5 層構造
-│   ├── check-workspace-integrity.sh  総合検査（完了条件から起動、§5.5）
+│   ├── check-workspace-integrity.sh  総合検査(完了条件から起動、§5.5)
 │   ├── check-placeholders.sh         workspace.edn / deps.edn プレースホルダ残存
 │   ├── check-brick-registration.sh   brick と deps.edn の登録整合
 │   ├── check-deprecated-libs.sh      非推奨ライブラリの採用宣言検知
@@ -453,25 +519,25 @@ cd /path/to/repo
 │   ├── check-trace-index.sh          Trace Index 生成物の drift 検査
 │   ├── trace-impact.sh               要件・公開関数・変更差分から仕様上の影響範囲を表示
 │   ├── check-single-ns-per-file.sh   1 ファイル 1 ns
-│   ├── check-vulnerabilities.sh      clj-watson による脆弱性スキャン（release 前）
+│   ├── check-vulnerabilities.sh      clj-watson による脆弱性スキャン(release 前)
 │   ├── gen_lib_catalog.clj           技術選定の判断済み推奨集の EDN block から生成物を生成
 │   ├── lint-import-hooks.sh          依存ライブラリ提供の clj-kondo hook 取込
 │   ├── detect-repo-profile.sh        既存 repo の workspace-kind / capabilities 候補を検出
-│   ├── propose-repo-context.sh       repo-context.edn 候補を表示（副作用なし）
+│   ├── propose-repo-context.sh       repo-context.edn 候補を表示(副作用なし)
 │   ├── propose-template-migrations.sh  migration ledger と適用済み migration の差分を表示
 │   ├── propose-adoption-plan.sh      既存 repo の移行作業順を local signals から提示
 │   ├── llm-template-adopt.sh         detect / propose / migration / adoption plan を順に表示する統合入口
 │   ├── check-repo-context-consistency.sh  capability 依存・adoption mode・migration ledger 参照の検査
 │   ├── apply-repo-context-migration.sh  承認後に repo-context.edn を作成
 │   ├── install-llm-template.sh       未導入 repo へテンプレートファイルを dry-run first で導入
-│   ├── session-briefing.sh           SessionStart 時の状態ブリーフィング（REPL 状態含む）
-│   ├── repl-eval.sh                  稼働中 nREPL へ eval 送信（LLM 向け、CLAUDE.md §9）
-│   └── repl_eval.clj                 repl-eval.sh の Clojure 実装（clj -X:repl-eval）
+│   ├── session-briefing.sh           SessionStart 時の状態ブリーフィング(REPL 状態含む)
+│   ├── repl-eval.sh                  稼働中 nREPL へ eval 送信(LLM 向け、CLAUDE.md §9)
+│   └── repl_eval.clj                 repl-eval.sh の Clojure 実装(clj -X:repl-eval)
 │
 ├── .llm/data/                ← 仕様・構造・技術選定から生成される機械可読 index
-│   ├── libs.edn                      lib-catalog 全 entry（Malli 検証済）
+│   ├── libs.edn                      lib-catalog 全 entry(Malli 検証済)
 │   ├── design-ir.edn                 DESIGN 由来の requirement / use case / test obligation
-│   ├── trace-index.edn               仕様 ID と public boundary / deftest の impact index（trace metadata 追加後に生成）
+│   ├── trace-index.edn               仕様 ID と public boundary / deftest の impact index(trace metadata 追加後に生成)
 │   ├── deprecated-libs.patterns      deps.edn 採用検知用パターン
 │   ├── forbidden-requires.patterns   require 検知用パターン
 │   └── conflicts.patterns            併用禁止ペアパターン
@@ -479,18 +545,18 @@ cd /path/to/repo
 ├── .llm/templates/           ← 派生プロジェクトへコピー/貼り付ける Markdown 雛形 / 断片。**正本は guide / CLAUDE**、本ディレクトリは規約の運用補助
 │   ├── README.md                    ディレクトリの位置づけと雛形 / 断片一覧
 │   ├── PROJECT_README.md            派生プロジェクト README の半自動生成雛形
-│   └── fixture-state-summary.md     越境 UC PR 本文断片（POLYLITH_GUIDE §7.4.1 関連）
+│   └── fixture-state-summary.md     越境 UC PR 本文断片(POLYLITH_GUIDE §7.4.1 関連)
 │
-├── docs/BRICKS.md            ← brick.edn / interface.clj から生成される閲覧用 Brick Map（派生プロジェクトで brick 作成後に生成、直接編集しない）
-├── docs/PROJECTS.md          ← project.edn / project deps から生成される閲覧用 Project Map（project 作成後に生成、直接編集しない）
-├── docs/WORKSPACE.md         ← workspace 全体の生成ビュー（直接編集しない）
-├── docs/TRACE.md             ← trace metadata から生成される仕様 impact map（直接編集しない）
+├── docs/BRICKS.md            ← brick.edn / interface.clj から生成される閲覧用 Brick Map(派生プロジェクトで brick 作成後に生成、直接編集しない)
+├── docs/PROJECTS.md          ← project.edn / project deps から生成される閲覧用 Project Map(project 作成後に生成、直接編集しない)
+├── docs/WORKSPACE.md         ← workspace 全体の生成ビュー(直接編集しない)
+├── docs/TRACE.md             ← trace metadata から生成される仕様 impact map(直接編集しない)
 │
-├── .clj-kondo/config.edn        lint 機械化（polyguard hook 同梱）
-├── .clj-kondo/polyguard/        custom hook（機械化第 2 層: 本テンプレート固有パターン）
+├── .clj-kondo/config.edn        lint 機械化(polyguard hook 同梱)
+├── .clj-kondo/polyguard/        custom hook(機械化第 2 層: 本テンプレート固有パターン)
 ├── .gitignore
 ├── cljfmt.edn                   フォーマッタ
-├── deps.edn                     tools.deps（必須技術基盤のみ，本番依存は brick deps.edn に）
+├── deps.edn                     tools.deps(必須技術基盤のみ，本番依存は brick deps.edn に)
 ├── workspace.edn                Polylith 設定
 └── development/src/dev/user.clj REPL 駆動開発エントリ
 ```
@@ -505,25 +571,26 @@ cd /path/to/repo
 | 技術選定 | `.llm/guide/STACK_GUIDE.md` |
 | Clojure の書き方で迷った | `.llm/guide/CODING_GUIDE.md` |
 | Polylith 構造判断・brick 追加 | `.llm/guide/POLYLITH_GUIDE.md` |
-| brick 構成・機能分担の把握 | `docs/BRICKS.md`（閲覧用生成物） / `.llm/data/brick-map.edn`（検索用生成物）。正本は各 `brick.edn` と `interface.clj`。任意の `:brick/group` は類似 brick の俯瞰用で、構造境界ではない |
-| project / workspace 構成の把握 | `docs/PROJECTS.md` / `docs/WORKSPACE.md`（閲覧用生成物） / `.llm/data/workspace-map.edn`（検索用生成物）。正本は `project.edn`、`workspace.edn`、`deps.edn`、`brick.edn` |
+| brick 構成・機能分担の把握 | `docs/BRICKS.md`(閲覧用生成物) / `.llm/data/brick-map.edn`(検索用生成物)。正本は各 `brick.edn` と `interface.clj`。任意の `:brick/group` は類似 brick の俯瞰用で、構造境界ではない |
+| project / workspace 構成の把握 | `docs/PROJECTS.md` / `docs/WORKSPACE.md`(閲覧用生成物) / `.llm/data/workspace-map.edn`(検索用生成物)。正本は `project.edn`、`workspace.edn`、`deps.edn`、`brick.edn` |
 | LLM と人間の協働方針で迷った | `.llm/guide/COLLABORATION_GUIDE.md` |
 | テンプレート自体の改修 | `.llm/guide/MAINTAINERS_GUIDE.md` |
-| 判断に迷った時（Q を立てる） | `.llm/memory/QUESTIONS.md` |
+| 判断に迷った時(Q を立てる) | `.llm/memory/QUESTIONS.md` |
 | 契約・不変条件の記録 | `.llm/memory/KNOWLEDGE.md` |
-| 重要な設計判断の記録 | `.llm/memory/adr/README.md`（運用ルール） |
+| 重要な設計判断の記録 | `.llm/memory/adr/README.md`(運用ルール) |
 | ワークスペース整合性検査スクリプト・機械化 5 層構造 | `.llm/scripts/README.md` |
 
-## 設計の基底思想（要約）
+## 設計の基底思想(要約)
 
-- **疲労最小化**: LLM の誤りを構造的に封じる（全域性・不変性・副作用の隔離）
-- **機械化 5 層**: 第 1 層 clj-kondo 組込 linter / 第 2 層 `.clj-kondo/polyguard/` custom hook / 第 3 層 Splint / 第 4 層 `.llm/scripts/check-*.sh`（設定・構造検査）+ Polylith `poly check` + Malli instrumentation / 第 5 層 clj-watson（時間軸脆弱性）。規約を人間の注意力ではなくツールで強制（詳細は `MAINTAINERS_GUIDE.md` §5.10）
-- **単一の正本（SSOT）生成**: `.llm/scripts/gen_lib_catalog.clj` が `STACK_GUIDE` の `;; lib-catalog` EDN block 群を検証・合成し `.llm/data/` 配下に生成物を出力する。shell script はその生成物を読む
+- **構造的証拠ビュー（Structural Evidence View）**: LLM の自己申告ではなく git diff / Polylith 構造 / 生成 index / 検査 script から「変更範囲・必要な検証・残った未知」を機械導出。`evidence.sh` workflow と pre-commit hook で gate
+- **疲労最小化**: LLM の誤りを構造的に封じる(全域性・不変性・副作用の隔離)
+- **機械化 5 層**: 第 1 層 clj-kondo 組込 linter / 第 2 層 `.clj-kondo/polyguard/` custom hook / 第 3 層 Splint / 第 4 層 `.llm/scripts/check-*.sh`(設定・構造検査) + Polylith `poly check` + Malli instrumentation / 第 5 層 clj-watson(時間軸脆弱性)。規約を人間の注意力ではなくツールで強制(詳細は `MAINTAINERS_GUIDE.md` §5.10)
+- **単一の正本(SSOT)生成**: `.llm/scripts/gen_lib_catalog.clj` が `STACK_GUIDE` の `;; lib-catalog` EDN block 群を検証・合成し `.llm/data/` 配下に生成物を出力する。shell script はその生成物を読む
 - **Brick Map 生成**: 各 `brick.edn` と `interface.clj` を正本として閲覧用 Map / `.llm/data/brick-map.edn` を生成し、component/base の意味違反・重複 capability・drift を検査する。任意の `:brick/group` は類似 brick の俯瞰用 index として生成し、再分割 smell は advisory warning に留める
 - **Project / Workspace Map 生成**: 各 `project.edn`、`workspace.edn`、`deps.edn`、`brick.edn` から閲覧用 Map / `.llm/data/workspace-map.edn` を生成し、deploy intent と project deps の整合を検査する
 - **REPL as Primary Workbench**: `.llm/scripts/repl-eval.sh` により LLM が稼働中 nREPL に eval / load-file を送信。永続 session で状態を継続し、編集から検証までを同一ターンで閉じる
 - **技術選定の判断済み推奨集**: 必須技術基盤はワークスペースルートで常に採用し、追加ライブラリは必要な brick の `deps.edn` に配置する。判断済み推奨集は `.llm/guide/STACK_GUIDE.md`
-- **4 種の文書分離**: 仕様（DESIGN）/ 知識（KNOWLEDGE）/ 決定履歴（ADR）/ 判断保留（QUESTIONS）
+- **4 種の文書分離**: 仕様(DESIGN) / 知識(KNOWLEDGE) / 決定履歴(ADR) / 判断保留(QUESTIONS)
 - **自己停止プロトコル**: LLM が時間感覚なく詰まった時、ターン数閾値で停止し Q を立てる
 
 詳細は `CLAUDE.md` §1 と `.llm/guide/MAINTAINERS_GUIDE.md`。
