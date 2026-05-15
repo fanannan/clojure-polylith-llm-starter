@@ -834,6 +834,7 @@ Derive First, Declare Residual, Preserve Only What Reduces Future Fatigue, Audit
 
 - `evidence.sh status`: session 開始時・任意時点で Evidence Plane を query
 - `evidence.sh predict`: 着手前 intent を binding し、予測 scope / required evidence / pre-flight context を保存
+- `evidence.sh declare`: 導出不能 residual を `none` または具体値として active packet に明示
 - `evidence.sh close`: close 直前に predicted scope と actual scope を照合し、residual 未宣言なら close を block
 - `derive-change-scope.sh`: actual scope と archetype 候補を導出
 - `inspect-derivation.sh`: path ごとの matched rule、plane、archetype、required evidence を表示

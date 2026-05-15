@@ -20,10 +20,9 @@ Structural Evidence View は、LLM が scope と evidence を自己申告する�
 
 ```bash
 ./.llm/scripts/propose-review-packet.sh --task-id 2026-05-15-example
-./.llm/scripts/evidence.sh close --task 2026-05-15-example
 ```
 
-生成された `.llm/work/<task-id>.md` または close の出力を見て、次の `TBD` を埋める。
+生成された `.llm/work/<task-id>.md` を見て、次の `TBD` を宣言する。
 
 - Semantic Impact Not Derived By Structure: 構造解析では見えない仕様・運用・意味上の影響
 - Unknowns Not Captured By Derivation: 残った未知、QUESTIONS 候補
@@ -32,6 +31,29 @@ Structural Evidence View は、LLM が scope と evidence を自己申告する�
 - Remaining Fatigue: 未来に転嫁する確認コスト、expiry、次アクション
 
 該当がなければ空欄にせず、必ず `none` と明示する。空欄と `none` は異なる。空欄は書き忘れ、`none` は確認済みの無である。
+
+全て `none` として宣言できる場合:
+
+```bash
+./.llm/scripts/evidence.sh declare --task 2026-05-15-example --all-none
+```
+
+個別に宣言する場合:
+
+```bash
+./.llm/scripts/evidence.sh declare --task 2026-05-15-example \
+  --semantic-impact "none" \
+  --unknowns "none" \
+  --cross-brick-effects "none" \
+  --override "none" \
+  --remaining-fatigue "none"
+```
+
+宣言後に close する。
+
+```bash
+./.llm/scripts/evidence.sh close --task 2026-05-15-example
+```
 
 ## 触らなくてよいもの
 

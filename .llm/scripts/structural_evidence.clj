@@ -231,6 +231,12 @@
       "--packet" (recur (assoc m :packet (first xs)) (next xs))
       "--intent" (recur (assoc m :intent (first xs)) (next xs))
       "--task" (recur (assoc m :task/id (first xs)) (next xs))
+      "--all-none" (recur (assoc m :all-none true) xs)
+      "--semantic-impact" (recur (assoc-in m [:declare :semantic-impact-not-derived] (first xs)) (next xs))
+      "--unknowns" (recur (assoc-in m [:declare :unknowns-not-captured-by-derivation] (first xs)) (next xs))
+      "--cross-brick-effects" (recur (assoc-in m [:declare :cross-brick-effects-not-in-trace-index] (first xs)) (next xs))
+      "--override" (recur (assoc-in m [:declare :override] (first xs)) (next xs))
+      "--remaining-fatigue" (recur (assoc-in m [:declare :remaining-fatigue] (first xs)) (next xs))
       "--out-dir" (recur (assoc m :out-dir (first xs)) (next xs))
       "--task-id" (recur (assoc m :task/id (first xs)) (next xs))
       "--status" (recur (assoc m :status (parse-keyword (first xs))) (next xs))
@@ -571,6 +577,11 @@
     (and (string? v) (str/blank? v)) false
     (and (coll? v) (empty? v)) false
     :else true))
+
+(defn- declaration-value [v]
+  (if (= "none" (str/lower-case (str/trim (str v))))
+    :none
+    v))
 
 (defn- missing-residual-fields [packet]
   (let [declared (:llm-declared packet)]
@@ -972,6 +983,35 @@
     (println " " (str base ".predict.edn"))
     (println " " (str base ".predict.md"))))
 
+(defn declare-residual [opts]
+  (let [task-id (or (:task/id opts) (first (:extra-args opts)))
+        _ (when-not task-id
+            (binding [*out* *err*]
+              (println "Usage: structural-evidence declare --task TASK-ID [--all-none|--semantic-impact TEXT ...]"))
+            (System/exit 2))
+        path (str default-out-dir "/" task-id ".edn")
+        _ (when-not (file? path)
+            (binding [*out* *err*]
+              (println "No active packet found:" path)
+              (println "Run propose-review-packet.sh or evidence predict first."))
+            (System/exit 2))
+        packet (edn/read-string (slurp path))
+        updates (if (:all-none opts)
+                  (zipmap residual-fields (repeat :none))
+                  (update-vals (:declare opts) declaration-value))
+        packet* (update packet :llm-declared merge updates)
+        md-path (str default-out-dir "/" task-id ".md")]
+    (write-edn! path packet*)
+    (write-markdown! md-path packet*)
+    (println "Residual declarations updated:")
+    (println " " path)
+    (println " " md-path)
+    (if-let [missing (seq (missing-residual-fields packet*))]
+      (do
+        (println "Still pending:")
+        (doseq [field missing] (println " -" field)))
+      (println "Residual declaration complete."))))
+
 (defn- scope-diff [predicted actual key]
   (let [p (set (get-in predicted [:actual-scope key]))
         a (set (get-in actual [:actual-scope key]))]
@@ -1068,6 +1108,7 @@
         "check-residual" (check-residual-declared opts)
         "status" (run-status opts)
         "predict" (predict opts)
+        "declare" (declare-residual opts)
         "close" (close opts)
         "self-test" (self-test opts)
         (do
@@ -1079,6 +1120,7 @@
             (println "  structural-evidence check-residual --packet PATH")
             (println "  structural-evidence status")
             (println "  structural-evidence predict --task TASK-ID --intent TEXT [--changed-file PATH]")
+            (println "  structural-evidence declare --task TASK-ID [--all-none|--semantic-impact TEXT ...]")
             (println "  structural-evidence close --task TASK-ID")
             (println "  structural-evidence self-test"))
           (System/exit 2))))
