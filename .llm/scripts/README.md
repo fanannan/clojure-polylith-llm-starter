@@ -45,7 +45,7 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 | `gen_trace_index.clj` | trace index 生成 / 検査の Clojure 実装。requirement / use case / test obligation ごとの implementation / test 対応と impact index を作る |
 | `trace-impact.sh` | `trace-index.edn` を検索し、要件・受入基準・公開関数・変更差分から、影響する public boundary・test・test obligation を表示 |
 | `trace_impact.clj` | `trace-impact.sh` の Clojure 実装。DESIGN 更新前後の探索、commit 前の変更差分確認、session briefing の trace health に使う |
-| `evidence.sh` | Structural Evidence workflow の主入口。`status` / `predict` / `declare` / `close` で session 開始、着手前、residual 宣言、close 直前の evidence state を扱う |
+| `evidence.sh` | Structural Evidence workflow の主入口。`status` / `predict` / `declare` / `run` / `close` で session 開始、着手前、residual 宣言、command-backed evidence 記録、close 直前の evidence state を扱う |
 | `derive-change-scope.sh` | git diff、repo-kind 別 derivation rules、brick-map / workspace-map / trace-index / design-ir / lib-catalog から Structural Evidence の actual scope / archetype / required evidence / 関連 context を導出する。LLM の scope 自己申告を正本にしないための入口 |
 | `inspect-derivation.sh` | `derive-change-scope.sh` の導出理由を path ごとに表示する。matched rule、plane、archetype、public boundary、required evidence を説明する debug / 教材用 view |
 | `propose-review-packet.sh` | `.llm/work/` に Review Fatigue Packet の EDN view と Markdown view を生成する。これは生成 view であり、Authority source ではない |
@@ -216,8 +216,9 @@ Structural Evidence View は、LLM が scope / evidence を自己申告する代
 ```bash
 ./.llm/scripts/evidence.sh status
 ./.llm/scripts/evidence.sh predict --task 2026-05-15-example --intent "change intent"
-./.llm/scripts/propose-review-packet.sh --task-id 2026-05-15-example
+./.llm/scripts/propose-review-packet.sh --task 2026-05-15-example
 ./.llm/scripts/evidence.sh declare --task 2026-05-15-example --all-none
+./.llm/scripts/evidence.sh run --task 2026-05-15-example
 ./.llm/scripts/evidence.sh close --task 2026-05-15-example
 ```
 

@@ -251,6 +251,9 @@ evidence_plane_brief() {
       case "$f" in
         *.intent.edn|*.predict.edn) continue ;;
       esac
+      if grep -qE '(^|[[:space:]]):status[[:space:]]+:(clean-close|closed)' "$f" 2>/dev/null; then
+        continue
+      fi
       found_active=1
       local name
       name="$(basename "$f" .edn)"
@@ -265,6 +268,10 @@ evidence_plane_brief() {
         residual="residual: declared"
       fi
       echo "- $name (${save_policy:-save:?}, ${derivation:-derive:?}, $residual)"
+      if [ "$residual" = "residual: pending" ]; then
+        echo "  → declare: ./.llm/scripts/evidence.sh declare --task $name --all-none"
+        echo "    （残影響がある場合は --all-none ではなく個別 field に具体値を入れる）"
+      fi
     done
   fi
   if [ "$found_active" -eq 0 ]; then

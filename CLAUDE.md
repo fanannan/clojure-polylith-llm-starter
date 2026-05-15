@@ -647,6 +647,9 @@ subagent / tool 呼び出し / 長い shell 実行は、ユーザへの最終応
 
 §1.2.3 小単位分解の実装。
 
+**Evidence workflow の義務**: ファイル編集を伴う bounded task では、着手前に `./.llm/scripts/evidence.sh predict --task <id> --intent "<意図>"` を実行し、close 前に `./.llm/scripts/propose-review-packet.sh --task <id>` → `./.llm/scripts/evidence.sh declare ...` → `./.llm/scripts/evidence.sh close --task <id>` を通す。`declare` では導出不能な residual を `none` または具体値で必ず明示する。調査のみ・編集なしの作業では `./.llm/scripts/evidence.sh status` で十分だが、編集へ移る時点で predict へ進む。
+¤ .llm/guide/STRUCTURAL_EVIDENCE_QUICKSTART.md
+
 ### 8.0 実装着手前の確認（すべての作業に共通）
 
 どの作業を行う時も、着手前に以下を確認する。これは §1.3「現時点で有効な知識の活用で再発見の疲労を避ける」の具体実装：

@@ -54,5 +54,12 @@ node_modules/
 /.llm/work/*
 !/.llm/work/.gitignore
 
+# --- LLM evidence records ---
+# Closed records may include project-sensitive paths, function names, or
+# operational context. Public projects should keep them local unless a project
+# ADR/maintainer decision explicitly changes the policy.
+/.llm/evidence/closed/*
+!/.llm/evidence/closed/.gitignore
+
 # --- clj-kondo runtime lock ---
 .clj-kondo/.lock

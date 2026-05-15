@@ -19,7 +19,7 @@ Structural Evidence View は、LLM が scope と evidence を自己申告する�
 変更完了後、close 直前に実態と予測を照合する。
 
 ```bash
-./.llm/scripts/propose-review-packet.sh --task-id 2026-05-15-example
+./.llm/scripts/propose-review-packet.sh --task 2026-05-15-example
 ```
 
 生成された `.llm/work/<task-id>.md` を見て、次の `TBD` を宣言する。
@@ -31,6 +31,8 @@ Structural Evidence View は、LLM が scope と evidence を自己申告する�
 - Remaining Fatigue: 未来に転嫁する確認コスト、expiry、次アクション
 
 該当がなければ空欄にせず、必ず `none` と明示する。空欄と `none` は異なる。空欄は書き忘れ、`none` は確認済みの無である。
+
+Residual は EDN を手編集せず、必ず `evidence.sh declare` で更新する。active packet がまだ無い場合でも、同じ task の `.predict.edn` があれば `declare` が `.llm/work/<task-id>.edn` を安全に作成する。`propose-review-packet.sh` を再実行しても既存の residual declaration は保持される。
 
 全て `none` として宣言できる場合:
 
@@ -52,8 +54,13 @@ Structural Evidence View は、LLM が scope と evidence を自己申告する�
 宣言後に close する。
 
 ```bash
+./.llm/scripts/evidence.sh run --task 2026-05-15-example
 ./.llm/scripts/evidence.sh close --task 2026-05-15-example
 ```
+
+`run` は packet 内の command-backed evidence を実行し、exit code、repo revision、duration、失敗時の tail を active packet に記録する。command が定義されていない evidence は `:not-run` として残る。実行コストが高い場合は必要な検査を手動で走らせ、その結果を close 報告に含める。
+
+close が blocked になった場合でも、`.llm/work/<task-id>.edn` と `.llm/work/<task-id>.md` は最新の actual scope / blocked-close state で更新される。表示された `declare` コマンドで pending residual を埋め、必要な修正を行ってから close を再実行する。
 
 ## 触らなくてよいもの
 

@@ -4,6 +4,8 @@
 # Main subcommands:
 #   status  - query current evidence state
 #   predict - bind task intent before implementation
+#   declare - fill residual fields safely
+#   run     - record command-backed evidence results
 #   close   - compare predicted and actual scope before close
 
 set -euo pipefail
