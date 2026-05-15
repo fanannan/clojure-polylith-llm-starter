@@ -32,6 +32,8 @@ Structural Evidence View / Review Fatigue Packet
 継続的な drift 検出と README 半自動生成
 ```
 
+ここでいう **Structural Evidence View** は、変更範囲・変更種別・必要な検証を LLM の自己申告ではなく git diff、Polylith 構造、生成 index、検査 script から導出する view です。**Review Fatigue Packet** はその導出結果を人間と次セッションの LLM が読むための短い生成物であり、新しい正本ではありません。
+
 主な機能:
 
 - **IDEA から始められる**: 自由記載の着想メモを LLM が DESIGN 反映案、矛盾、質問候補へ分解する
@@ -184,6 +186,7 @@ HTTP、永続化、ライフサイクル管理などの追加技術は、必要�
 | IDEA から仕様へ翻案する | `.llm/guide/SPEC_GUIDE.md` | reconciliation と test obligation の節 |
 | 技術選定を決める | `.llm/guide/STACK_GUIDE.md` | 冒頭の位置づけ + 該当機能節 |
 | Polylith 構造を決める | `.llm/guide/POLYLITH_GUIDE.md` | 冒頭の前提 + 該当手順節 |
+| Review Fatigue Packet を使う | `.llm/guide/STRUCTURAL_EVIDENCE_QUICKSTART.md` | 最小手順と Close 前チェック |
 | scope と evidence を導出する | `.llm/scripts/README.md` | Structural Evidence View の節 |
 | 権限や承認で迷う | `.llm/guide/COLLABORATION_GUIDE.md` | §2 を正本として読む |
 | 何を記録するか迷う | `.llm/memory/QUESTIONS.md` / `.llm/memory/KNOWLEDGE.md` / `.llm/memory/adr/README.md` | 各文書冒頭の更新トリガー表 |

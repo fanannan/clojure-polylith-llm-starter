@@ -10,9 +10,16 @@
    [clojure.pprint :as pprint]
    [clojure.string :as str]))
 
-(def schema-version "vnext.1")
+(def schema-version "structural-evidence.1")
 
 (def default-out-dir ".llm/work")
+
+(def residual-fields
+  [:semantic-impact-not-derived
+   :unknowns-not-captured-by-derivation
+   :cross-brick-effects-not-in-trace-index
+   :override
+   :remaining-fatigue])
 
 (def evidence-tiers
   {:mechanical "re-runnable command evidence: tests, Malli, poly check, check-* pass"
@@ -168,6 +175,8 @@
       "--base" (recur (assoc m :base (first xs)) (next xs))
       "--head" (recur (assoc m :head (first xs)) (next xs))
       "--out" (recur (assoc m :out (first xs)) (next xs))
+      "--from" (recur (assoc m :from (first xs)) (next xs))
+      "--packet" (recur (assoc m :packet (first xs)) (next xs))
       "--out-dir" (recur (assoc m :out-dir (first xs)) (next xs))
       "--task-id" (recur (assoc m :task/id (first xs)) (next xs))
       "--status" (recur (assoc m :status (parse-keyword (first xs))) (next xs))
@@ -337,19 +346,56 @@
 
     :else :optional))
 
-(defn- failure-mode [opts entries]
+(defn- failure-mode [opts adoption entries]
   (let [errors (filter #(= :error (:severity %)) entries)
         unknown (filter #(= :uncategorized (:archetype %)) entries)
         generated-stale? false]
     (cond
       (seq errors) :cannot-derive
+      (and (seq unknown)
+           (or (not= :complete adoption)
+               (= :degraded (:mode opts)))) :degraded-derive
       (and (= :strict (:mode opts)) (seq unknown)) :partial-derive
       generated-stale? :degraded-derive
       :else :ok)))
 
+(defn- residual-declaration-placeholders []
+  (assoc (zipmap residual-fields (repeat nil))
+         :_required {:before-close residual-fields}))
+
+(defn- evidence-placeholders [required-evidence]
+  (mapv (fn [{:keys [id tier command]}]
+          {:id id
+           :tier tier
+           :status nil
+           :command (or command nil)
+           :exit nil
+           :repo-rev nil
+           :tool-version nil
+           :env-hash nil
+           :started-at nil
+           :duration-ms nil
+           :tail nil
+           :invalidated-by []})
+        required-evidence))
+
+(defn- declared-value? [v]
+  (cond
+    (nil? v) false
+    (and (string? v) (str/blank? v)) false
+    (and (coll? v) (empty? v)) false
+    :else true))
+
+(defn- missing-residual-fields [packet]
+  (let [declared (:llm-declared packet)]
+    (->> residual-fields
+         (remove #(declared-value? (get declared %)))
+         vec)))
+
 (defn derive-packet [opts]
   (let [started (now-ms)
         kind (repo-kind)
+        adoption (adoption-mode)
         files (changed-files opts)
         entries (mapv #(classify-path kind %) files)
         bricks (->> entries
@@ -364,7 +410,7 @@
         archetypes (->> entries (map :archetype) distinct sort vec)
         requirements (requirement-ids-for-bricks bricks)
         required-evidence (evidence-set archetypes)
-        failure (failure-mode opts entries)]
+        failure (failure-mode opts adoption entries)]
     {:schema/version schema-version
      :kind :review-fatigue-packet
      :task/id (or (:task/id opts)
@@ -372,11 +418,15 @@
                        "-structural-evidence"))
      :status (or (:status opts) :active)
      :repo-kind kind
-     :adoption-mode (adoption-mode)
+     :adoption-mode adoption
      :mode (:mode opts)
      :baseline (cond-> {:type (if (:base opts) :git-diff :working-tree)
                         :git-rev (git-rev)
-                        :default-branch (default-branch)}
+                        :default-branch (default-branch)
+                        :comparison-points {:last-close-record nil
+                                            :last-template-migration nil
+                                            :last-generated-index-sync nil
+                                            :last-close-on-same-bricks nil}}
                  (:base opts) (assoc :base (:base opts))
                  (:head opts) (assoc :head (:head opts)))
      :derivation {:status failure
@@ -390,12 +440,8 @@
                     :archetypes archetypes}
      :save-policy (save-policy archetypes (count files))
      :required-evidence required-evidence
-     :evidence []
-     :llm-declared {:semantic-impact-not-derived :none
-                    :unknowns-not-captured-by-derivation :none
-                    :cross-brick-effects-not-in-trace-index :none
-                    :override :none
-                    :remaining-fatigue :none}
+     :evidence (evidence-placeholders required-evidence)
+     :llm-declared (residual-declaration-placeholders)
      :human-attention {:must-review
                        (->> entries
                             (filter #(contains? save-required-archetypes (:archetype %)))
@@ -411,7 +457,7 @@
                             sort
                             vec)}
      :derivation/audit entries
-     :evidence-tiers evidence-tiers}))
+     :evidence-tier-spec-version schema-version}))
 
 (defn- print-edn [x]
   (pprint/pprint x))
@@ -433,6 +479,28 @@
        (str "- `" id "` [" (name tier) "]: " label
             (when command (str "\n  - command: `" command "`")))))
     "- none"))
+
+(defn- declared-value-markdown [v]
+  (cond
+    (nil? v)
+    "- TBD: write `none` or concrete items before close"
+
+    (= :none v)
+    "- none"
+
+    (sequential? v)
+    (bullet-list (map pr-str v))
+
+    (map? v)
+    (str "```edn\n" (with-out-str (pprint/pprint v)) "```")
+
+    :else
+    (str "- " (pr-str v))))
+
+(defn- residual-section [packet title key]
+  (str "## " title "\n\n"
+       (declared-value-markdown (get-in packet [:llm-declared key]))
+       "\n\n"))
 
 (defn markdown [packet]
   (str "# Review Fatigue Packet\n\n"
@@ -456,14 +524,22 @@
        (bullet-list (get-in packet [:human-attention :safe-to-skim]))
        "\n\n## Required Evidence\n\n"
        (evidence-list (:required-evidence packet))
-       "\n\n## Semantic Impact Not Derived By Structure\n\n"
-       "- none\n\n"
-       "## Unknowns Not Captured By Derivation\n\n"
-       "- none\n\n"
-       "## Cross-Brick Effects Not In Trace Index\n\n"
-       "- none\n\n"
-       "## Remaining Fatigue\n\n"
-       "- none\n"))
+       "\n\n"
+       (residual-section packet
+                         "Semantic Impact Not Derived By Structure"
+                         :semantic-impact-not-derived)
+       (residual-section packet
+                         "Unknowns Not Captured By Derivation"
+                         :unknowns-not-captured-by-derivation)
+       (residual-section packet
+                         "Cross-Brick Effects Not In Trace Index"
+                         :cross-brick-effects-not-in-trace-index)
+       (residual-section packet
+                         "Override / Scope Extension"
+                         :override)
+       (residual-section packet
+                         "Remaining Fatigue"
+                         :remaining-fatigue)))
 
 (defn- write-markdown! [path packet]
   (ensure-dir! (.getParent (io/file path)))
@@ -490,7 +566,7 @@
     (println " " md-path)))
 
 (defn inspect [opts]
-  (let [packet (if-let [path (:out opts)]
+  (let [packet (if-let [path (or (:from opts) (:out opts))]
                  (edn/read-string (slurp path))
                  (derive-packet opts))]
     (println "Structural Evidence Derivation")
@@ -515,6 +591,34 @@
         (println " -" id "[" (name tier) "]" label))
       (println " - none"))))
 
+(defn check-residual-declared [opts]
+  (let [path (or (:packet opts) (:from opts) (first (:extra-args opts)))]
+    (when-not path
+      (binding [*out* *err*]
+        (println "Usage: structural-evidence check-residual --packet .llm/work/<task-id>.edn"))
+      (System/exit 2))
+    (let [packet (edn/read-string (slurp path))
+          status (:status packet)
+          missing (missing-residual-fields packet)]
+      (cond
+        (and (= :closed status) (seq missing))
+        (do
+          (binding [*out* *err*]
+            (println "Residual declaration incomplete for closed packet:" path)
+            (doseq [field missing]
+              (println " -" field))
+            (println "Use :none or a concrete value for each field before close."))
+          (System/exit 1))
+
+        (seq missing)
+        (do
+          (println "Residual declaration pending until close:" path)
+          (doseq [field missing]
+            (println " -" field)))
+
+        :else
+        (println "Residual declaration complete:" path)))))
+
 (defn- assert! [label pred]
   (if pred
     (println "OK:" label)
@@ -532,7 +636,13 @@
         project-design (with-redefs [repo-context (constantly {:repo-kind :project :adoption-mode :complete})
                                      git-rev (constantly "fixture-rev")
                                      default-branch (constantly "main")]
-                         (derive-packet {:changed-files ["DESIGN.md"]}))]
+                         (derive-packet {:changed-files ["DESIGN.md"]}))
+        closed-missing (assoc project-design :status :closed)
+        closed-declared (assoc project-design
+                               :status :closed
+                               :llm-declared
+                               (assoc (zipmap residual-fields (repeat :none))
+                                      :_required {:before-close residual-fields}))]
     (assert! "template ADR file is forbidden"
              (= :cannot-derive (get-in template-adr [:derivation :status])))
     (assert! "project interface change is classified"
@@ -544,6 +654,12 @@
     (assert! "DESIGN.md change is spec-change"
              (contains? (set (get-in project-design [:actual-scope :archetypes]))
                         :spec-change))
+    (assert! "derived packet leaves residual fields pending"
+             (seq (missing-residual-fields project-design)))
+    (assert! "closed packet with pending residual fields is invalid"
+             (seq (missing-residual-fields closed-missing)))
+    (assert! "closed packet with explicit none residual fields is valid"
+             (empty? (missing-residual-fields closed-declared)))
     (println "structural-evidence self-test: OK")))
 
 (defn -main [& args]
@@ -553,12 +669,14 @@
       "derive" (run-derive opts)
       "propose" (propose opts)
       "inspect" (inspect opts)
+      "check-residual" (check-residual-declared opts)
       "self-test" (self-test opts)
       (do
         (binding [*out* *err*]
           (println "Usage:")
           (println "  structural-evidence derive [--base BASE] [--head HEAD] [--out PATH] [--strict|--degraded] [--profile]")
           (println "  structural-evidence propose [--task-id ID] [--out-dir DIR] [--strict|--degraded]")
-          (println "  structural-evidence inspect [--base BASE] [--head HEAD] [--out PATH]")
+          (println "  structural-evidence inspect [--base BASE] [--head HEAD] [--from PATH]")
+          (println "  structural-evidence check-residual --packet PATH")
           (println "  structural-evidence self-test"))
         (System/exit 2)))))

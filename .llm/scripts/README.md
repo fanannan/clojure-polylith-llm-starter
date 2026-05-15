@@ -48,6 +48,7 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 | `derive-change-scope.sh` | git diff と repo-kind 別 derivation rules から Structural Evidence の actual scope / archetype / required evidence を導出する。LLM の scope 自己申告を正本にしないための入口 |
 | `inspect-derivation.sh` | `derive-change-scope.sh` の導出理由を path ごとに表示する。matched rule、plane、archetype、public boundary、required evidence を説明する debug / 教材用 view |
 | `propose-review-packet.sh` | `.llm/work/` に Review Fatigue Packet の EDN view と Markdown view を生成する。これは生成 view であり、Authority source ではない |
+| `check-residual-declared.sh` | closed packet の LLM-declared residual が `none` または具体値で明示されているかを検査する。自動 `none` 埋めを禁止する close 前チェック |
 | `check-structural-evidence-self-test.sh` | Structural Evidence derivation rules の fixture self-test。template ADR 禁止、project interface change、DESIGN spec change の代表ケースを検査する |
 | `structural_evidence.clj` | Structural Evidence MVP の Clojure 実装。repo-kind 分岐、evidence tier、none regulator、Review Fatigue Packet 生成を扱う |
 | `check-deprecated-libs.sh` | `STACK_GUIDE.md` に埋め込まれた `;; lib-catalog` EDN block 由来の非推奨ライブラリを検知（`.llm/data/deprecated-libs.patterns` を読む） |
@@ -213,6 +214,7 @@ Structural Evidence View は、LLM が scope / evidence を自己申告する代
 ./.llm/scripts/derive-change-scope.sh
 ./.llm/scripts/inspect-derivation.sh
 ./.llm/scripts/propose-review-packet.sh --task-id 2026-05-15-example
+./.llm/scripts/check-residual-declared.sh --packet .llm/work/2026-05-15-example.edn
 ./.llm/scripts/check-structural-evidence-self-test.sh
 ```
 
@@ -220,6 +222,11 @@ Structural Evidence View は、LLM が scope / evidence を自己申告する代
 
 - `.llm/work/<task-id>.edn`: 機械可読の generated view
 - `.llm/work/<task-id>.md`: 人間が読む Review Fatigue Packet
+
+EDN の `:schema/version` は `structural-evidence.N` 系で管理する。検討段階の仮称や release 名を schema / artifact 名に使わない。
+
+詳細な最小手順:
+¤ .llm/guide/STRUCTURAL_EVIDENCE_QUICKSTART.md
 
 `.llm/work/` は active generated view であり、git 管理しない。closed evidence record を残す場合は、派生プロジェクトの privacy / commit policy に従って `.llm/evidence/closed/` 等に移す。Structural Evidence View は第 5 の正本ではなく、Authority / Structure / Index / Verification plane への索引である。
 
