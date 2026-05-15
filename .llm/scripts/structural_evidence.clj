@@ -257,7 +257,11 @@
   (sha1-hex (pr-str (into (sorted-map) env))))
 
 (defn- tool-version []
-  {:clojure (clojure-version)
+  {:runtime (or (some-> (System/getenv "LLM_CLJ_RUNTIME_SELECTED") keyword)
+                :unknown)
+   :requested-runtime (or (System/getenv "LLM_CLJ_RUNTIME") "auto")
+   :clojure (clojure-version)
+   :babashka (System/getProperty "babashka.version")
    :jvm (System/getProperty "java.version")
    :java-vm (System/getProperty "java.vm.name")
    :os (System/getProperty "os.name")

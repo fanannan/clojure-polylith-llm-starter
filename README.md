@@ -196,8 +196,19 @@ HTTP、永続化、ライフサイクル管理などの追加技術は、必要�
 
 - **JVM LTS**
 - **Clojure CLI**（`clj` コマンド、tools.deps ベース）
-- **Git**
+- **Git**（必須。このテンプレートは git repository 内で動く前提。Structural Evidence workflow、session briefing、trace / scope 導出、pre-commit gate は `git diff` / `git status` / `git log` / `git rev-parse` を使う）
 - **LLM コーディングエージェント**（Claude Code 等、`CLAUDE.md` を読める LLM）
+- **Babashka**（任意）。`bb` が `PATH` にある場合、一部の `.llm/scripts/` Clojure wrapper は起動を高速化するため自動的に bb を使う。無い場合は通常どおり `clj` を使うため、bb は配布物の必須条件ではない。
+
+Runtime の選択は `LLM_CLJ_RUNTIME` で制御できる。
+
+| 値 | 挙動 |
+|---|---|
+| `auto` または未設定 | `bb` があれば bb、無ければ `clj` |
+| `bb` | bb を必須にする。bb が無ければ失敗 |
+| `clj` | Clojure CLI を強制 |
+
+bb 実行で失敗した場合、暗黙に `clj` へ fallback しない。失敗を隠さず、必要なら `LLM_CLJ_RUNTIME=clj` を明示して再実行する。
 
 ---
 

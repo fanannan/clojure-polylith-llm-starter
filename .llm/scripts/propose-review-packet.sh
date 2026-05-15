@@ -10,4 +10,4 @@ WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 cd "$WORKSPACE_ROOT"
 
-exec clj -Sdeps '{:paths [".llm/scripts"]}' -M -m structural-evidence propose "$@"
+exec "$SCRIPT_DIR/run-clj-tool.sh" main structural-evidence propose "$@"

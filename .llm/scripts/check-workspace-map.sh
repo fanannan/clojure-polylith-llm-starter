@@ -8,4 +8,4 @@ WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 cd "$WORKSPACE_ROOT"
 
-clj -Sdeps '{:paths [".llm/scripts"]}' -X gen-workspace-map/check
+exec "$SCRIPT_DIR/run-clj-tool.sh" exec gen-workspace-map/check

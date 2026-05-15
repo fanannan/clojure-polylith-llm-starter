@@ -312,7 +312,7 @@
       {:messages [(error (str path " could not be read as Clojure: " (.getMessage e)))]
        :test-obligations []})))
 
-(defn- run [& _]
+(defn run [& _]
   (let [ir (design-ir)
         mode (adoption-mode)
         strict? (= :complete mode)

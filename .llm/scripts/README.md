@@ -3,7 +3,7 @@
 本ディレクトリは、`.clj-kondo/` の custom hook では捕捉できない**設定ファイル・ディレクトリ構造・配布物整合性**の検査と、シェル展開が必要な運用コマンドのラッパー、および markdown 文書から機械可読な生成物を生成する Clojure script を収容する。各スクリプトは単独でも実行できるが、基本は `check-workspace-integrity.sh` が完了条件から一括で起動する。
 ∵ CLAUDE.md §5.5
 
-**Convention 拡張**（既存は shell のみ、以降は Clojure script も追加）: `gen_*.clj` は markdown 文書（典型的には `STACK_GUIDE`）から EDN / patterns 生成物を生成する。`check_*.clj` は検査、`propose_*.clj` は人間承認前の判断材料提示、`apply_*.clj` は承認後の書き込みを担う。通常は shell wrapper から `clj -Sdeps '{:paths [".llm/scripts"]}' -X <ns>/<fn>` で起動する。`deps.edn` alias はテンプレ本体での直接実行用に残すが、既存 repo への retrofit 直後でも動くよう wrapper は alias に依存しない。
+**Convention 拡張**（既存は shell のみ、以降は Clojure script も追加）: `gen_*.clj` は markdown 文書（典型的には `STACK_GUIDE`）から EDN / patterns 生成物を生成する。`check_*.clj` は検査、`propose_*.clj` は人間承認前の判断材料提示、`apply_*.clj` は承認後の書き込みを担う。高頻度 wrapper は `run-clj-tool.sh main <ns>` または `run-clj-tool.sh exec <ns>/<fn>` で起動し、bb があれば optional accelerator として使う。低頻度・外部依存ありの wrapper は従来どおり `clj -Sdeps ...` / `clj -X:<alias>` を使う。`deps.edn` alias はテンプレ本体での直接実行用に残すが、既存 repo への retrofit 直後でも動くよう wrapper は alias に依存しない。
 
 hook（`.clj-kondo/polyguard/`）と script（本ディレクトリ）の役割分担は保守者向け文書に置く。
 ∵ MAINTAINERS_GUIDE.md §5.10
@@ -46,6 +46,7 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 | `trace-impact.sh` | `trace-index.edn` を検索し、要件・受入基準・公開関数・変更差分から、影響する public boundary・test・test obligation を表示 |
 | `trace_impact.clj` | `trace-impact.sh` の Clojure 実装。DESIGN 更新前後の探索、commit 前の変更差分確認、session briefing の trace health に使う |
 | `install-git-hooks.sh` | repo-local hooks を `git config core.hooksPath .githooks` で有効化する。Claude Code / Codex / human 共通 |
+| `run-clj-tool.sh` | `.llm/scripts` 配下の Clojure script 共通 launcher。`LLM_CLJ_RUNTIME=auto|bb|clj` を見て、bb がある場合は optional accelerator として使い、無ければ Clojure CLI に fallback する |
 | `evidence.sh` | Structural Evidence workflow の主入口。`what-now` / `status` / `search` / `is-verified` / `why` / `stale` / `gate` / `predict` / `declare` / `run` / `close` / `backfill-invalidated-by` で次 action、現在状態、過去 record、claim 検証、stale record、staged gate、residual 宣言、command-backed evidence 記録、close 直前の evidence state、旧 record migration を扱う |
 | `check-evidence-gate.sh` | Structural Evidence gate の正本 primitive。pre-commit hook / CI / briefing / workspace check から同じ script を呼ぶ |
 | `check-evidence-boundary.sh` | Review Fatigue Packet が第 5 の正本になっていないかを検査する。packet 内で新しい requirement / knowledge / decision を定義することを禁止する |
@@ -194,14 +195,17 @@ Malli / cljfmt / clj-kondo / Polylith は本テンプレートの必須基盤で
 
 - すべて `#!/usr/bin/env bash` + `set -euo pipefail`（Bash、厳格モード）
 - ワークスペースルートへの `cd` は `SCRIPT_DIR/../..` で解決（`.llm/scripts/` の親の親がリポジトリルート）
-- Babashka 不要、`grep` / `awk` / `sed` / `clojure` CLI のみ
+- Babashka は任意。`bb` が `PATH` にある場合、`run-clj-tool.sh` 経由の一部 Clojure script は bb で起動する。無い場合は `clj` を使う
 - プラットフォーム依存: Unix 前提（macOS / Linux）。Windows サポートは将来検討
 
 ### Clojure script (`gen_*.clj`)
 
-- shell wrapper から `clj -Sdeps '{:paths [".llm/scripts"]}' -X <ns>/<fn>` で起動し、既存 repo の `deps.edn` alias に依存しない
+- 高頻度 shell wrapper は `run-clj-tool.sh main <ns>` または `run-clj-tool.sh exec <ns>/<fn>` で起動し、既存 repo の `deps.edn` alias に依存しない
+- `LLM_CLJ_RUNTIME=auto`（未設定時の default）は bb があれば bb、無ければ `clj` を選ぶ。`LLM_CLJ_RUNTIME=clj` で Clojure CLI を強制、`LLM_CLJ_RUNTIME=bb` で bb を必須化できる
+- bb 失敗時に暗黙 fallback はしない。bb 互換性の問題を隠さず、必要なら `LLM_CLJ_RUNTIME=clj` で明示再実行する
+- 外部依存がある script（例: `gen-lib-catalog` の Malli）や tools.deps alias に意味がある script（例: `repl-eval.sh`）は `clj` 固定にする
 - テンプレ本体の利便性として、必要に応じて `deps.edn` に `:gen-<topic>` / `:check-<topic>` alias を追加する
-- 依存は root `:deps` を継承（`-X` の意味論）。追加依存が必要な場合のみ alias 内 `:extra-deps` で最小限に
+- `clj` 固定 script の依存は root `:deps` を継承（`-X` の意味論）。追加依存が必要な場合のみ alias 内 `:extra-deps` で最小限に
 - Malli schema で入力を厳格検証、違反は明示的に error 終了
 - 生成物は `.llm/data/` に配置、ヘッダに `;; GENERATED — do not edit by hand` を入れる 
 - `check-workspace-integrity.sh` に「一時領域に再生成 → diff で drift 検知」のステップを追加し、元文書と生成物の同期を保証
@@ -299,5 +303,5 @@ EDN の `:schema/version` は `structural-evidence.N` 系で管理する。検�
 
 ## 非採用事項
 
-- **Babashka による実装**: 必須層を拡張しないため不採用
+- **Babashka の必須化**: 必須層を拡張しないため不採用。bb は `run-clj-tool.sh` の optional accelerator に留める
 - **`.llm/scripts/new-brick.sh`（brick 追加自動化）**: EDN 機械編集は sed では脆弱、rewrite-clj は Clojure 起動コスト大。代わりに `check-brick-registration.sh` で**不完全さを検知**する方向に切り替えた
