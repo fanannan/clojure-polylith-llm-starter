@@ -302,6 +302,15 @@ evidence_plane_brief() {
   fi
 
   echo ""
+  echo "### Last Commit Evidence Gate"
+  if [ -x ".llm/scripts/check-evidence-gate.sh" ] && git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
+    ./.llm/scripts/check-evidence-gate.sh --base HEAD~1 --head HEAD --advisory --no-write 2>/dev/null \
+      | sed 's/^/- /'
+  else
+    echo "- skipped"
+  fi
+
+  echo ""
   echo "### Stale / Expired Evidence"
   echo "- event-based staleness detection は後続 phase。現時点では active packet と residual pending を優先確認。"
 }

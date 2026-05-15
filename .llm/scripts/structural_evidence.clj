@@ -1183,6 +1183,8 @@
             (println "  must-review:" (str/join ", " must-review)))))
       (println "- none"))))
 
+(declare failed-evidence-statuses)
+
 (defn- fingerprint-matches? [packet fingerprint]
   (= (:digest (:change/fingerprint packet))
      (:digest fingerprint)))
