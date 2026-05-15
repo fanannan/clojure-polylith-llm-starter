@@ -12,10 +12,18 @@ Structural Evidence View は、LLM が scope と evidence を自己申告する�
 ## 最小手順
 
 ```bash
-./.llm/scripts/propose-review-packet.sh --task-id 2026-05-15-example
+./.llm/scripts/evidence.sh status
+./.llm/scripts/evidence.sh predict --task 2026-05-15-example --intent "このタスクで何を変えるか"
 ```
 
-生成された `.llm/work/<task-id>.md` を開き、次の `TBD` を埋める。
+変更完了後、close 直前に実態と予測を照合する。
+
+```bash
+./.llm/scripts/propose-review-packet.sh --task-id 2026-05-15-example
+./.llm/scripts/evidence.sh close --task 2026-05-15-example
+```
+
+生成された `.llm/work/<task-id>.md` または close の出力を見て、次の `TBD` を埋める。
 
 - Semantic Impact Not Derived By Structure: 構造解析では見えない仕様・運用・意味上の影響
 - Unknowns Not Captured By Derivation: 残った未知、QUESTIONS 候補

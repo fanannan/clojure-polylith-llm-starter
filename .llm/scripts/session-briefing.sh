@@ -248,6 +248,9 @@ evidence_plane_brief() {
     local f
     for f in .llm/work/*.edn; do
       [ -e "$f" ] || continue
+      case "$f" in
+        *.intent.edn|*.predict.edn) continue ;;
+      esac
       found_active=1
       local name
       name="$(basename "$f" .edn)"

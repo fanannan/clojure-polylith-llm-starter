@@ -229,6 +229,8 @@
       "--out" (recur (assoc m :out (first xs)) (next xs))
       "--from" (recur (assoc m :from (first xs)) (next xs))
       "--packet" (recur (assoc m :packet (first xs)) (next xs))
+      "--intent" (recur (assoc m :intent (first xs)) (next xs))
+      "--task" (recur (assoc m :task/id (first xs)) (next xs))
       "--out-dir" (recur (assoc m :out-dir (first xs)) (next xs))
       "--task-id" (recur (assoc m :task/id (first xs)) (next xs))
       "--status" (recur (assoc m :status (parse-keyword (first xs))) (next xs))
@@ -250,7 +252,8 @@
              sort
              vec)
         (->> (concat (shell-lines "git" "diff" "--name-only")
-                     (shell-lines "git" "diff" "--cached" "--name-only"))
+                     (shell-lines "git" "diff" "--cached" "--name-only")
+                     (shell-lines "git" "ls-files" "--others" "--exclude-standard"))
              distinct
              sort
              vec)))))
@@ -881,6 +884,136 @@
         :else
         (println "Residual declaration complete:" path)))))
 
+(defn- active-packet-files []
+  (let [dir (io/file default-out-dir)]
+    (if (.isDirectory dir)
+      (->> (file-seq dir)
+           (filter #(.isFile %))
+           (map #(.getPath %))
+           (filter #(str/ends-with? % ".edn"))
+           (remove #(str/includes? % ".predict.edn"))
+           (remove #(str/includes? % ".intent.edn"))
+           sort
+           vec)
+      [])))
+
+(defn- closed-record-files []
+  (let [dir (io/file ".llm/evidence/closed")]
+    (if (.isDirectory dir)
+      (->> (file-seq dir)
+           (filter #(.isFile %))
+           (map #(.getPath %))
+           (filter #(str/ends-with? % ".edn"))
+           sort
+           vec)
+      [])))
+
+(defn- status-line-for-packet [path]
+  (let [packet (edn/read-string (slurp path))
+        missing (missing-residual-fields packet)]
+    (str "- " (:task/id packet)
+         " (" (name (or (:save-policy packet) :unknown-save))
+         ", " (name (or (get-in packet [:derivation :status]) :unknown-derive))
+         ", residual: " (if (seq missing) "pending" "declared")
+         ")")))
+
+(defn run-status [_]
+  (let [packet (derive-packet {})
+        active (active-packet-files)
+        closed (closed-record-files)]
+    (println "== Evidence Status at HEAD ==")
+    (println)
+    (println "Authority Plane:")
+    (println "  Related open QUESTIONS:" (count (get-in packet [:cross-document-context :related-open-questions])))
+    (println "  Related KNOWLEDGE entries:" (count (get-in packet [:cross-document-context :related-knowledge])))
+    (println "  Related decisions/archive entries:" (count (get-in packet [:cross-document-context :related-decisions])))
+    (println)
+    (println "Structure Plane:")
+    (println "  Touched paths:" (count (get-in packet [:actual-scope :paths])))
+    (println "  Touched bricks:" (str/join ", " (map name (get-in packet [:actual-scope :bricks]))))
+    (println "  Affected projects:" (str/join ", " (get-in packet [:actual-scope :affected-projects])))
+    (println "  Public boundaries:" (str/join ", " (get-in packet [:actual-scope :public-boundaries])))
+    (println)
+    (println "Index Plane:")
+    (println "  design-ir.edn:" (if (get-in packet [:design-coverage :available]) "available" "missing"))
+    (println "  trace-index.edn:" (if (get-in packet [:trace-context :available]) "available" "missing"))
+    (println "  libs.edn:" (if (get-in packet [:dependency-context :available]) "available" "missing"))
+    (println)
+    (println "Verification Plane:")
+    (doseq [{:keys [id tier command]} (:required-evidence packet)]
+      (println " -" id "[" (name tier) "]" (or command "(manual command required)")))
+    (println)
+    (println "Evidence Plane:")
+    (println "  Active Review Fatigue Packets:")
+    (if (seq active)
+      (doseq [path active] (println " " (status-line-for-packet path)))
+      (println "  - none"))
+    (println "  Closed records:" (count closed))
+    (println)
+    (println "Trust Diff / Gaps:")
+    (let [gaps (get-in packet [:human-attention :coverage-gaps])]
+      (if (some seq (vals gaps))
+        (doseq [[k items] gaps :when (seq items)]
+          (println " -" k ":" (count items)))
+        (println " - none in current derived scope")))))
+
+(defn predict [opts]
+  (let [task-id (or (:task/id opts)
+                    (str (.toString (java.time.LocalDate/now)) "-evidence-task"))
+        packet (assoc (derive-packet (assoc opts :task/id task-id :status :predicted))
+                      :intent {:text (or (:intent opts) "")
+                               :recorded-at (.toString (java.time.Instant/now))})
+        base (str default-out-dir "/" task-id)]
+    (write-edn! (str base ".intent.edn") (:intent packet))
+    (write-edn! (str base ".predict.edn") packet)
+    (write-markdown! (str base ".predict.md") packet)
+    (println "Evidence prediction generated:")
+    (println " " (str base ".intent.edn"))
+    (println " " (str base ".predict.edn"))
+    (println " " (str base ".predict.md"))))
+
+(defn- scope-diff [predicted actual key]
+  (let [p (set (get-in predicted [:actual-scope key]))
+        a (set (get-in actual [:actual-scope key]))]
+    {:predicted-only (vec (sort (remove a p)))
+     :actual-only (vec (sort (remove p a)))}))
+
+(defn close [opts]
+  (let [task-id (or (:task/id opts) (first (:extra-args opts)))
+        _ (when-not task-id
+            (binding [*out* *err*]
+              (println "Usage: structural-evidence close --task TASK-ID"))
+            (System/exit 2))
+        predicted-path (str default-out-dir "/" task-id ".predict.edn")
+        active-path (str default-out-dir "/" task-id ".edn")
+        predicted (when (file? predicted-path) (edn/read-string (slurp predicted-path)))
+        actual (if (file? active-path)
+                 (edn/read-string (slurp active-path))
+                 (derive-packet (assoc opts :task/id task-id :status :active)))
+        missing (missing-residual-fields actual)
+        diffs (when predicted
+                {:bricks (scope-diff predicted actual :bricks)
+                 :paths (scope-diff predicted actual :paths)
+                 :public-boundaries (scope-diff predicted actual :public-boundaries)})
+        record (assoc actual
+                      :status (if (seq missing) :blocked-close :clean-close)
+                      :closed-at (.toString (java.time.Instant/now))
+                      :predict-vs-actual diffs)]
+    (println "== Evidence Close ==")
+    (println "Task:" task-id)
+    (println "Close mode:" (:status record))
+    (when predicted
+      (println "Predict vs actual:" (pr-str diffs)))
+    (if (seq missing)
+      (do
+        (println "Blocked: residual fields are not declared:")
+        (doseq [field missing] (println " -" field))
+        (println "No closed record written.")
+        (System/exit 1))
+      (let [out (str ".llm/evidence/closed/" task-id ".edn")]
+        (write-edn! out record)
+        (println "Closed evidence record written:" out)))))
+
 (defn- assert! [label pred]
   (if pred
     (println "OK:" label)
@@ -925,20 +1058,29 @@
     (println "structural-evidence self-test: OK")))
 
 (defn -main [& args]
-  (let [[cmd & more] args
-        opts (parse-args more)]
-    (case cmd
-      "derive" (run-derive opts)
-      "propose" (propose opts)
-      "inspect" (inspect opts)
-      "check-residual" (check-residual-declared opts)
-      "self-test" (self-test opts)
-      (do
-        (binding [*out* *err*]
-          (println "Usage:")
-          (println "  structural-evidence derive [--base BASE] [--head HEAD] [--out PATH] [--strict|--degraded] [--profile]")
-          (println "  structural-evidence propose [--task-id ID] [--out-dir DIR] [--strict|--degraded]")
-          (println "  structural-evidence inspect [--base BASE] [--head HEAD] [--from PATH]")
-          (println "  structural-evidence check-residual --packet PATH")
-          (println "  structural-evidence self-test"))
-        (System/exit 2)))))
+  (try
+    (let [[cmd & more] args
+          opts (parse-args more)]
+      (case cmd
+        "derive" (run-derive opts)
+        "propose" (propose opts)
+        "inspect" (inspect opts)
+        "check-residual" (check-residual-declared opts)
+        "status" (run-status opts)
+        "predict" (predict opts)
+        "close" (close opts)
+        "self-test" (self-test opts)
+        (do
+          (binding [*out* *err*]
+            (println "Usage:")
+            (println "  structural-evidence derive [--base BASE] [--head HEAD] [--out PATH] [--strict|--degraded] [--profile]")
+            (println "  structural-evidence propose [--task-id ID] [--out-dir DIR] [--strict|--degraded]")
+            (println "  structural-evidence inspect [--base BASE] [--head HEAD] [--from PATH]")
+            (println "  structural-evidence check-residual --packet PATH")
+            (println "  structural-evidence status")
+            (println "  structural-evidence predict --task TASK-ID --intent TEXT [--changed-file PATH]")
+            (println "  structural-evidence close --task TASK-ID")
+            (println "  structural-evidence self-test"))
+          (System/exit 2))))
+    (finally
+      (shutdown-agents))))

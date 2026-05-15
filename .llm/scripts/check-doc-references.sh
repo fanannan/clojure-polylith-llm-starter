@@ -13,6 +13,7 @@ mode="${1:-default}"
 if [[ "${mode}" == "--all" ]]; then
   find . -type f -name '*.md' \
     ! -path './.git/*' \
+    ! -path './.llm/work/*' \
     ! -path './.llm/memory/archive/*' \
     -print0 > "${tmp}.files"
 else
