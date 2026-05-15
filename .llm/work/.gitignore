@@ -1,0 +1,5 @@
+# .llm/work contains generated active Structural Evidence views.
+# These files are intentionally not committed. Closed evidence records, if a
+# project chooses to keep them, belong under .llm/evidence/closed/.
+*
+!.gitignore
