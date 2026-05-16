@@ -444,7 +444,11 @@ clj -M:poly check                              # Polylith 構造
 ./.llm/scripts/check-workspace-integrity.sh         # プレースホルダ残存・brick 登録・非推奨ライブラリ・:local/root 実在の総合検査
 clj -M:poly test :all                          # 全テスト（全体回帰確認）
 cd projects/<deploy> && clj -T:build uber      # ビルド成功（<deploy> は DESIGN.md §8.4 のビルドコマンドに合わせる）
+# service 型 project は加えて起動 smoke（下記「service 型 project の起動 smoke」）
 ```
+
+**service 型 project の起動 smoke**: 長時間稼働するサービス（Web API・ワーカ等）を deploy する service 型 project では、uber ビルド成功だけを完了条件にしない。DESIGN §8.4.1 の起動コマンドで成果物を起動し、代表リクエスト 1 件以上（正常系 + 主要な異常系）が期待どおり応答することを起動 smoke として確認する。smoke 手順は再現可能な 1 コマンドに集約する。CLI / バッチ / ライブラリ project では、起動 smoke の代わりに代表入力での 1 回実行または公開関数呼び出しの確認を smoke とする。uber ビルド成功は成果物が生成できることだけを示し、起動して応答することは示さない。
+∵ .llm/guide/POLYLITH_GUIDE.md §7.4
 
 release 前・週次 CI では追加で以下を実行:
 

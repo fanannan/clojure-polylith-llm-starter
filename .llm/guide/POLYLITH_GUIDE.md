@@ -979,6 +979,32 @@ fixture-first 規律の副作用として、`seed-all!` がすべての UC state
 
 **判定の目安**: ある test が `seed-all!` でしか動かない場合、その test は暗黙の state 依存を持っている疑いがある。必要な seed を `seed-<uc1>! seed-<uc2>!` のように明示的に列挙できるかを点検する。
 
+#### 7.4.3 service 型 project の起動 smoke レシピ
+
+`(safe-reset!) → (seed-all!)` の 2 行原則は REPL プロセス上の境界状態を立ち上げる規律である。service 型 project（Web API・ワーカ等、長時間稼働する成果物）では、これに加えて **uber ビルド成果物を起動し代表リクエストで応答を確かめる起動 smoke** を、再現可能な 1 コマンドに常設する。
+
+uber ビルド成功は成果物が生成できることだけを示し、起動して応答することは示さない。起動 smoke を常設する目的は、「動きますか」が実装完了報告の時点で既に答え済みになる状態を作ることである。これは完了条件の一部として要求される。
+∵ ../CLAUDE.md §5.5
+
+**レシピの構成**（1 コマンドに集約する）:
+
+1. `(seed-all!)` 相当の境界 state 投入（DB を使う project では smoke 用の ephemeral / in-memory store）
+2. 成果物の起動（DESIGN §8.4.1 の起動コマンド、または development プロセス上の system 起動）
+3. 代表リクエストの送出と応答の assert（HTTP service なら正常系 1 件 + 主要な異常系。例: webhook 受信なら署名付き request の受理応答と不正署名の拒否応答）
+4. プロセスの停止と後片付け
+
+**配置**:
+
+- レシピ本体は `development/` の helper（例: `dev/smoke.clj` の `(smoke!)`）または `projects/<deploy>/` の smoke スクリプトに置く
+- `dev/fixtures.clj` と同じく配布物には含めず、派生プロジェクトが brick 配置後に §7.4 の配布規律と整合する形で実体化する（YAGNI）
+- 起動コマンド・代表リクエスト・期待応答は DESIGN §8.4.1 と受入基準から導く
+
+**運用規律**:
+
+- service 型 project の完了報告前に smoke を 1 コマンドで実行し、結果を読む
+- smoke は冪等にする（連続実行してもエラーにならない）
+- CLI / バッチ / ライブラリ project では、起動 smoke の代わりに代表入力での 1 回実行または公開関数呼び出しの確認を smoke とする
+
 ---
 
 ## 8. CI に組込むべき最小セット

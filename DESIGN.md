@@ -292,6 +292,16 @@ LLM は本ファイルを読むたびに、以下の観点で**能動的に曖�
 - **ビルドコマンド**: ＜TODO: 例 `cd projects/<deploy>/ && clj -T:build uber`＞
 - **デプロイ先**: ＜TODO: 例 AWS ECS / GCP Cloud Run / オンプレ等＞
 
+#### 8.4.1 deploy project 構造
+
+deploy 名ごとに、`projects/<deploy>/` に置くファイルと出力をここに仕様として確定する。この欄が埋まれば、`projects/<deploy>/` の作成は新規 project の架構判断ではなく合意済み仕様の実装になる（`poly create project` の実行と、project.edn / deps.edn / build.clj の記述）。
+
+- **`projects/<deploy>/project.edn`**: ＜TODO: `:project/type`（`:app` / `:library`）、`:project/runtime`、`:project/entrypoints`、`:project/includes`（bases / components）、`:project/build`＞
+- **`projects/<deploy>/deps.edn`**: ＜TODO: include する base / component を `:local/root` で列挙＞
+- **`projects/<deploy>/build.clj`**: ＜TODO: uberjar 配布時のみ。`lib` 名・`main-ns`・`version`＞
+- **ビルド成果物の出力パス**: ＜TODO: 例 `projects/<deploy>/target/<deploy>-standalone.jar`＞
+- **起動コマンド**: ＜TODO: 例 `java -jar projects/<deploy>/target/<deploy>-standalone.jar`。起動 smoke の入口になる＞
+
 ### 8.5 アーキテクチャ構造
 
 - **Polylith**（components / bases / projects / development）
