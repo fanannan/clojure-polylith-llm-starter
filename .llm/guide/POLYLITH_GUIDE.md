@@ -190,6 +190,7 @@ TODO・空の `:brick/provides`・曖昧な capability / API 対応は、`:adopt
 原則:
 
 - `interface.clj` の公開関数は、`brick.edn` の `:brick/provides` に対応する操作名を表す
+- capability の operation 部は Clojure 関数名規約に従う。述語は末尾 `?`、破壊的操作は末尾 `!` を付けてよい（例: `:event-store/record!`、`:event-store/idempotent?`、`:event-normalizer/valid?`）。generated Brick Map の capability 検証もこの形式を受理する
 - 同一 brick 内で自明な場合だけ `create`、`validate`、`parse`、`format` などの短い動詞を許容する
 - 複数 entity / 複数 capability を扱う brick では、`create-invoice`、`validate-invoice`、`calculate-total-amount` のように対象語を含める
 - base の公開関数は entrypoint の配線を表す名前にし、ドメイン機能を所有しているような名前にしない

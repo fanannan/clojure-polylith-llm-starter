@@ -790,6 +790,9 @@ clj -M:poly create component name:<name>
 **重要**: `poly create` は brick ディレクトリしか作らない。ルート `deps.edn` の `:dev :extra-paths` / `:extra-deps` とワークスペース構成の追従は手動で行う。作業後は完了条件（§5.5）の `./.llm/scripts/check-workspace-integrity.sh` が登録漏れを検知する。
 ¤ .llm/guide/BOOTSTRAP_GUIDE.md §2.5
 
+**Brick / Workspace Map の再生成（手順の一部）**: brick の追加、`brick.edn` / `workspace.edn` / 公開 API の編集を行ったら、その作業と同一ステップとして Brick Map を再生成する（project / workspace 構成を触った場合は Workspace Map も再生成する）。生成物は同じコミットに含める。`check-workspace-integrity.sh` の Map drift 検査は再生成漏れの安全網であり、再生成を後回しにしてよい根拠ではない。
+¤ .llm/guide/BOOTSTRAP_GUIDE.md §2.5.1
+
 雛形は別紙のコード例を使う。ライフサイクル定義を提供する場合は entry base の `system.clj` に集約する。
 ∵ .llm/guide/POLYLITH_GUIDE.md §2
 

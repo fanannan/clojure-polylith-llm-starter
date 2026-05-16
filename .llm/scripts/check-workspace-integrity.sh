@@ -7,6 +7,7 @@
 #     - bootstrap identity CONFLICT（:template 主張 + bootstrap 完了痕跡）
 #     - プレースホルダ残存（check-placeholders.sh）
 #     - brick 登録漏れ（check-brick-registration.sh）
+#     - brick deps.edn 自己完結性（check-brick-deps-self-contained.sh）
 #     - DESIGN IR 生成物 drift（check-design-ir.sh）
 #     - derived artifact manifest freshness（check-derived-artifacts.sh）
 #     - 非推奨ライブラリ採用（check-deprecated-libs.sh）
@@ -140,6 +141,10 @@ run_step_if_capability "polylith" "brick 登録整合検査" \
 # --- brick metadata / docs/BRICKS.md drift ---
 run_step_if_capability "polylith" "Brick Map 生成物検査" \
   "$SCRIPT_DIR/check-brick-map.sh"
+
+# --- brick deps.edn 自己完結性 ---
+run_step_if_capability "polylith" "brick deps.edn 自己完結検査" \
+  "$SCRIPT_DIR/check-brick-deps-self-contained.sh"
 
 # --- project metadata / workspace generated map drift ---
 run_step_if_capability "polylith" "Project / Workspace Map 生成物検査" \

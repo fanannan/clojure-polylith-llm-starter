@@ -121,8 +121,11 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
   (when (contains-todo? data)
     [(str "WARN: " path " contains TODO placeholders; review and replace them before migration is complete")]))
 
+;; capability は :<domain>/<operation> 形式。operation 部は Clojure 関数名規約に
+;; 従い、述語の末尾 `?` と破壊的操作の末尾 `!` を許可する
+;; （例: :event-store/record! :event-store/idempotent? :event-normalizer/valid?）。
 (def capability-pattern
-  #"^[a-z][a-z0-9-]*/[a-z][a-z0-9-]*$")
+  #"^[a-z][a-z0-9-]*/[a-z][a-z0-9-]*[!?]?$")
 
 (defn- valid-capability? [x]
   (and (keyword? x)
