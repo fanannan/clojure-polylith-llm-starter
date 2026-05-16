@@ -850,7 +850,7 @@ clj -M:poly create component name:<name>
 **禁止される代替手段**:
 
 - `/tmp/*.clj` / `scripts/diag-*.clj` のような ad-hoc スクリプトを `clj -M` で起動して検証する。stateless スクリプトはユーザの REPL system state（ライフサイクル起動状況・namespace reload 履歴・Malli instrumentation 有効性）を反映できず、ユーザ環境と乖離した結果を生む（実観察事例：数ターンに渡る検証空転）
-- `comment` フォームへの evaluation で満足する（§9.3 既出）
+- `comment` フォームへの evaluation で満足する（§9.3）
 
 **極めて限定的な例外**:
 
