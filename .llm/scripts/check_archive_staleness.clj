@@ -52,6 +52,10 @@
               (str/trim v)))
           (:lines entry))))
 
+(defn- entry-id [entry]
+  (second (re-matches #"^## (MD-[0-9]{4}-[0-9]{2}-[0-9]{3}):.*$"
+                      (:title entry))))
+
 (def allowed-states #{"open" "absorbed" "retained-process"})
 
 (defn- parse-date [s]
@@ -116,13 +120,26 @@
        [(str "WARN: " (:path entry) " " (:title entry) ": retained-process entry must have 保持理由")])
      (mapcat #(check-target entry %) target-values))))
 
+(defn- duplicate-id-warnings [entries]
+  (let [by-id (group-by entry-id entries)]
+    (mapcat (fn [[id matches]]
+              (when (and id (< 1 (count matches)))
+                (let [locations (->> matches
+                                     (map #(str (:path %) " " (:title %)))
+                                     sort)]
+                  [(str "WARN: duplicate maintainer archive id " id
+                        ":\n  "
+                        (str/join "\n  " locations))])))
+            by-id)))
+
 (defn run [_]
   (if (not= :template (repo-kind))
     (do
       (println "check-archive-staleness: skipped (project mode)")
       (System/exit 0))
     (let [entries (mapcat entry-blocks (archive-files))
-          warnings (mapcat check-entry entries)]
+          warnings (concat (duplicate-id-warnings entries)
+                           (mapcat check-entry entries))]
       (doseq [w warnings] (println w))
       (cond
         (seq warnings)
