@@ -418,20 +418,14 @@ test obligation への対応は実装関数ではなく `deftest` に置く。
 
 ### 5.5 完了条件（以下全通過で初めて完了報告）
 
-完了条件はプロジェクト状態で分岐する。LLM は自分の状況を次の表で判定してからコマンドを実行する。
+完了条件はプロジェクト状態で分岐する。LLM は次の表を**上から順に評価し、最初に一致した行で判定を確定**してからコマンドを実行する。
 
 **判定に迷う中間状態では、安全側へ倒す**。つまり、`projects/` が未完成・`DESIGN.md` のビルド定義が未確定・初期化と通常開発の境界にある場合は、**uber ビルドだけを外し、それ以外を通す**状態として扱う。
 
-**即判定**:
-
-1. 派生プロジェクトで `workspace.edn` に `"myorg.myapp"` が残るなら、まだ初期化未完了。テンプレート repo では配布用 placeholder として許容する
-2. `projects/<deploy>` が無い、またはビルド定義が未確定なら、uber ビルドだけ外す
-3. `projects/<deploy>` があり、ビルド定義もあるなら、全行を実行する
-
-| 状態 | 実行する完了条件 |
+| 状態の見分け方 | 実行する完了条件 |
 |---|---|
 | 派生プロジェクトの `workspace.edn` に配布時プレースホルダ `"myorg.myapp"` が残る | 初期化未完了。`.llm/guide/BOOTSTRAP_GUIDE.md` §2.1 を先に完了する。`check-workspace-integrity.sh` は失敗してよい状態ではなく、未完了状態の検出である。テンプレート repo では `.llm/repo-context.edn :repo-kind :template` を根拠に許容する |
-| `projects/` が未作成（`BOOTSTRAP_GUIDE.md` §2.9 前） | 下記コマンドのうち uber ビルドだけスキップ。その他は通す |
+| `projects/<deploy>` が無い、またはビルド定義が未確定（`BOOTSTRAP_GUIDE.md` §2.9 前を含む） | 下記コマンドのうち uber ビルドだけスキップ。その他は通す |
 | `projects/<deploy>` が存在し、DESIGN.md §8.4 にビルドコマンドが定義済み | 下記全行を実行 |
 
 ```bash
