@@ -467,6 +467,8 @@ I/O リソースの起動・停止管理が必要な場合のみ実施する。�
    - `:repo-kind :project` かつ `:adoption-mode :complete` で `.llm/template-only/` が残る場合、repo-context consistency check が失敗する
 7. 初期化完了をコミット（例: `"Complete project bootstrap"`）— **このコマンドは LLM が提示、実行はユーザが行う**
 
+**記録体系の整合**: 上記 4（ADR 発行）と 5（repo-context transform）は同じ完了処理に属する。transform 完了後、本 repo の `:repo-kind` は `:project` になり、決定の記録体系は ADR になる。bootstrap 期間中に下した派生プロジェクトの設計判断は、ここで ADR として記録する（テンプレート保守決定ではないため maintainer archive には置かない）。記録先が曖昧なまま判断を未記録で残さない。bootstrap 完了の前後で記録体系を混在させない。
+
 以降は CLAUDE の作業プロトコルで日常開発に移行する。本文書（BOOTSTRAP_GUIDE）は物理的には残るが、フェーズ判定により、完了後は自動的に読まれない。
 ¤ ../CLAUDE.md §8
 ∵ ../CLAUDE.md §0

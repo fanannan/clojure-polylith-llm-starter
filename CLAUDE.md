@@ -1054,6 +1054,8 @@ Exit codes: `0` 成功 / `1` eval-error・namespace-not-found・:ex / `2` 接続
 **TEMPLATE mode の読み替え**: `.llm/repo-context.edn :repo-kind :template` で作業している時、テンプレート自身の保守決定は ADR にしない。テンプレ保守の議論・却下案・吸収先は maintainer archive staging に置き、現行ルールへ吸収後に削除または圧縮する。派生プロジェクトの ADR 規律をテンプレート本体へ持ち込まない。規約変更を過去文書へどこまで遡及するかは MAINTAINERS_GUIDE の遡及適用規則に従う。
 ∵ .llm/guide/MAINTAINERS_GUIDE.md §7
 
+**記録体系は `:repo-kind` が決める**: 決定の記録先（ADR か maintainer archive か）は、その場の判断ではなく `.llm/repo-context.edn` の `:repo-kind` で一意に決まる。`:project` なら ADR、`:template` なら maintainer archive。1 つの repo は同時に 1 つの記録体系だけを使い、bootstrap 完了の前後で混在させない。派生プロジェクトの bootstrap が完了し repo-context が `:template → :project` に transform された後は、記録体系は ADR に切り替わる。bootstrap 期間中に下した派生プロジェクトの設計判断（技術選定・推奨からの逸脱等）は、transform 後に ADR として記録する。manifest が `:template` を主張したまま派生プロジェクトの判断を未記録で残さない（この CONFLICT は `check-workspace-integrity.sh` が検出する）。
+
 ### 11.2 サイクル全体図（羅針盤）
 
 4 種文書は単独ではなく連動して動く。以下がそのサイクル。作業中は常にこれを羅針盤として参照する：
