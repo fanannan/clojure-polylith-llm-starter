@@ -244,6 +244,7 @@ Rust のように静的型で閉じる方向ではなく、Clojure では Malli 
 
 ```bash
 cp .llm/template-only/examples/ideas/IDEA.webhook-idempotency-processor.md IDEA.md
+rm -rf .llm/template-only
 ```
 
 その後、通常の「開始手順（LLM 駆動初期化）」に従う。
@@ -258,8 +259,9 @@ cp .llm/template-only/examples/ideas/IDEA.webhook-idempotency-processor.md IDEA.
   --model <model-name>
 ```
 
-benchmark は無人完走テストではない。L0 / L1 gate 間の自律 segment を観測し、
-承認は runner 側の marker に記録する。考え方の正本:
+既定の benchmark は無人完走テストではない。L0 / L1 gate 間の自律 segment を観測し、
+承認は runner 側の marker に記録する。自動 / instrumented benchmark は別 mode として
+扱い、既定の manual observer run と混ぜない。考え方の正本:
 ¤ .llm/template-only/benchmark/README.md
 
 benchmark harness 自体の自走性は、simulation smoke として別に検査できる。

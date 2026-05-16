@@ -5,7 +5,13 @@
    [clojure.java.io :as io]
    [clojure.pprint :as pprint]
    [clojure.set :as set]
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [derivation-manifest :as derivation]))
+
+(def generator-path ".llm/scripts/gen_trace_index.clj")
+(def default-doc-file "docs/TRACE.md")
+(def default-index-file ".llm/data/trace-index.edn")
+(def default-manifest-file ".llm/data/trace-index.manifest.edn")
 
 (def trace-keys
   #{:trace/requirements
@@ -41,6 +47,32 @@ Regenerate with:
 (defn- write-file! [path content]
   (io/make-parents path)
   (spit path content))
+
+(defn- trace-manifest [out-file index-file]
+  (assoc
+   (derivation/make-manifest
+    {:id :trace-index
+     :tool "gen-trace-index"
+     :output-path ".llm/data/trace-index"
+     :generator-path generator-path
+     :tool-input-paths [".llm/scripts/derivation_manifest.clj"]
+     :input-paths [".llm/data/design-ir.edn"
+                   "components"
+                   "bases"
+                   "projects"
+                   "development/src"]
+     :input-policy {:missing :explicit-empty
+                    :directory-roots :recursive-digest}
+     :generated-at "deterministic"
+     :regenerate-command "clj -Sdeps '{:paths [\".llm/scripts\"]}' -X gen-trace-index/generate"})
+   :derivation/outputs [out-file index-file]))
+
+(defn- render-manifest [manifest]
+  (str ";; GENERATED - do not edit by hand.\n"
+       ";; Source of truth: .llm/data/design-ir.edn and Clojure :trace/* metadata\n"
+       ";; Regenerate with: clj -Sdeps '{:paths [\".llm/scripts\"]}' -X gen-trace-index/generate\n"
+       (with-out-str
+         (pprint/pprint {derivation/manifest-key manifest}))))
 
 (defn- design-ir []
   (or (read-edn-if-exists ".llm/data/design-ir.edn")
@@ -328,16 +360,20 @@ Regenerate with:
            "\nNo test obligations are defined yet.\n"))))
 
 (defn generate
-  "Generate docs/TRACE.md and .llm/data/trace-index.edn."
-  [{:keys [out-file index-file]}]
-  (let [out-file (or out-file "docs/TRACE.md")
-        index-file (or index-file ".llm/data/trace-index.edn")
+  "Generate docs/TRACE.md, .llm/data/trace-index.edn, and sidecar manifest."
+  [{:keys [out-file index-file manifest-file]}]
+  (let [out-file (or out-file default-doc-file)
+        index-file (or index-file default-index-file)
+        manifest-file (or manifest-file default-manifest-file)
         ir (design-ir)
-        index (trace-index)]
+        index (trace-index)
+        manifest (trace-manifest out-file index-file)]
     (write-file! out-file (render-doc index ir))
     (write-file! index-file (render-edn index))
+    (write-file! manifest-file (render-manifest manifest))
     (println "generated" out-file)
-    (println "generated" index-file)))
+    (println "generated" index-file)
+    (println "generated" manifest-file)))
 
 (defn check
   "Compare generated Trace Map with docs/TRACE.md and .llm/data/trace-index.edn."
@@ -346,22 +382,28 @@ Regenerate with:
         index (trace-index)
         expected-doc (render-doc index ir)
         expected-index (render-edn index)
+        expected-manifest (render-manifest (trace-manifest default-doc-file default-index-file))
         has-trace? (pos? (get-in index [:summary :trace-entry-count]))
-        outputs-exist? (or (file? "docs/TRACE.md")
-                           (file? ".llm/data/trace-index.edn"))]
+        outputs-exist? (or (file? default-doc-file)
+                           (file? default-index-file)
+                           (file? default-manifest-file))]
     (cond
       (and (not has-trace?) (not outputs-exist?))
       (println "check-trace-index: OK (no trace metadata)")
 
-      (not (file? "docs/TRACE.md"))
+      (not (file? default-doc-file))
       (throw (ex-info "ERROR: docs/TRACE.md is missing. Run gen-trace-index/generate after adding trace metadata." {}))
 
-      (not (file? ".llm/data/trace-index.edn"))
+      (not (file? default-index-file))
       (throw (ex-info "ERROR: .llm/data/trace-index.edn is missing. Run gen-trace-index/generate after adding trace metadata." {}))
 
-      (and (= expected-doc (slurp "docs/TRACE.md"))
-           (= expected-index (slurp ".llm/data/trace-index.edn")))
+      (not (file? default-manifest-file))
+      (throw (ex-info "ERROR: .llm/data/trace-index.manifest.edn is missing. Run gen-trace-index/generate." {}))
+
+      (and (= expected-doc (slurp default-doc-file))
+           (= expected-index (slurp default-index-file))
+           (= expected-manifest (slurp default-manifest-file)))
       (println "check-trace-index: OK")
 
       :else
-      (throw (ex-info "ERROR: docs/TRACE.md or .llm/data/trace-index.edn is not synchronized with design-ir/trace metadata.\nFix: clj -Sdeps '{:paths [\".llm/scripts\"]}' -X gen-trace-index/generate" {})))))
+      (throw (ex-info "ERROR: docs/TRACE.md, .llm/data/trace-index.edn, or .llm/data/trace-index.manifest.edn is not synchronized with design-ir/trace metadata.\nFix: clj -Sdeps '{:paths [\".llm/scripts\"]}' -X gen-trace-index/generate" {})))))

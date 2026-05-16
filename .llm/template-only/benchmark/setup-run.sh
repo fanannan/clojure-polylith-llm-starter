@@ -103,7 +103,8 @@ if [ ! -f "$idea_file" ]; then
   exit 1
 fi
 
-if [ "$allow_dirty" -ne 1 ] && [ -n "$(git -C "$TEMPLATE_ROOT" status --porcelain)" ]; then
+dirty_status="$(git -C "$TEMPLATE_ROOT" status --porcelain)"
+if [ "$allow_dirty" -ne 1 ] && [ -n "$dirty_status" ]; then
   echo "ERROR: template worktree is dirty. Commit changes first or pass --allow-dirty." >&2
   exit 1
 fi
@@ -113,10 +114,23 @@ run_year="$(date +%Y)"
 run_id="$run_stamp-$(sanitize "$scenario")-$(sanitize "$agent")-$(sanitize "$model")"
 run_dir="$TEMPLATE_ROOT/.llm/template-only/benchmark/runs/$run_year/$run_id"
 demo_dir="${demo_dir:-${TMPDIR:-/tmp}/$run_id-demo}"
-demo_run_dir="$demo_dir/.llm/benchmark-runs/$run_id"
+demo_dir="${demo_dir%/}"
+case "$demo_dir" in
+  /*) ;;
+  *) demo_dir="$(pwd -P)/$demo_dir" ;;
+esac
+demo_run_dir="$demo_dir.observer-runs/$run_id"
 
 if [ -e "$demo_dir" ]; then
   echo "ERROR: demo directory already exists: $demo_dir" >&2
+  exit 1
+fi
+if [ -e "$run_dir" ]; then
+  echo "ERROR: template run record already exists: $run_dir" >&2
+  exit 1
+fi
+if [ -e "$demo_run_dir" ]; then
+  echo "ERROR: observer run record already exists: $demo_run_dir" >&2
   exit 1
 fi
 
@@ -128,6 +142,10 @@ rm -rf "$demo_dir/.llm/template-only"
 mkdir -p "$demo_run_dir"
 
 template_rev="$(git -C "$TEMPLATE_ROOT" rev-parse HEAD)"
+if [ "$allow_dirty" -eq 1 ] && [ -n "$dirty_status" ]; then
+  dirty_count="$(printf '%s\n' "$dirty_status" | sed '/^[[:space:]]*$/d' | wc -l | tr -d ' ')"
+  echo "WARNING: --allow-dirty was used. The demo repo is built from HEAD $template_rev; $dirty_count uncommitted template worktree entries are excluded." >&2
+fi
 idea_hash="$(sha256sum "$idea_file" | awk '{print $1}')"
 created_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 java_version="$(one_line_version java -version)"
@@ -141,10 +159,13 @@ cat > "$run_dir/metadata.edn" <<EOF
  :idea/file ".llm/template-only/examples/ideas/IDEA.$(edn_escape "$scenario").md"
  :idea/sha256 "$(edn_escape "$idea_hash")"
  :template/revision "$(edn_escape "$template_rev")"
+ :benchmark/mode :manual-observer
+ :observer/visible-to-agent false
  :agent/name "$(edn_escape "$agent")"
  :agent/model "$(edn_escape "$model")"
  :tool/mode "$(edn_escape "$tool_mode")"
  :demo/dir "$(edn_escape "$demo_dir")"
+ :observer/run-dir "$(edn_escape "$demo_run_dir")"
  :created-at "$(edn_escape "$created_at")"
  :versions {:java "$(edn_escape "$java_version")"
             :clj "$(edn_escape "$clj_version")"
@@ -165,7 +186,8 @@ cat > "$run_dir/run.md" <<EOF
 This setup is complete. The benchmark runner has prepared the demo repository,
 copied the selected IDEA into \`IDEA.md\`, removed \`.llm/template-only/\`, installed
 a post-commit snapshot hook, and created marker commands for human approvals and
-terminal state.
+terminal state. Observer records and marker scripts are outside the demo repo so
+the agent's normal worktree does not contain benchmark protocol files.
 
 Run the agent manually from the demo repo:
 
@@ -184,6 +206,7 @@ Then paste the prompt in the "Agent Prompt" section below into the agent.
 - Model: \`$model\`
 - Tool mode: \`$tool_mode\`
 - Demo repo: \`$demo_dir\`
+- Observer run record: \`$demo_run_dir\`
 
 ## Protocol
 
@@ -248,8 +271,8 @@ EOF
 cp "$run_dir/run.md" "$demo_run_dir/run.md"
 
 git -C "$demo_dir" init -q
-git -C "$demo_dir" config user.name "Template Benchmark"
-git -C "$demo_dir" config user.email "benchmark@example.invalid"
+git -C "$demo_dir" config user.name "Template Setup"
+git -C "$demo_dir" config user.email "template@example.invalid"
 
 mkdir -p "$demo_dir/.git/hooks"
 {
@@ -265,8 +288,8 @@ write_snapshot() {
   local rev="$2"
   local at="$3"
   mkdir -p "$root/snapshots"
-  git diff-tree --no-commit-id --name-only -r "$rev" > "$root/snapshots/$rev.paths"
-  git diff-tree --no-commit-id --numstat -r "$rev" > "$root/snapshots/$rev.numstat"
+  git diff-tree --root --no-commit-id --name-only -r "$rev" > "$root/snapshots/$rev.paths"
+  git diff-tree --root --no-commit-id --numstat -r "$rev" > "$root/snapshots/$rev.numstat"
   printf '{:event/type :post-commit :at "%s" :git/rev "%s" :paths-file "snapshots/%s.paths" :numstat-file "snapshots/%s.numstat"}\n' \
     "$at" "$rev" "$rev" "$rev" >> "$root/git-snapshots.edn"
 }
@@ -282,6 +305,7 @@ chmod +x "$demo_dir/.git/hooks/post-commit"
 {
   echo '#!/usr/bin/env bash'
   echo 'set -euo pipefail'
+  printf 'DEMO_DIR=%q\n' "$demo_dir"
   printf 'DEMO_RUN_DIR=%q\n' "$demo_run_dir"
   printf 'TEMPLATE_RUN_DIR=%q\n' "$run_dir"
   cat <<'APPROVE'
@@ -325,26 +349,54 @@ escape() {
   printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
 }
 
+append_event() {
+  local line="$1"
+  printf '%s\n' "$line" >> "$DEMO_RUN_DIR/events.edn"
+  printf '%s\n' "$line" >> "$TEMPLATE_RUN_DIR/events.edn"
+}
+
+check_observer_hook() {
+  local actual
+  actual="$(git -C "$DEMO_DIR" config --get core.hooksPath 2>/dev/null || true)"
+  if [ -n "$actual" ] || [ ! -x "$DEMO_DIR/.git/hooks/post-commit" ]; then
+    local at rev line
+    at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    rev="$(git -C "$DEMO_DIR" rev-parse HEAD 2>/dev/null || printf unknown)"
+    line="$(printf '{:event/type :observer-warning :at "%s" :git/rev "%s" :expected-hooks-path :unset :actual-hooks-path "%s"}' \
+      "$at" "$rev" "$(escape "$actual")")"
+    append_event "$line"
+    echo "ERROR: benchmark observer hook is not active. Restore it with:" >&2
+    echo "  git -C \"$DEMO_DIR\" config --unset core.hooksPath" >&2
+    exit 1
+  fi
+}
+
+check_observer_hook
+
 at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-rev="$(git rev-parse HEAD 2>/dev/null || printf unknown)"
+rev="$(git -C "$DEMO_DIR" rev-parse HEAD 2>/dev/null || printf unknown)"
 line="$(printf '{:event/type :approval-marker :at "%s" :level :%s :approval/source :%s :git/rev "%s" :note "%s"}' \
   "$at" "$level" "$source" "$rev" "$(escape "$note")")"
-printf '%s\n' "$line" >> "$DEMO_RUN_DIR/events.edn"
-printf '%s\n' "$line" >> "$TEMPLATE_RUN_DIR/events.edn"
+append_event "$line"
 echo "approval marker recorded: $level ($source)"
 APPROVE
 } > "$demo_run_dir/approve-next-segment.sh"
 chmod +x "$demo_run_dir/approve-next-segment.sh"
 
-cat > "$demo_run_dir/simulate-approval.sh" <<EOF
-#!/usr/bin/env bash
-exec "$(printf '%s' "$demo_run_dir/approve-next-segment.sh")" --source simulated-llm "\$@"
-EOF
+{
+  echo '#!/usr/bin/env bash'
+  echo 'set -euo pipefail'
+  printf 'APPROVE_SCRIPT=%q\n' "$demo_run_dir/approve-next-segment.sh"
+  cat <<'SIMULATE'
+exec "$APPROVE_SCRIPT" --source simulated-llm "$@"
+SIMULATE
+} > "$demo_run_dir/simulate-approval.sh"
 chmod +x "$demo_run_dir/simulate-approval.sh"
 
 {
   echo '#!/usr/bin/env bash'
   echo 'set -euo pipefail'
+  printf 'DEMO_DIR=%q\n' "$demo_dir"
   printf 'DEMO_RUN_DIR=%q\n' "$demo_run_dir"
   printf 'TEMPLATE_RUN_DIR=%q\n' "$run_dir"
   cat <<'TERMINAL'
@@ -381,24 +433,72 @@ escape() {
   printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
 }
 
+append_event() {
+  local line="$1"
+  printf '%s\n' "$line" >> "$DEMO_RUN_DIR/events.edn"
+  printf '%s\n' "$line" >> "$TEMPLATE_RUN_DIR/events.edn"
+}
+
+has_event() {
+  local pattern="$1"
+  grep -q "$pattern" "$DEMO_RUN_DIR/events.edn" "$TEMPLATE_RUN_DIR/events.edn" 2>/dev/null
+}
+
+observer_hook_active() {
+  local actual
+  actual="$(git -C "$DEMO_DIR" config --get core.hooksPath 2>/dev/null || true)"
+  [ -z "$actual" ] && [ -x "$DEMO_DIR/.git/hooks/post-commit" ]
+}
+
+record_observer_warning() {
+  local at rev actual line
+  actual="$(git -C "$DEMO_DIR" config --get core.hooksPath 2>/dev/null || true)"
+  at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  rev="$(git -C "$DEMO_DIR" rev-parse HEAD 2>/dev/null || printf unknown)"
+  line="$(printf '{:event/type :observer-warning :at "%s" :git/rev "%s" :expected-hooks-path :unset :actual-hooks-path "%s"}' \
+    "$at" "$rev" "$(escape "$actual")")"
+  append_event "$line"
+  echo "WARNING: benchmark observer hook is not active." >&2
+  echo "Restore it with:" >&2
+  echo "  git -C \"$DEMO_DIR\" config --unset core.hooksPath" >&2
+}
+
+if has_event ':event/type :terminal-state'; then
+  echo "ERROR: terminal state is already recorded for this run" >&2
+  exit 1
+fi
+
+if [ "$state" != "void" ] && has_event ':approval/source :simulated-llm'; then
+  echo "ERROR: runs with simulated approval must be marked void" >&2
+  exit 1
+fi
+
+if ! observer_hook_active; then
+  record_observer_warning
+  if [ "$state" != "void" ]; then
+    echo "ERROR: non-void terminal state requires an active observer hook" >&2
+    exit 1
+  fi
+fi
+
 at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-rev="$(git rev-parse HEAD 2>/dev/null || printf unknown)"
-line="$(printf '{:event/type :terminal-state :at "%s" :state :%s :git/rev "%s" :note "%s"}\n' \
+rev="$(git -C "$DEMO_DIR" rev-parse HEAD 2>/dev/null || printf unknown)"
+line="$(printf '{:event/type :terminal-state :at "%s" :state :%s :git/rev "%s" :note "%s"}' \
   "$at" "$state" "$rev" "$(escape "$note")")"
-printf '%s\n' "$line" >> "$DEMO_RUN_DIR/events.edn"
-printf '%s\n' "$line" >> "$TEMPLATE_RUN_DIR/events.edn"
+append_event "$line"
 echo "terminal state recorded: $state"
 TERMINAL
 } > "$demo_run_dir/mark-terminal-state.sh"
 chmod +x "$demo_run_dir/mark-terminal-state.sh"
 
 git -C "$demo_dir" add .
-git -C "$demo_dir" commit -q -m "Start benchmark demo"
+git -C "$demo_dir" commit -q -m "Initial template state"
 
 echo "Benchmark run prepared:"
 echo "  Run ID: $run_id"
 echo "  Demo repo: $demo_dir"
 echo "  Template run record: $run_dir"
+echo "  Observer run record: $demo_run_dir"
 echo ""
 echo "Next:"
 echo "  cd \"$demo_dir\""

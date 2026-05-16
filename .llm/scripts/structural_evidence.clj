@@ -9,13 +9,18 @@
    [clojure.java.shell :as shell]
    [clojure.pprint :as pprint]
    [clojure.set :as set]
-   [clojure.string :as str])
+   [clojure.string :as str]
+   [derivation-manifest :as derivation])
   (:import
    [java.security MessageDigest]))
 
 (def schema-version "structural-evidence.1")
 
 (def default-out-dir ".llm/work")
+(def work-view-dir ".llm/work/views")
+(def work-declaration-dir ".llm/work/declarations")
+(def work-run-dir ".llm/work/runs")
+(def structural-evidence-generator-path ".llm/scripts/structural_evidence.clj")
 
 (def residual-fields
   [:semantic-impact-not-derived
@@ -329,6 +334,7 @@
       "--advisory" (recur (assoc m :advisory true) xs)
 	      "--no-write" (recur (assoc m :no-write true) xs)
 	      "--dry-run" (recur (assoc m :dry-run true) xs)
+      "--confirm" (recur (assoc m :confirm true) xs)
       "--all-none" (recur (assoc m :all-none true) xs)
       "--semantic-impact" (recur (assoc-in m [:declare :semantic-impact-not-derived] (first xs)) (next xs))
       "--unknowns" (recur (assoc-in m [:declare :unknowns-not-captured-by-derivation] (first xs)) (next xs))
@@ -455,6 +461,7 @@
   (cond
     (or (= "CLAUDE.md" path)
         (= ".gitignore" path)
+        (= ".llm/work/.gitignore" path)
         (= ".llm/repo-context.edn" path)
         (str/starts-with? path ".llm/guide/"))
     {:rule :template-governance :archetype :template-governance-change :plane :authority}
@@ -809,16 +816,228 @@
               entry))
           new-evidence)))
 
-(defn- preserve-active-declarations [packet old-packet]
-  (cond-> packet
-    (:llm-declared old-packet)
-    (assoc :llm-declared (:llm-declared old-packet))
+(declare view-path
+         view-markdown-path
+         predicted-view-path
+         declaration-path
+         run-result-path
+         read-packet-file
+         prune-stale-generated-views!
+         current-task-id
+         fingerprint-matches?
+         diff-source-flag)
 
-    (:intent old-packet)
-    (assoc :intent (:intent old-packet))
+(defn- structural-view-input [view]
+  {:path (str "change-fingerprint:"
+              (name (get-in view [:change/fingerprint :source] :unknown)))
+   :input/kind :virtual
+   :digest (str "sha1:" (get-in view [:change/fingerprint :digest] "missing"))})
 
-    (seq (:evidence old-packet))
-    (assoc :evidence (merge-evidence-by-id (:evidence packet) (:evidence old-packet)))))
+(def structural-evidence-static-input-paths
+  [".llm/repo-context.edn"
+   ".llm/data/design-ir.edn"
+   ".llm/data/trace-index.edn"
+   ".llm/data/brick-map.edn"
+   ".llm/data/workspace-map.edn"
+   ".llm/data/libs.edn"
+   ".llm/data/deprecated-libs.patterns"
+   ".llm/memory/QUESTIONS.md"
+   ".llm/memory/KNOWLEDGE.md"])
+
+(defn- markdown-inputs-under [path]
+  (let [f (io/file path)]
+    (cond
+      (and (.isFile f) (str/ends-with? (.getName f) ".md"))
+      [(.getPath f)]
+
+      (.isDirectory f)
+      (->> (file-seq f)
+           (filter #(.isFile %))
+           (map #(.getPath %))
+           (filter #(str/ends-with? % ".md"))
+           sort
+           vec)
+
+      :else
+      [path])))
+
+(defn- structural-evidence-input-paths []
+  (vec
+   (distinct
+    (concat structural-evidence-static-input-paths
+            (if (= :template (repo-kind))
+              (markdown-inputs-under ".llm/memory/archive/maintainer-discussions")
+              (markdown-inputs-under ".llm/memory/adr"))))))
+
+(defn- structural-evidence-observed-inputs [view]
+  (vec
+   (cons (structural-view-input view)
+         (map derivation/observed-input
+              (structural-evidence-input-paths)))))
+
+(defn- structural-view-manifest
+  ([view]
+   (structural-view-manifest view nil))
+  ([view generated-at]
+   (derivation/make-manifest
+    {:id :structural-evidence-view
+     :tool "structural-evidence"
+     :output-path (if (= :predicted (:status view))
+                    (predicted-view-path (:task/id view))
+                    (view-path (:task/id view)))
+     :generator-path structural-evidence-generator-path
+     :tool-input-paths [".llm/scripts/derivation_manifest.clj"]
+     :observed-inputs (structural-evidence-observed-inputs view)
+     :input-policy {:change-fingerprint :required
+                    :missing :explicit-empty
+                    :memory-scan :observed-markdown-files}
+     :generated-at generated-at
+     :regenerate-command (str "./.llm/scripts/propose-review-packet.sh --task "
+                              (:task/id view)
+                              (diff-source-flag view))})))
+
+(defn- stamp-view-derivation [view]
+  (derivation/with-manifest view (structural-view-manifest view)))
+
+(defn- view-freshness [view]
+  (let [manifest (derivation/artifact-manifest view)]
+    (cond
+      (nil? manifest)
+      {:status :broken-manifest
+       :reason (str "missing " derivation/manifest-key)
+       :derivation/id :structural-evidence-view}
+
+      (not= derivation/schema-version (:derivation/schema manifest))
+      {:status :broken-manifest
+       :reason (str "unsupported schema " (pr-str (:derivation/schema manifest)))
+       :derivation/id (:derivation/id manifest)}
+
+      :else
+      (let [current (structural-view-manifest view (:derivation/generated-at manifest))
+            fresh? (= (:derivation/action-key manifest)
+                      (:derivation/action-key current))]
+        {:status (if fresh? :fresh :stale)
+         :derivation/id (:derivation/id manifest)
+         :recorded-action-key (:derivation/action-key manifest)
+         :current-action-key (:derivation/action-key current)
+         :changed-generator (when (not= (:derivation/generator manifest)
+                                        (:derivation/generator current))
+                              {:recorded (:derivation/generator manifest)
+                               :current (:derivation/generator current)})
+         :changed-inputs (when (not= (:derivation/inputs manifest)
+                                     (:derivation/inputs current))
+                           {:recorded (:derivation/inputs manifest)
+                            :current (:derivation/inputs current)})}))))
+
+(defn- fresh-derived-view? [packet-or-view]
+  (= :fresh
+     (or (get-in packet-or-view [:artifact/components :derived-view :freshness :status])
+         (:status (view-freshness packet-or-view)))))
+
+(defn- ensure-fresh-derived-view! [view task-id]
+  (let [freshness (view-freshness view)]
+    (when-not (= :fresh (:status freshness))
+      (binding [*out* *err*]
+        (println "Structural Evidence derived view is stale or has a broken manifest.")
+        (println "Task:" task-id)
+        (println "Freshness:" (name (:status freshness)))
+        (when-let [reason (:reason freshness)]
+          (println "Reason:" reason))
+        (println "Regenerate the derived view:")
+        (println (str " ./.llm/scripts/propose-review-packet.sh --task " task-id (diff-source-flag view))))
+      (System/exit 1))))
+
+(defn- declaration-artifact [packet llm-declared intent]
+  {:schema/version schema-version
+   :kind :structural-evidence-declaration
+   :artifact/regime :declaration
+   :task/id (:task/id packet)
+   :status :active
+   :change/fingerprint (:change/fingerprint packet)
+   :intent intent
+   :llm-declared llm-declared
+   :updated-at (.toString (java.time.Instant/now))})
+
+(defn- run-result-artifact [packet evidence]
+  {:schema/version schema-version
+   :kind :structural-evidence-run-result
+   :artifact/regime :transient-observation
+   :artifact/lifecycle :evidence-run-result
+   :task/id (:task/id packet)
+   :status :recorded
+   :change/fingerprint (:change/fingerprint packet)
+   :evidence evidence
+   :updated-at (.toString (java.time.Instant/now))})
+
+(defn- view-artifact [packet]
+  (-> packet
+      (assoc :kind :review-fatigue-derived-view
+             :artifact/regime :derived-view)
+      (dissoc :llm-declared
+              :intent
+              :predict-vs-actual
+              :closed-at
+              :closed-git-rev)
+      stamp-view-derivation))
+
+(defn- read-artifact [path]
+  (when (file? path)
+    (edn/read-string (slurp path))))
+
+(defn- declaration-for [task-id]
+  (read-artifact (declaration-path task-id)))
+
+(defn- run-result-for [task-id]
+  (read-artifact (run-result-path task-id)))
+
+(defn- same-fingerprint-digest? [a b]
+  (and (get-in a [:change/fingerprint :digest])
+       (= (get-in a [:change/fingerprint :digest])
+          (get-in b [:change/fingerprint :digest]))))
+
+(defn- assemble-packet
+  ([view]
+   (assemble-packet view (declaration-for (:task/id view)) (run-result-for (:task/id view))))
+  ([view declaration run-result]
+   (let [declaration* (when (same-fingerprint-digest? view declaration)
+                        declaration)
+         run-result* (when (same-fingerprint-digest? view run-result)
+                       run-result)
+         declared (or (:llm-declared declaration*)
+                      (residual-declaration-placeholders))
+         evidence (merge-evidence-by-id (:evidence view)
+                                        (:evidence run-result*))
+         derived-view-path (if (= :predicted (:status view))
+                             (predicted-view-path (:task/id view))
+                             (view-path (:task/id view)))
+         freshness (view-freshness view)]
+     (cond-> (assoc view
+                    :kind :review-fatigue-packet
+                    :artifact/container :review-fatigue-packet
+                    :artifact/components
+                    {:derived-view {:path derived-view-path
+                                    :regime :derived-view
+                                    :freshness freshness}
+                     :declaration {:path (declaration-path (:task/id view))
+                                   :regime :declaration
+                                   :status (cond
+                                             declaration* :attached
+                                             declaration :orphaned
+                                             :else :pending)}
+                     :run-result {:path (run-result-path (:task/id view))
+                                  :regime :transient-observation
+                                  :lifecycle :evidence-run-result
+                                  :status (cond
+                                            run-result* :recorded
+                                            run-result :stale
+                                            :else :pending)}
+                     :closed-record {:path (str ".llm/evidence/closed/" (:task/id view) ".edn")
+                                     :regime :immutable-record
+                                     :status :pending}}
+                    :llm-declared declared
+                    :evidence evidence)
+       (:intent declaration*)
+       (assoc :intent (:intent declaration*))))))
 
 (defn- declared-value? [v]
   (cond
@@ -944,6 +1163,40 @@
 (defn- write-edn! [path data]
   (ensure-dir! (.getParent (io/file path)))
   (spit path (with-out-str (pprint/pprint data))))
+
+(defn- delete-file-if-exists! [path]
+  (let [f (io/file path)]
+    (when (.isFile f)
+      (.delete f))))
+
+(defn- delete-generated-view-files! [task-id]
+  (doseq [path [(view-path task-id)
+                (view-markdown-path task-id)]]
+    (delete-file-if-exists! path)))
+
+(defn- task-path
+  ([dir task-id]
+   (task-path dir task-id ".edn"))
+  ([dir task-id suffix]
+   (str dir "/" task-id suffix)))
+
+(defn- view-path [task-id]
+  (task-path work-view-dir task-id))
+
+(defn- view-markdown-path [task-id]
+  (task-path work-view-dir task-id ".md"))
+
+(defn- predicted-view-path [task-id]
+  (task-path work-view-dir task-id ".predict.edn"))
+
+(defn- predicted-view-markdown-path [task-id]
+  (task-path work-view-dir task-id ".predict.md"))
+
+(defn- declaration-path [task-id]
+  (task-path work-declaration-dir task-id))
+
+(defn- run-result-path [task-id]
+  (task-path work-run-dir task-id))
 
 (defn- bullet-list [items]
   (if (seq items)
@@ -1087,7 +1340,7 @@
   (spit path (markdown packet)))
 
 (defn run-derive [opts]
-  (let [packet (derive-packet opts)]
+  (let [packet (assemble-packet (view-artifact (derive-packet opts)))]
     (if-let [out (:out opts)]
       (do
         (write-edn! out packet)
@@ -1096,26 +1349,34 @@
 
 (defn propose [opts]
   (let [packet (derive-packet opts)
+        view (view-artifact packet)
+        assembled (assemble-packet view)
         out-dir (or (:out-dir opts) default-out-dir)
-        task-id (:task/id packet)
-        edn-path (str out-dir "/" task-id ".edn")
-        md-path (str out-dir "/" task-id ".md")
+        _ (when (not= out-dir default-out-dir)
+            (throw (ex-info "--out-dir is no longer supported; Structural Evidence work artifacts use regime-specific directories."
+                            {:out-dir out-dir})))
+        task-id (:task/id view)
+        edn-path (view-path task-id)
+        md-path (view-markdown-path task-id)
         existed? (file? edn-path)
-        packet* (if existed?
-                  (preserve-active-declarations packet (edn/read-string (slurp edn-path)))
-                  packet)]
-    (write-edn! edn-path packet*)
-    (write-markdown! md-path packet*)
+        pruned (prune-stale-generated-views! view {:keep-task-id task-id})]
+    (write-edn! edn-path view)
+    (write-markdown! md-path assembled)
     (println "Review Fatigue Packet generated:")
     (println " " edn-path)
     (println " " md-path)
+    (when (seq pruned)
+      (println "Pruned stale generated views:")
+      (doseq [{:keys [edn md]} pruned]
+        (println " " edn)
+        (println " " md)))
     (when existed?
-      (println "Existing residual declarations were preserved."))))
+      (println "Existing derived view was replaced; declaration and run artifacts were preserved separately."))))
 
 (defn inspect [opts]
   (let [packet (if-let [path (or (:from opts) (:out opts))]
-                 (edn/read-string (slurp path))
-                 (derive-packet opts))]
+	                 (read-packet-file path)
+                 (assemble-packet (view-artifact (derive-packet opts))))]
     (println "Structural Evidence Derivation")
     (println "Task:" (:task/id packet))
     (println "Status:" (get-in packet [:derivation :status]))
@@ -1143,9 +1404,13 @@
   (let [path (or (:packet opts) (:from opts) (first (:extra-args opts)))]
     (when-not path
       (binding [*out* *err*]
-        (println "Usage: structural-evidence check-residual --packet .llm/work/<task-id>.edn"))
+        (println "Usage: structural-evidence check-residual --packet .llm/work/views/<task-id>.edn"))
       (System/exit 2))
-    (let [packet (edn/read-string (slurp path))
+    (let [packet (read-packet-file path)
+          _ (when-not packet
+              (binding [*out* *err*]
+                (println "Cannot read Structural Evidence artifact:" path))
+              (System/exit 2))
           status (:status packet)
           missing (missing-residual-fields packet)]
       (cond
@@ -1168,20 +1433,45 @@
         (println "Residual declaration complete:" path)))))
 
 (defn- active-packet-files []
-  (let [dir (io/file default-out-dir)]
+  (let [dir (io/file work-view-dir)]
     (if (.isDirectory dir)
       (->> (file-seq dir)
            (filter #(.isFile %))
            (map #(.getPath %))
            (filter #(str/ends-with? % ".edn"))
            (remove #(str/includes? % ".predict.edn"))
-           (remove #(str/includes? % ".intent.edn"))
            (filter (fn [path]
                      (let [status (:status (edn/read-string (slurp path)))]
                        (not (contains? #{:clean-close :closed} status)))))
            sort
            vec)
       [])))
+
+(defn- generated-view-with-human-work? [task-id]
+  (or (file? (declaration-path task-id))
+      (file? (run-result-path task-id))))
+
+(defn- stale-generated-view-for? [current-fingerprint packet]
+  (or (not (fingerprint-matches? packet current-fingerprint))
+      (not (fresh-derived-view? packet))))
+
+(defn- prune-stale-generated-views!
+  ([current-packet]
+   (prune-stale-generated-views! current-packet {}))
+  ([current-packet {:keys [keep-task-id]}]
+   (let [current-fingerprint (:change/fingerprint current-packet)]
+     (->> (active-packet-files)
+          (keep (fn [path]
+                  (when-let [packet (read-packet-file path)]
+                    (let [task-id (current-task-id packet)]
+                      (when (and (not= keep-task-id task-id)
+                                 (stale-generated-view-for? current-fingerprint packet)
+                                 (not (generated-view-with-human-work? task-id)))
+                        (delete-generated-view-files! task-id)
+                        {:task-id task-id
+                         :edn path
+                         :md (view-markdown-path task-id)})))))
+          vec))))
 
 (defn- closed-record-files []
   (let [dir (io/file ".llm/evidence/closed")]
@@ -1196,7 +1486,24 @@
 
 (defn- read-packet-file [path]
   (try
-    (edn/read-string (slurp path))
+    (let [artifact (read-artifact path)]
+      (case (:kind artifact)
+        :review-fatigue-derived-view
+        (assemble-packet artifact)
+
+        :structural-evidence-declaration
+        artifact
+
+        :structural-evidence-run-result
+        artifact
+
+        :structural-evidence-closed-record
+        artifact
+
+        :review-fatigue-packet
+        artifact
+
+        artifact))
     (catch Throwable _
       nil)))
 
@@ -1219,7 +1526,7 @@
        (reduce (fn [m [id entry]] (assoc m id entry)) {})))
 
 (defn- status-line-for-packet [path]
-  (let [packet (edn/read-string (slurp path))
+  (let [packet (read-packet-file path)
         missing (missing-residual-fields packet)]
     (str "- " (:task/id packet)
          " (" (name (or (:save-policy packet) :unknown-save))
@@ -1418,7 +1725,7 @@
                (evidence-status-suffix latest-evidence {:id id})))
     (println)
     (println "Evidence Plane:")
-    (println "  Active Review Fatigue Packets:")
+    (println "  Active Review Fatigue Views:")
     (if (seq active)
       (doseq [path active] (println " " (status-line-for-packet path)))
       (println "  - none"))
@@ -1475,7 +1782,8 @@
       (println "- none"))))
 
 (defn- evidence-packet-files []
-  (let [work-dir (io/file default-out-dir)]
+  (let [work-dir (io/file work-view-dir)
+        declaration-dir (io/file work-declaration-dir)]
     (vec
      (sort
       (concat
@@ -1484,8 +1792,12 @@
               (filter #(.isFile %))
               (map #(.getPath %))
               (filter #(str/ends-with? % ".edn"))
-              (remove #(str/includes? % ".intent.edn"))
               (remove #(str/includes? % ".predict.edn"))))
+       (when (.isDirectory declaration-dir)
+         (->> (file-seq declaration-dir)
+              (filter #(.isFile %))
+              (map #(.getPath %))
+              (filter #(str/ends-with? % ".edn"))))
        (closed-record-files))))))
 
 (defn- string-values [x]
@@ -1713,7 +2025,7 @@
        vec))
 
 (defn- predict-packets []
-  (let [dir (io/file default-out-dir)]
+  (let [dir (io/file work-view-dir)]
     (if (.isDirectory dir)
       (->> (file-seq dir)
            (filter #(.isFile %))
@@ -1722,6 +2034,126 @@
            (keep read-packet-file)
            vec)
       [])))
+
+(defn- declaration-files []
+  (let [dir (io/file work-declaration-dir)]
+    (if (.isDirectory dir)
+      (->> (file-seq dir)
+           (filter #(.isFile %))
+           (map #(.getPath %))
+           (filter #(str/ends-with? % ".edn"))
+           sort
+           vec)
+      [])))
+
+(defn- declarations []
+  (->> (declaration-files)
+       (keep read-packet-file)
+       vec))
+
+(defn- task-id-from-work-file [path]
+  (let [name (.getName (io/file path))]
+    (some (fn [[pattern]]
+            (second (re-matches pattern name)))
+          [[#"(.+)\.predict\.edn"]
+           [#"(.+)\.predict\.md"]
+           [#"(.+)\.intent\.edn"]
+           [#"(.+)\.edn"]
+           [#"(.+)\.md"]])))
+
+(defn- closed-record-exists? [task-id]
+  (file? (str ".llm/evidence/closed/" task-id ".edn")))
+
+(defn- legacy-root-work-files []
+  (let [dir (io/file default-out-dir)]
+    (if (.isDirectory dir)
+      (->> (.listFiles dir)
+           (filter #(.isFile %))
+           (map #(.getPath %))
+           (remove #(= ".llm/work/.gitignore" %))
+           sort
+           vec)
+      [])))
+
+(defn- legacy-human-declaration? [path artifact]
+  (or (str/ends-with? path ".intent.edn")
+      (declared-value? (:intent artifact))
+      (some declared-value?
+            (vals (select-keys (:llm-declared artifact) residual-fields)))))
+
+(defn- prune-decision [path]
+  (let [task-id (task-id-from-work-file path)
+        artifact (when (and (str/ends-with? path ".edn")
+                            (file? path))
+                   (read-edn-if-exists path))
+        current-regime (cond
+                         (str/starts-with? path work-declaration-dir) :declaration
+                         (str/starts-with? path work-run-dir) :transient-observation
+                         (str/starts-with? path work-view-dir) :derived-view
+                         :else :legacy-root)
+        closed? (and task-id (closed-record-exists? task-id))]
+    (cond
+      (nil? task-id)
+      {:path path :action :preserve :reason :unknown-work-artifact}
+
+      closed?
+      {:path path :action :prune :reason :absorbed-by-closed-record}
+
+      (= :declaration current-regime)
+      {:path path :action :preserve :reason :human-declaration}
+
+      (= :transient-observation current-regime)
+      {:path path :action :preserve :reason :unclosed-transient-observation}
+
+      (= :derived-view current-regime)
+      (if (generated-view-with-human-work? task-id)
+        {:path path :action :preserve :reason :derived-view-has-human-work}
+        {:path path :action :prune :reason :stale-generated-view})
+
+      (legacy-human-declaration? path artifact)
+      {:path path :action :preserve :reason :legacy-human-declaration}
+
+      :else
+      {:path path :action :prune :reason :legacy-generated-view})))
+
+(defn- current-work-files []
+  (let [dirs [work-view-dir work-declaration-dir work-run-dir]]
+    (->> dirs
+         (map io/file)
+         (filter #(.isDirectory %))
+         (mapcat file-seq)
+         (filter #(.isFile %))
+         (map #(.getPath %))
+         sort
+         vec)))
+
+(defn- prune-work-decisions []
+  (->> (concat (legacy-root-work-files)
+               (current-work-files))
+       distinct
+       sort
+       (mapv prune-decision)))
+
+(defn prune-work-artifacts [opts]
+  (let [decisions (prune-work-decisions)
+        prunable (filter #(= :prune (:action %)) decisions)
+        preserved (filter #(= :preserve (:action %)) decisions)
+        confirm? (:confirm opts)]
+    (println "== Structural Evidence Work Prune ==")
+    (println "Mode:" (if confirm? "confirm" "dry-run"))
+    (println)
+    (println "Prunable generated/transient artifacts:" (count prunable))
+    (doseq [{:keys [path reason]} prunable]
+      (println " -" (if confirm? "deleted" "would-delete") path "[" (name reason) "]")
+      (when confirm?
+        (delete-file-if-exists! path)))
+    (println)
+    (println "Preserved human/unknown artifacts:" (count preserved))
+    (doseq [{:keys [path reason]} preserved]
+      (println " - keep" path "[" (name reason) "]"))
+    (when-not confirm?
+      (println)
+      (println "Run with --confirm to delete only the prunable artifacts listed above."))))
 
 (defn- clean-close? [packet]
   (contains? #{:clean-close :closed} (:status packet)))
@@ -1751,6 +2183,101 @@
   ([type] {:type type})
   ([type details] {:type type :details details}))
 
+(defn- required-derived-view-plan []
+  (when-let [status (->> (derivation/existing-artifacts)
+                         (map derivation/freshness)
+                         (remove #(= :fresh (:status %)))
+                         first)]
+    (let [state (if (= :broken-manifest (:status status))
+                  :broken-derived-view-manifest
+                  :stale-required-derived-view)
+          cmd (or (:regenerate-command status)
+                  "./.llm/scripts/check-derived-artifacts.sh")]
+      {:state state
+       :artifact-path (:artifact/path status)
+       :blocked-on [(block (:status status)
+                           (select-keys status
+                                        [:artifact/path
+                                         :reason
+                                         :recorded-action-key
+                                         :current-action-key]))]
+       :next-action (action cmd
+                            "a required derived view is not fresh; regenerate it before deriving evidence or planning work")})))
+
+(def work-frontier-category-rank
+  {:red 0
+   :accounted 1
+   :unknown 2})
+
+(def work-frontier-state-rank
+  {:missing-boundary 0
+   :missing-trace 1
+   :missing-test 2
+   :orphan-boundary 3
+   :orphan-test 4
+   :unbacked-disposition 5
+   :unresolved-blocker 6
+   :stale-evidence 7
+   :blocked-by-question 8
+   :manual-verification-required 9})
+
+(def work-frontier-kind-rank
+  {:requirement 0
+   :use-case 1
+   :test-obligation 2
+   :constraint 3
+   :orphan-requirement 4
+   :orphan-use-case 5
+   :orphan-test-obligation 6})
+
+(defn- work-frontier-items []
+  (when-let [index (read-edn-if-exists ".llm/data/obligation-index.edn")]
+    (->> (:obligations index)
+         (remove #(= :complete (:category %)))
+         (sort-by (juxt #(get work-frontier-category-rank (:category %) 99)
+                        #(get work-frontier-state-rank (:state %) 99)
+                        #(get work-frontier-kind-rank (:kind %) 99)
+                        :id))
+         vec)))
+
+(defn- work-frontier-head-plan [stale-candidates housekeeping]
+  (when-let [item (first (work-frontier-items))]
+    {:state :work-frontier-head
+     :obligation-id (:id item)
+     :obligation {:id (:id item)
+                  :kind (:kind item)
+                  :state (:state item)
+                  :category (:category item)
+                  :source (:source item)}
+     :blocked-on []
+     :next-action (action "./.llm/scripts/derive-work-frontier.sh"
+                          "no current diff is pending; inspect the next unfinished DESIGN obligation")
+     :stale-candidates stale-candidates
+     :housekeeping housekeeping}))
+
+(defn- orphan-declaration-plan [_current-fingerprint]
+  (when-let [declaration (->> (declarations)
+                              (filter (fn [declaration]
+                                        (let [task-id (:task/id declaration)
+                                              active-view (read-artifact (view-path task-id))
+                                              predicted-view (read-artifact (predicted-view-path task-id))
+                                              view (or active-view predicted-view)]
+                                          (or (nil? view)
+                                              (not= (get-in declaration [:change/fingerprint :digest])
+                                                    (get-in view [:change/fingerprint :digest]))))))
+                              first)]
+    (let [task-id (:task/id declaration)]
+      {:state :orphan-declaration
+       :task-id task-id
+       :declaration-path (declaration-path task-id)
+       :blocked-on [(block :orphan-declaration
+                           {:fingerprint (get-in declaration [:change/fingerprint :digest])})]
+       :next-action (action (str "./.llm/scripts/evidence.sh inspect --from "
+                                 (or (when (file? (view-path task-id))
+                                       (view-path task-id))
+                                     (declaration-path task-id)))
+                            "a human declaration is no longer attached to the current derived view; inspect it before pruning or reusing it")})))
+
 (defn- format-blocked-on [items]
   (str/join ", "
             (map (fn [{:keys [type details]}]
@@ -1763,106 +2290,161 @@
   (or (:task/id packet)
       (gate-task-id (:change/fingerprint packet))))
 
-(defn- what-now-plan [opts]
-  (let [packet0 (derive-packet opts)
-        task-id (current-task-id packet0)
-        packet (assoc packet0 :task/id task-id)
-        fingerprint (:change/fingerprint packet)
-        files (get-in packet [:actual-scope :paths])
-        save-policy (:save-policy packet)
-        closed-matches (matching-packets (closed-records) fingerprint)
-        active-matches (matching-packets (active-packets) fingerprint)
-        active-any (first (active-packets))
-        active (or (first active-matches) active-any)
-        clean-record (latest-clean-record closed-matches)
-        stale-summary (when clean-record (record-staleness clean-record packet))
-        stale-candidates (->> (closed-record-staleness packet)
-                              (filter #(= :stale-candidate (:status %)))
-                              (take 5)
-                              vec)
-        source-flag (diff-source-flag packet)]
+(defn- active-packet-plan [active stale-candidates]
+  (let [task (current-task-id active)
+        missing (missing-residual-fields active)
+        failed (failed-evidence-statuses active)
+        not-run (missing-evidence-statuses active)
+        source-flag (diff-source-flag active)
+        packet-path (view-path task)]
     (cond
-      active
-      (let [task (:task/id active)
-            missing (missing-residual-fields active)
-            failed (failed-evidence-statuses active)
-            not-run (missing-evidence-statuses active)]
-        (cond
-          (seq missing)
-	          {:state :active-packet-pending-residual
-	           :task-id task
-	           :packet-path (str default-out-dir "/" task ".edn")
-	           :blocked-on [(block :residual missing)]
-	           :next-action (action (str "./.llm/scripts/evidence.sh declare --task " task " --all-none")
-	                                "residual fields are still nil; use concrete field declarations when residual impact exists")
-	           :stale-candidates stale-candidates}
-
-          (seq failed)
-	          {:state :active-packet-failed-evidence
-	           :task-id task
-	           :packet-path (str default-out-dir "/" task ".edn")
-	           :blocked-on [(block :failed-evidence failed)]
-	           :next-action (action (str "fix failed evidence: " (str/join ", " failed))
-	                                "command-backed evidence failed")
-	           :stale-candidates stale-candidates}
-
-          (seq not-run)
-	          {:state :active-packet-needs-evidence-run
-	           :task-id task
-	           :packet-path (str default-out-dir "/" task ".edn")
-	           :blocked-on [(block :missing-evidence not-run)]
-	           :next-action (action (str "./.llm/scripts/evidence.sh run --task " task)
-	                                "some command-backed evidence has not been recorded")
-	           :stale-candidates stale-candidates}
-
-          :else
-	          {:state :active-packet-ready-to-close
-	           :task-id task
-	           :packet-path (str default-out-dir "/" task ".edn")
-           :blocked-on []
-           :next-action (action (str "./.llm/scripts/evidence.sh close --task " task source-flag)
-                                "residual declarations and command-backed evidence are complete")
-           :stale-candidates stale-candidates}))
-
-      (and clean-record (= :stale-candidate (:status stale-summary)))
-	      {:state :matching-close-record-stale-candidate
-	       :task-id (:task/id clean-record)
-	       :record-path (:record/path clean-record)
-	       :blocked-on [(block :stale-candidate (:checks stale-summary))]
-	       :next-action (action (str "./.llm/scripts/propose-review-packet.sh --task " task-id source-flag)
-	                            "a matching close record exists, but one or more evidence dependencies changed")
-	       :stale-candidates stale-candidates}
-
-      clean-record
-      {:state :commit-ready
-       :task-id (:task/id clean-record)
-       :record-path (:record/path clean-record)
-       :blocked-on []
-       :next-action (action "git commit"
-                            "matching clean close record exists for the current change fingerprint")
+      (seq missing)
+      {:state :active-packet-pending-residual
+       :task-id task
+       :packet-path packet-path
+       :blocked-on [(block :residual missing)]
+       :next-action (action (str "./.llm/scripts/evidence.sh declare --task " task " --all-none")
+                            "residual fields are still nil; use concrete field declarations when residual impact exists")
        :stale-candidates stale-candidates}
 
-      (empty? files)
-      {:state :no-change
-       :blocked-on []
-       :next-action (action "none"
-                            "no changed paths and no active packet")
+      (seq failed)
+      {:state :active-packet-failed-evidence
+       :task-id task
+       :packet-path packet-path
+       :blocked-on [(block :failed-evidence failed)]
+       :next-action (action (str "fix failed evidence: " (str/join ", " failed))
+                            "command-backed evidence failed")
        :stale-candidates stale-candidates}
 
-      (not= :required save-policy)
-      {:state :evidence-optional
-       :blocked-on []
-       :next-action (action "git commit"
-                            "current change is not save-required by Structural Evidence policy")
+      (seq not-run)
+      {:state :active-packet-needs-evidence-run
+       :task-id task
+       :packet-path packet-path
+       :blocked-on [(block :missing-evidence not-run)]
+       :next-action (action (str "./.llm/scripts/evidence.sh run --task " task)
+                            "some command-backed evidence has not been recorded")
        :stale-candidates stale-candidates}
 
       :else
-	      {:state :packet-required
-	       :task-id task-id
-	       :blocked-on [(block :packet-required)]
-	       :next-action (action (str "./.llm/scripts/propose-review-packet.sh --task " task-id source-flag)
-	                            "save-required change has no active packet or close record")
-	       :stale-candidates stale-candidates})))
+      {:state :active-packet-ready-to-close
+       :task-id task
+       :packet-path packet-path
+       :blocked-on []
+       :next-action (action (str "./.llm/scripts/evidence.sh close --task " task source-flag)
+                            "residual declarations and command-backed evidence are complete")
+       :stale-candidates stale-candidates})))
+
+(defn- housekeeping-item [packet]
+  (let [task (current-task-id packet)]
+    {:task-id task
+     :packet-path (view-path task)
+     :fingerprint (get-in packet [:change/fingerprint :digest])
+     :freshness (get-in packet [:artifact/components :derived-view :freshness])
+     :missing-residual (missing-residual-fields packet)
+     :missing-evidence (missing-evidence-statuses packet)
+     :failed-evidence (failed-evidence-statuses packet)}))
+
+(defn- detached-active-packet-plan [active stale-candidates]
+  (let [task (current-task-id active)
+        packet-path (view-path task)]
+    {:state :detached-active-packet-housekeeping
+     :task-id task
+     :packet-path packet-path
+     :blocked-on [(block :detached-active-packet
+                         {:fingerprint (get-in active [:change/fingerprint :digest])})]
+     :next-action (action (str "./.llm/scripts/evidence.sh inspect --from " packet-path)
+                          "active derived view does not match the current change fingerprint; inspect before declaring residuals or discarding generated work files")
+     :housekeeping [(housekeeping-item active)]
+     :stale-candidates stale-candidates}))
+
+(defn- what-now-plan [opts]
+  (if-let [derived-plan (required-derived-view-plan)]
+    derived-plan
+    (let [packet0 (derive-packet opts)
+          task-id (current-task-id packet0)
+          packet (assoc packet0 :task/id task-id)
+          fingerprint (:change/fingerprint packet)
+          files (get-in packet [:actual-scope :paths])
+          save-policy (:save-policy packet)
+          closed-matches (matching-packets (closed-records) fingerprint)
+          active-all (active-packets)
+          active-fresh (filter fresh-derived-view? active-all)
+          active-stale (first (remove fresh-derived-view? active-all))
+          active-matches (matching-packets active-fresh fingerprint)
+          active-match (first active-matches)
+          active-mismatch (first (remove #(fingerprint-matches? % fingerprint) active-fresh))
+          housekeeping (not-empty (cond-> []
+                                    (and active-mismatch (seq files))
+                                    (conj (housekeeping-item active-mismatch))
+
+                                    (and active-stale (seq files))
+                                    (conj (housekeeping-item active-stale))))
+          clean-record (latest-clean-record closed-matches)
+          stale-summary (when clean-record (record-staleness clean-record packet))
+          stale-candidates (->> (closed-record-staleness packet)
+                                (filter #(= :stale-candidate (:status %)))
+                                (take 5)
+                                vec)
+          orphan-declaration (orphan-declaration-plan fingerprint)
+          source-flag (diff-source-flag packet)]
+      (cond
+        active-match
+        (active-packet-plan active-match stale-candidates)
+
+        (and (empty? files) active-mismatch)
+        (detached-active-packet-plan active-mismatch stale-candidates)
+
+        (and (empty? files) active-stale)
+        (detached-active-packet-plan active-stale stale-candidates)
+
+        orphan-declaration
+        (assoc orphan-declaration :stale-candidates stale-candidates)
+
+        (and clean-record (= :stale-candidate (:status stale-summary)))
+        {:state :matching-close-record-stale-candidate
+         :task-id (:task/id clean-record)
+         :record-path (:record/path clean-record)
+         :blocked-on [(block :stale-candidate (:checks stale-summary))]
+         :next-action (action (str "./.llm/scripts/propose-review-packet.sh --task " task-id source-flag)
+                              "a matching close record exists, but one or more evidence dependencies changed")
+         :stale-candidates stale-candidates
+         :housekeeping housekeeping}
+
+        clean-record
+        {:state :commit-ready
+         :task-id (:task/id clean-record)
+         :record-path (:record/path clean-record)
+         :blocked-on []
+         :next-action (action "git commit"
+                              "matching clean close record exists for the current change fingerprint")
+         :stale-candidates stale-candidates
+         :housekeeping housekeeping}
+
+        (empty? files)
+        (or (work-frontier-head-plan stale-candidates housekeeping)
+            {:state :no-change
+             :blocked-on []
+             :next-action (action "none"
+                                  "no changed paths, active derived view, or unfinished obligation")
+             :stale-candidates stale-candidates
+             :housekeeping housekeeping})
+
+        (not= :required save-policy)
+        {:state :evidence-optional
+         :blocked-on []
+         :next-action (action "git commit"
+                              "current change is not save-required by Structural Evidence policy")
+         :stale-candidates stale-candidates
+         :housekeeping housekeeping}
+
+        :else
+        {:state :packet-required
+         :task-id task-id
+         :blocked-on [(block :packet-required)]
+         :next-action (action (str "./.llm/scripts/propose-review-packet.sh --task " task-id source-flag)
+                              "save-required change has no active derived view or close record")
+         :stale-candidates stale-candidates
+         :housekeeping housekeeping}))))
 
 (defn run-what-now [opts]
   (let [plan (what-now-plan opts)]
@@ -1877,10 +2459,25 @@
           (println "Packet:" packet-path))
         (when-let [record-path (:record-path plan)]
           (println "Record:" record-path))
-	        (println "Next:" (get-in plan [:next-action :command]))
-	        (println "Reason:" (get-in plan [:next-action :rationale]))
-	        (when (seq (:blocked-on plan))
-	          (println "Blocked on:" (format-blocked-on (:blocked-on plan))))
+        (when-let [artifact-path (:artifact-path plan)]
+          (println "Artifact:" artifact-path))
+        (when-let [declaration-path (:declaration-path plan)]
+          (println "Declaration:" declaration-path))
+        (when-let [obligation (:obligation plan)]
+          (println "Obligation:" (:id obligation)
+                   (str "(" (name (:category obligation)) ","
+                        (name (:state obligation)) ","
+                        (name (:kind obligation)) ")")))
+        (println "Next:" (get-in plan [:next-action :command]))
+        (println "Reason:" (get-in plan [:next-action :rationale]))
+        (when (seq (:blocked-on plan))
+          (println "Blocked on:" (format-blocked-on (:blocked-on plan))))
+        (when (seq (:housekeeping plan))
+          (println "Housekeeping:")
+          (doseq [item (:housekeeping plan)]
+            (println " -" (:task-id item)
+                     (:packet-path item)
+                     "(active derived view does not match current fingerprint)")))
         (when (seq (:stale-candidates plan))
           (println "Stale candidates:" (count (:stale-candidates plan)))
           (doseq [candidate (:stale-candidates plan)]
@@ -1898,11 +2495,13 @@
   (println message))
 
 (defn- write-gate-packet! [packet]
-  (let [task-id (:task/id packet)
-        edn-path (str default-out-dir "/" task-id ".edn")
-        md-path (str default-out-dir "/" task-id ".md")]
-    (write-edn! edn-path packet)
-    (write-markdown! md-path packet)
+  (let [view (view-artifact packet)
+        assembled (assemble-packet view)
+        task-id (:task/id view)
+        edn-path (view-path task-id)
+        md-path (view-markdown-path task-id)]
+    (write-edn! edn-path view)
+    (write-markdown! md-path assembled)
     {:edn edn-path :md md-path}))
 
 (defn run-gate [opts]
@@ -1912,9 +2511,11 @@
         packet (assoc packet0 :task/id task-id)
         save-policy (:save-policy packet)
         files (get-in packet [:actual-scope :paths])
+        _ (when-not (:no-write opts)
+            (prune-stale-generated-views! packet {:keep-task-id task-id}))
         closed-matches (matching-packets (closed-records) fingerprint)
-        active-matches (matching-packets (active-packets) fingerprint)
-        predict-matches (matching-packets (predict-packets) fingerprint)
+        active-matches (matching-packets (filter fresh-derived-view? (active-packets)) fingerprint)
+        predict-matches (matching-packets (filter fresh-derived-view? (predict-packets)) fingerprint)
         clean-record (->> closed-matches
                           (filter clean-close?)
                           (sort-by #(or (:closed-at %) ""))
@@ -1972,7 +2573,7 @@
             failed (packet-failed-evidence active)]
         (gate-fail! opts
                     (concat
-                     ["Evidence gate blocked: matching active packet is not closed."
+                     ["Evidence gate blocked: matching active derived view is not closed."
                       (str "Task: " (:task/id active))]
                      (when (seq missing)
                        [(str "Missing residual fields: " (pr-str missing))
@@ -1989,7 +2590,7 @@
       (seq predict-matches)
       (let [predicted (first predict-matches)]
         (gate-fail! opts
-                    ["Evidence gate blocked: matching predict record exists but no active/closed packet matches this diff."
+                    ["Evidence gate blocked: matching predicted view exists but no active view or closed record matches this diff."
                      (str "Task: " (:task/id predicted))
                      (str "Create packet: ./.llm/scripts/propose-review-packet.sh --task "
                           (:task/id predicted)
@@ -2008,11 +2609,11 @@
                     (write-gate-packet! packet))]
         (gate-fail! opts
                     (concat
-                     ["Evidence gate blocked: save-required change has no matching packet or close record."
+                     ["Evidence gate blocked: save-required change has no matching derived view or close record."
                       (str "Task: " task-id)]
                      (when paths
-                       [(str "Active packet created: " (:edn paths))
-                        (str "Review packet: " (:md paths))])
+                       [(str "Active derived view created: " (:edn paths))
+                        (str "Review view: " (:md paths))])
                      [(str "Declare residuals: ./.llm/scripts/evidence.sh declare --task "
                            task-id
                            " --all-none")
@@ -2025,14 +2626,21 @@
         packet (assoc (derive-packet (assoc opts :task/id task-id :status :predicted))
                       :intent {:text (or (:intent opts) "")
                                :recorded-at (.toString (java.time.Instant/now))})
-        base (str default-out-dir "/" task-id)]
-    (write-edn! (str base ".intent.edn") (:intent packet))
-    (write-edn! (str base ".predict.edn") packet)
-    (write-markdown! (str base ".predict.md") packet)
+        view (view-artifact packet)
+        declaration (declaration-artifact packet
+                                          (:llm-declared packet)
+                                          (:intent packet))
+        assembled (assemble-packet view declaration nil)
+        declaration-path* (declaration-path task-id)
+        view-path* (predicted-view-path task-id)
+        md-path (predicted-view-markdown-path task-id)]
+    (write-edn! declaration-path* declaration)
+    (write-edn! view-path* view)
+    (write-markdown! md-path assembled)
     (println "Evidence prediction generated:")
-    (println " " (str base ".intent.edn"))
-    (println " " (str base ".predict.edn"))
-    (println " " (str base ".predict.md"))))
+    (println " " declaration-path*)
+    (println " " view-path*)
+    (println " " md-path)))
 
 (defn declare-residual [opts]
   (let [task-id (or (:task/id opts) (first (:extra-args opts)))
@@ -2040,31 +2648,32 @@
             (binding [*out* *err*]
               (println "Usage: structural-evidence declare --task TASK-ID [--all-none|--semantic-impact TEXT ...]"))
             (System/exit 2))
-        path (str default-out-dir "/" task-id ".edn")
-        predict-path (str default-out-dir "/" task-id ".predict.edn")
-        packet (cond
-                 (file? path)
-                 (edn/read-string (slurp path))
-
-                 (file? predict-path)
-                 (assoc (edn/read-string (slurp predict-path)) :status :active)
-
-                 :else
-                 nil)
-        _ (when-not packet
+        view-path* (view-path task-id)
+        predict-path (predicted-view-path task-id)
+        view (or (read-artifact view-path*)
+                 (read-artifact predict-path))
+        _ (when-not view
             (binding [*out* *err*]
-              (println "No active packet found:" path)
+              (println "No Structural Evidence derived view found:" view-path*)
               (println "Run evidence predict or propose-review-packet.sh first."))
             (System/exit 2))
+        _ (ensure-fresh-derived-view! view task-id)
+        packet (assemble-packet view)
         updates (if (:all-none opts)
                   (zipmap residual-fields (repeat :none))
                   (update-vals (:declare opts) declaration-value))
-        packet* (update packet :llm-declared merge updates)
-        md-path (str default-out-dir "/" task-id ".md")]
-    (write-edn! path packet*)
+        declaration (declaration-artifact packet
+                                          (merge (:llm-declared packet) updates)
+                                          (:intent packet))
+        packet* (assemble-packet view declaration (run-result-for task-id))
+        declaration-path* (declaration-path task-id)
+        md-path (if (= :predicted (:status view))
+                  (predicted-view-markdown-path task-id)
+                  (view-markdown-path task-id))]
+    (write-edn! declaration-path* declaration)
     (write-markdown! md-path packet*)
     (println "Residual declarations updated:")
-    (println " " path)
+    (println " " declaration-path*)
     (println " " md-path)
     (if-let [missing (seq (missing-residual-fields packet*))]
       (do
@@ -2107,21 +2716,25 @@
             (binding [*out* *err*]
               (println "Usage: structural-evidence run --task TASK-ID"))
             (System/exit 2))
-        path (str default-out-dir "/" task-id ".edn")
-        _ (when-not (file? path)
+        view-path* (view-path task-id)
+        _ (when-not (file? view-path*)
             (binding [*out* *err*]
-              (println "No active packet found:" path)
+              (println "No active derived view found:" view-path*)
               (println "Run propose-review-packet.sh first."))
             (System/exit 2))
-        packet (edn/read-string (slurp path))
+        view (read-artifact view-path*)
+        _ (ensure-fresh-derived-view! view task-id)
+        packet (assemble-packet view)
         evidence* (mapv run-evidence-command (:evidence packet))
-        packet* (assoc packet :evidence evidence*)
-        md-path (str default-out-dir "/" task-id ".md")
+        run-result (run-result-artifact packet evidence*)
+        packet* (assemble-packet view (declaration-for task-id) run-result)
+        run-path (run-result-path task-id)
+        md-path (view-markdown-path task-id)
         failed (->> evidence* (filter #(= :fail (:status %))) (map :id) vec)]
-    (write-edn! path packet*)
+    (write-edn! run-path run-result)
     (write-markdown! md-path packet*)
     (println "Evidence command results recorded:")
-    (println " " path)
+    (println " " run-path)
     (println " " md-path)
     (if (seq failed)
       (do
@@ -2177,13 +2790,29 @@
             (binding [*out* *err*]
               (println "Usage: structural-evidence close --task TASK-ID"))
             (System/exit 2))
-        predicted-path (str default-out-dir "/" task-id ".predict.edn")
-        active-path (str default-out-dir "/" task-id ".edn")
-        predicted (when (file? predicted-path) (edn/read-string (slurp predicted-path)))
-        derived-actual (derive-packet (assoc opts :task/id task-id :status :active))
-        actual (if (file? active-path)
-                 (preserve-active-declarations derived-actual (edn/read-string (slurp active-path)))
-                 derived-actual)
+        predicted-path (predicted-view-path task-id)
+        active-path (view-path task-id)
+        predicted-view (read-artifact predicted-path)
+        active-view (read-artifact active-path)
+        _ (when-not active-view
+            (binding [*out* *err*]
+              (println "No active derived view found:" active-path)
+              (println "Run ./.llm/scripts/propose-review-packet.sh first."))
+            (System/exit 2))
+        _ (ensure-fresh-derived-view! active-view task-id)
+        current-view (view-artifact (derive-packet (assoc opts :task/id task-id :status :active)))
+        active-digest (get-in active-view [:change/fingerprint :digest])
+        current-digest (get-in current-view [:change/fingerprint :digest])
+        _ (when (not= active-digest current-digest)
+            (binding [*out* *err*]
+              (println "Active derived view is stale for the current diff.")
+              (println "Active fingerprint:" active-digest)
+              (println "Current fingerprint:" current-digest)
+              (println "Regenerate the derived view before closing:")
+              (println (str " ./.llm/scripts/propose-review-packet.sh --task " task-id (diff-source-flag current-view))))
+            (System/exit 1))
+        predicted (when predicted-view (assemble-packet predicted-view))
+        actual (assemble-packet active-view)
         evidence-missing (missing-evidence-statuses actual)
         evidence-failed (failed-evidence-statuses actual)
         diffs (when predicted
@@ -2195,16 +2824,21 @@
                                 (none-declaration? (get-in actual [:llm-declared :override])))
         missing (cond-> (missing-residual-fields actual)
                   override-required? (conj :override))
-        record (assoc actual
-                      :status (if (seq missing) :blocked-close :clean-close)
-                      :closed-at (.toString (java.time.Instant/now))
-                      :closed-git-rev (git-rev)
-                      :predict-vs-actual diffs)]
+        blocked? (or (seq missing) (seq evidence-missing) (seq evidence-failed))
+        record (-> actual
+                   (assoc :kind :structural-evidence-closed-record
+                          :artifact/regime :immutable-record
+                          :status (if blocked? :blocked-close :clean-close)
+                          :closed-at (.toString (java.time.Instant/now))
+                          :closed-git-rev (git-rev)
+                          :predict-vs-actual diffs)
+                   (assoc-in [:artifact/components :closed-record :status]
+                             (if blocked? :pending :written)))]
     (println "== Evidence Close ==")
     (println "Task:" task-id)
     (println "Close mode:" (:status record))
-    (when-not predicted
-      (println "Warning: no predict record found; close used actual scope only."))
+    (when-not predicted-view
+      (println "Warning: no predicted view found; close used actual scope only."))
     (when predicted
       (println "Predict vs actual:" (pr-str diffs)))
     (when override-required?
@@ -2213,26 +2847,35 @@
       (println "Failed evidence:" (pr-str evidence-failed)))
     (when (seq evidence-missing)
       (println "Evidence not yet recorded:" (pr-str evidence-missing)))
-    (if (seq missing)
+    (if blocked?
       (do
-        (println "Blocked: residual fields are not declared:")
-        (doseq [field missing] (println " -" field))
-        (write-edn! active-path record)
-        (write-markdown! (str default-out-dir "/" task-id ".md") record)
-        (println "Active packet updated with blocked-close state:")
-        (println " " active-path)
-        (println " " (str default-out-dir "/" task-id ".md"))
-        (print-residual-actions task-id missing diffs)
+        (when (seq missing)
+          (println "Blocked: residual fields are not declared:")
+          (doseq [field missing] (println " -" field))
+          (print-residual-actions task-id missing diffs))
+        (when (seq evidence-failed)
+          (println "Blocked: failed evidence must be fixed before close."))
+        (when (seq evidence-missing)
+          (println "Blocked: evidence must be recorded before close."))
+        (write-markdown! (view-markdown-path task-id) record)
+        (println "Active view markdown updated with blocked-close state:")
+        (println " " (view-markdown-path task-id))
         (println "No closed record written.")
         (System/exit 1))
       (let [out (str ".llm/evidence/closed/" task-id ".edn")]
-        (write-edn! active-path record)
-        (write-markdown! (str default-out-dir "/" task-id ".md") record)
         (write-edn! out record)
-        (println "Active packet updated with clean-close state:")
-	        (println " " active-path)
-	        (println " " (str default-out-dir "/" task-id ".md"))
-	        (println "Closed evidence record written:" out)))))
+        (doseq [path [active-path
+                      (view-markdown-path task-id)
+                      predicted-path
+                      (predicted-view-markdown-path task-id)
+                      (declaration-path task-id)
+                      (run-result-path task-id)]]
+          (delete-file-if-exists! path))
+        (println "Closed evidence record written:" out)
+        (println "Work artifacts removed:")
+        (println " " active-path)
+        (println " " (declaration-path task-id))
+        (println " " (run-result-path task-id))))))
 
 (defn- record-scope [record]
   {:paths (get-in record [:actual-scope :paths])
@@ -2312,6 +2955,7 @@
 	                                     git-rev (constantly "fixture-rev")
 	                                     default-branch (constantly "main")]
 	                         (derive-packet {:changed-files ["DESIGN.md"]}))
+        project-design-view (view-artifact project-design)
 	        backfilled (backfilled-record (assoc project-design
 	                                             :evidence
 	                                             (mapv #(assoc % :invalidated-by [])
@@ -2330,10 +2974,48 @@
         packet-required-plan (with-redefs [repo-context (constantly {:repo-kind :project :adoption-mode :complete})
                                            git-rev (constantly "fixture-rev")
                                            default-branch (constantly "main")
+                                           required-derived-view-plan (constantly nil)
                                            active-packets (constantly [])
                                            closed-records (constantly [])
                                            closed-record-staleness (constantly [])]
                                (what-now-plan {:changed-files ["DESIGN.md"]}))
+        stale-active-packet (assoc project-interface :task/id "fixture-stale-active")
+        current-diff-with-stale-active (with-redefs [repo-context (constantly {:repo-kind :project :adoption-mode :complete})
+                                                     git-rev (constantly "fixture-rev")
+                                                     default-branch (constantly "main")
+                                                     required-derived-view-plan (constantly nil)
+                                                     active-packets (constantly [stale-active-packet])
+                                                     closed-records (constantly [])
+                                                     closed-record-staleness (constantly [])]
+                                         (what-now-plan {:changed-files ["DESIGN.md"]}))
+        idle-with-stale-active (with-redefs [repo-context (constantly {:repo-kind :project :adoption-mode :complete})
+                                             git-rev (constantly "fixture-rev")
+                                             default-branch (constantly "main")
+                                             changed-files (constantly [])
+                                             required-derived-view-plan (constantly nil)
+                                             active-packets (constantly [stale-active-packet])
+                                             closed-records (constantly [])
+                                             closed-record-staleness (constantly [])]
+                                 (what-now-plan {:changed-files []}))
+        frontier-head-plan (with-redefs [repo-context (constantly {:repo-kind :project :adoption-mode :complete})
+                                          git-rev (constantly "fixture-rev")
+                                          default-branch (constantly "main")
+                                          changed-files (constantly [])
+                                          required-derived-view-plan (constantly nil)
+                                          active-packets (constantly [])
+                                          closed-records (constantly [])
+                                          closed-record-staleness (constantly [])
+                                          declarations (constantly [])
+                                          read-edn-if-exists
+                                          (fn [path]
+                                            (when (= ".llm/data/obligation-index.edn" path)
+                                              {:obligations [{:id "REQ-001"
+                                                              :kind :requirement
+                                                              :state :missing-boundary
+                                                              :category :red
+                                                              :source {:path "DESIGN.md"
+                                                                       :line 12}}]}))]
+                              (what-now-plan {:changed-files []}))
         tool-info (tool-version)
         boundary-file (java.io.File/createTempFile "structural-evidence-boundary" ".edn")
         boundary-path (.getPath boundary-file)]
@@ -2374,6 +3056,21 @@
 	             (= :unknown (:status (record-staleness no-deps-record project-design))))
 	    (assert! "what-now packet-required blocked-on is structured"
 	             (= [{:type :packet-required}] (:blocked-on packet-required-plan)))
+	    (assert! "what-now does not let stale active packet steal current diff"
+	             (and (= :packet-required (:state current-diff-with-stale-active))
+	                  (seq (:housekeeping current-diff-with-stale-active))))
+	    (assert! "what-now surfaces stale active packet as idle housekeeping"
+	             (and (= :detached-active-packet-housekeeping
+	                     (:state idle-with-stale-active))
+	                  (str/includes? (get-in idle-with-stale-active [:next-action :command])
+	                                 " inspect ")))
+    (assert! "what-now surfaces Work Frontier head when idle"
+             (and (= :work-frontier-head (:state frontier-head-plan))
+                  (= "REQ-001" (:obligation-id frontier-head-plan))))
+    (assert! "legacy work artifact task id parsing preserves intent suffix"
+             (= "fixture-task" (task-id-from-work-file ".llm/work/fixture-task.intent.edn")))
+    (assert! "legacy intent artifacts are human declarations"
+             (legacy-human-declaration? ".llm/work/fixture-task.intent.edn" {:text "intent"}))
 	    (assert! "tool-version records both clj and bb runtime probes"
 	             (and (contains? (:runtimes tool-info) :clj)
 	                  (contains? (:runtimes tool-info) :bb)
@@ -2381,6 +3078,10 @@
 	                  (boolean? (get-in tool-info [:runtimes :bb :available]))))
 	    (assert! "boundary check catches unknown requirement IDs in LLM-written fields"
 	             (seq (packet-boundary-violations boundary-path)))
+    (assert! "Structural Evidence derived view carries a fresh action key"
+             (fresh-derived-view? project-design-view))
+    (assert! "Structural Evidence derived view without manifest is not fresh"
+             (not (fresh-derived-view? (dissoc project-design-view derivation/manifest-key))))
     (.delete boundary-file)
 	    (println "structural-evidence self-test: OK")))
 
@@ -2401,6 +3102,7 @@
 	        "stale" (run-stale opts)
 	        "check-boundary" (check-boundary opts)
 	        "backfill-invalidated-by" (backfill-invalidated-by opts)
+        "prune-work" (prune-work-artifacts opts)
 	        "gate" (run-gate opts)
         "predict" (predict opts)
         "declare" (declare-residual opts)
@@ -2411,9 +3113,9 @@
           (binding [*out* *err*]
             (println "Usage:")
             (println "  structural-evidence derive [--base BASE] [--head HEAD] [--out PATH] [--strict|--degraded] [--profile]")
-            (println "  structural-evidence propose [--task-id ID] [--out-dir DIR] [--strict|--degraded]")
+            (println "  structural-evidence propose [--task-id ID] [--strict|--degraded]")
             (println "  structural-evidence inspect [--base BASE] [--head HEAD] [--from PATH]")
-            (println "  structural-evidence check-residual --packet PATH")
+            (println "  structural-evidence check-residual --packet .llm/work/views/TASK-ID.edn")
             (println "  structural-evidence status [--scope TERM[,TERM...]] [--base BASE] [--head HEAD]")
             (println "  structural-evidence search [--scope TERM[,TERM...]]")
             (println "  structural-evidence what-now [--format edn]")
@@ -2422,6 +3124,7 @@
 	            (println "  structural-evidence stale [--format all]")
 	            (println "  structural-evidence check-boundary")
 	            (println "  structural-evidence backfill-invalidated-by [--dry-run]")
+            (println "  structural-evidence prune-work [--confirm]")
             (println "  structural-evidence gate [--staged|--base BASE --head HEAD] [--advisory] [--no-write]")
             (println "  structural-evidence predict --task TASK-ID --intent TEXT [--changed-file PATH]")
             (println "  structural-evidence declare --task TASK-ID [--all-none|--semantic-impact TEXT ...]")

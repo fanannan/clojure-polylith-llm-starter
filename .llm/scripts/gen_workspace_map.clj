@@ -4,7 +4,14 @@
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.pprint :as pprint]
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [derivation-manifest :as derivation]))
+
+(def generator-path ".llm/scripts/gen_workspace_map.clj")
+(def default-projects-file "docs/PROJECTS.md")
+(def default-workspace-file "docs/WORKSPACE.md")
+(def default-index-file ".llm/data/workspace-map.edn")
+(def default-manifest-file ".llm/data/workspace-map.manifest.edn")
 
 (def projects-header
   "<!-- GENERATED FILE. DO NOT EDIT BY HAND.
@@ -76,6 +83,33 @@ workspace 全体の構造事実は Polylith / tools.deps に委譲し、この�
 (defn- warn! [& messages]
   (binding [*out* *err*]
     (println (str/join "\n" messages))))
+
+(defn- workspace-map-manifest [projects-file workspace-file index-file]
+  (assoc
+   (derivation/make-manifest
+    {:id :workspace-map
+     :tool "gen-workspace-map"
+     :output-path ".llm/data/workspace-map"
+     :generator-path generator-path
+     :tool-input-paths [".llm/scripts/derivation_manifest.clj"]
+     :input-paths ["workspace.edn"
+                   "deps.edn"
+                   ".llm/repo-context.edn"
+                   "projects"
+                   "components"
+                   "bases"]
+     :input-policy {:missing :explicit-empty
+                    :directory-roots :recursive-digest}
+     :generated-at "deterministic"
+     :regenerate-command "clj -Sdeps '{:paths [\".llm/scripts\"]}' -X gen-workspace-map/generate"})
+   :derivation/outputs [projects-file workspace-file index-file]))
+
+(defn- render-manifest [manifest]
+  (str ";; GENERATED - do not edit by hand.\n"
+       ";; Source of truth: workspace.edn, deps.edn, .llm/repo-context.edn, projects/*/project.edn, components/*/brick.edn, bases/*/brick.edn\n"
+       ";; Regenerate with: clj -Sdeps '{:paths [\".llm/scripts\"]}' -X gen-workspace-map/generate\n"
+       (with-out-str
+         (pprint/pprint {derivation/manifest-key manifest}))))
 
 (defn- repo-context []
   (when (file? ".llm/repo-context.edn")
@@ -409,10 +443,11 @@ workspace 全体の構造事実は Polylith / tools.deps に委譲し、この�
   (mapv load-project (project-files)))
 
 (defn generate
-  [{:keys [projects-file workspace-file index-file auto-create?]}]
-  (let [projects-file (or projects-file "docs/PROJECTS.md")
-        workspace-file (or workspace-file "docs/WORKSPACE.md")
-        index-file (or index-file ".llm/data/workspace-map.edn")
+  [{:keys [projects-file workspace-file index-file manifest-file auto-create?]}]
+  (let [projects-file (or projects-file default-projects-file)
+        workspace-file (or workspace-file default-workspace-file)
+        index-file (or index-file default-index-file)
+        manifest-file (or manifest-file default-manifest-file)
         missing (missing-projects)]
     (when (and (seq missing) auto-create?)
       (doseq [path missing]
@@ -433,9 +468,13 @@ workspace 全体の構造事実は Polylith / tools.deps に委譲し、この�
       (write-file! projects-file (render-projects-doc projects))
       (write-file! workspace-file (render-workspace-doc projects bricks))
       (write-file! index-file (render-index projects bricks))
+      (write-file! manifest-file
+                   (render-manifest
+                    (workspace-map-manifest projects-file workspace-file index-file)))
       (println "generated" projects-file)
       (println "generated" workspace-file)
-      (println "generated" index-file))))
+      (println "generated" index-file)
+      (println "generated" manifest-file))))
 
 (defn ensure [_]
   (generate {:auto-create? true}))
@@ -455,17 +494,26 @@ workspace 全体の構造事実は Polylith / tools.deps に委譲し、この�
         bricks (bricks)
         expected-projects (render-projects-doc projects)
         expected-workspace (render-workspace-doc projects bricks)
-        expected-index (render-index projects bricks)]
+        expected-index (render-index projects bricks)
+        expected-manifest (render-manifest
+                           (workspace-map-manifest default-projects-file
+                                                   default-workspace-file
+                                                   default-index-file))
+        outputs-exist? (or (file? default-projects-file)
+                           (file? default-workspace-file)
+                           (file? default-index-file)
+                           (file? default-manifest-file))]
     (doseq [p projects] (validate-project! p))
     (validate-cross-project! projects bricks)
     (report-quality! projects {:strict? (= :complete (adoption-mode))})
-    (doseq [path ["docs/PROJECTS.md" "docs/WORKSPACE.md" ".llm/data/workspace-map.edn"]]
-      (when (and (seq projects) (not (file? path)))
+    (doseq [path [default-projects-file default-workspace-file default-index-file default-manifest-file]]
+      (when (and (or (seq projects) outputs-exist?) (not (file? path)))
         (error! (str "ERROR: " path " is missing. Run gen-workspace-map/generate."))))
-    (if (or (empty? projects)
-            (and (= expected-projects (slurp "docs/PROJECTS.md"))
-                 (= expected-workspace (slurp "docs/WORKSPACE.md"))
-                 (= expected-index (slurp ".llm/data/workspace-map.edn"))))
+    (if (or (and (empty? projects) (not outputs-exist?))
+            (and (= expected-projects (slurp default-projects-file))
+                 (= expected-workspace (slurp default-workspace-file))
+                 (= expected-index (slurp default-index-file))
+                 (= expected-manifest (slurp default-manifest-file))))
       (println "check-workspace-map: OK")
       (error! "ERROR: project/workspace generated docs are not synchronized."
               "Fix: clj -Sdeps '{:paths [\".llm/scripts\"]}' -X gen-workspace-map/generate"))))

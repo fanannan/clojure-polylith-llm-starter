@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Check that LLM-declared residual fields are explicit before a packet is closed.
+# Check that LLM-declared residual fields are explicit before a record is closed.
 
 set -euo pipefail
 

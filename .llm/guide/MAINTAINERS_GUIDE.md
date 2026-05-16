@@ -176,7 +176,7 @@
 
 ---
 
-## 4. 設計 13 原則（本テンプレートの作成過程で得られた学び）
+## 4. 設計 14 原則（本テンプレートの作成過程で得られた学び）
 
 本テンプレートの保守を担う者は、以下の原則に沿って判断する。
 表層の「こうなっている」を踏襲せず、**原則に遡って判断する**こと。
@@ -289,6 +289,27 @@
   判断できない場合は、QUESTIONS.md に Q を立てて分類自体を相談する。
 
 **補足 — Q からの反映**: Q が 解決済み(resolved) になった時、その内容が「現時点の真実として継続参照される」なら KNOWLEDGE へ、「なぜそう決めたかの不変記録」なら ADR へ反映する。解決済み(resolved) Q 自体はアーカイブに残り、反映先を `反映先` 欄に記録する。
+
+### 原則 14: 「Artifact Regime と Lifecycle を明示する」
+
+**内容**: 文書だけでなく、生成物・宣言・証跡も「何の時間モデルに属するか」を明確に分離する。すべての artifact は authored current state / derived view / human declaration / immutable record / archive のいずれかに属し、型だけでなく状態遷移も定義する。生成物に `GENERATED` と書くだけでは不十分で、何から・どの generator で・どの入力集合を観測して導出されたかを機械可読な derivation manifest として持つ。prune は derived view に対する lifecycle operation であり、archive regime と混同しない。
+
+| Regime | 例 | Lifecycle |
+|---|---|---|
+| Authored current state | `DESIGN.md`, `QUESTIONS.md`, `KNOWLEDGE.md`, code, `repo-context.edn`, `brick.edn` | 現在値として上書き可能。理由や履歴は Q / ADR / maintainer archive / git に分離 |
+| Derived view / cache | `design-ir.edn`, `trace-index.edn`, `obligation-index.edn`, generated docs | 入力・generator・action key が一致する時だけ fresh。ずれたら stale であり、正本ではない |
+| Human / LLM declaration | intent, residual declaration, override, unknowns | 生成 view と分離して保持。fingerprint mismatch 時は orphaned とし、勝手に GC しない |
+| Immutable record | ADR, closed evidence record | append-only または supersede。active work 領域に残さない |
+| Archive | maintainer discussion, resolved Q summary | 判断経緯・履歴として保持する。吸収先が明確な時だけ圧縮・削除できる |
+
+**守らないとどうなるか**: 固定ファイル名の中身を「現在の真実」として扱う場所セマンティクスが混入し、drift / housekeeping / stale-candidate / detached active packet のような例外語彙が増える。派生物の正しさが各 script の慣習に分散し、文書分類では保てている epochal time model が生成物管理で破れる。
+
+**保守時のチェック**:
+  1. 新しい artifact を追加する時、その artifact の regime と lifecycle を先に宣言する
+  2. derived view なら embedded または sidecar の `:artifact/manifest` に generator / observed inputs / action key / input policy を持たせる
+  3. human declaration は generated view と同じファイルに閉じ込めない。再生成可能な値と人間が書いた値を分離する
+  4. immutable record は active work 領域に複製したまま残さない。必要なら closed record への pointer だけを残す
+  5. stale 判定・orphan 判定・prune 判定は共通 primitive に寄せ、個別 script が独自語彙で再実装しない。ただし primitive は regime を尊重し、derived view と declaration / immutable record / archive を同種 artifact として扱わない
 
 ---
 
@@ -577,7 +598,7 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
 1. **事実確認**: CVE 番号、公式声明、ライセンス条項等の**一次資料を確認**（憶測で追加しない）
 2. 議論アーカイブに記録（`.llm/memory/archive/maintainer-discussions/`）、事実根拠を記載
 3. §5.9.6 の判定に従い、該当 §3.X の `;; lib-catalog` block「代替と却下」節にエントリ追加（schema は §5.9.8 参照、`:judgment :status :deprecated :severity :forbidden`）。`;;` コメントで詳細な却下理由を保持する
-4. **`clj -X:gen-lib-catalog` を実行**し、`.llm/data/{libs.edn, deprecated-libs.patterns, forbidden-requires.patterns}` を再生成
+4. **`clj -X:gen-lib-catalog` を実行**し、`.llm/data/{libs.edn, deprecated-libs.patterns, forbidden-requires.patterns, conflicts.patterns, lib-catalog.manifest.edn}` を再生成
 5. 生成 diff を確認の上、STACK_GUIDE 変更と生成物再生成を**同一コミット**にまとめる
 6. 既存の派生プロジェクトで使用されている可能性がある場合、周知が必要
 
@@ -613,6 +634,7 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
 - `.llm/data/deprecated-libs.patterns` — `check-deprecated-libs.sh` が読む `<regex>|<reason>` 行
 - `.llm/data/forbidden-requires.patterns` — `check-forbidden-requires.sh` が読む `<ns-regex>|<reason>` 行
 - `.llm/data/conflicts.patterns` — `check-conflicting-libs.sh` が読む `<coord-a>|<coord-b>|<reason>` 行（`:relations :conflicts-with` 由来の併用禁止ペア）
+- `.llm/data/lib-catalog.manifest.edn` — 上記 4 生成物が共有する sidecar `:artifact/manifest`
 
 **schema**（詳細は `.llm/scripts/gen_lib_catalog.clj` 内の `entry-schema` 参照）:
 
@@ -776,7 +798,7 @@ Brick / Project / Workspace Map は、Polylith 構造に対するテンプレー
 - `project.edn`: deploy / build intent、entrypoint、include brick、requirement 対応
 - `interface.clj`: 公開 API と契約の実装事実
 - `deps.edn` / `workspace.edn`: classpath と Polylith 構造事実
-- `docs/BRICKS.md` / `docs/PROJECTS.md` / `docs/WORKSPACE.md` / `.llm/data/*-map.edn`: 自動生成物。直接編集禁止
+- `docs/BRICKS.md` / `docs/PROJECTS.md` / `docs/WORKSPACE.md` / `.llm/data/*-map.edn`: 自動生成物。直接編集禁止。対応する `.llm/data/*-map.manifest.edn` sidecar が freshness を担う
 
 機械が自動生成してよいのは skeleton / proposal / generated docs / index までである。責務説明、capability の意味、not-for、requirement 対応は設計意図なので、推測で確定しない。不明点は TODO に残し、`:adoption-mode :retrofit` / `:partial` では WARN、`:complete` では ERROR とする。
 
@@ -830,15 +852,15 @@ Derive First, Declare Residual, Preserve Only What Reduces Future Fatigue, Audit
 - Structure Plane: Polylith と公開境界の構造定義
 - Index Plane: 生成 index。直接編集禁止
 - Verification Plane: Malli、tests、`poly check`、`.llm/scripts/check-*.sh`
-- Evidence View: `.llm/work/` の Review Fatigue Packet。生成 view であり、正本ではない
+- Evidence View: `.llm/work/views/` の Review Fatigue Packet。生成 view であり、正本ではない
 
 運用規律:
 
 - scope / archetype / required evidence は、まず `derive-change-scope.sh` で git diff と repo 構造から導出する。LLM が宣言するのは semantic impact、override、unknown、remaining fatigue など、導出不能な residual だけである
-- packet は touched path の分類表で終わらせない。存在する場合は `brick-map.edn`、`workspace-map.edn`、`trace-index.edn`、`design-ir.edn`、`libs.edn`、QUESTIONS / KNOWLEDGE / ADR / maintainer archive を読み、review attention に必要な context を同じ view に surface する
-- `llm-declared` residual は自動で `none` にしない。packet 生成時は `nil` / `TBD` とし、close 前に LLM または人間が `none` または具体 list を明示する。closed packet に未宣言 residual が残る場合は `check-residual-declared.sh` が失敗する
-- Review Fatigue Packet は `.llm/work/` に生成し、git 管理しない。closed evidence record は `.llm/evidence/closed/` に書けるが、template 配布時の既定は privacy 優先で no-commit とする。永続化・共有するかは派生プロジェクトの evidence commit policy に従う
-- `session-briefing.sh` は Evidence Plane を表示し、active packet と residual pending を次セッションの冒頭に surface する。packet が briefing に出ない状態は inter-session memory として未完成とみなす
+- derived view は touched path の分類表で終わらせない。存在する場合は `brick-map.edn`、`workspace-map.edn`、`trace-index.edn`、`design-ir.edn`、`libs.edn`、QUESTIONS / KNOWLEDGE / ADR / maintainer archive を読み、review attention に必要な context を同じ view に surface する
+- `llm-declared` residual は自動で `none` にしない。生成時は `.llm/work/declarations/` 側で `nil` / `TBD` とし、close 前に LLM または人間が `none` または具体 list を明示する。closed record に未宣言 residual が残る場合は `check-residual-declared.sh` が失敗する
+- Review Fatigue Packet は `.llm/work/views/`、human declaration は `.llm/work/declarations/`、command result は `.llm/work/runs/` に分け、git 管理しない。derived view / run result は stale なら捨ててよいが、declaration は fingerprint mismatch 時も orphan として surface し自動削除しない。closed evidence record は `.llm/evidence/closed/` に書けるが、template 配布時の既定は privacy 優先で no-commit とする。永続化・共有するかは派生プロジェクトの evidence commit policy に従う
+- `session-briefing.sh` は Evidence Plane を表示し、active view、human declaration、residual pending を次セッションの冒頭に surface する。view と declaration の fingerprint 対応が briefing / what-now に出ない状態は inter-session memory として未完成とみなす
 - 重要な claim を T-Procedural evidence のみで閉じない。public boundary、Malli contract、template governance には T-Mechanical または T-Linkage evidence を要求する
 - `none` regulator を使う。LLM-declared field は空欄禁止で、`none` または具体 list のいずれかを明示する
 - derivation pipeline は agent 非依存 primitive である。Claude / Codex / subagent は独自推定を正本化せず、`.llm/scripts/` の同一 script を呼ぶ
@@ -848,24 +870,25 @@ Derive First, Declare Residual, Preserve Only What Reduces Future Fatigue, Audit
 初期 MVP:
 
 - `evidence.sh status`: session 開始時・任意時点で Evidence Plane を query
-- `evidence.sh what-now`: active packet、staged diff、未宣言 residual、未実行 evidence、stale candidate から、次に実行すべき 1 action を返す。LLM は手順暗記ではなくこの操作面を優先する
+- `evidence.sh what-now`: required derived view freshness、active view、human declaration、staged diff、未宣言 residual、未実行 evidence、stale candidate から、次に実行すべき 1 action を返す。current fingerprint と一致しない generated view は primary work ではなく housekeeping として扱い、fingerprint から外れた declaration は orphan declaration として扱う。内容確認なしの `declare --all-none` を促さない。LLM は手順暗記ではなくこの操作面を優先する
 - `evidence.sh search`: scope 語彙で closed evidence record を検索
 - `evidence.sh is-verified`: requirement / public boundary / 任意 claim 語彙について、trace、design coverage、passing evidence、gap を集約して verified / partially verified / unverified を返す
 - `evidence.sh why`: claim を支える evidence chain と不足 gap を説明する。LLM が「なぜ信じてよいか」を再読ではなく query で取得する入口
 - `evidence.sh stale`: closed evidence record の stale / unknown freshness を一覧する
 - `evidence.sh backfill-invalidated-by`: 古い closed record に `invalidated-by` と推定 `closed-git-rev` を後発充填する migration command
-- `check-evidence-gate.sh`: staged/range diff の fingerprint と packet / close record を照合する正本 gate
+- `evidence.sh prune-work`: `.llm/work/` の legacy / generated / transient artifact を regime 判定し、既定 dry-run で整理候補を表示する。`--confirm` でも human declaration / intent は削除しない
+- `check-evidence-gate.sh`: staged/range diff の fingerprint と active view / declaration / run result / close record を照合する正本 gate
 - `evidence.sh predict`: 高リスク作業の任意 pre-flight として intent を binding し、予測 scope / required evidence / pre-flight context を保存
-- `evidence.sh declare`: 導出不能 residual を `none` または具体値として active packet に明示
-- `evidence.sh run`: command-backed evidence の exit code、repo revision、tool-version、env-hash、duration、失敗時 tail を active packet に記録。`tool-version` には選択 runtime と検出できた `clj` / `bb` の利用可否・バージョンを含める。login shell は使わず、固定した最小環境で実行する
-- `evidence.sh close`: close 直前に predicted scope と actual scope を照合し、residual 未宣言なら close を block
+- `evidence.sh declare`: 導出不能 residual を `none` または具体値として `.llm/work/declarations/` に明示
+- `evidence.sh run`: command-backed evidence の exit code、repo revision、tool-version、env-hash、duration、失敗時 tail を `.llm/work/runs/` に記録。`tool-version` には選択 runtime と検出できた `clj` / `bb` の利用可否・バージョンを含める。login shell は使わず、固定した最小環境で実行する
+- `evidence.sh close`: close 直前に predicted scope と actual scope を照合し、residual 未宣言、未実行 evidence、failed evidence があれば close を block。clean close 時は declaration / run result を immutable closed record に吸収し、work artifact を削除する
 - `derive-change-scope.sh`: actual scope と archetype 候補を導出
 - `inspect-derivation.sh`: path ごとの matched rule、plane、archetype、required evidence を表示
-- `propose-review-packet.sh`: EDN + Markdown の Review Fatigue Packet を `.llm/work/` に生成
+- `propose-review-packet.sh`: EDN + Markdown の Review Fatigue Packet を `.llm/work/views/` に生成
 - `check-residual-declared.sh`: close 前 residual 宣言の検査
 - `check-evidence-boundary.sh`: packet が新しい requirement / knowledge / decision を定義して第 5 の正本化していないか検査
 - `check-structural-evidence-self-test.sh`: repo-kind 分岐と代表 derivation rule の fixture self-test
-- `session-briefing.sh`: Evidence Plane の active packet / closed record / `what-now` / stale candidate surface
+- `session-briefing.sh`: Evidence Plane の active view / human declaration / closed record / `what-now` / stale candidate surface
 
 保存条件:
 
@@ -879,7 +902,7 @@ Derive First, Declare Residual, Preserve Only What Reduces Future Fatigue, Audit
 - packet 非正本性は文書宣言だけにしない。`check-evidence-boundary.sh` を workspace integrity に組み込み、違反を機械的に検出する
 - closed record の evidence は `invalidated-by` を持つ。後続変更が依存 path / brick / requirement / public boundary に触れた場合、stale candidate として `status` / `what-now` / `search` に surface する
 - gate は matching clean close record があっても stale evidence があれば pass しない。freshness は briefing 表示だけでなく commit 前の構造条件である
-- Task は 1 つの intent と 1 つの close mode を持つ atomic working set とする。1 task が複数 commit に分かれることは許容するが、1 commit に複数 task を混ぜない。session を跨ぐ場合は active packet を resume し、新規 packet で同じ intent を再作成しない
+- Task は 1 つの intent と 1 つの close mode を持つ atomic working set とする。1 task が複数 commit に分かれることは許容するが、1 commit に複数 task を混ぜない。session を跨ぐ場合は active view / declaration を fingerprint 照合して resume し、新規 packet で同じ intent を再作成しない
 - Template Migration Ledger は「どの template migration を適用済みか」を扱う。Evidence Close Record は「その task をなぜ close できたか」を扱う。Close Record が migration ledger を evidence として参照することは許すが、migration ledger から Close Record へ逆参照して二重管理しない
 
 利用者向けの最小手順:
@@ -961,6 +984,92 @@ frontier の順序は planner / ranking ではなく、design-ir 由来の relat
 6. `derive-work-frontier.sh` を read-only projection として追加する
 7. `session-briefing.sh` に Work Frontier head を Evidence Plane より上に表示する
 8. synthetic project の template E2E で、AC あり boundary/test なし、boundary のみ、boundary + test、manual verification、open Q backing、unbacked disposition、template scaffold 許容を検査する
+
+### 5.17 Artifact Regime / Derivation Manifest の保守
+
+Artifact Regime は、原則 14 を `.llm/data/`、`.llm/work/`、`.llm/evidence/closed/`、generated docs に適用するための保守規律である。目的は速度最適化ではなく、テンプレート全体から「固定パスにあるから正しい」という暗黙の場所セマンティクスを消すことである。
+
+中心原則:
+
+```text
+Classify every artifact, derive every generated value with provenance, preserve only human declarations and immutable records.
+```
+
+Regime ごとの規律:
+
+| Regime | 保存場所の例 | 規律 |
+|---|---|---|
+| Authored current state | `DESIGN.md`, `QUESTIONS.md`, code, `.llm/repo-context.edn`, `brick.edn` | 現在値として読む。更新理由は分類管理の原則に従って Q / ADR / maintainer archive / git に分離する |
+| Derived view / cache | `.llm/data/*.edn`, generated `docs/*.md`, `.llm/work/views/*.edn` | 直接編集禁止。`:artifact/manifest` が fresh な時だけ利用可能 |
+| Human / LLM declaration | `.llm/work/declarations/*.edn` | intent / residual / override / unknown など導出不能な宣言だけを置く。fingerprint mismatch は orphaned であり、自動削除しない |
+| Transient observation | `.llm/work/runs/*.edn` | command-backed evidence の一時観測結果。再実行可能だが、close 後は immutable record に吸収する |
+| Immutable record | `.llm/evidence/closed/*.edn`, ADR | close 後は active work から切り離す。改訂は新 record / supersede / invalidated-by で表現する |
+| Archive | maintainer archive、resolved Q summary | 判断経緯として扱う。吸収先が明確な場合だけ削除・圧縮する。generated view の prune と混同しない |
+
+Derived artifact は共通 schema を持つ。EDN artifact は本体に `:artifact/manifest` を持つ。Markdown / pattern file など本体へ埋め込みにくい artifact は、隣接 manifest か集約 manifest の `:artifact/manifest` で同じ情報を持つ。directory / glob scan を行う generator は、見つかったファイルだけでなく root directory digest を input に含め、新規ファイル追加の false fresh を避ける。
+
+```clojure
+:artifact/manifest
+#:derivation{:id :obligation-index
+             :schema "derivation.1"
+             :regime :derived-view
+             :action-key "sha256:..."
+             :tool "gen-obligation-index"
+             :generator {:path ".llm/scripts/gen_obligation_index.clj"
+                         :digest "sha256:..."}
+             :inputs [{:path ".llm/data/design-ir.edn" :digest "sha256:..."}
+                      {:path ".llm/data/trace-index.edn" :digest "sha256:..."}
+                      {:path ".llm/repo-context.edn" :digest "sha256:..."}]
+             :input-policy {:untracked :error
+                            :missing :explicit-empty
+                            :scan-roots ["components/" "bases/" "test/"]}
+             :output-path ".llm/data/obligation-index.edn"
+             :generated-at "YYYY-MM-DDTHH:MM:SSZ"}
+```
+
+`:derivation/inputs` は「依存するつもりのファイル」ではなく、generator が実際に読んだ observed inputs である。repo scan する generator は glob だけでなく、実際に match した path 群を manifest に刻む。未追跡入力を読む generator は原則 ERROR とし、必要な例外は `:derivation/input-policy` に明示する。
+
+Stable path と content-addressed value は分ける。`.llm/data/obligation-index.edn` のような安定パスは「現在の view 名」として残せるが、その中身は action key 付き derived value である。より厳密にする場合は `.llm/cache/<action-key>.edn` を実体、安定パスを pointer / current view にする。ただし pointer 化は migration cost があるため、最初の段階では stable path + manifest freshness を正本とする。
+
+Work Frontier と Index Plane の一貫性:
+
+- `obligation-index.edn` を committed Index Plane として持つなら、`derive-work-frontier.sh` は fresh check 済みの `obligation-index.edn` を読む
+- Work Frontier が常に `(index)` を再計算するなら、`obligation-index.edn` を committed artifact として持つ意味を再評価する
+- 両方を同時に維持して、片方は保存 index、片方は別計算という状態を放置しない
+
+Structural Evidence の分離:
+
+- generated view: scope / archetype / required evidence / cross-document context。完全再生成可能。change fingerprint を virtual observed input として刻み、Structural Evidence generator / manifest helper / observed context の digest を含む action key を持つ。生成ロジックや観測 context 変更後の古い view は stale として扱う
+- declaration: semantic impact / unknowns / cross-brick effects / override / remaining fatigue。人間または LLM が明示した値
+- run result: command-backed evidence の一時観測結果。derived view ではない。再実行できるが、close record では当時の観測値として保存する
+- closed record: close 時点の immutable record。active work に同名 copy を残さず、必要なら pointer だけを残す
+
+`propose` と writable gate は、current fingerprint から外れた generated view を自動回収する。ただし declaration / run result を伴う task は自動削除せず、orphan declaration / transient observation として surface させる。GC の対象は再生成可能な view 本体だけであり、人間宣言を巻き込まない。
+
+旧 `.llm/work/` 直下に残った legacy artifact は `evidence.sh prune-work` で regime 判定する。既定は dry-run で、`--confirm` を付けた時だけ prunable な generated / transient artifact を削除する。human declaration、intent、未吸収の unknown artifact は preserve として表示し、自動削除しない。
+
+Regime 別 lifecycle:
+
+```text
+authored-current -> derived-fresh -> derived-stale -> regenerated | pruned
+declaration-pending -> declaration-attached -> declaration-orphaned -> preserved | absorbed
+transient-observation -> evidence-closed -> closed-stale -> reverified | superseded
+archive-retained -> archive-absorbed -> compressed | deleted
+```
+
+`what-now` は Evidence だけでなく、この lifecycle を横断して次 action を返す操作面に拡張する。これは作業生成器や planner ではなく、artifact regime の不整合を 1 つ返す操作面である。優先順位は、authority conflict / broken manifest、stale required derived view、orphan declaration、current diff needs evidence packet、stale closed evidence、Work Frontier red/accounted head、housekeeping の順を既定とする。housekeeping は primary work を奪わないが、放置してよいものとして隠さない。
+
+実装順序:
+
+1. 本節と maintainer archive に設計判断を固定する
+2. `derivation manifest` schema と hashing primitive を `.llm/scripts/` に追加する
+3. `.llm/data/design-ir.edn` / `obligation-index.edn` へ embedded `:artifact/manifest` を付与し、lib catalog / brick-map / workspace-map / trace-index には sidecar manifest を付与する
+4. `check-derived-artifacts.sh` を追加し、`check-workspace-integrity.sh` が manifest freshness を見る
+5. `derive-work-frontier.sh` は stale index なら frontier を出さず、再生成 command を返す
+6. 個別 checker は drift 検出ではなく semantic validation に寄せる
+7. Structural Evidence の従来の active packet を generated view / declaration / run result / closed record に物理分離する
+8. close 後の `.llm/work/` cleanup と orphan declaration surface を実装する
+9. `what-now` を artifact-regime aware にし、Evidence Plane と Index Plane の stale/orphan/prune を同じ操作面で扱う（required derived view freshness と orphan declaration は Evidence action より優先する）
 
 ---
 

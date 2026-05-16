@@ -1,0 +1,47 @@
+;; GENERATED - do not edit by hand.
+;; Source of truth: DESIGN.md, .llm/data/design-ir.edn, and Clojure :trace/* metadata
+;; Regenerate with: ./.llm/scripts/gen-obligation-index.sh
+{:adoption-mode :complete,
+ :generated-by "gen-obligation-index",
+ :kind :obligation-index,
+ :obligations [],
+ :repo-kind :template,
+ :sources
+ {:design-ir ".llm/data/design-ir.edn",
+  :trace-index ".llm/data/trace-index.edn",
+  :questions ".llm/memory/QUESTIONS.md",
+  :repo-context ".llm/repo-context.edn"},
+ :summary {:total 0, :by-category {}, :by-state {}},
+ :artifact/manifest
+ #:derivation{:tool "gen-obligation-index",
+              :action-key
+              "sha256:5b03f6a2004206c11ea9ed70e7162d26cc6ef3939d51499169f3691537d75326",
+              :input-policy
+              {:untracked :error, :missing :explicit-empty},
+              :inputs
+              [{:path ".llm/data/design-ir.edn",
+                :digest
+                "sha256:f22cb95064aa8713aaea3853cf115bb26cf68b3bb35d88732d75cf44ad2c3aa3"}
+               {:path ".llm/data/trace-index.edn", :missing true}
+               {:path ".llm/memory/QUESTIONS.md",
+                :digest
+                "sha256:b2e9688c5b4c84c3b0220b99e1e7de816a4c436195db36cf8f6e57d780c9057d"}
+               {:path ".llm/repo-context.edn",
+                :digest
+                "sha256:7271a9b7ab400aad882dd524f2001aeca49acb8d13e8254e6f78c7b9cd24e063"}],
+              :generated-at "2026-05-16T05:34:15.684848984Z",
+              :output-path ".llm/data/obligation-index.edn",
+              :tool-inputs
+              [{:path ".llm/scripts/derivation_manifest.clj",
+                :digest
+                "sha256:3f82095233187e53c14a5b53bf923c846dca73661e322e88cdc192b3620780cd"}],
+              :regenerate-command
+              "./.llm/scripts/gen-obligation-index.sh",
+              :generator
+              {:path ".llm/scripts/gen_obligation_index.clj",
+               :digest
+               "sha256:13e02e76917ca7b343a301070893804e2cbfeed2c28aa0b730ad3dc3d383d2eb"},
+              :schema "derivation.1",
+              :regime :derived-view,
+              :id :obligation-index},
+ :schema/version "obligation-index.1"}

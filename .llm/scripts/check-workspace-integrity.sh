@@ -7,6 +7,7 @@
 #     - プレースホルダ残存（check-placeholders.sh）
 #     - brick 登録漏れ（check-brick-registration.sh）
 #     - DESIGN IR 生成物 drift（check-design-ir.sh）
+#     - derived artifact manifest freshness（check-derived-artifacts.sh）
 #     - 非推奨ライブラリ採用（check-deprecated-libs.sh）
 #     - interface_test.clj の Malli instrumentation fixture 欠落
 #     - 追加: deps.edn :local/root 実在、workspace.edn :projects 実在、.gitkeep と brick 併存
@@ -129,7 +130,7 @@ elif [ -f ".llm/scripts/gen_lib_catalog.clj" ] && [ -d ".llm/data" ]; then
   # trap を使わず、各 diff の後に手動で clean up（check 内 exit 時に lc_tmpdir を残さない）
   if clj -Sdeps '{:paths [".llm/scripts"] :deps {metosin/malli {:mvn/version "0.16.4"}}}' -X gen-lib-catalog/generate :out-dir "\"$lc_tmpdir\"" >/dev/null 2>&1; then
     lc_fail=0
-    for artifact in libs.edn deprecated-libs.patterns forbidden-requires.patterns conflicts.patterns; do
+    for artifact in libs.edn deprecated-libs.patterns forbidden-requires.patterns conflicts.patterns lib-catalog.manifest.edn; do
       if ! diff -u ".llm/data/$artifact" "$lc_tmpdir/$artifact" >/dev/null 2>&1; then
         echo "ERROR: .llm/data/$artifact が STACK_GUIDE.md §8 と同期していません"
         echo "  Fix: clj -X:gen-lib-catalog && diff を確認して commit"
@@ -185,6 +186,12 @@ run_step_if_capability "llm-guides" "trace metadata 検査" \
 
 run_step_if_capability "llm-guides" "Trace Index 生成物検査" \
   "$SCRIPT_DIR/check-trace-index.sh"
+
+run_step_if_capability "llm-guides" "Obligation Index 生成物検査" \
+  "$SCRIPT_DIR/check-obligation-index.sh"
+
+run_step_if_capability "llm-guides" "Derived artifact manifest freshness 検査" \
+  "$SCRIPT_DIR/check-derived-artifacts.sh"
 
 # --- Markdown 参照マーカー検査 ---
 run_step_if_capability "llm-guides" "Markdown 参照マーカー検査" \

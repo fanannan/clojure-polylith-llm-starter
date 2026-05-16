@@ -220,6 +220,33 @@ recent_commits() {
   echo "$log" | sed 's/^/- /'
 }
 
+git_hooks_brief() {
+  if ! git rev-parse --git-dir >/dev/null 2>&1; then
+    echo "- （git リポジトリではありません）"
+    return
+  fi
+
+  local hooks_path
+  hooks_path="$(git config --get core.hooksPath 2>/dev/null || true)"
+  if [ "$hooks_path" = ".githooks" ]; then
+    echo "- core.hooksPath: .githooks (OK)"
+  elif [ -z "$hooks_path" ]; then
+    echo "- core.hooksPath: 未設定"
+    echo "  → ./.llm/scripts/install-git-hooks.sh"
+  else
+    echo "- core.hooksPath: $hooks_path (expected .githooks)"
+    echo "  → ./.llm/scripts/install-git-hooks.sh"
+  fi
+
+  if [ -x ".githooks/pre-commit" ]; then
+    echo "- pre-commit hook: .githooks/pre-commit (executable)"
+  elif [ -f ".githooks/pre-commit" ]; then
+    echo "- pre-commit hook: .githooks/pre-commit (not executable)"
+  else
+    echo "- pre-commit hook: missing"
+  fi
+}
+
 trace_health_brief() {
   if [ ! -x ".llm/scripts/trace-impact.sh" ]; then
     echo "- trace health: skipped（trace-impact.sh がありません）"
@@ -238,18 +265,34 @@ trace_health_brief() {
   fi
 }
 
+work_frontier_brief() {
+  echo "## Work Frontier"
+  echo ""
+  if [ ! -x ".llm/scripts/derive-work-frontier.sh" ]; then
+    echo "- derive-work-frontier.sh がありません"
+    return
+  fi
+  if command -v timeout >/dev/null 2>&1; then
+    timeout 5 ./.llm/scripts/derive-work-frontier.sh 2>/dev/null \
+      || echo "- work frontier: skipped（5 秒以内に取得できませんでした）"
+  else
+    ./.llm/scripts/derive-work-frontier.sh 2>/dev/null \
+      || echo "- work frontier: skipped（取得に失敗しました）"
+  fi
+}
+
 evidence_plane_brief() {
   echo "## Evidence Plane"
   echo ""
 
-  echo "### Active Review Fatigue Packets (.llm/work/)"
+  echo "### Active Review Fatigue Views (.llm/work/views/)"
   local found_active=0
-  if [ -d ".llm/work" ]; then
+  if [ -d ".llm/work/views" ]; then
     local f
-    for f in .llm/work/*.edn; do
+    for f in .llm/work/views/*.edn; do
       [ -e "$f" ] || continue
       case "$f" in
-        *.intent.edn|*.predict.edn) continue ;;
+        *.predict.edn) continue ;;
       esac
       if grep -qE '(^|[[:space:]]):status[[:space:]]+:(clean-close|closed)' "$f" 2>/dev/null; then
         continue
@@ -259,29 +302,50 @@ evidence_plane_brief() {
       name="$(basename "$f" .edn)"
       local save_policy
       save_policy="$(grep -m1 -oE ':save-policy[[:space:]]+:[a-z-]+' "$f" 2>/dev/null | sed -E 's/.*:([a-z-]+)$/\1/')"
-      local derivation
-      derivation="$(grep -m1 -oE ':status[[:space:]]+:[a-z-]+' "$f" 2>/dev/null | sed -E 's/.*:([a-z-]+)$/\1/')"
+      local view_status
+      view_status="$(grep -m1 -oE ':status[[:space:]]+:[a-z-]+' "$f" 2>/dev/null | sed -E 's/.*:([a-z-]+)$/\1/')"
+      local declaration=".llm/work/declarations/$name.edn"
+      local run_result=".llm/work/runs/$name.edn"
       local residual
-      if grep -qE ':semantic-impact-not-derived[[:space:]]+nil|:unknowns-not-captured-by-derivation[[:space:]]+nil|:cross-brick-effects-not-in-trace-index[[:space:]]+nil|:override[[:space:]]+nil|:remaining-fatigue[[:space:]]+nil' "$f" 2>/dev/null; then
+      if [ ! -f "$declaration" ]; then
+        residual="residual: pending"
+      elif grep -qE ':semantic-impact-not-derived[[:space:]]+nil|:unknowns-not-captured-by-derivation[[:space:]]+nil|:cross-brick-effects-not-in-trace-index[[:space:]]+nil|:override[[:space:]]+nil|:remaining-fatigue[[:space:]]+nil' "$declaration" 2>/dev/null; then
         residual="residual: pending"
       else
         residual="residual: declared"
       fi
-      echo "- $name (${save_policy:-save:?}, ${derivation:-derive:?}, $residual)"
-      if [ "$residual" = "residual: pending" ]; then
-        echo "  → declare: ./.llm/scripts/evidence.sh declare --task $name --all-none"
-        echo "    （残影響がある場合は --all-none ではなく個別 field に具体値を入れる）"
-      else
-        if grep -qE ':status[[:space:]]+nil' "$f" 2>/dev/null; then
-          echo "  → run: ./.llm/scripts/evidence.sh run --task $name"
-        else
-          echo "  → close: ./.llm/scripts/evidence.sh close --task $name --staged"
-        fi
+      local run_status="evidence: pending"
+      if [ -f "$run_result" ]; then
+        run_status="evidence: recorded"
       fi
+      echo "- $name (${save_policy:-save:?}, ${view_status:-view:?}, $residual, $run_status)"
+      echo "  → next: 下の What Now で current fingerprint との対応を確認する"
+      echo "    （view は捨てられる生成物、declaration は人間宣言として保持されます）"
     done
   fi
   if [ "$found_active" -eq 0 ]; then
-    echo "- （active packet はありません）"
+    echo "- （active view はありません）"
+  fi
+
+  echo ""
+  echo "### Human Declarations (.llm/work/declarations/)"
+  local found_declaration=0
+  if [ -d ".llm/work/declarations" ]; then
+    local d
+    for d in .llm/work/declarations/*.edn; do
+      [ -e "$d" ] || continue
+      found_declaration=1
+      local decl_name
+      decl_name="$(basename "$d" .edn)"
+      if [ -f ".llm/work/views/$decl_name.edn" ] || [ -f ".llm/work/views/$decl_name.predict.edn" ]; then
+        echo "- $decl_name (attached-or-fingerprint-checked-by what-now)"
+      else
+        echo "- $decl_name (orphan: no derived view)"
+      fi
+    done
+  fi
+  if [ "$found_declaration" -eq 0 ]; then
+    echo "- （human declaration はありません）"
   fi
 
   echo ""
@@ -427,6 +491,12 @@ if [ "$REPO_KIND" = "template" ]; then
   echo ""
   recent_commits
   echo ""
+  echo "## Git Hooks"
+  echo ""
+  git_hooks_brief
+  echo ""
+  work_frontier_brief
+  echo ""
   evidence_plane_brief
   echo ""
 else
@@ -473,6 +543,12 @@ else
   echo "## 直近のコミット（git log -5 --oneline）"
   echo ""
   recent_commits
+  echo ""
+  echo "## Git Hooks"
+  echo ""
+  git_hooks_brief
+  echo ""
+  work_frontier_brief
   echo ""
 
   evidence_plane_brief

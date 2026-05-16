@@ -33,16 +33,22 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 | `check-workspace-integrity.sh` | 下記の workspace 整合性検査を束ねる総合検査（完了条件から呼ぶ） |
 | `check-placeholders.sh` | `workspace.edn` / `deps.edn` のプレースホルダ `myorg.myapp` 残存検査。template repo では `.llm/repo-context.edn :repo-kind :template` を根拠に配布用 placeholder を許容 |
 | `check-brick-registration.sh` | `components/` / `bases/` の brick が `deps.edn` に登録されているか検査 |
-| `check-brick-map.sh` | 全 brick の `brick.edn` を検査し、`docs/BRICKS.md` / `.llm/data/brick-map.edn` が `brick.edn` / `interface.clj` からの生成結果と同期しているか検査 |
-| `check-workspace-map.sh` | `projects/*/project.edn` と workspace/project 生成物を検査し、`docs/PROJECTS.md` / `docs/WORKSPACE.md` / `.llm/data/workspace-map.edn` の drift を検出 |
+| `check-brick-map.sh` | 全 brick の `brick.edn` を検査し、`docs/BRICKS.md` / `.llm/data/brick-map.edn` / `.llm/data/brick-map.manifest.edn` が `brick.edn` / `interface.clj` からの生成結果と同期しているか検査 |
+| `check-workspace-map.sh` | `projects/*/project.edn` と workspace/project 生成物を検査し、`docs/PROJECTS.md` / `docs/WORKSPACE.md` / `.llm/data/workspace-map.edn` / `.llm/data/workspace-map.manifest.edn` の drift を検出 |
 | `gen-design-ir.sh` | `DESIGN.md` と既存 `.llm/data/*.edn` 分析情報から `.llm/data/design-ir.edn` を生成 |
-| `check-design-ir.sh` | `.llm/data/design-ir.edn` が `DESIGN.md` および既存分析 EDN と同期しているか検査 |
+| `check-design-ir.sh` | `.llm/data/design-ir.edn` の derivation manifest freshness と、`DESIGN.md` および既存分析 EDN との同期を検査 |
 | `gen_design_ir.clj` | `gen-design-ir.sh` / `check-design-ir.sh` の Clojure 実装。明示 requirement / use case / acceptance item と `[REQ-001]` / `[UC-1]` trace を抽出し、constraint と実装 requirement を分けて brick-map / workspace-map / libs と照合 |
+| `check-derived-artifacts.sh` | artifact registry に載った既存生成物の `:artifact/manifest` freshness を共通 primitive で検査。空 scaffold で未生成の optional view は required 扱いしない |
+| `derivation_manifest.clj` | generated artifact の generator / observed inputs / action key を記録・検査する共通実装 |
 | `check-trace-metadata.sh` | Clojure コード / テストコードの `:trace/*` metadata を `.llm/data/design-ir.edn` と照合。実装コード側は stable public boundary のみ許可し、AC/TO は `deftest` 側へ限定。`:adoption-mode :complete` では未対応 test obligation も失敗 |
 | `check_trace_metadata.clj` | `check-trace-metadata.sh` の Clojure 実装。top-level form を読み、public boundary `defn` と `deftest` の var metadata / attr-map に置かれた `:trace/requirements` / `:trace/use-cases` / `:trace/test-obligations` を検査。空 ID・重複 ID・related IDs 不整合も検出 |
-| `gen-trace-index.sh` | `design-ir.edn` と Clojure `:trace/*` metadata から `docs/TRACE.md` / `.llm/data/trace-index.edn` を生成 |
-| `check-trace-index.sh` | `docs/TRACE.md` / `.llm/data/trace-index.edn` が `design-ir.edn` と trace metadata からの生成結果と同期しているか検査 |
+| `gen-trace-index.sh` | `design-ir.edn` と Clojure `:trace/*` metadata から `docs/TRACE.md` / `.llm/data/trace-index.edn` / `.llm/data/trace-index.manifest.edn` を生成 |
+| `check-trace-index.sh` | `docs/TRACE.md` / `.llm/data/trace-index.edn` / `.llm/data/trace-index.manifest.edn` が `design-ir.edn` と trace metadata からの生成結果と同期しているか検査 |
 | `gen_trace_index.clj` | trace index 生成 / 検査の Clojure 実装。requirement / use case / test obligation ごとの implementation / test 対応と impact index を作る |
+| `gen-obligation-index.sh` | `design-ir.edn` と `trace-index.edn` から DESIGN 由来 obligation の coverage index `.llm/data/obligation-index.edn` を生成 |
+| `check-obligation-index.sh` | obligation index の derivation manifest freshness、生成同期、`:adoption-mode :complete` の red obligation を検査 |
+| `derive-work-frontier.sh` | fresh な obligation index から failing / accounted obligation を依存順に表示する read-only Work Frontier。永続 task は作らない |
+| `gen_obligation_index.clj` | obligation index / Work Frontier の Clojure 実装。DESIGN obligation を `:satisfied` / `:out-of-scope` / `:deferred` / `:blocked-by-question` / `:missing-boundary` / `:missing-test` / `:manual-verification-required` / `:unbacked-disposition` / `:unresolved-blocker` 等へ分類する |
 | `trace-impact.sh` | `trace-index.edn` を検索し、要件・受入基準・公開関数・変更差分から、影響する public boundary・test・test obligation を表示 |
 | `trace_impact.clj` | `trace-impact.sh` の Clojure 実装。DESIGN 更新前後の探索、commit 前の変更差分確認、session briefing の trace health に使う |
 | `install-git-hooks.sh` | repo-local hooks を `git config core.hooksPath .githooks` で有効化する。Claude Code / Codex / human 共通 |
@@ -52,21 +58,21 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 | `check-evidence-boundary.sh` | Review Fatigue Packet が第 5 の正本になっていないかを検査する。packet 内で新しい requirement / knowledge / decision を定義することを禁止する |
 | `derive-change-scope.sh` | git diff、repo-kind 別 derivation rules、brick-map / workspace-map / trace-index / design-ir / lib-catalog から Structural Evidence の actual scope / archetype / required evidence / 関連 context を導出する。LLM の scope 自己申告を正本にしないための入口 |
 | `inspect-derivation.sh` | `derive-change-scope.sh` の導出理由を path ごとに表示する。matched rule、plane、archetype、public boundary、required evidence を説明する debug / 教材用 view |
-| `propose-review-packet.sh` | `.llm/work/` に Review Fatigue Packet の EDN view と Markdown view を生成する。これは生成 view であり、Authority source ではない |
+| `propose-review-packet.sh` | `.llm/work/views/` に Review Fatigue Packet の EDN view と Markdown view を生成する。これは生成 view であり、Authority source ではない |
 | `check-residual-declared.sh` | closed packet の LLM-declared residual が `none` または具体値で明示されているかを検査する。自動 `none` 埋めを禁止する close 前チェック |
 | `check-structural-evidence-self-test.sh` | Structural Evidence derivation rules の fixture self-test。template ADR 禁止、project interface change、DESIGN spec change の代表ケースを検査する |
-| `structural_evidence.clj` | Structural Evidence の Clojure 実装。repo-kind 分岐、evidence tier、none regulator、Review Fatigue Packet 生成、`what-now` / `is-verified` / `why` query、stale 判定を扱う |
+| `structural_evidence.clj` | Structural Evidence の Clojure 実装。repo-kind 分岐、evidence tier、none regulator、derived view / declaration / run result / closed record の lifecycle、`what-now` / `is-verified` / `why` query、stale 判定を扱う |
 | `check-deprecated-libs.sh` | `STACK_GUIDE.md` に埋め込まれた `;; lib-catalog` EDN block 由来の非推奨ライブラリを検知（`.llm/data/deprecated-libs.patterns` を読む） |
 | `check-forbidden-requires.sh` | `STACK_GUIDE.md` に埋め込まれた `;; lib-catalog` EDN block 由来の非推奨 namespace を検知（`.llm/data/forbidden-requires.patterns` を読む） |
 | `check-conflicting-libs.sh` | `STACK_GUIDE.md` に埋め込まれた `;; lib-catalog` EDN block 由来の併用禁止ペアを検知（`.llm/data/conflicts.patterns` を読む） |
 | `check-doc-references.sh` | Markdown 間参照が `¤ / ∵ / ⚠` で型付けされているか検査。通常は default scope、保守監査では `--all` |
-| `gen_lib_catalog.clj` | `STACK_GUIDE.md` に埋め込まれた `;; lib-catalog` EDN block 群を合成し `.llm/data/{libs.edn, deprecated-libs.patterns, forbidden-requires.patterns, conflicts.patterns}` を生成（`clj -X:gen-lib-catalog`）。schema 検証 + uniqueness 検査付き |
-| `gen_brick_map.clj` | `components/*/brick.edn` / `bases/*/brick.edn` と `interface.clj` から `docs/BRICKS.md` / `.llm/data/brick-map.edn` を生成。group-first view と `:groups` index を出力し、component/base の意味違反、重複 capability、base の未提供 capability 参照、`:brick/not-for` 衝突、要求 ID 対応、任意 `:brick/group` の形式、capability と公開 API 名の対応も検査。group 由来の再分割 smell は advisory warning に留める |
-| `gen_workspace_map.clj` | `projects/*/project.edn` / `workspace.edn` / `deps.edn` / `brick.edn` から `docs/PROJECTS.md` / `docs/WORKSPACE.md` / `.llm/data/workspace-map.edn` を生成。project の deploy intent、entrypoint、includes、deps との整合を検査 |
+| `gen_lib_catalog.clj` | `STACK_GUIDE.md` に埋め込まれた `;; lib-catalog` EDN block 群を合成し `.llm/data/{libs.edn, deprecated-libs.patterns, forbidden-requires.patterns, conflicts.patterns, lib-catalog.manifest.edn}` を生成（`clj -X:gen-lib-catalog`）。schema 検証 + uniqueness 検査付き |
+| `gen_brick_map.clj` | `components/*/brick.edn` / `bases/*/brick.edn` と `interface.clj` から `docs/BRICKS.md` / `.llm/data/brick-map.edn` / `.llm/data/brick-map.manifest.edn` を生成。group-first view と `:groups` index を出力し、component/base の意味違反、重複 capability、base の未提供 capability 参照、`:brick/not-for` 衝突、要求 ID 対応、任意 `:brick/group` の形式、capability と公開 API 名の対応も検査。group 由来の再分割 smell は advisory warning に留める |
+| `gen_workspace_map.clj` | `projects/*/project.edn` / `workspace.edn` / `deps.edn` / `brick.edn` から `docs/PROJECTS.md` / `docs/WORKSPACE.md` / `.llm/data/workspace-map.edn` / `.llm/data/workspace-map.manifest.edn` を生成。project の deploy intent、entrypoint、includes、deps との整合を検査 |
 | `propose-brick-edn.sh` | `brick.edn` を持たない既存 brick に対し、`interface.clj` から分かる範囲で skeleton 案を表示する移行補助（書き込みなし） |
-| `ensure-brick-map.sh` | 欠落した `brick.edn` skeleton を自動作成し、`docs/BRICKS.md` / `.llm/data/brick-map.edn` を再生成する。TODO は警告として表示 |
+| `ensure-brick-map.sh` | 欠落した `brick.edn` skeleton を自動作成し、`docs/BRICKS.md` / `.llm/data/brick-map.edn` / `.llm/data/brick-map.manifest.edn` を再生成する。TODO は警告として表示 |
 | `propose-project-edn.sh` | `project.edn` を持たない登録済み project に対し、`projects/<name>/deps.edn` から分かる範囲で skeleton 案を表示する移行補助（書き込みなし） |
-| `ensure-workspace-map.sh` | 欠落した `project.edn` skeleton を自動作成し、`docs/PROJECTS.md` / `docs/WORKSPACE.md` / `.llm/data/workspace-map.edn` を再生成する。TODO は警告として表示 |
+| `ensure-workspace-map.sh` | 欠落した `project.edn` skeleton を自動作成し、`docs/PROJECTS.md` / `docs/WORKSPACE.md` / `.llm/data/workspace-map.edn` / `.llm/data/workspace-map.manifest.edn` を再生成する。TODO は警告として表示 |
 | `check-interface-contracts.sh` | `interface.clj` の全公開 `defn` に対応する `m/=>` 契約があるか検査 |
 | `check-test-instrumentation.sh` | `interface_test.clj` が `:once` fixture で Malli instrumentation を有効化しているか検査 |
 | `check_test_instrumentation.clj` | `check-test-instrumentation.sh` の Clojure 実装。`use-fixtures :once` と fixture 定義を結び付けて `malli.dev/start!` を検査 |
@@ -239,7 +245,7 @@ git add <changed-files>
 
 `run` は login shell ではなく固定した最小環境で command-backed evidence を実行し、`tool-version`、`env-hash`、`repo-rev`、`duration-ms`、失敗時 tail を record に残す。`tool-version` は選択 runtime だけでなく、検出できた `clj` / `bb` の利用可否とバージョンも含める。`invalidated-by` は touched path / brick / requirement / public boundary から導出され、後続の event staleness 判定の根拠になる。
 
-`what-now` は active packet / staged diff / residual / evidence run / closed record staleness を見て、次に実行すべき 1 action を返す。`status` は gap 集約 view、`is-verified` は requirement や public boundary の検証 matrix、`why` は claim を支える evidence chain を返す。
+`what-now` は required derived view freshness / active derived view / human declaration / evidence run / staged diff / closed record staleness / Work Frontier head を見て、次に実行すべき 1 action を返す。current fingerprint と一致しない generated view は primary work ではなく housekeeping として表示し、fingerprint から外れた declaration は orphan declaration として surface する。`declare --all-none` は確認済みの無を宣言する時だけ使う。`status` は gap 集約 view、`is-verified` は requirement や public boundary の検証 matrix、`why` は claim を支える evidence chain を返す。
 
 `backfill-invalidated-by` は古い closed record に `invalidated-by` と推定 `closed-git-rev` を後から充填する migration command である。通常はテンプレート更新時や evidence schema 更新時だけ実行する。
 
@@ -254,26 +260,33 @@ Git hook を使う場合:
 ```bash
 ./.llm/scripts/derive-change-scope.sh
 ./.llm/scripts/inspect-derivation.sh
-./.llm/scripts/check-residual-declared.sh --packet .llm/work/2026-05-15-example.edn
+./.llm/scripts/check-residual-declared.sh --packet .llm/work/views/2026-05-15-example.edn
 ./.llm/scripts/check-evidence-boundary.sh
 ./.llm/scripts/check-structural-evidence-self-test.sh
 ```
 
 生成物:
 
-- `.llm/work/<task-id>.edn`: 機械可読の generated view
-- `.llm/work/<task-id>.md`: 人間が読む Review Fatigue Packet
+- `.llm/work/views/<task-id>.edn`: 機械可読の generated view
+- `.llm/work/views/<task-id>.md`: 人間が読む Review Fatigue Packet
+- `.llm/work/declarations/<task-id>.edn`: intent / residual / override / unknown などの human declaration
+- `.llm/work/runs/<task-id>.edn`: command-backed evidence の recorded run result
+- `.llm/evidence/closed/<task-id>.edn`: close 後に immutable record として残す proof snapshot
 
 EDN の `:schema/version` は `structural-evidence.N` 系で管理する。検討段階の仮称や release 名を schema / artifact 名に使わない。
 
 詳細な最小手順:
 ¤ .llm/guide/STRUCTURAL_EVIDENCE_QUICKSTART.md
 
-`.llm/work/` は active generated view であり、git 管理しない。closed evidence record を残す場合は、派生プロジェクトの privacy / commit policy に従って `.llm/evidence/closed/` 等に移す。Structural Evidence View は第 5 の正本ではなく、Authority / Structure / Index / Verification plane への索引である。
+`.llm/work/` は git 管理しない work area である。`views/` は stale なら再生成できる生成系 artifact、`runs/` は再実行可能な transient observation、`declarations/` は人間/LLM の判断であり fingerprint mismatch 時も自動削除しない。close 後は declaration と run result を closed record に吸収し、work artifact は削除する。closed evidence record を残す場合は、派生プロジェクトの privacy / commit policy に従って `.llm/evidence/closed/` 等に置く。Structural Evidence View は第 5 の正本ではなく、Authority / Structure / Index / Verification plane への索引である。
+
+Structural Evidence の generated view は、change fingerprint を virtual observed input として刻み、generator digest、`derivation_manifest.clj`、`.llm/data/*` index、QUESTIONS / KNOWLEDGE、maintainer archive または ADR markdown を含む action key を持つ。差分が同じでも導出ロジックや observed inputs が変わった view は stale として扱い、declaration / run result は再生成後の view に fingerprint が一致する場合だけ再付着する。`propose` と writable gate は、declaration / run result を伴わない stale generated view を自動 prune する。
+
+旧 `.llm/work/` 直下 artifact の整理は `./.llm/scripts/evidence.sh prune-work` で dry-run できる。`--confirm` を付けた時だけ、closed record に吸収済みの generated / transient artifact や legacy generated view を削除する。human declaration / intent を含む legacy artifact は preserve として表示し、自動削除しない。
 
 `check-evidence-boundary.sh` は packet 非正本性を機械検査する。packet は新しい requirement / knowledge / decision を定義せず、unknown や反復 residual を QUESTIONS / KNOWLEDGE / maintainer archive の候補として surface するだけに留める。
 
-`session-briefing.sh` は Evidence Plane として active packet / closed record / `what-now` / residual pending を表示する。packet は生成して終わりではなく、次セッションの読み始めに必ず surface される inter-session memory として扱う。
+`session-briefing.sh` は Evidence Plane として active view / human declaration / closed record / `what-now` / residual pending を表示する。generated view は生成して終わりではなく、次セッションの読み始めに必ず fingerprint と declaration attachment を確認する。
 
 ## 新しい検査の追加手順
 

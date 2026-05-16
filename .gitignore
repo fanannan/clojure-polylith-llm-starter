@@ -54,6 +54,10 @@ node_modules/
 /.llm/work/*
 !/.llm/work/.gitignore
 
+# --- Template benchmark generated records ---
+/.llm/template-only/benchmark/runs/
+/.llm/benchmark-runs/
+
 # --- LLM evidence records ---
 # Closed records may include project-sensitive paths, function names, or
 # operational context. Public projects should keep them local unless a project

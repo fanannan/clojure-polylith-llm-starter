@@ -68,6 +68,7 @@ run の終端は次のいずれかだけにする。
 
 ## 観測者効果を避ける
 
+この README が定義する既定 mode は `:manual-observer` である。この mode では、
 agent に benchmark 専用コマンドを呼ばせない。
 
 `benchctl` のようなコマンドを agent に使わせると、agent の通常導線を変えてしまい、
@@ -75,7 +76,20 @@ agent に benchmark 専用コマンドを呼ばせない。
 runner、git hook、承認マーカーなど、agent の外側で取る。
 
 agent は通常どおり README / CLAUDE / guide を読んで作業する。benchmark の存在を
-agent に知らせないことを基本にする。
+agent に知らせないことを基本にする。そのため、`setup-run.sh` は observer run
+record と marker scripts を demo repo の外側に作り、demo repo の commit tree に
+benchmark protocol files を入れない。
+
+自動 benchmark / instrumented benchmark は例外になり得る。ただしそれは観測対象が
+「通常導線」ではなく「benchmark を知っている agent / adapter」に変わるため、
+`:manual-observer` run と同じ評価集合に混ぜない。導入する場合は、mode 名、agent
+に見せる追加指示、記録項目、cross-run の読み方を別に定義する。
+
+observer hook は demo repo の `.git/hooks/post-commit` に置く。hook body は Git 管理外で、
+demo repo の commit tree には入らない。agent が通常初期化中に `core.hooksPath` を
+設定すると `.git/hooks/post-commit` が bypass され snapshot が欠落するため、marker
+script は `core.hooksPath` の設定を検出し、承認 marker を拒否する。非 `void` の
+terminal state も active observer hook を要求する。
 
 ## 自走性チェックと Simulation Smoke
 
@@ -137,6 +151,7 @@ post-commit hook が記録した changed paths と承認 marker を後から突�
 - agent
 - model
 - tool mode
+- benchmark mode
 - segment / approval marker
 - post-commit snapshot
 - terminal state: `first-commit-ready` / `blocked-at-segment-N` / `void`
@@ -144,6 +159,10 @@ post-commit hook が記録した changed paths と承認 marker を後から突�
 
 agent / model は比較軸なので必須である。手編集に任せず、setup script の開始時に
 必ず入力させる。引数がない場合は対話入力で確認し、空入力は許さない。
+
+terminal state は 1 run につき 1 回だけ記録する。marker script は既存の
+`:terminal-state` がある場合に拒否する。`:approval/source :simulated-llm` を含む
+run は `void` 以外の terminal state を取れない。
 
 ## Reflection
 

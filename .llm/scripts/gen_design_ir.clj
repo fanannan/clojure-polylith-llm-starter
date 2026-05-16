@@ -9,9 +9,12 @@
    [clojure.java.io :as io]
    [clojure.pprint :as pprint]
    [clojure.set :as set]
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [derivation-manifest :as derivation]))
 
 (def default-out ".llm/data/design-ir.edn")
+(def generator-path ".llm/scripts/gen_design_ir.clj")
+(def helper-path ".llm/scripts/derivation_manifest.clj")
 
 (defn- file? [path]
   (.isFile (io/file path)))
@@ -45,13 +48,18 @@
     ""))
 
 (defn- section-id [heading]
-  (some-> (re-find #"^##[ \t]+([^ \t]+)" heading) second))
+  (let [body (-> heading
+                 (str/replace #"^#{2,6}[ \t]+" "")
+                 str/trim)]
+    (or (second (re-find #"([0-9]+(?:\.[0-9]+)*)" body))
+        (second (re-find #"^([^ \t]+)" body)))))
 
 (defn- update-section [current line]
-  (if (re-find #"^##[ \t]+" line)
+  (if (or (re-find #"^##[ \t]+" line)
+          (re-find #"^#{3,6}[ \t]+(?:[^0-9 \t]+[ \t]+)?[0-9]+(?:\.[0-9]+)*" line))
     {:id (section-id line)
      :title (-> line
-                (str/replace #"^##[ \t]+" "")
+                (str/replace #"^#{2,6}[ \t]+" "")
                 str/trim)}
     current))
 
@@ -239,34 +247,55 @@
      :constraint-implementation-references (sorted-strings (set/intersection constraint-ids implemented))
      :unknown-implementation-requirements (sorted-strings (set/difference implemented design-ids))}))
 
-(defn ir []
-  (let [design (parse-design)
-        analysis (read-analysis)
-        index (implementation-index analysis)
-        obligations (test-obligations (:acceptance-criteria design))]
-    (into (sorted-map)
-          {:source "DESIGN.md"
-           :generated-by "gen-design-ir"
-           :analysis-sources {:brick-map (present-source ".llm/data/brick-map.edn" (:brick-map analysis))
-                              :workspace-map (present-source ".llm/data/workspace-map.edn" (:workspace-map analysis))
-                              :libs (present-source ".llm/data/libs.edn" (:libs analysis))}
-           :requirements (:requirements design)
-           :use-cases (:use-cases design)
-           :acceptance-criteria (:acceptance-criteria design)
-           :constraints (constraints (:requirements design))
-           :test-obligations obligations
-           :implementation-index index
-           :coverage (coverage design index)
-           :diagnostics {:duplicate-requirement-ids (duplicate-ids (:requirements design))
-                         :duplicate-test-obligation-ids (duplicate-test-obligation-ids obligations)
-                         :unknown-related-requirements (unknown-related-requirements (:requirements design) obligations)
-                         :unknown-related-use-cases (unknown-related-use-cases (:use-cases design) obligations)}})))
+(defn- derivation-manifest [out-file generated-at]
+  (derivation/make-manifest
+   {:id :design-ir
+    :tool "gen-design-ir"
+    :output-path out-file
+    :generator-path generator-path
+    :tool-input-paths [helper-path]
+    :input-paths ["DESIGN.md"
+                  ".llm/data/brick-map.edn"
+                  ".llm/data/workspace-map.edn"
+                  ".llm/data/libs.edn"]
+    :input-policy {:untracked :error
+                   :missing :explicit-empty}
+    :generated-at generated-at
+    :regenerate-command "./.llm/scripts/gen-design-ir.sh"}))
+
+(defn ir
+  ([] (ir {}))
+  ([{:keys [out-file generated-at]}]
+   (let [out-file (or out-file default-out)
+         design (parse-design)
+         analysis (read-analysis)
+         index (implementation-index analysis)
+         obligations (test-obligations (:acceptance-criteria design))]
+     (into (sorted-map)
+           (derivation/with-manifest
+            {:source "DESIGN.md"
+             :generated-by "gen-design-ir"
+             :analysis-sources {:brick-map (present-source ".llm/data/brick-map.edn" (:brick-map analysis))
+                                :workspace-map (present-source ".llm/data/workspace-map.edn" (:workspace-map analysis))
+                                :libs (present-source ".llm/data/libs.edn" (:libs analysis))}
+             :requirements (:requirements design)
+             :use-cases (:use-cases design)
+             :acceptance-criteria (:acceptance-criteria design)
+             :constraints (constraints (:requirements design))
+             :test-obligations obligations
+             :implementation-index index
+             :coverage (coverage design index)
+             :diagnostics {:duplicate-requirement-ids (duplicate-ids (:requirements design))
+                           :duplicate-test-obligation-ids (duplicate-test-obligation-ids obligations)
+                           :unknown-related-requirements (unknown-related-requirements (:requirements design) obligations)
+                           :unknown-related-use-cases (unknown-related-use-cases (:use-cases design) obligations)}}
+            (derivation-manifest out-file generated-at))))))
 
 (defn- render [data]
   (str ";; GENERATED - do not edit by hand.\n"
        ";; Source of truth: DESIGN.md\n"
        ";; Analysis inputs when present: .llm/data/brick-map.edn, .llm/data/workspace-map.edn, .llm/data/libs.edn\n"
-       ";; Regenerate with: clj -Sdeps '{:paths [\".llm/scripts\"]}' -X gen-design-ir/generate\n"
+       ";; Regenerate with: ./.llm/scripts/gen-design-ir.sh\n"
        (with-out-str (pprint/pprint data))))
 
 (defn- error! [& messages]
@@ -284,7 +313,7 @@
   "Generate .llm/data/design-ir.edn from DESIGN.md and existing analysis EDN."
   [{:keys [out-file]}]
   (let [out-file (or out-file default-out)
-        data (ir)]
+        data (ir {:out-file out-file})]
     (validate! data)
     (write-file! out-file (render data))
     (println (str "Generated " out-file))))
@@ -293,12 +322,19 @@
   "Validate DESIGN.md extraction and compare .llm/data/design-ir.edn drift."
   [{:keys [out-file]}]
   (let [out-file (or out-file default-out)
-        data (ir)
-        expected (render data)]
+        generated-at (get-in (derivation/artifact-manifest (read-edn-if-exists out-file))
+                             [:derivation/generated-at])
+        data (ir {:out-file out-file :generated-at generated-at})
+        expected (render data)
+        freshness (derivation/freshness out-file)]
     (validate! data)
     (when-not (file? out-file)
       (error! (str "ERROR: " out-file " is missing. Run gen-design-ir/generate after updating DESIGN.md.")))
+    (when-not (= :fresh (:status freshness))
+      (error! "ERROR: DESIGN IR derivation manifest is not fresh."
+              (derivation/explain freshness)
+              "Fix: ./.llm/scripts/gen-design-ir.sh"))
     (if (= expected (slurp out-file))
       (println "check-design-ir: OK")
       (error! (str "ERROR: " out-file " is not synchronized with DESIGN.md or existing analysis EDN.")
-              "Fix: clj -Sdeps '{:paths [\".llm/scripts\"]}' -X gen-design-ir/generate"))))
+              "Fix: ./.llm/scripts/gen-design-ir.sh"))))

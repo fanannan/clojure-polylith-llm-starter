@@ -10,6 +10,7 @@ root の `IDEA.md` にコピーする。
 
 ```bash
 cp .llm/template-only/examples/ideas/IDEA.webhook-idempotency-processor.md IDEA.md
+rm -rf .llm/template-only
 ```
 
 その後、LLM agent に通常の初期化手順を依頼する。
@@ -26,7 +27,8 @@ Polylith 構造案に分解してください。
 
 benchmark で使う場合は、直接 agent を起動する前に `benchmark/setup-run.sh` で
 demo repo を作る。setup は agent / model 情報、IDEA hash、baseline commit、
-post-commit hook、承認マーカー入口を用意する。
+post-commit hook、承認マーカー入口を用意する。benchmark setup は observer record
+を demo repo の外側に置くため、agent は benchmark protocol を読めない。
 
 ## Files
 
@@ -45,3 +47,5 @@ IDEA は仕様正本ではない。ここには `AC-001` のような完成済�
 
 benchmark での評価意図は `benchmark/SCENARIOS.md` に置く。demo repo で agent を
 起動する前に `.llm/template-only/` を削除するため、agent はその catalog を読めない。
+手動 demo でも同じ前提にしたい場合は、IDEA コピー後に `.llm/template-only/` を削除した
+clone / copy 上で agent を起動する。template 保守用の本体 checkout では削除しない。

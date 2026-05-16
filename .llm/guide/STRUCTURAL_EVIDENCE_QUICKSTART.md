@@ -21,7 +21,9 @@ Structural Evidence View は変更後の close 機構であり、DESIGN 由来 o
 ./.llm/scripts/evidence.sh what-now
 ```
 
-`what-now` は active packet、staged diff、未宣言 residual、未実行 evidence、stale candidate を見て、次に実行すべき command を 1 つ返す。LLM / human は workflow 手順を暗記せず、ここを作業面として使う。
+`what-now` は required derived view freshness、active view、human declaration、staged diff、未宣言 residual、未実行 evidence、stale candidate を見て、次に実行すべき command を 1 つ返す。LLM / human は workflow 手順を暗記せず、ここを作業面として使う。
+
+current fingerprint と一致しない generated view は、現在作業の blocker ではなく housekeeping として扱う。fingerprint から外れた human declaration は orphan declaration として surface され、自動削除しない。`what-now` が `detached-active-packet-housekeeping` や `orphan-declaration` を返した場合は、まず表示された `inspect --from .llm/work/views/<task>.edn` または declaration path を確認する。内容確認なしに `declare --all-none` を実行してはならない。
 
 Git hook を使う場合は一度だけ有効化する。Claude Code / Codex / human で同じ hook が使われる。
 
@@ -42,7 +44,7 @@ git add <changed-files>
 ./.llm/scripts/check-evidence-gate.sh --staged
 ```
 
-save-required な差分で packet が無い場合、gate は `.llm/work/<task-id>.edn` と `.md` を自動生成して block する。生成された `.llm/work/<task-id>.md` を見て、次の `TBD` を宣言する。
+save-required な差分で active view が無い場合、gate は `.llm/work/views/<task-id>.edn` と `.md` を自動生成して block する。生成された `.llm/work/views/<task-id>.md` を見て、次の `TBD` を宣言する。
 
 - Semantic Impact Not Derived By Structure: 構造解析では見えない仕様・運用・意味上の影響
 - Unknowns Not Captured By Derivation: 残った未知、QUESTIONS 候補
@@ -52,7 +54,7 @@ save-required な差分で packet が無い場合、gate は `.llm/work/<task-id
 
 該当がなければ空欄にせず、必ず `none` と明示する。空欄と `none` は異なる。空欄は書き忘れ、`none` は確認済みの無である。
 
-Residual は EDN を手編集せず、必ず `evidence.sh declare` で更新する。active packet がまだ無い場合でも、同じ task の `.predict.edn` があれば `declare` が `.llm/work/<task-id>.edn` を安全に作成する。`propose-review-packet.sh --staged` を再実行しても既存の residual declaration は保持される。
+Residual は EDN を手編集せず、必ず `evidence.sh declare` で更新する。`declare` は `.llm/work/declarations/<task-id>.edn` だけを更新する。`propose-review-packet.sh --staged` を再実行しても、fingerprint が一致する residual declaration だけが view に再付着し、一致しない declaration は orphan として保持される。
 
 全て `none` として宣言できる場合:
 
@@ -79,18 +81,18 @@ Residual は EDN を手編集せず、必ず `evidence.sh declare` で更新す�
 ./.llm/scripts/check-evidence-gate.sh --staged
 ```
 
-`run` は packet 内の command-backed evidence を実行し、exit code、repo revision、duration、失敗時の tail を active packet に記録する。command が定義されていない evidence は `:not-run` として残る。実行コストが高い場合は必要な検査を手動で走らせ、その結果を close 報告に含める。
+`run` は active view 内の command-backed evidence を実行し、exit code、repo revision、duration、失敗時の tail を `.llm/work/runs/<task-id>.edn` に記録する。command が定義されていない evidence は `:not-run` として残る。実行コストが高い場合は必要な検査を手動で走らせ、その結果を close 報告に含める。
 `run` は login shell を使わず、固定した最小環境で command を実行する。`tool-version` と `env-hash` も record に残るため、T-Mechanical evidence は「どの環境で再実行可能な結果か」を後から確認できる。`tool-version` には実際に選ばれた runtime と、その環境で検出できた `clj` / `bb` の利用可否・バージョンが含まれる。
 
 ## Task / Commit / Session
 
 - Task: 1 つの intent と 1 つの close mode を持つ atomic working set。
 - Commit: 1 つの task に属する。1 task が複数 commit に分かれることは許容するが、1 commit に複数 task を混ぜない。
-- Session: active packet が残っていれば次セッションで resume する。新しい task を始める前に briefing の Evidence Plane と `evidence.sh what-now` を確認し、必要に応じて `status` で詳細を見る。
+- Session: active view / declaration が残っていれば次セッションで resume する。新しい task を始める前に briefing の Evidence Plane と `evidence.sh what-now` を確認し、必要に応じて `status` で詳細を見る。
 
-close が blocked になった場合でも、`.llm/work/<task-id>.edn` と `.llm/work/<task-id>.md` は最新の actual scope / blocked-close state で更新される。表示された `declare` コマンドで pending residual を埋め、必要な修正を行ってから close を再実行する。
+close が blocked になった場合、`.llm/work/views/<task-id>.md` は blocked-close state で更新される。表示された `declare` コマンドで pending residual を埋め、必要な修正や evidence run を行ってから close を再実行する。
 
-packet は Authority source ではない。packet 内で新しい requirement、decision、knowledge を定義してはいけない。close 前や workspace check では次の validator がこれを確認する。
+Review Fatigue Packet と declaration は Authority source ではない。中で新しい requirement、decision、knowledge を定義してはいけない。close 前や workspace check では次の validator がこれを確認する。
 
 ```bash
 ./.llm/scripts/check-evidence-boundary.sh
@@ -127,17 +129,17 @@ LLM がこれらを主観で上書きしてはいけない。導出が不足し�
 
 ## Close 前チェック
 
-packet を close する前に、EDN view で residual が明示されていることを確認する。
+packet を close する前に、assembled EDN view で residual が明示されていることを確認する。
 
 ```bash
-./.llm/scripts/check-residual-declared.sh --packet .llm/work/<task-id>.edn
+./.llm/scripts/check-residual-declared.sh --packet .llm/work/views/<task-id>.edn
 ```
 
-`:status :closed` の packet に未宣言 residual が残っている場合、この検査は失敗する。`:status :active` の間は pending field を表示する。
+closed record に未宣言 residual が残っている場合、この検査は失敗する。`:status :active` の間は pending field を表示する。
 
 ## 次セッションでの扱い
 
-`session-briefing.sh` は Evidence Plane を表示し、`.llm/work/` の active packet、residual pending、closed record、`what-now` を冒頭に出す。packet は「書いた人の記録」ではなく、次セッションの LLM が再確認疲労を避けるための inter-session memory である。
+`session-briefing.sh` は Evidence Plane を表示し、`.llm/work/views/` の active view、`.llm/work/declarations/` の human declaration、residual pending、closed record、`what-now` を冒頭に出す。generated view は「書いた人の記録」ではなく、次セッションの LLM が再確認疲労を避けるための派生 view であり、human declaration だけを preserve 対象として扱う。
 
 過去の closed record を scope 語彙で探す場合:
 

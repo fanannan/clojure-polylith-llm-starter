@@ -1,7 +1,7 @@
 ;; GENERATED - do not edit by hand.
 ;; Source of truth: DESIGN.md
 ;; Analysis inputs when present: .llm/data/brick-map.edn, .llm/data/workspace-map.edn, .llm/data/libs.edn
-;; Regenerate with: clj -Sdeps '{:paths [".llm/scripts"]}' -X gen-design-ir/generate
+;; Regenerate with: ./.llm/scripts/gen-design-ir.sh
 {:acceptance-criteria [],
  :analysis-sources
  {:brick-map {:path ".llm/data/brick-map.edn", :exists false},
@@ -161,4 +161,33 @@
  :requirements [],
  :source "DESIGN.md",
  :test-obligations [],
- :use-cases []}
+ :use-cases [],
+ :artifact/manifest
+ #:derivation{:tool "gen-design-ir",
+              :action-key
+              "sha256:1a310294732e7b75b1611f9e2a9c43c985f99ae99220e31f127b5ac0588d439f",
+              :input-policy
+              {:untracked :error, :missing :explicit-empty},
+              :inputs
+              [{:path "DESIGN.md",
+                :digest
+                "sha256:fe414c29ab20bde488de6003553a13aaf8c883848e8c1670536616cbe304231d"}
+               {:path ".llm/data/brick-map.edn", :missing true}
+               {:path ".llm/data/workspace-map.edn", :missing true}
+               {:path ".llm/data/libs.edn",
+                :digest
+                "sha256:268f6308cc2b4f8cba8c15587eba86cbf168110bafe76bf184311565b9cc117c"}],
+              :generated-at "2026-05-16T04:02:35.452203346Z",
+              :output-path ".llm/data/design-ir.edn",
+              :tool-inputs
+              [{:path ".llm/scripts/derivation_manifest.clj",
+                :digest
+                "sha256:3f82095233187e53c14a5b53bf923c846dca73661e322e88cdc192b3620780cd"}],
+              :regenerate-command "./.llm/scripts/gen-design-ir.sh",
+              :generator
+              {:path ".llm/scripts/gen_design_ir.clj",
+               :digest
+               "sha256:ed2929a90d0283326d634336e3e015d10a9b7a18e4ba332ba8d98216fb807501"},
+              :schema "derivation.1",
+              :regime :derived-view,
+              :id :design-ir}}

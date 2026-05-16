@@ -284,7 +284,7 @@
   - `:quick-reference` は 1 ~ 2 本程度の軽い入口を置く前提。
   - `:examples` は 0 ~ n 本、実装例・コード例・統合ノートを収める目的で使用。
   - `:doc` を重視し、`:quick-reference` と `:examples` は必須ではない。
-- **`;; lib-catalog` は完全一致マーカ**。`.llm/scripts/gen_lib_catalog.clj` が本文書を走査、各 block を収集し `.llm/data/libs.edn` / `.patterns` を生成。`check-workspace-integrity.sh` が diff で drift を自動検知
+- **`;; lib-catalog` は完全一致マーカ**。`.llm/scripts/gen_lib_catalog.clj` が本文書を走査、各 block を収集し `.llm/data/libs.edn` / `.patterns` と sidecar manifest を生成。`check-workspace-integrity.sh` が diff と manifest freshness で drift を自動検知
 - **横断的ライブラリの多重記述は許容**（構造完全一致時のみ dedup、矛盾は error）。ある lib が複数 §3.X に現れる場合は、全て同一内容で記述する必要がある
 
 **詳細 schema**: `.llm/scripts/gen_lib_catalog.clj` の `entry-schema`、運用規約は `MAINTAINERS_GUIDE.md §5.9`。

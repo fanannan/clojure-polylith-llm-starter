@@ -4,7 +4,13 @@
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.pprint :as pprint]
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [derivation-manifest :as derivation]))
+
+(def generator-path ".llm/scripts/gen_brick_map.clj")
+(def default-doc-file "docs/BRICKS.md")
+(def default-index-file ".llm/data/brick-map.edn")
+(def default-manifest-file ".llm/data/brick-map.manifest.edn")
 
 (def generated-header
   "<!-- GENERATED FILE. DO NOT EDIT BY HAND.
@@ -77,6 +83,31 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
 (defn- warn! [& messages]
   (binding [*out* *err*]
     (println (str/join "\n" messages))))
+
+(defn- brick-map-manifest [out-file index-file]
+  (assoc
+   (derivation/make-manifest
+    {:id :brick-map
+     :tool "gen-brick-map"
+     :output-path ".llm/data/brick-map"
+     :generator-path generator-path
+     :tool-input-paths [".llm/scripts/derivation_manifest.clj"]
+     :input-paths ["DESIGN.md"
+                   ".llm/repo-context.edn"
+                   "components"
+                   "bases"]
+     :input-policy {:missing :explicit-empty
+                    :directory-roots :recursive-digest}
+     :generated-at "deterministic"
+     :regenerate-command "clj -Sdeps '{:paths [\".llm/scripts\"]}' -X gen-brick-map/generate"})
+   :derivation/outputs [out-file index-file]))
+
+(defn- render-manifest [manifest]
+  (str ";; GENERATED - do not edit by hand.\n"
+       ";; Source of truth: DESIGN.md, components/*/brick.edn, bases/*/brick.edn, interface.clj\n"
+       ";; Regenerate with: clj -Sdeps '{:paths [\".llm/scripts\"]}' -X gen-brick-map/generate\n"
+       (with-out-str
+         (pprint/pprint {derivation/manifest-key manifest}))))
 
 (defn- contains-todo? [x]
   (cond
@@ -557,10 +588,11 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
              :entrypoints entrypoints})))))
 
 (defn generate
-  "Generate docs/BRICKS.md and .llm/data/brick-map.edn from brick.edn and interface.clj."
-  [{:keys [out-file index-file auto-create?]}]
-  (let [out-file (or out-file "docs/BRICKS.md")
-        index-file (or index-file ".llm/data/brick-map.edn")
+  "Generate docs/BRICKS.md, .llm/data/brick-map.edn, and sidecar manifest."
+  [{:keys [out-file index-file manifest-file auto-create?]}]
+  (let [out-file (or out-file default-doc-file)
+        index-file (or index-file default-index-file)
+        manifest-file (or manifest-file default-manifest-file)
         missing (missing-bricks)
         _ (when (and (seq missing) auto-create?)
             (doseq [{:keys [kind path]} missing]
@@ -576,8 +608,10 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
     (report-group-advisories! bricks)
     (write-file! out-file (render bricks))
     (write-file! index-file (render-index bricks))
+    (write-file! manifest-file (render-manifest (brick-map-manifest out-file index-file)))
     (println "generated" out-file)
-    (println "generated" index-file)))
+    (println "generated" index-file)
+    (println "generated" manifest-file)))
 
 (defn propose-missing
   "Print brick.edn skeleton proposals for bricks that do not have brick.edn yet."
@@ -601,23 +635,32 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
 (defn check
   "Validate brick.edn and compare generated Brick Map with docs/BRICKS.md."
   [_]
-  (let [dirs (vec (brick-dirs))]
-    (if (empty? dirs)
+  (let [dirs (vec (brick-dirs))
+        outputs-exist? (or (file? default-doc-file)
+                           (file? default-index-file)
+                           (file? default-manifest-file))]
+    (if (and (empty? dirs) (not outputs-exist?))
       (println "check-brick-map: OK (no bricks)")
       (let [bricks (mapv load-brick dirs)
             expected-doc (render bricks)
-            expected-index (render-index bricks)]
+            expected-index (render-index bricks)
+            expected-manifest (render-manifest
+                               (brick-map-manifest default-doc-file default-index-file))]
         (validate-cross-brick! bricks)
         (report-migration-quality! bricks {:strict? (= :complete (adoption-mode))})
         (report-group-advisories! bricks)
-        (when-not (file? "docs/BRICKS.md")
+        (when-not (file? default-doc-file)
           (error! "ERROR: docs/BRICKS.md is missing. Run gen-brick-map/generate after adding bricks."))
-        (when-not (file? ".llm/data/brick-map.edn")
+        (when-not (file? default-index-file)
           (error! "ERROR: .llm/data/brick-map.edn is missing. Run gen-brick-map/generate after adding bricks."))
-        (let [actual-doc (slurp "docs/BRICKS.md")
-              actual-index (slurp ".llm/data/brick-map.edn")]
+        (when-not (file? default-manifest-file)
+          (error! "ERROR: .llm/data/brick-map.manifest.edn is missing. Run gen-brick-map/generate."))
+        (let [actual-doc (slurp default-doc-file)
+              actual-index (slurp default-index-file)
+              actual-manifest (slurp default-manifest-file)]
           (if (and (= expected-doc actual-doc)
-                   (= expected-index actual-index))
+                   (= expected-index actual-index)
+                   (= expected-manifest actual-manifest))
             (println "check-brick-map: OK")
-            (error! "ERROR: docs/BRICKS.md or .llm/data/brick-map.edn is not synchronized with brick.edn/interface.clj."
+            (error! "ERROR: docs/BRICKS.md, .llm/data/brick-map.edn, or .llm/data/brick-map.manifest.edn is not synchronized with brick.edn/interface.clj."
                     "Fix: clj -Sdeps '{:paths [\".llm/scripts\"]}' -X gen-brick-map/generate")))))))

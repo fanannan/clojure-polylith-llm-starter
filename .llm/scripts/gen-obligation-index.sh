@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
-# scripts/gen-design-ir.sh
-#
-# Generates .llm/data/design-ir.edn from DESIGN.md and existing analysis EDN.
+# Generate .llm/data/obligation-index.edn from design-ir and trace metadata.
 
 set -euo pipefail
 
@@ -10,4 +8,4 @@ WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 cd "$WORKSPACE_ROOT"
 
-exec "$SCRIPT_DIR/run-clj-tool.sh" exec gen-design-ir/generate
+exec "$SCRIPT_DIR/run-clj-tool.sh" exec gen-obligation-index/generate

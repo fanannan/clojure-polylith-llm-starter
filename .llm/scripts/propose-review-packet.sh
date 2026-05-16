@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Generate a Review Fatigue Packet view under .llm/work/.
+# Generate a Review Fatigue Packet derived view under .llm/work/views/.
 #
 # The generated packet is a review aid, not an authority source.
 
