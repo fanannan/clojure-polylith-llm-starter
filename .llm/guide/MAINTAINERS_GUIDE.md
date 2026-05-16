@@ -117,6 +117,20 @@
 
 正本は guide / CLAUDE 側。`.llm/templates/` は派生プロジェクトの成果物（README / PR / MR / wiki）に使う Markdown 雛形 / プラットフォーム非依存断片を集約する。`.github/` 等の platform 固有ディレクトリは置かず、派生プロジェクトが自前で各 platform 用ファイルへコピーする運用とする。新しい雛形 / 断片を追加する時は本表に登録し、`check-doc-references.sh` の検証対象に含まれていることを確認する。
 
+#### .llm/template-only/（テンプレート repo 専用・派生後削除対象）
+
+| ファイル | 区分 | 役割 |
+|---|---|---|
+| .llm/template-only/README.md | template-only | 領域全体の lifecycle。template repo では保持し、派生プロジェクトでは bootstrap 完了後に削除 |
+| .llm/template-only/examples/ideas/README.md | template-only | demo / benchmark 用 IDEA ファイルの使い方。IDEA 本体は仕様正本ではない |
+| .llm/template-only/examples/ideas/IDEA.*.md | template-only | `IDEA.md` へコピーして試す着想メモ。agent に見せる入力 |
+| .llm/template-only/benchmark/README.md | template-only | benchmark の考え方。無人完走ではなく gate 間自律 segment を観測する |
+| .llm/template-only/benchmark/setup-run.sh | template-only | demo repo 作成、IDEA コピー、template-only 削除、post-commit hook、承認マーカー入口の最小 setup |
+| .llm/template-only/benchmark/SCENARIOS.md | template-only | 保守者向けの評価意図。agent には見せない |
+| .llm/template-only/tests/*.sh | template-only | テンプレート自身の重い E2E。通常ゲート外 |
+
+`.llm/template-only/` は `.llm/repo-context.edn :ownership :template-only` で表現する。これは `:template-owned` とは異なり、派生後に残さない領域である。
+
 ### 3.2 ツール設定（B: 機械化）
 
 | ファイル | 区分 | 備考 |
@@ -796,7 +810,7 @@ Requirement ID の検査順序:
 4. 存在しない ID 参照を ERROR にする
 5. 未参照 DESIGN ID は WARN にする
 
-テンプレート保守で `gen_brick_map.clj` / `gen_workspace_map.clj` / wrapper / migration policy を変更した場合、通常ゲートとは別に `.llm/scripts/template-tests/check-map-scenarios.sh` を実行対象にする。この E2E は `/tmp` の synthetic repo で生成・移行・エラー検出・自力修復を検査するもので、派生プロジェクトのアプリケーションテストではない。
+テンプレート保守で `gen_brick_map.clj` / `gen_workspace_map.clj` / wrapper / migration policy を変更した場合、通常ゲートとは別に `.llm/template-only/tests/check-map-scenarios.sh` を実行対象にする。この E2E は `/tmp` の synthetic repo で生成・移行・エラー検出・自力修復を検査するもので、派生プロジェクトのアプリケーションテストではない。
 
 ### 5.15 Structural Evidence View の保守
 

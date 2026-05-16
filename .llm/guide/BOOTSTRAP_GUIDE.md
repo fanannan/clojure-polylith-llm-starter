@@ -452,7 +452,10 @@ I/O リソースの起動・停止管理が必要な場合のみ実施する。�
    - `:workspace-kind` / `:capabilities` / `:adoption-mode` は `.llm/scripts/propose-repo-context.sh` の候補を人間が確認して決める
    - `:ownership` ブロックは保持する（派生プロジェクトでも所有権 SSOT として機能させる）
    - 削除しない（manifest 不在は session-briefing が non-blocking ERROR と migration 手順を表示する）
-6. 初期化完了をコミット（例: `"Complete project bootstrap"`）— **このコマンドは LLM が提示、実行はユーザが行う**
+6. **`../.llm/template-only/` を削除する**（テンプレート保守・評価用の配布外領域。派生プロジェクトの通常運用物ではない）
+   - `:ownership :template-only` は manifest に残してよい。残すのは所有権規則であり、実ディレクトリではない
+   - `:repo-kind :project` かつ `:adoption-mode :complete` で `.llm/template-only/` が残る場合、repo-context consistency check が失敗する
+7. 初期化完了をコミット（例: `"Complete project bootstrap"`）— **このコマンドは LLM が提示、実行はユーザが行う**
 
 以降は CLAUDE の作業プロトコルで日常開発に移行する。本文書（BOOTSTRAP_GUIDE）は物理的には残るが、フェーズ判定により、完了後は自動的に読まれない。
 ¤ ../CLAUDE.md §8

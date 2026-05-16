@@ -95,6 +95,8 @@ copy_one "$TEMPLATE_ROOT/.llm/data" "$target/.llm/data"
 copy_one "$TEMPLATE_ROOT/.llm/templates" "$target/.llm/templates"
 copy_one "$TEMPLATE_ROOT/.llm/template-version.edn" "$target/.llm/template-version.edn"
 copy_one "$TEMPLATE_ROOT/.llm/migrations" "$target/.llm/migrations"
+# .llm/template-only is intentionally not copied. It is template-repo-only
+# material for examples, benchmark runs, and template maintenance E2E.
 copy_one "$TEMPLATE_ROOT/.llm/memory/KNOWLEDGE.md" "$target/.llm/memory/KNOWLEDGE.md"
 copy_one "$TEMPLATE_ROOT/.llm/memory/QUESTIONS.md" "$target/.llm/memory/QUESTIONS.md"
 copy_one "$TEMPLATE_ROOT/.llm/memory/adr/README.md" "$target/.llm/memory/adr/README.md"
@@ -109,3 +111,4 @@ echo "Next:"
 echo "  cd \"$target\""
 echo "  ./.llm/scripts/propose-repo-context.sh"
 echo "  ./.llm/scripts/apply-repo-context-migration.sh"
+echo "Note: .llm/template-only/ is template-only material and is not installed."

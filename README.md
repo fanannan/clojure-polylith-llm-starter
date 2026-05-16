@@ -557,6 +557,11 @@ cd /path/to/repo
 │   ├── PROJECT_README.md            派生プロジェクト README の半自動生成雛形
 │   └── fixture-state-summary.md     越境 UC PR 本文断片(POLYLITH_GUIDE §7.4.1 関連)
 │
+├── .llm/template-only/       ← テンプレート repo 専用。demo IDEA、benchmark、保守 E2E。派生後は削除
+│   ├── examples/ideas/              IDEA.md にコピーして試す demo / benchmark 用着想メモ
+│   ├── benchmark/                   IDEA 起点の開発体験を観測し、保守改善へ戻す仕組み
+│   └── tests/                       テンプレート自身の重い E2E。通常ゲート外
+│
 ├── docs/BRICKS.md            ← brick.edn / interface.clj から生成される閲覧用 Brick Map(派生プロジェクトで brick 作成後に生成、直接編集しない)
 ├── docs/PROJECTS.md          ← project.edn / project deps から生成される閲覧用 Project Map(project 作成後に生成、直接編集しない)
 ├── docs/WORKSPACE.md         ← workspace 全体の生成ビュー(直接編集しない)

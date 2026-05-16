@@ -17,6 +17,7 @@ mkdir -p "$BASE"
 copy_scripts() {
   local repo="$1"
   mkdir -p "$repo/.llm/scripts" "$repo/.llm/data"
+  cp "$TEMPLATE_ROOT/.llm/scripts/run-clj-tool.sh" "$repo/.llm/scripts/"
   cp "$TEMPLATE_ROOT/.llm/scripts/gen_design_ir.clj" "$repo/.llm/scripts/"
   cp "$TEMPLATE_ROOT/.llm/scripts/gen-design-ir.sh" "$repo/.llm/scripts/"
   cp "$TEMPLATE_ROOT/.llm/scripts/check-design-ir.sh" "$repo/.llm/scripts/"

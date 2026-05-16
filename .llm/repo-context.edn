@@ -98,6 +98,12 @@
     "bases/README.md"
     "projects/README.md"}
 
+  ;; テンプレート repo だけが保持する領域。demo / benchmark / template
+  ;; maintenance E2E のために使うが、派生プロジェクトの bootstrap 完了後は
+  ;; 削除対象であり、project repo には残さない。
+  :template-only
+  #{".llm/template-only/"}
+
   ;; 同一ファイル内に二重所有が混在する場合。section 識別子で範囲を表す。
   ;; "§N" は markdown の level-2 見出し `## N.` から次の sibling `## M.`
   ;; 直前までを指す。###/#### などの深い見出しは親 §N に含まれる。

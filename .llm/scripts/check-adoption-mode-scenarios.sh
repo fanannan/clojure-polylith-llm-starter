@@ -65,5 +65,15 @@ clj -Sdeps '{:paths [".llm/scripts"]}' -M -e '
                                             :capabilities strict-caps
                                             :applied-migrations #{}})]
      (and (empty? errors)
-          (some #(re-find #"retrofit" %) warnings)))))
+          (some #(re-find #"retrofit" %) warnings))))
+
+  (assert-case
+   "project complete rejects retained template-only paths"
+   (let [{:keys [errors]} (result {:repo-kind :project
+                                   :workspace-kind :polylith
+                                   :adoption-mode :complete
+                                   :capabilities strict-caps
+                                   :applied-migrations #{}
+                                   :ownership {:template-only #{".llm/template-only/"}}})]
+     (some #(re-find #"template-only" %) errors))))
 '

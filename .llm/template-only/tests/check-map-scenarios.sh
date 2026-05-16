@@ -19,6 +19,7 @@ copy_scripts() {
   mkdir -p "$repo/.llm/scripts" "$repo/components" "$repo/bases"
   cp "$TEMPLATE_ROOT/.llm/scripts/gen_brick_map.clj" "$repo/.llm/scripts/"
   cp "$TEMPLATE_ROOT/.llm/scripts/gen_workspace_map.clj" "$repo/.llm/scripts/"
+  cp "$TEMPLATE_ROOT/.llm/scripts/run-clj-tool.sh" "$repo/.llm/scripts/"
   cp "$TEMPLATE_ROOT/.llm/scripts/check-brick-map.sh" "$repo/.llm/scripts/"
   cp "$TEMPLATE_ROOT/.llm/scripts/check-workspace-map.sh" "$repo/.llm/scripts/"
   cp "$TEMPLATE_ROOT/.llm/scripts/ensure-brick-map.sh" "$repo/.llm/scripts/"

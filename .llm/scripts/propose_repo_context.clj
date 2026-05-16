@@ -37,6 +37,9 @@
      "bases/README.md"
      "projects/README.md"}
 
+   :template-only
+   #{".llm/template-only/"}
+
    :section-scoped
    {".llm/memory/KNOWLEDGE.md" {:template ["§0"]      :project ["§1+"]}
     ".llm/memory/QUESTIONS.md" {:template ["§0" "§1"] :project ["§2+"]}

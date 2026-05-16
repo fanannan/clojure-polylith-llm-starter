@@ -1,4 +1,4 @@
-# `.llm/scripts/template-tests/`
+# `.llm/template-only/tests/`
 
 このディレクトリは、テンプレート自身の E2E シナリオテストを置く。
 派生プロジェクトのアプリケーションテストではない。
@@ -8,9 +8,9 @@
 ## 実行
 
 ```bash
-./.llm/scripts/template-tests/check-map-scenarios.sh
-./.llm/scripts/template-tests/check-design-ir-scenarios.sh
-./.llm/scripts/template-tests/check-trace-metadata-scenarios.sh
+./.llm/template-only/tests/check-map-scenarios.sh
+./.llm/template-only/tests/check-design-ir-scenarios.sh
+./.llm/template-only/tests/check-trace-metadata-scenarios.sh
 ```
 
 この検査は `/tmp` に synthetic Polylith-like repos を作成し、`brick.edn` / `project.edn` / generated map の移行・生成・検査・修復シナリオを確認する。
@@ -19,7 +19,7 @@ trace metadata 検査は `/tmp` に synthetic repos を作成し、public bounda
 
 ## 位置づけ
 
-- 日常ゲート: `../check-workspace-integrity.sh`
+- 日常ゲート: `.llm/scripts/check-workspace-integrity.sh`
 - テンプレート保守 E2E: `./check-map-scenarios.sh`, `./check-design-ir-scenarios.sh`, `./check-trace-metadata-scenarios.sh`
 
 `check-map-scenarios.sh`、`check-design-ir-scenarios.sh`、`check-trace-metadata-scenarios.sh` は、日常作業の高速ループに入れない。テンプレート配布物の信頼性を確認するための重い保守テストとして扱う。

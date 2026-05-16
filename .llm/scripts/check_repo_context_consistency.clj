@@ -27,6 +27,9 @@
 (def allowed-workspace-kinds #{:polylith :plain-clojure :unknown})
 (def allowed-adoption-modes #{:retrofit :partial :complete})
 
+(defn- exists-path? [path]
+  (.exists (io/file path)))
+
 (defn- slurp-if-exists [path]
   (let [f (io/file path)]
     (when (.isFile f)
@@ -67,7 +70,9 @@
                        [cap dep])
         unknown-caps (remove #(contains? (set (keys capability-deps)) %) caps)
         missing-strict-caps (seq (sort (remove caps strict-template-capabilities)))
-        unknown-applied (remove known-migrations applied)]
+        unknown-applied (remove known-migrations applied)
+        template-only-paths (get-in manifest [:ownership :template-only])
+        retained-template-only (seq (filter exists-path? template-only-paths))]
     (cond-> {:errors [] :warnings []}
       (not (contains? allowed-repo-kinds (:repo-kind manifest)))
       (update :errors error (str ":repo-kind が未知: " (pr-str (:repo-kind manifest))))
@@ -109,6 +114,18 @@
            missing-strict-caps)
       (update :warnings warning (str ":adoption-mode :partial は移行中状態です。complete 前に不足 capability を採用してください: "
                                      (pr-str (vec missing-strict-caps))))
+
+      (and (= :project (:repo-kind manifest))
+           (= :complete (:adoption-mode manifest))
+           retained-template-only)
+      (update :errors error (str "project complete repo に template-only 領域が残っています。bootstrap 完了後に削除してください: "
+                                 (pr-str (vec retained-template-only))))
+
+      (and (= :project (:repo-kind manifest))
+           (not= :complete (:adoption-mode manifest))
+           retained-template-only)
+      (update :warnings warning (str "template-only 領域は派生プロジェクトの bootstrap 完了後に削除対象です: "
+                                     (pr-str (vec retained-template-only))))
 
       (seq unknown-applied)
       (update :warnings warning (str ":applied-migrations に local ledger 不在の ID があります: "
