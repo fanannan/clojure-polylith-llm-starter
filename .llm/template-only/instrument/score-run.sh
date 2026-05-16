@@ -109,6 +109,8 @@ edn_vector_from_file() {
 
 case_id="$(metadata_keyword ':case/id')"
 target_mode="$(metadata_keyword ':target/mode')"
+template_run_dir="$(metadata_string ':template/run-dir')"
+observer_run_dir="$(metadata_string ':observer/run-dir')"
 terminal_state="$(sed -n 's/.*:event\/type :terminal-state.*:state :\([^ }]*\).*/\1/p' "$events" | tail -1)"
 terminal_state_edn="nil"
 if [ -n "$terminal_state" ]; then
@@ -206,6 +208,18 @@ cat > "$score" <<EOF
  :observed/project-owned-paths $forbidden_paths_edn
  :observed/new-control-surfaces $surface_paths_edn}
 EOF
+
+mirror_score() {
+  local mirror_dir="$1"
+  [ -n "$mirror_dir" ] || return 0
+  mirror_dir="${mirror_dir%/}"
+  [ "$mirror_dir" != "$run_dir" ] || return 0
+  [ -d "$mirror_dir" ] || return 0
+  cp "$score" "$mirror_dir/score.edn"
+}
+
+mirror_score "$template_run_dir"
+mirror_score "$observer_run_dir"
 
 echo "score written: $score"
 sed -n '1,120p' "$score"

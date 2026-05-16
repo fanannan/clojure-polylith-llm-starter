@@ -255,6 +255,7 @@ cat > "$run_dir/metadata.edn" <<EOF
  :agent/model "$(edn_escape "$model")"
  :tool/mode "$(edn_escape "$tool_mode")"
  :target/dir "$(edn_escape "$target_dir")"
+ :template/run-dir "$(edn_escape "$run_dir")"
  :observer/run-dir "$(edn_escape "$observer_dir")"
  :created-at "$(edn_escape "$created_at")"
  :measurement {:point-estimates :forbidden
@@ -321,8 +322,9 @@ $observer_dir/mark-terminal-state.sh --state observed --note "manual observation
 $TEMPLATE_ROOT/.llm/template-only/instrument/score-run.sh --run "$observer_dir"
 \`\`\`
 
-The score is path-level and preliminary. Do not treat a single score as a model
-ability estimate; use it as raw measurement input.
+The score is path-level and preliminary. It is mirrored into the template run
+record for later summarization. Do not treat a single score as a model ability
+estimate; use it as raw measurement input.
 EOF
 cp "$run_dir/run.md" "$observer_dir/run.md"
 

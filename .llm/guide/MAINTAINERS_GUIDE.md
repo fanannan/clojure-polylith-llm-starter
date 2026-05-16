@@ -855,7 +855,7 @@ Requirement ID の検査順序:
 
 テンプレート保守で `session-briefing.sh` の mode 表示、`Control Plane`、または `--audit` を変更した場合は、通常ゲートとは別に `.llm/template-only/tests/check-session-briefing-scenarios.sh` を実行対象にする。この E2E は LLM を呼ばず、briefing という教材自体の key phrase / forbidden phrase / audit EDN を検査する。
 
-テンプレート保守で Instruction-Following Instrument の setup runner、case catalog、observer isolation、path-level scorer を変更した場合は、通常ゲートとは別に `.llm/template-only/tests/check-instrument-setup-smoke.sh` を実行対象にする。この smoke は LLM を呼ばず、template / project target repo の作成、instrument artifact の非混入、outside observer store、observation / terminal marker、単一 run の preliminary score を検査する。複数 run 集約や曖昧性 route を変更した場合は、`.llm/template-only/tests/check-instrument-summary-smoke.sh` も実行対象にする。
+テンプレート保守で Instruction-Following Instrument の setup runner、case catalog、observer isolation、path-level scorer を変更した場合は、通常ゲートとは別に `.llm/template-only/tests/check-instrument-setup-smoke.sh` を実行対象にする。この smoke は LLM を呼ばず、template / project target repo の作成、instrument artifact の非混入、outside observer store、observation / terminal marker、単一 run の preliminary score と template run record への mirror を検査する。複数 run 集約や曖昧性 route を変更した場合は、`.llm/template-only/tests/check-instrument-summary-smoke.sh` も実行対象にする。
 
 ### 5.15 Structural Evidence View の保守
 
@@ -1188,7 +1188,7 @@ session briefing は `:mode-and-ownership` の pilot input であり、計測器
 - observer store: raw observation、snapshot、terminal marker を target repo の外に置く
 - template repo: runner source と sanitized run record の置き場。raw transcript は commit しない
 
-`score-run.sh` は単一 run の path-level preliminary score だけを出す。`summarize-runs.sh` は複数 score の N / invalid 数 / result 分布を集約し、割れを `:spec-ambiguous` に route する。どちらも model 能力の点推定や reform 採否は出さない。
+`score-run.sh` は単一 run の path-level preliminary score だけを出し、metadata に `:template/run-dir` がある場合は template run record へ mirror する。`summarize-runs.sh` は複数 score の N / invalid 数 / result 分布を集約し、割れを `:spec-ambiguous` に route する。どちらも model 能力の点推定や reform 採否は出さない。
 
 ---
 

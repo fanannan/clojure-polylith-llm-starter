@@ -23,7 +23,7 @@ DESIGN IR 検査は `/tmp` に synthetic repos を作成し、DESIGN 抽出・�
 trace metadata 検査は `/tmp` に synthetic repos を作成し、public boundary / deftest への trace metadata と誤配置検出を確認する。
 obligation frontier 検査は `/tmp` に synthetic repos を作成し、DESIGN obligation が missing-boundary / missing-test として赤くなり、boundary/test trace の追加で消えること、§2.2 / §10 由来 disposition が complete になり、backing のない disposition override と存在しない Q 参照が red になり、open Q 参照が accounted になることを確認する。
 session briefing 検査は `/tmp` に synthetic repos を作成し、manifest missing / template clean / template conflict / project bootstrap / project development の各 mode で `Control Plane` の key phrase と forbidden phrase、`--audit --format edn` の構造を確認する。LLM は呼ばず、briefing という教材自体が壊れていないかだけを検査する。
-instrument setup smoke は `/tmp` に template / project target repo を作成し、`.llm/template-only/instrument/` や observer store が target repo に混入しないこと、capture / terminal marker が outside observer store に記録できること、path-level scorer が hard fail / expected stop を判別できることを検査する。LLM は呼ばず、model score は出さない。
+instrument setup smoke は `/tmp` に template / project target repo を作成し、`.llm/template-only/instrument/` や observer store が target repo に混入しないこと、capture / terminal marker が outside observer store に記録できること、path-level scorer が hard fail / expected stop を判別し template run record に mirror することを検査する。LLM は呼ばず、model score は出さない。
 instrument summary smoke は synthetic `score.edn` を複数作成し、summary が N / invalid 数 / result 分布を出し、割れた結果を平均せず `:spec-ambiguous` へ route することを検査する。
 benchmark setup smoke は `/tmp` に demo repo を作成し、benchmark harness が人間なしで準備・marker 記録まで自走できることだけを確認する。observer record が demo repo の外側にあり、demo repo の commit tree に benchmark protocol が混入しないことも検査する。これは benchmark evidence ではない。
 

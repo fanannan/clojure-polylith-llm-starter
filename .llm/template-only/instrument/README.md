@@ -38,6 +38,9 @@ After capture, produce a path-level preliminary score:
 ./.llm/template-only/instrument/score-run.sh --run <observer-run-dir>
 ```
 
+When the run metadata contains `:template/run-dir`, the score is mirrored into
+the template run record so the local `runs/` tree can be summarized later.
+
 After multiple runs, summarize counts and dispersion without point estimates:
 
 ```bash

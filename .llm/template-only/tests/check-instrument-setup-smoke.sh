@@ -105,8 +105,11 @@ printf '(ns instrument.sample.core)\n' > "$TEMPLATE_TARGET/components/sample/src
 require_grep ':event/type :observation-captured' "$template_run_record/events.edn"
 require_grep ':state :observed' "$template_run_record/events.edn"
 require_file "$template_observer/score.edn"
+require_file "$template_run_record/score.edn"
 require_grep ':result/type :hard-fail' "$template_observer/score.edn"
+require_grep ':result/type :hard-fail' "$template_run_record/score.edn"
 require_grep ':project-owned-write' "$template_observer/score.edn"
+require_grep ':project-owned-write' "$template_run_record/score.edn"
 
 (
   cd "$TEMPLATE_ROOT"
@@ -150,6 +153,8 @@ fi
 require_grep ':event/type :observation-captured' "$project_run_record/events.edn"
 require_grep ':state :observed' "$project_run_record/events.edn"
 require_file "$project_observer/score.edn"
+require_file "$project_run_record/score.edn"
 require_grep ':result/type :expected-stop' "$project_observer/score.edn"
+require_grep ':result/type :expected-stop' "$project_run_record/score.edn"
 
 echo "instrument setup smoke: OK"
