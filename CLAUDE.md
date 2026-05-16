@@ -25,25 +25,27 @@
 
 ### ルート直下（最重要）
 
-| 文書 | 役割 | いつ読むか |
-|---|---|---|
-| **CLAUDE.md（本文書）** | 第一原理と常時制約 | **毎セッション必読** |
-| **IDEA.md** | 任意の着想メモ。仕様化前の要望・背景・制約を DESIGN へ構造化する入口 | 初期化時、仕様変更の相談時、存在し実内容がある時 |
-| **DESIGN.md** | プロダクト仕様（何を作るか） | 実装に着手する前、仕様を確認する時 |
-| **AGENTS.md** | 非 Claude エージェント（Codex、GitHub Copilot 等が読む標準慣習、OpenAI 提唱）向け bootstrap redirect。session briefing 実行、`CLAUDE.md` 正本、Structural Evidence は `.llm/scripts/` の共有 primitive を使うことだけを指示する。ポリシー正本ではない | 他エージェント実行時 |
+「いつ読むか」（状況→文書）は §0 末尾の「フェーズ別の参照マップ」に一本化している。本表は文書と役割のカタログである。
+
+| 文書 | 役割 |
+|---|---|
+| **CLAUDE.md（本文書）** | 第一原理と常時制約 |
+| **IDEA.md** | 任意の着想メモ。仕様化前の要望・背景・制約を DESIGN へ構造化する入口 |
+| **DESIGN.md** | プロダクト仕様（何を作るか） |
+| **AGENTS.md** | 非 Claude エージェント（Codex、GitHub Copilot 等が読む標準慣習、OpenAI 提唱）向け bootstrap redirect。session briefing 実行、`CLAUDE.md` 正本、Structural Evidence は `.llm/scripts/` の共有 primitive を使うことだけを指示する。ポリシー正本ではない |
 
 ### .llm/guide/（プロジェクト運営ガイド）
 
-| 文書 | 役割 | いつ読むか |
-|---|---|---|
-| `.llm/guide/CODING_GUIDE.md` | Clojure の書き方詳細、LLM 特有の落とし穴 | コーディング判断に迷った時 |
-| `.llm/guide/POLYLITH_GUIDE.md` | Polylith 構造の詳細運用、brick 追加手順、境界判断 | brick 追加時・`poly check` で詰まった時 |
-| `.llm/guide/SPEC_GUIDE.md` | IDEA から DESIGN への翻案、reconciliation、test obligation、DESIGN 更新 impact 分類 | 着想整理・仕様変更時 |
-| `.llm/guide/STACK_GUIDE.md` | 技術選定の判断済み推奨集（必須技術基盤、用途別機能カテゴリ、禁止・非推奨ライブラリ） | ライブラリ採用検討時、技術選定根拠の確認時 |
-| `.llm/guide/TEMPLATE_USAGE_GUIDE.md` | 派生後も読めるテンプレート由来・参照導線の入口。プロダクト README にテンプレート説明を残さないための逃がし先 | README 置換後にテンプレート利用手順や由来を確認する時 |
-| `.llm/guide/COLLABORATION_GUIDE.md` | LLM と人間の協働プロトコル（役割分担・曖昧性解消・対話） | 協働方針・質問粒度・役割優先順位で迷った時 |
-| `.llm/guide/BOOTSTRAP_GUIDE.md` | プロジェクト初期化手順 | **初期化期のみ**（完了後は §0 の参照指示で自然にスキップされる） |
-| `.llm/guide/MAINTAINERS_GUIDE.md` | テンプレート自体の設計原則・保守者向け | テンプレート改修・ライブラリ更新・規約追加時 |
+| 文書 | 役割 |
+|---|---|
+| `.llm/guide/CODING_GUIDE.md` | Clojure の書き方詳細、LLM 特有の落とし穴 |
+| `.llm/guide/POLYLITH_GUIDE.md` | Polylith 構造の詳細運用、brick 追加手順、境界判断 |
+| `.llm/guide/SPEC_GUIDE.md` | IDEA から DESIGN への翻案、reconciliation、test obligation、DESIGN 更新 impact 分類 |
+| `.llm/guide/STACK_GUIDE.md` | 技術選定の判断済み推奨集（必須技術基盤、用途別機能カテゴリ、禁止・非推奨ライブラリ） |
+| `.llm/guide/TEMPLATE_USAGE_GUIDE.md` | 派生後も読めるテンプレート由来・参照導線の入口。プロダクト README にテンプレート説明を残さないための逃がし先 |
+| `.llm/guide/COLLABORATION_GUIDE.md` | LLM と人間の協働プロトコル（役割分担・曖昧性解消・対話） |
+| `.llm/guide/BOOTSTRAP_GUIDE.md` | プロジェクト初期化手順 |
+| `.llm/guide/MAINTAINERS_GUIDE.md` | テンプレート自体の設計原則・保守者向け |
 
 ### .llm/memory/（プロジェクトの記憶）
 
@@ -84,20 +86,24 @@ Markdown 文書から別の Markdown 文書を指す時は、本文中に裸で�
 
 ### フェーズ別の参照マップ
 
+「いつ読むか」（状況→文書）の正本はこの表である。各文書の役割は上の 3 表（カタログ）を見る。
+
 | 状況 | 主に読むべき文書 |
 |---|---|
-| **プロジェクト初期化中** | `.llm/guide/BOOTSTRAP_GUIDE.md` |
-| **着想整理** | `IDEA.md`（存在し実内容がある場合）→ `.llm/guide/SPEC_GUIDE.md` → `DESIGN.md` |
-| **日常開発** | CLAUDE.md（本文書） |
-| **仕様確認** | DESIGN.md |
+| **毎セッション開始時・作業着手前、日常開発** | CLAUDE.md（本文書、毎セッション必読） |
+| **プロジェクト初期化中** | `.llm/guide/BOOTSTRAP_GUIDE.md`（初期化期のみ。完了後は §0 の判定で自然にスキップ） |
+| **着想整理（初期化時・仕様変更の相談時）** | `IDEA.md`（存在し実内容がある場合）→ `.llm/guide/SPEC_GUIDE.md` → `DESIGN.md` |
+| **仕様確認（実装着手前）** | DESIGN.md |
 | **契約・不変条件の確認** | `.llm/memory/KNOWLEDGE.md` |
 | **過去の設計判断の確認** | `.llm/memory/adr/` |
-| **Clojure 書き方判断** | `.llm/guide/CODING_GUIDE.md` |
-| **Polylith 構造判断** | `.llm/guide/POLYLITH_GUIDE.md` |
-| **技術選定** | `.llm/guide/STACK_GUIDE.md` |
-| **協働方針・質問粒度の判断** | `.llm/guide/COLLABORATION_GUIDE.md` |
+| **Clojure 書き方判断（コーディングに迷った時）** | `.llm/guide/CODING_GUIDE.md` |
+| **Polylith 構造判断（brick 追加・`poly check` で詰まった時）** | `.llm/guide/POLYLITH_GUIDE.md` |
+| **技術選定（ライブラリ採用検討・選定根拠の確認）** | `.llm/guide/STACK_GUIDE.md` |
+| **協働方針・質問粒度・役割優先順位の判断** | `.llm/guide/COLLABORATION_GUIDE.md` |
 | **判断に迷った時** | `.llm/memory/QUESTIONS.md` に Q を立てる |
-| **テンプレート自体の改修** | `.llm/guide/MAINTAINERS_GUIDE.md` |
+| **他エージェント（Codex 等）実行時** | AGENTS.md |
+| **README 置換後にテンプレート由来・利用手順を確認する時** | `.llm/guide/TEMPLATE_USAGE_GUIDE.md` |
+| **テンプレート自体の改修（ライブラリ更新・規約追加を含む）** | `.llm/guide/MAINTAINERS_GUIDE.md` |
 
 ---
 
