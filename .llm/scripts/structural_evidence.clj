@@ -1612,18 +1612,21 @@
 
 (defn- evidence-staleness [entry record current-packet include-working-tree?]
   (let [deps (:invalidated-by entry)
-        rev (or (:closed-git-rev record) (:repo-rev entry))
-        changed-paths (changed-paths-since rev include-working-tree?)
-        hits (map #(invalidation-hit? % changed-paths current-packet) deps)]
+        rev (or (:closed-git-rev record) (:repo-rev entry))]
     (cond
       (empty? deps) {:status :unknown
                      :reason "no invalidated-by dependencies recorded"}
-      (some true? hits) {:status :stale-candidate
-                         :reason "a dependency changed after the evidence was recorded"}
-      (some #{:unknown} hits) {:status :unknown
-                               :reason "missing close revision for dependency comparison"}
-      :else {:status :valid
-             :reason "no invalidating change detected"})))
+      (not include-working-tree?) {:status :valid
+                                   :reason "same change content; current diff is not an invalidating follow-up change"}
+      :else (let [changed-paths (changed-paths-since rev include-working-tree?)
+                  hits (map #(invalidation-hit? % changed-paths current-packet) deps)]
+              (cond
+                (some true? hits) {:status :stale-candidate
+                                   :reason "a dependency changed after the evidence was recorded"}
+                (some #{:unknown} hits) {:status :unknown
+                                         :reason "missing close revision for dependency comparison"}
+                :else {:status :valid
+                       :reason "no invalidating change detected"})))))
 
 (defn- record-staleness [record current-packet]
   (let [same-fingerprint? (same-fingerprint-content? record current-packet)
@@ -3027,7 +3030,10 @@
                               :evidence
                               (mapv #(assoc % :invalidated-by [])
                                     (:evidence project-design)))
-	        closed-missing (assoc project-design :status :closed)
+        same-content-record (assoc project-design
+                                   :status :clean-close
+                                   :closed-git-rev "fixture-rev")
+        closed-missing (assoc project-design :status :closed)
         closed-declared (assoc project-design
                                :status :closed
                                :llm-declared
@@ -3121,10 +3127,12 @@
 	             (every? #(seq (:invalidated-by %)) (:evidence backfilled)))
 	    (assert! "backfill infers closed git revision"
 	             (= "fixture-rev" (:closed-git-rev backfilled)))
-	    (assert! "record without invalidation dependencies has unknown freshness"
-	             (= :unknown (:status (record-staleness no-deps-record project-design))))
-	    (assert! "what-now packet-required blocked-on is structured"
-	             (= [{:type :packet-required}] (:blocked-on packet-required-plan)))
+    (assert! "record without invalidation dependencies has unknown freshness"
+             (= :unknown (:status (record-staleness no-deps-record project-design))))
+    (assert! "matching content does not invalidate evidence with its own diff"
+             (= :valid (:status (record-staleness same-content-record project-design))))
+    (assert! "what-now packet-required blocked-on is structured"
+             (= [{:type :packet-required}] (:blocked-on packet-required-plan)))
 	    (assert! "what-now does not let stale active packet steal current diff"
 	             (and (= :packet-required (:state current-diff-with-stale-active))
 	                  (seq (:housekeeping current-diff-with-stale-active))))
