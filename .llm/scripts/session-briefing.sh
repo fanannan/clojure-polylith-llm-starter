@@ -28,6 +28,137 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 cd "$WORKSPACE_ROOT"
 
+AUDIT=0
+AUDIT_FORMAT="text"
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --audit)
+      AUDIT=1
+      shift
+      ;;
+    --format)
+      if [ "$#" -lt 2 ]; then
+        echo "ERROR: --format requires a value" >&2
+        exit 2
+      fi
+      AUDIT_FORMAT="${2:-}"
+      shift 2
+      ;;
+    *)
+      echo "ERROR: unknown argument: $1" >&2
+      exit 2
+      ;;
+  esac
+done
+
+edn_escape_string() {
+  printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+}
+
+collect_briefing_audit() {
+  local file="$1"
+
+  AUDIT_TOTAL_LINES="$(wc -l < "$file" | tr -d ' ')"
+  AUDIT_CONTROL_LINE="$(awk '/^## Control Plane$/ { print NR; exit }' "$file")"
+  AUDIT_CONTROL_LINE="${AUDIT_CONTROL_LINE:-0}"
+  AUDIT_BULLET_COUNT="$(awk '
+    /^## Control Plane$/ { in_control=1; next }
+    in_control && /^$/ { if (seen_bullet) exit; next }
+    in_control && /^## / { exit }
+    in_control && /^- / { seen_bullet=1; count++ }
+    END { print count + 0 }
+  ' "$file")"
+  AUDIT_NEXT_ACTION="$(awk -F': ' '
+    /^## Control Plane$/ { in_control=1; next }
+    in_control && /^## / { exit }
+    in_control && /^- next action surface:/ {
+      sub(/^- next action surface: /, "", $0)
+      print
+      exit
+    }
+  ' "$file")"
+  AUDIT_FORBIDDEN_SURFACES="$(grep -E 'repo-control\.sh|system-health|philosophy command|benchctl' "$file" 2>/dev/null \
+    | sed 's/^[[:space:]]*//' \
+    | sort -u || true)"
+
+  if [ "$AUDIT_CONTROL_LINE" -gt 0 ] \
+    && [ "$AUDIT_CONTROL_LINE" -le 15 ] \
+    && [ "$AUDIT_BULLET_COUNT" -le 6 ] \
+    && printf '%s\n' "$AUDIT_NEXT_ACTION" | grep -q 'evidence.sh what-now' \
+    && [ -z "$AUDIT_FORBIDDEN_SURFACES" ]; then
+    AUDIT_BUDGET="ok"
+  else
+    AUDIT_BUDGET="warn"
+  fi
+}
+
+print_briefing_audit_text() {
+  local file="$1"
+  collect_briefing_audit "$file"
+
+  echo ""
+  echo "## Briefing Audit"
+  echo ""
+  echo "- total lines: $AUDIT_TOTAL_LINES"
+  echo "- Control Plane first line: $AUDIT_CONTROL_LINE"
+  echo "- Control Plane bullet count: $AUDIT_BULLET_COUNT"
+  echo "- next-action surface: ${AUDIT_NEXT_ACTION:-unknown}"
+  if [ -n "$AUDIT_FORBIDDEN_SURFACES" ]; then
+    echo "- forbidden surfaces:"
+    printf '%s\n' "$AUDIT_FORBIDDEN_SURFACES" | sed 's/^/  - /'
+  else
+    echo "- forbidden surfaces: none"
+  fi
+  echo "- budget: $AUDIT_BUDGET"
+}
+
+print_briefing_audit_edn() {
+  local file="$1"
+  local forbidden_edn
+  collect_briefing_audit "$file"
+
+  if [ -n "$AUDIT_FORBIDDEN_SURFACES" ]; then
+    forbidden_edn="["
+    while IFS= read -r line; do
+      [ -n "$line" ] || continue
+      forbidden_edn="${forbidden_edn}\"$(edn_escape_string "$line")\" "
+    done <<EOF
+$AUDIT_FORBIDDEN_SURFACES
+EOF
+    forbidden_edn="${forbidden_edn% }]"
+  else
+    forbidden_edn="[]"
+  fi
+
+  printf '{:briefing/audit {:total-lines %s\n' "$AUDIT_TOTAL_LINES"
+  printf '                  :control-plane/first-line %s\n' "$AUDIT_CONTROL_LINE"
+  printf '                  :control-plane/bullets %s\n' "$AUDIT_BULLET_COUNT"
+  printf '                  :next-action-surface "%s"\n' "$(edn_escape_string "$AUDIT_NEXT_ACTION")"
+  printf '                  :forbidden-surfaces %s\n' "$forbidden_edn"
+  printf '                  :budget :%s}}\n' "$AUDIT_BUDGET"
+}
+
+if [ "$AUDIT" -eq 1 ]; then
+  tmp="$(mktemp)"
+  trap 'rm -f "$tmp"' EXIT
+  bash "$SCRIPT_DIR/session-briefing.sh" > "$tmp"
+  case "$AUDIT_FORMAT" in
+    text|"")
+      cat "$tmp"
+      print_briefing_audit_text "$tmp"
+      ;;
+    edn)
+      print_briefing_audit_edn "$tmp"
+      ;;
+    *)
+      echo "ERROR: unsupported --format: $AUDIT_FORMAT" >&2
+      exit 2
+      ;;
+  esac
+  exit 0
+fi
+
 # -----------------------------------------------------------------------------
 # モード判定（manifest .llm/repo-context.edn の :repo-kind を読む）
 # -----------------------------------------------------------------------------
@@ -398,6 +529,8 @@ evidence_plane_brief() {
   echo "- what-now と status は closed record の invalidated-by から stale candidate を surface する。"
 }
 
+# Display-only salience layer. This does not introduce a new authority, planner,
+# or task system; it summarizes existing repo-context / what-now / gate surfaces.
 control_plane_brief() {
   local state="$1"
   local phase="${2:-}"

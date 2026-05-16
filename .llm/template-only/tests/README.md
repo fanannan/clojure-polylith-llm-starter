@@ -12,6 +12,7 @@
 ./.llm/template-only/tests/check-design-ir-scenarios.sh
 ./.llm/template-only/tests/check-trace-metadata-scenarios.sh
 ./.llm/template-only/tests/check-obligation-frontier-scenarios.sh
+./.llm/template-only/tests/check-session-briefing-scenarios.sh
 ./.llm/template-only/tests/check-benchmark-setup-smoke.sh
 ```
 
@@ -19,14 +20,15 @@
 DESIGN IR 検査は `/tmp` に synthetic repos を作成し、DESIGN 抽出・既存分析 EDN 連携・stale IR 検出を確認する。
 trace metadata 検査は `/tmp` に synthetic repos を作成し、public boundary / deftest への trace metadata と誤配置検出を確認する。
 obligation frontier 検査は `/tmp` に synthetic repos を作成し、DESIGN obligation が missing-boundary / missing-test として赤くなり、boundary/test trace の追加で消えること、§2.2 / §10 由来 disposition が complete になり、backing のない disposition override と存在しない Q 参照が red になり、open Q 参照が accounted になることを確認する。
+session briefing 検査は `/tmp` に synthetic repos を作成し、manifest missing / template clean / template conflict / project bootstrap / project development の各 mode で `Control Plane` の key phrase と forbidden phrase、`--audit --format edn` の構造を確認する。LLM は呼ばず、briefing という教材自体が壊れていないかだけを検査する。
 benchmark setup smoke は `/tmp` に demo repo を作成し、benchmark harness が人間なしで準備・marker 記録まで自走できることだけを確認する。observer record が demo repo の外側にあり、demo repo の commit tree に benchmark protocol が混入しないことも検査する。これは benchmark evidence ではない。
 
 ## 位置づけ
 
 - 日常ゲート: `.llm/scripts/check-workspace-integrity.sh`
-- テンプレート保守 E2E: `./check-map-scenarios.sh`, `./check-design-ir-scenarios.sh`, `./check-trace-metadata-scenarios.sh`, `./check-obligation-frontier-scenarios.sh`, `./check-benchmark-setup-smoke.sh`
+- テンプレート保守 E2E: `./check-map-scenarios.sh`, `./check-design-ir-scenarios.sh`, `./check-trace-metadata-scenarios.sh`, `./check-obligation-frontier-scenarios.sh`, `./check-session-briefing-scenarios.sh`, `./check-benchmark-setup-smoke.sh`
 
-`check-map-scenarios.sh`、`check-design-ir-scenarios.sh`、`check-trace-metadata-scenarios.sh`、`check-obligation-frontier-scenarios.sh`、`check-benchmark-setup-smoke.sh` は、日常作業の高速ループに入れない。テンプレート配布物の信頼性を確認するための重い保守テストとして扱う。
+`check-map-scenarios.sh`、`check-design-ir-scenarios.sh`、`check-trace-metadata-scenarios.sh`、`check-obligation-frontier-scenarios.sh`、`check-session-briefing-scenarios.sh`、`check-benchmark-setup-smoke.sh` は、日常作業の高速ループに入れない。テンプレート配布物の信頼性を確認するための重い保守テストとして扱う。
 
 ## 常備する観点
 
@@ -54,5 +56,7 @@ benchmark setup smoke は `/tmp` に demo repo を作成し、benchmark harness 
 - Work Frontier が missing-boundary / missing-test を表示し、boundary + deftest trace が揃うと frontier から消えること
 - DESIGN §2.2 / §10 由来の `:out-of-scope` / `:deferred` は complete、backing のない disposition override は `:unbacked-disposition` になること
 - open Q 参照は `:blocked-by-question`、resolved Q 参照は通常評価へ復帰、存在しない Q 参照は `:unresolved-blocker` になること
+- session briefing が mode / ownership / next action surface / completion gate を `Control Plane` として前方に表示し、`repo-control.sh` 等の競合 surface を案内しないこと
+- `session-briefing.sh --audit --format edn` が audit EDN だけを返し、Control Plane の位置・bullet 数・next action surface・forbidden surface・budget を確認できること
 - benchmark setup が demo repo から `.llm/template-only/` を除去し、post-commit snapshot、simulation approval、terminal marker を記録できること
 - benchmark protocol / run record が demo repo の commit tree に入らず、observer hook の無効化と terminal marker 重複を検出できること

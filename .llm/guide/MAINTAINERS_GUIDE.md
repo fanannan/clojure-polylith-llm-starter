@@ -713,16 +713,18 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
 
 | 項目 | 内容 |
 |---|---|
-| **目的** | `CLAUDE.md §8.0`「実装着手前に DESIGN.md / KNOWLEDGE.md / QUESTIONS.md / adr/ を確認」を規律依存から機械化バックアップへ引き上げる |
+| **目的** | `CLAUDE.md §8.0`「実装着手前に DESIGN.md / KNOWLEDGE.md / QUESTIONS.md / adr/ を確認」を規律依存から機械化バックアップへ引き上げる。あわせて、mode / ownership / next action surface / completion gate を `Control Plane` として短く見せ、既存制御面の salience を上げる |
 | **実装手段** | `.llm/scripts/session-briefing.sh`（副作用なし、stdout のみ、常に exit 0）|
 | **起動経路** | Claude Code は `SessionStart` hook で自動、Codex 等は `AGENTS.md` 経由で LLM が手動実行 |
-| **出力内容** | フェーズ判定（initialization / development）、未完了指標、未対応(open) Q 一覧、最新 ADR、直近コミット、Evidence Plane（active/closed packet、`what-now`、staged gate、last commit gate）、`§8.0` チェックリスト |
+| **出力内容** | `Control Plane`（mode source、operating intent、decision log、next action surface、completion gate）、フェーズ判定（initialization / development）、未完了指標、未対応(open) Q 一覧、最新 ADR、直近コミット、Evidence Plane（active/closed packet、`what-now`、staged gate、last commit gate）、`§8.0` チェックリスト。`--audit` / `--audit --format edn` は briefing の情報構造と情報量を検査する |
 
 機械化第 1〜第 5 層との関係:
 
 - **機械化第 1〜第 5 層は違反を検出する**（pass/fail、終了コードで表現）
 - **セッション状態ブリーフィングは現状を見せる**（LLM が何を読むべきかの判断材料を提供）
 - 両者は排他ではなく、併用によって「規約違反の早期検知」と「着手前の文脈確立」の両方を機械化する
+- `Control Plane` は新しい正本・planner・task system ではない。`.llm/repo-context.edn`、`evidence.sh what-now`、`check-workspace-integrity.sh`、記録先規律の既存分担を、セッション冒頭で誤読しにくい形に圧縮する表示層である。
+- `--audit` は LLM contract test の入力品質を測る health check であり、LLM の行動追随性を採点しない。mode 別の出力教材は `.llm/template-only/tests/check-session-briefing-scenarios.sh` で key phrase / forbidden phrase と audit EDN を検査する。
 
 **Codex 側の非対称性**: Codex には SessionStart hook 機構が存在しないため、`AGENTS.md` に「起動時に `bash .llm/scripts/session-briefing.sh` を実行してから CLAUDE.md に従え」「Structural Evidence は `.llm/scripts/` の共有 primitive を使え」を明記することで、**文書経由の規律依存**にとどまる。構造的制約であり回避しない（`CLAUDE.md §1.2.5` 失敗早期検知と承認設計の思想と整合。LLM の規律逸脱は可逆、AGENTS.md の記述は明示的、Codex 実行頻度も Claude Code より低い、の 3 点で許容範囲）。
 
@@ -732,6 +734,14 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
 2. **重検査を呼ばない**: `check-workspace-integrity.sh` / `check-vulnerabilities.sh` は起動遅延を招くため、ブリーフィングには入れない
 3. **情報の鮮度を優先**: キャッシュせず毎回算出する（ファイル走査は軽量な grep / awk / find / git log に限定）
 4. **拡張時の追加先**: ブリーフィングの新項目は `.llm/scripts/session-briefing.sh` の出力関数として追加、`.llm/scripts/README.md` の「セッション起動時のブリーフィング」節を更新
+
+**LLM contract test との接続**:
+
+- LLM contract test の最初の family は `:briefing-mode-recognition` とし、session briefing を読んだ結果、mode / ownership / next action を守れるかを観測する
+- `:instrumented-contract` は runner 側の観測分類であり、agent に見せる repo mode ではない。agent が見るのは通常どおり `:repo-kind :template` / `:project` / conflict の briefing 出力だけである
+- 最初の implementation slice では LLM を呼ばない。`check-session-briefing-scenarios.sh` と `session-briefing.sh --audit` で教材品質を決定的に検査し、contract runner は別段階で導入する
+- 将来の misread taxonomy はまず `:absent` / `:hidden` / `:competing-surface` / `:stale` / `:ignored` の 5 値に限定する。observer / hook plane の環境失敗は `:run/valid? false` として扱い、model score に混ぜない
+- mandate-binding annotation は、本文 prose に既にある義務を追跡する metadata であり、新しい義務を定義してはならない。生成される index は derived view であって正本ではない
 
 ### 5.11 `lint-import-hooks.sh` 再実行のタイミング
 
@@ -836,6 +846,8 @@ Requirement ID の検査順序:
 5. 未参照 DESIGN ID は WARN にする
 
 テンプレート保守で `gen_brick_map.clj` / `gen_workspace_map.clj` / wrapper / migration policy を変更した場合、通常ゲートとは別に `.llm/template-only/tests/check-map-scenarios.sh` を実行対象にする。この E2E は `/tmp` の synthetic repo で生成・移行・エラー検出・自力修復を検査するもので、派生プロジェクトのアプリケーションテストではない。
+
+テンプレート保守で `session-briefing.sh` の mode 表示、`Control Plane`、または `--audit` を変更した場合は、通常ゲートとは別に `.llm/template-only/tests/check-session-briefing-scenarios.sh` を実行対象にする。この E2E は LLM を呼ばず、briefing という教材自体の key phrase / forbidden phrase / audit EDN を検査する。
 
 ### 5.15 Structural Evidence View の保守
 

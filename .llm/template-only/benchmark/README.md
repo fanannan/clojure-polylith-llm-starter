@@ -85,6 +85,13 @@ benchmark protocol files を入れない。
 `:manual-observer` run と同じ評価集合に混ぜない。導入する場合は、mode 名、agent
 に見せる追加指示、記録項目、cross-run の読み方を別に定義する。
 
+LLM contract test はこの例外側に属するが、agent に「contract test である」と
+知らせる mode ではない。`:instrumented-contract` は runner 側の分類であり、
+外側で trace / diff / transcript を取ることだけを意味する。agent が見るのは
+通常の repo mode（`:repo-kind :template` / `:project` / conflict）と
+session briefing である。最初の family は `:briefing-mode-recognition` とし、
+session briefing を読んだ結果、mode / ownership / next action を守れるかを観測する。
+
 observer hook は demo repo の `.git/hooks/post-commit` に置く。hook body は Git 管理外で、
 demo repo の commit tree には入らない。agent が通常初期化中に `core.hooksPath` を
 設定すると `.git/hooks/post-commit` が bypass され snapshot が欠落するため、marker
