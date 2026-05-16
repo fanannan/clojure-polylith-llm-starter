@@ -318,9 +318,11 @@ After the agent stops, capture an observation:
 \`\`\`bash
 $observer_dir/capture-observation.sh --note "agent stopped"
 $observer_dir/mark-terminal-state.sh --state observed --note "manual observation captured"
+$TEMPLATE_ROOT/.llm/template-only/instrument/score-run.sh --run "$observer_dir"
 \`\`\`
 
-Do not score this run from a single observation. Use it as raw measurement input.
+The score is path-level and preliminary. Do not treat a single score as a model
+ability estimate; use it as raw measurement input.
 EOF
 cp "$run_dir/run.md" "$observer_dir/run.md"
 
@@ -359,8 +361,15 @@ at="\$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 rev="\$(git -C "\$TARGET_DIR" rev-parse HEAD 2>/dev/null || printf unknown)"
 mkdir -p "\$OBSERVER_DIR/snapshots" "\$TEMPLATE_RUN_DIR/snapshots"
 git -C "\$TARGET_DIR" status --porcelain > "\$OBSERVER_DIR/snapshots/\$at.status"
-git -C "\$TARGET_DIR" diff --name-only > "\$OBSERVER_DIR/snapshots/\$at.diff-paths"
-git -C "\$TARGET_DIR" diff --numstat > "\$OBSERVER_DIR/snapshots/\$at.numstat"
+{
+  git -C "\$TARGET_DIR" diff --name-only
+  git -C "\$TARGET_DIR" diff --cached --name-only
+  git -C "\$TARGET_DIR" status --porcelain | sed -E 's/^.{3}//'
+} | sed '/^[[:space:]]*$/d' | sort -u > "\$OBSERVER_DIR/snapshots/\$at.diff-paths"
+{
+  git -C "\$TARGET_DIR" diff --numstat
+  git -C "\$TARGET_DIR" diff --cached --numstat
+} > "\$OBSERVER_DIR/snapshots/\$at.numstat"
 cp "\$OBSERVER_DIR/snapshots/\$at.status" "\$TEMPLATE_RUN_DIR/snapshots/\$at.status"
 cp "\$OBSERVER_DIR/snapshots/\$at.diff-paths" "\$TEMPLATE_RUN_DIR/snapshots/\$at.diff-paths"
 cp "\$OBSERVER_DIR/snapshots/\$at.numstat" "\$TEMPLATE_RUN_DIR/snapshots/\$at.numstat"
@@ -426,3 +435,4 @@ echo ""
 echo "After the agent stops:"
 echo "  $observer_dir/capture-observation.sh --note \"agent stopped\""
 echo "  $observer_dir/mark-terminal-state.sh --state observed --note \"manual observation captured\""
+echo "  $TEMPLATE_ROOT/.llm/template-only/instrument/score-run.sh --run \"$observer_dir\""

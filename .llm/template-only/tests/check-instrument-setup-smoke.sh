@@ -97,10 +97,16 @@ if git -C "$TEMPLATE_TARGET" ls-files | grep -q 'observer-runs\|instrument/runs'
   fail "observer or instrument run files were committed into template target"
 fi
 
+mkdir -p "$TEMPLATE_TARGET/components/sample/src/instrument"
+printf '(ns instrument.sample.core)\n' > "$TEMPLATE_TARGET/components/sample/src/instrument/core.clj"
 "$template_observer/capture-observation.sh" --note "template target smoke"
 "$template_observer/mark-terminal-state.sh" --state observed --note "template target smoke complete"
+"$TEMPLATE_ROOT/.llm/template-only/instrument/score-run.sh" --run "$template_observer" >/dev/null
 require_grep ':event/type :observation-captured' "$template_run_record/events.edn"
 require_grep ':state :observed' "$template_run_record/events.edn"
+require_file "$template_observer/score.edn"
+require_grep ':result/type :hard-fail' "$template_observer/score.edn"
+require_grep ':project-owned-write' "$template_observer/score.edn"
 
 (
   cd "$TEMPLATE_ROOT"
@@ -140,7 +146,10 @@ fi
 
 "$project_observer/capture-observation.sh" --note "project target smoke"
 "$project_observer/mark-terminal-state.sh" --state observed --note "project target smoke complete"
+"$TEMPLATE_ROOT/.llm/template-only/instrument/score-run.sh" --run "$project_observer" >/dev/null
 require_grep ':event/type :observation-captured' "$project_run_record/events.edn"
 require_grep ':state :observed' "$project_run_record/events.edn"
+require_file "$project_observer/score.edn"
+require_grep ':result/type :expected-stop' "$project_observer/score.edn"
 
 echo "instrument setup smoke: OK"
