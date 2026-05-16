@@ -4,6 +4,7 @@
 # 目的:
 #   他の script 群を束ね、ワークスペース全体の整合性を一括検査する。
 #   `CLAUDE.md §5.5` 完了条件にこの 1 行を追加するだけで、以下が必須通過ゲートに入る:
+#     - bootstrap identity CONFLICT（:template 主張 + bootstrap 完了痕跡）
 #     - プレースホルダ残存（check-placeholders.sh）
 #     - brick 登録漏れ（check-brick-registration.sh）
 #     - DESIGN IR 生成物 drift（check-design-ir.sh）
@@ -97,6 +98,36 @@ run_step_if_capability() {
     echo "SKIP: :capabilities does not include :$cap"
   fi
 }
+
+# --- bootstrap identity CONFLICT 検査 ---
+#
+# manifest が :repo-kind :template を主張しているのに bootstrap 完了痕跡
+# （workspace.edn が myorg.myapp placeholder から書き換わっている、または
+# projects/ 配下に deploy project が存在）がある場合、bootstrap finalization で
+# .llm/repo-context.edn の transform が漏れている。session-briefing は同条件を
+# 表示するだけで exit 0 だが、本検査は完了条件として block する。
+# :repo-kind :template は repo-context consistency 検査により常に
+# :adoption-mode :complete であるため、ここでは retrofit 緩和を設けず常に block する。
+echo ""
+echo "=== bootstrap identity CONFLICT 検査 ==="
+conflict_trace=""
+if [ "$(read_repo_kind || true)" = "template" ]; then
+  if [ -f "workspace.edn" ] && ! grep -q 'myorg\.myapp' workspace.edn 2>/dev/null; then
+    conflict_trace="workspace.edn が配布時プレースホルダ 'myorg.myapp' から書き換わっている"
+  elif [ -d "projects" ] && [ -n "$(find projects -maxdepth 1 -mindepth 1 -type d 2>/dev/null)" ]; then
+    conflict_trace="projects/ 配下に deploy project が存在する"
+  fi
+fi
+if [ -n "$conflict_trace" ]; then
+  echo "ERROR: manifest は :repo-kind :template を主張していますが、bootstrap 完了痕跡が"
+  echo "       検出されました（$conflict_trace）。"
+  echo "  Fix: BOOTSTRAP_GUIDE.md §4 の完了処理を再実施し、.llm/repo-context.edn を transform"
+  echo "       してください（:repo-kind :template → :project、:template-name → :derived-from、"
+  echo "       :project-name 追加）。"
+  failures=$((failures + 1))
+else
+  echo "check-bootstrap-identity: OK"
+fi
 
 # --- プレースホルダ ---
 run_step_if_capability "polylith" "プレースホルダ残存検査" \

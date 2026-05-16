@@ -107,6 +107,8 @@ README のキックオフプロンプトを受信した LLM は、以下のゲ�
 | ★ゲート 1（仕様 + 技術選定） | reconciliation table（IDEA に実内容がある場合）／`../DESIGN.md` 反映案／`.llm/data/design-ir.edn` 生成結果／既存分析 EDN との照合結果／`workspace.edn` :top-namespace 差分／プロダクト README 生成方針／必要な用途別機能カテゴリと推奨ライブラリ案 | §2.1 |
 | ★ゲート 2（構造 + 依存） | `poly create component/base/project` 3 コマンド／brick `deps.edn` 追加内容（実コード） | §2.3, §2.4 |
 
+ゲート 1 は brick 作成（§2.3）の前提 gate である。`:top-namespace` 確定・`../DESIGN.md` §1-4/§8・デプロイ構成決定が揃うまでゲート 2 へ進まない（§2.1 初期化 identity gate）。identity 未確定のまま brick を作ると placeholder namespace のまま実装が「完了」報告される取りこぼしが起きる。
+
 ゲート 3 は**縮退**（`COLLABORATION_GUIDE.md` §2.2 で ADR 発行を実施後報告 (L2) 化済）:
 
 | 最終提示 | 内容 | 権限 |
@@ -165,13 +167,21 @@ ADR の発行（§4）は実施後報告 (L2) として LLM が自動実施し�
 
 **技術選定に迷う場合**: 判断済み推奨集を確認し、それでも迷う場合は **Q を立ててユーザに相談**（自己判断禁止）。
 
-**DESIGN.md の必須項目が埋まっていない状態で §2.2 以降に進まない**。仕様が曖昧だと実装判断が迷走する（分類管理の原則）。
+**初期化 identity gate（§2.3 brick 作成の前提条件）**: 次の 3 つが確定するまで §2.2 以降、特に §2.3 の brick 作成へ進まない。
+
+- `workspace.edn` の `:top-namespace` が実プロジェクト名（`myorg.myapp` から書き換え済み）
+- `../DESIGN.md` の必須項目（§1 目的、§2 スコープ、§3 主要ユースケース、§4 受入基準、§8 プロジェクト固有情報）が埋まっている
+- デプロイ構成（単一 / 複数 uberjar / Docker / Lambda）が決定済み
+
+この gate 未通過のまま brick を作ると、`workspace.edn` の `:top-namespace` だけ書き換えて brick の `(ns ...)` 宣言が placeholder のまま残る、deploy project が未作成のまま brick 実装が「完了」報告される、といった取りこぼしが起きる（分類管理の原則、`../CLAUDE.md` §1.2.5 失敗早期検知）。
 
 ### 2.2 ワークスペースルート deps.edn の変更は不要
 
 **ワークスペースルートの `deps.edn` に本番依存は追加しない**。開発支援ライブラリを採用する場合のみ、§2.5 で `:dev :extra-deps` に追加する。
 
 ### 2.3 最初の brick を作成
+
+**前提（§2.1 初期化 identity gate）**: brick 作成に着手する前に、§2.1 の identity gate（`:top-namespace` 確定・DESIGN 必須節 §1-4/§8・デプロイ構成決定）がすべて通過していることを確認する。未通過なら §2.1 へ戻る。placeholder namespace のまま brick を作らない。
 
 判断権限と実行主体を混同しない。component は承認必須 (L1)、base / project は人間専権 (L0) で採否を決める。実際のコマンド実行は、承認または指示が確定した後に行う。
 ∵ COLLABORATION_GUIDE.md §2.0

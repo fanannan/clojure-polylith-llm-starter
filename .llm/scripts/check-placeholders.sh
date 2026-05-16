@@ -2,13 +2,17 @@
 # scripts/check-placeholders.sh
 #
 # 目的:
-#   workspace.edn / deps.edn にプレースホルダ `myorg.myapp` が残っていないか検査する。
+#   workspace.edn / deps.edn / brick ソースにプレースホルダ `myorg.myapp` が
+#   残っていないか検査する。
 #   `CLAUDE.md §5.5` 完了条件の一部として `check-workspace-integrity.sh` 経由で呼ばれる。
 #   ただしテンプレート repo では配布用 placeholder を保持する必要があるため、
 #   `.llm/repo-context.edn :repo-kind :template` の場合は残存を許容する。
 #
 # 対象:
-#   設定ファイルのみ（workspace.edn / deps.edn）。
+#   設定ファイル（workspace.edn / deps.edn）と brick ソース
+#   （components/*/src/** / bases/*/src/** の .clj/.cljc/.cljs）。
+#   brick ソース検査は、bootstrap が workspace.edn の :top-namespace だけ書き換え、
+#   brick の (ns ...) 宣言を placeholder のまま残す取りこぼしを検出するためにある。
 #   サンプルコード（POLYLITH_GUIDE.md / KNOWLEDGE.md 内のコード例）は対象外。
 #
 # 運用タイミング:
@@ -58,8 +62,34 @@ check_file() {
   fi
 }
 
+# brick ソース（components/*/src/** / bases/*/src/**）の (ns ...) 宣言などに
+# placeholder が残っていないか検査する。template repo は brick を同梱しないため
+# 通常は対象ファイルが存在せず空検査になる。万一存在する場合は check_file と
+# 同じく template repo では INFO 扱いとし、placeholder_found を立てない。
+check_brick_sources() {
+  local base file
+  for base in components bases; do
+    [ -d "$base" ] || continue
+    while IFS= read -r file; do
+      [ -z "$file" ] && continue
+      grep -n 'myorg\.myapp' "$file" | grep -v '^[0-9]*:[[:space:]]*;;' > /dev/null || continue
+      if [ "$template_distribution" -eq 1 ]; then
+        echo "INFO: $file の配布用プレースホルダ 'myorg.myapp' を許容（template repo）"
+        grep -n 'myorg\.myapp' "$file" | grep -v '^[0-9]*:[[:space:]]*;;' | sed 's/^/  /'
+        continue
+      fi
+      echo "ERROR: $file にプレースホルダ 'myorg.myapp' が残存:"
+      grep -n 'myorg\.myapp' "$file" | grep -v '^[0-9]*:[[:space:]]*;;' | sed 's/^/  /'
+      placeholder_found=1
+    done < <(find "$base" -type f \
+               \( -name '*.clj' -o -name '*.cljc' -o -name '*.cljs' \) \
+               -path "$base/*/src/*" 2>/dev/null)
+  done
+}
+
 check_file "workspace.edn"
 check_file "deps.edn"
+check_brick_sources
 
 if [ "$template_distribution" -eq 1 ]; then
   echo ""

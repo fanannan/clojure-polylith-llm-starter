@@ -432,7 +432,7 @@ Work Frontier / obligation coverage を実装する時は、本節の trace を�
 
 | 状態の見分け方 | 実行する完了条件 |
 |---|---|
-| 派生プロジェクトの `workspace.edn` に配布時プレースホルダ `"myorg.myapp"` が残る | 初期化未完了。`.llm/guide/BOOTSTRAP_GUIDE.md` §2.1 を先に完了する。`check-workspace-integrity.sh` は失敗してよい状態ではなく、未完了状態の検出である。テンプレート repo では `.llm/repo-context.edn :repo-kind :template` を根拠に許容する |
+| 派生プロジェクトの `workspace.edn`、または brick ソース（`components/*/src/**` / `bases/*/src/**` の `(ns ...)` 宣言）に配布時プレースホルダ `"myorg.myapp"` が残る | 初期化未完了。`.llm/guide/BOOTSTRAP_GUIDE.md` §2.1 初期化 identity gate を先に完了する。`check-workspace-integrity.sh`（`check-placeholders.sh` 経由で brick ソースも走査）は失敗してよい状態ではなく、未完了状態の検出である。テンプレート repo では `.llm/repo-context.edn :repo-kind :template` を根拠に許容する |
 | `projects/<deploy>` が無い、またはビルド定義が未確定（`BOOTSTRAP_GUIDE.md` §2.9 前を含む） | 下記コマンドのうち uber ビルドだけスキップ。その他は通す |
 | `projects/<deploy>` が存在し、DESIGN.md §8.4 にビルドコマンドが定義済み | 下記全行を実行 |
 
