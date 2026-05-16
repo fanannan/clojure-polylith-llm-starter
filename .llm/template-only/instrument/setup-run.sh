@@ -18,6 +18,7 @@ agent=""
 model=""
 tool_mode="workspace-write-network-restricted"
 target_dir=""
+run_label=""
 no_prompt=0
 allow_dirty=0
 
@@ -31,6 +32,7 @@ Options:
   --agent <name>      Agent name. Prompted if omitted.
   --model <name>      Model name. Prompted if omitted.
   --tool-mode <mode>  Tool/sandbox mode label.
+  --run-label <label> Optional label for repeated runs, e.g. run-01.
   --target-dir <path> Target repository path. Defaults to /tmp/<run-id>-target.
   --no-prompt         Fail instead of prompting for missing required values.
   --allow-dirty       Allow running from a dirty template worktree. Target is still built from HEAD.
@@ -46,6 +48,7 @@ while [ "$#" -gt 0 ]; do
     --agent) shift; agent="${1:-}" ;;
     --model) shift; model="${1:-}" ;;
     --tool-mode) shift; tool_mode="${1:-}" ;;
+    --run-label) shift; run_label="${1:-}" ;;
     --target-dir) shift; target_dir="${1:-}" ;;
     --no-prompt) no_prompt=1 ;;
     --allow-dirty) allow_dirty=1 ;;
@@ -193,6 +196,9 @@ fi
 run_stamp="$(date +%Y%m%d-%H%M%S)"
 run_year="$(date +%Y)"
 run_id="$run_stamp-$(sanitize "$case_id")-$(sanitize "$target_mode")-$(sanitize "$agent")-$(sanitize "$model")"
+if [ -n "$run_label" ]; then
+  run_id="$run_id-$(sanitize "$run_label")"
+fi
 run_dir="$TEMPLATE_ROOT/.llm/template-only/instrument/runs/$run_year/$run_id"
 target_dir="${target_dir:-${TMPDIR:-/tmp}/$run_id-target}"
 target_dir="${target_dir%/}"
@@ -254,6 +260,7 @@ cat > "$run_dir/metadata.edn" <<EOF
  :agent/name "$(edn_escape "$agent")"
  :agent/model "$(edn_escape "$model")"
  :tool/mode "$(edn_escape "$tool_mode")"
+ :run/label "$(edn_escape "$run_label")"
  :target/dir "$(edn_escape "$target_dir")"
  :template/run-dir "$(edn_escape "$run_dir")"
  :observer/run-dir "$(edn_escape "$observer_dir")"
@@ -299,6 +306,7 @@ repo, and observer files are outside the target repository.
 - Case: \`$case_id\`
 - Target mode: \`$target_mode\`
 - Project phase: \`$project_phase\`
+- Run label: \`$run_label\`
 - Target repo: \`$target_dir\`
 - Observer store: \`$observer_dir\`
 
@@ -425,6 +433,9 @@ chmod +x "$observer_dir/mark-terminal-state.sh"
 
 echo "Instruction-following target prepared:"
 echo "  Run ID: $run_id"
+if [ -n "$run_label" ]; then
+  echo "  Run label: $run_label"
+fi
 echo "  Target repo: $target_dir"
 echo "  Template run record: $run_dir"
 echo "  Observer store: $observer_dir"

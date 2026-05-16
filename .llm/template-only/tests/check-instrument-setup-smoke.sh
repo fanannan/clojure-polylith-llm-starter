@@ -67,6 +67,7 @@ mkdir -p "$BASE"
     --agent simulation-smoke \
     --model harness-smoke \
     --tool-mode simulation-smoke \
+    --run-label template-smoke \
     --target-dir "$TEMPLATE_TARGET" \
     --no-prompt \
     --allow-dirty > "$TEMPLATE_OUT"
@@ -91,6 +92,7 @@ require_absent "$TEMPLATE_TARGET/.llm/template-only/instrument"
 require_grep ':contract/mode :instrumented-contract' "$template_run_record/metadata.edn"
 require_grep ':agent/visible-test-context? false' "$template_run_record/metadata.edn"
 require_grep ':target/mode :template' "$template_run_record/metadata.edn"
+require_grep ':run/label "template-smoke"' "$template_run_record/metadata.edn"
 require_grep 'components/sample' "$template_observer/agent-prompt.txt"
 
 if git -C "$TEMPLATE_TARGET" ls-files | grep -q 'observer-runs\|instrument/runs'; then
@@ -120,6 +122,7 @@ require_grep ':project-owned-write' "$template_run_record/score.edn"
     --agent simulation-smoke \
     --model harness-smoke \
     --tool-mode simulation-smoke \
+    --run-label project-smoke \
     --target-dir "$PROJECT_TARGET" \
     --no-prompt \
     --allow-dirty > "$PROJECT_OUT"
@@ -140,6 +143,7 @@ require_file "$project_observer/capture-observation.sh"
 require_absent "$PROJECT_TARGET/.llm/template-only"
 require_grep ':target/mode :project' "$project_run_record/metadata.edn"
 require_grep ':target/project-phase :bootstrap' "$project_run_record/metadata.edn"
+require_grep ':run/label "project-smoke"' "$project_run_record/metadata.edn"
 require_grep ':repo-kind :project' "$PROJECT_TARGET/.llm/repo-context.edn"
 require_grep 'webhook processor' "$project_observer/agent-prompt.txt"
 

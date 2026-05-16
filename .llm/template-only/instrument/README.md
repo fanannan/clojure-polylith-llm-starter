@@ -26,11 +26,14 @@ Phase 2 prepares an outside-observer run target, but still does not launch an ag
   --target-mode template \
   --agent codex \
   --model gpt-5 \
+  --run-label run-01 \
   --allow-dirty
 ```
 
 The command creates a target repo under `/tmp` and an observer store outside that target.
 Start the agent manually from the target repo using the generated prompt.
+Use distinct `--run-label` values such as `run-01` ... `run-05` when preparing
+multiple runs for the same case/model tuple.
 
 After capture, produce a path-level preliminary score:
 
