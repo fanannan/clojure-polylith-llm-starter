@@ -56,6 +56,7 @@ node_modules/
 
 # --- Template benchmark generated records ---
 /.llm/template-only/benchmark/runs/
+/.llm/template-only/instrument/runs/
 /.llm/benchmark-runs/
 
 # --- LLM evidence records ---

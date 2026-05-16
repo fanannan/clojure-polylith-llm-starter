@@ -89,8 +89,14 @@ LLM contract test はこの例外側に属するが、agent に「contract test 
 知らせる mode ではない。`:instrumented-contract` は runner 側の分類であり、
 外側で trace / diff / transcript を取ることだけを意味する。agent が見るのは
 通常の repo mode（`:repo-kind :template` / `:project` / conflict）と
-session briefing である。最初の family は `:briefing-mode-recognition` とし、
-session briefing を読んだ結果、mode / ownership / next action を守れるかを観測する。
+session briefing である。benchmark / demo / contract test は outside observer
+store を共用してよいが、評価集合は混ぜない。
+
+contract test は、単なる model scoring ではなく Instruction-Following Instrument
+の一部である。第一の出力は、指示 corpus の曖昧性、摩擦、実インシデント再発、
+改善圧の発見であり、モデル適性表は副産物である。最初の pilot は session
+briefing を使うが、目的は session briefing 改善に閉じず、mode / ownership /
+next action を守れるかを全体の指示追随歩留まりとして観測する。
 
 observer hook は demo repo の `.git/hooks/post-commit` に置く。hook body は Git 管理外で、
 demo repo の commit tree には入らない。agent が通常初期化中に `core.hooksPath` を

@@ -127,6 +127,9 @@
 | .llm/template-only/benchmark/README.md | template-only | benchmark の考え方。無人完走ではなく gate 間自律 segment を観測する |
 | .llm/template-only/benchmark/setup-run.sh | template-only | demo repo 作成、IDEA コピー、template-only 削除、post-commit hook、承認マーカー入口の最小 setup |
 | .llm/template-only/benchmark/SCENARIOS.md | template-only | 保守者向けの評価意図。agent には見せない |
+| .llm/template-only/instrument/incident-index.edn | template-only | 指示追随計測器の実インシデント接地 index。contract case の種を maintainer archive / md mandate に trace するための保守者用 seed。派生プロジェクトへ配布しない |
+| .llm/template-only/instrument/cases.edn | template-only | 指示追随計測器の初期 case catalog。正本ではなく、実インシデント / md mandate に trace した観測 seed |
+| .llm/template-only/instrument/setup-run.sh | template-only | LLM を起動せず、template / project target repo と outside observer store を準備する instrument runner |
 | .llm/template-only/tests/*.sh | template-only | テンプレート自身の重い E2E。通常ゲート外 |
 
 `.llm/template-only/` は `.llm/repo-context.edn :ownership :template-only` で表現する。これは `:template-owned` とは異なり、派生後に残さない領域である。
@@ -737,7 +740,8 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
 
 **LLM contract test との接続**:
 
-- LLM contract test の最初の family は `:briefing-mode-recognition` とし、session briefing を読んだ結果、mode / ownership / next action を守れるかを観測する
+- LLM contract test は指示追随計測器（§5.18）の一部であり、第一目的はモデル採点ではなく、指示 corpus の曖昧性・摩擦・改善圧を観測することである
+- 最初の pilot family は `:briefing-mode-recognition` とし、session briefing を読んだ結果、mode / ownership / next action を守れるかを観測する。ただし briefing は嚆矢であり、対象を session briefing に閉じない
 - `:instrumented-contract` は runner 側の観測分類であり、agent に見せる repo mode ではない。agent が見るのは通常どおり `:repo-kind :template` / `:project` / conflict の briefing 出力だけである
 - 最初の implementation slice では LLM を呼ばない。`check-session-briefing-scenarios.sh` と `session-briefing.sh --audit` で教材品質を決定的に検査し、contract runner は別段階で導入する
 - 将来の misread taxonomy はまず `:absent` / `:hidden` / `:competing-surface` / `:stale` / `:ignored` の 5 値に限定する。observer / hook plane の環境失敗は `:run/valid? false` として扱い、model score に混ぜない
@@ -848,6 +852,8 @@ Requirement ID の検査順序:
 テンプレート保守で `gen_brick_map.clj` / `gen_workspace_map.clj` / wrapper / migration policy を変更した場合、通常ゲートとは別に `.llm/template-only/tests/check-map-scenarios.sh` を実行対象にする。この E2E は `/tmp` の synthetic repo で生成・移行・エラー検出・自力修復を検査するもので、派生プロジェクトのアプリケーションテストではない。
 
 テンプレート保守で `session-briefing.sh` の mode 表示、`Control Plane`、または `--audit` を変更した場合は、通常ゲートとは別に `.llm/template-only/tests/check-session-briefing-scenarios.sh` を実行対象にする。この E2E は LLM を呼ばず、briefing という教材自体の key phrase / forbidden phrase / audit EDN を検査する。
+
+テンプレート保守で Instruction-Following Instrument の setup runner、case catalog、observer isolation を変更した場合は、通常ゲートとは別に `.llm/template-only/tests/check-instrument-setup-smoke.sh` を実行対象にする。この smoke は LLM を呼ばず、template / project target repo の作成、instrument artifact の非混入、outside observer store、observation / terminal marker を検査する。
 
 ### 5.15 Structural Evidence View の保守
 
@@ -1085,6 +1091,102 @@ archive-retained -> archive-absorbed -> compressed | deleted
 7. Structural Evidence の従来の active packet を generated view / declaration / run result / closed record に物理分離する
 8. close 後の `.llm/work/` cleanup と orphan declaration surface を実装する
 9. `what-now` を artifact-regime aware にし、Evidence Plane と Index Plane の stale/orphan/prune を同じ操作面で扱う（required derived view freshness と orphan declaration は Evidence action より優先する）
+
+### 5.18 Instruction-Following Instrument の保守
+
+Instruction-Following Instrument は、LLM が現行規約に従うかだけを試す test suite ではなく、**指示追随歩留まりを測る計測器**である。第一の産物はモデル順位ではなく、指示文書 corpus の曖昧性、摩擦、実インシデント再発、改善圧の発見である。LLM contract test はこの計測器の一部として扱う。
+
+中心原則:
+
+```text
+Measure instruction-following yield without letting the measurement corpus become a new authority.
+```
+
+#### 5.18.1 用途の優先順位
+
+| 用途 | 優先度 | 扱い |
+|---|---:|---|
+| テンプレート revision 間の回帰検出 | 1 | 同一 agent / adapter / tool mode を固定して、文書・script 改善が摩擦や hard fail を増やしていないかを見る |
+| 指示 corpus の曖昧性発見 | 1 | 複数 run / model / seed で結果が割れた case は平均せず、`:spec-ambiguous` として QUESTIONS または文書改善候補へ送る |
+| 実インシデント再発検知 | 1 | maintainer archive 由来 case で同型失敗が再発していないかを見る |
+| model suitability table | 2 | adapter / prompt rendering / tool availability の交絡を明記した上で、後段の参考指標として扱う |
+
+モデル絶対比較は最初の目的にしない。Codex vs Claude の差は、model だけでなく adapter、tool 可用性、prompt 描画、hook 実装を同時に測っている。まずは model を固定したテンプレート revision 回帰へ使う。
+
+#### 5.18.2 数値評価の扱い
+
+固定・凍結した suite に対する測定は再現可能な観測として有用だが、小 N の点推定を「真の能力」の低不確実推定として扱ってはならない。公開・比較に使う数値は必ず `N`、invalid run 数、散らばり（例: run ごとの pass/fail 分布、信頼区間または最小限の range）を添える。単一 run の pass rate は indicative observation であり、客観的な能力値ではない。
+
+case あたり複数 run を要求する段階は高コストであるため、per-turn loop には入れない。この仕組みは `check-vulnerabilities.sh` と同じく遅い gate であり、周期はテンプレート version 境界または release 前に限定する。
+
+#### 5.18.3 Case の接地
+
+全 case は次のいずれかに trace する。
+
+1. maintainer archive に記録された実インシデント
+2. authored markdown corpus に明示された mandate / prohibition
+
+どちらにも trace できない case は exploratory bucket に隔離し、template reform の採否根拠にしない。`.llm/template-only/instrument/incident-index.edn` は、maintainer archive 由来の seed と将来の case family を対応づける保守者用 index である。
+
+#### 5.18.4 Instruction taxonomy
+
+Markdown corpus から抽出する指示は、同じ pass/fail 対象にしない。
+
+| Type | 扱い |
+|---|---|
+| `:mandate` | 必須。観測可能な違反は hard fail 候補 |
+| `:prohibition` | 禁止。観測可能な違反は hard fail 候補 |
+| `:workflow` | 手順。逸脱は soft fail / near miss / reform candidate のいずれか |
+| `:heuristic` | 判断補助。原則として pass/fail 化しない |
+| `:principle` | 上位評価軸。Template Evolution View 側で reform を読む |
+| `:anti-pattern` | 再発防止の観測対象。検出したら reflection / archive 候補 |
+
+mandate-binding annotation はこの分類の補助 metadata であり、本文 prose に無い義務を追加してはならない。生成 index は derived view であり、正本ではない。
+
+#### 5.18.5 Oracle と曖昧性
+
+oracle は計測器側の解釈であり、常に正しいとは限らない。case の failure は少なくとも次を分ける。
+
+- agent が明確に誤った
+- oracle が誤っていた
+- md が曖昧で複数解釈が妥当だった
+- observer / adapter / hook plane が壊れて run が無効だった
+
+結果が割れた case を flake として平均しない。割れは、指示が曖昧または competing surface を持つ可能性を示す高価値 signal である。`:spec-ambiguous` は first-class result とし、QUESTIONS / 文書改善候補へ route する。
+
+#### 5.18.6 Reform の循環回避と保存予算
+
+reform は、suite が符号化している md corpus 自体を書き換える。したがって、reform 採否を Contract Pass Rate 上昇だけで決めてはならない。採否基準は suite 非依存の指標に限定する。
+
+- Friction が下がった
+- 実インシデント再発率が下がった
+- hard fail が増えていない
+
+Contract Pass Rate は regression の観測値であり、reform 採否の正本ではない。
+
+また、reform は corpus を肥大させやすい。指示文書の総量・surface 数・新 command surface は保存予算を持つ。新しい規則や surface を足す場合は、同時に既存規則の統合・削除・移動の検討を maintainer archive に記録する。局所的に有効な reform でも、文書総量・surface 数を増やし、salience を下げるなら却下候補である。
+
+#### 5.18.7 初期 family
+
+最初の LLM を呼ぶ family は次の 2 つに限定する。
+
+| Family | 目的 |
+|---|---|
+| `:mode-and-ownership` | repo-kind、ownership、next action surface、completion gate を守れるか |
+| `:resist-flawed-instruction` | ユーザー指示が repo authority / manifest / 不可逆境界と衝突した時、CLAUDE §1.5 の境界規律に従って流されず止まれるか |
+
+session briefing は `:mode-and-ownership` の pilot input であり、計測器の目的を session briefing 改善に閉じない。
+
+#### 5.18.8 実行形態
+
+`setup-run.sh` は agent を起動しない。template HEAD から一時 target repo を作り、observer store を target repo の外側に置き、agent prompt と capture script を生成するだけである。
+
+- template target: `.llm/template-only/instrument/` だけを取り除き、agent が計測器の存在を repo 内から読めないようにする
+- project target: `.llm/template-only/` 全体を取り除き、bootstrap 後の派生 project lifecycle を守る
+- observer store: raw observation、snapshot、terminal marker を target repo の外に置く
+- template repo: runner source と sanitized run record の置き場。raw transcript は commit しない
+
+この段階は model score を出さない。単一 run は raw measurement input であり、手動 review または将来の scorer へ渡す。
 
 ---
 

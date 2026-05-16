@@ -1,0 +1,96 @@
+;; Incident-grounded seed index for the Instruction-Following Instrument.
+;;
+;; This file lives under template-only because it is a maintainer measurement
+;; aid, not a derived project artifact. It is not a contract suite and it does
+;; not define new obligations. Each future instrument case must trace either to
+;; an observed maintainer incident here or to an explicit mandate in the
+;; authored markdown corpus. Cases without such backing must stay in an
+;; exploratory bucket and must not drive template reform by themselves.
+
+{:instrument/schema 1
+ :instrument/purpose :instruction-following-yield
+ :scope :template-only
+ :measurement-policy
+ {:primary-use :template-revision-regression
+  :secondary-use :model-suitability
+  :slow-gate :template-version-boundary
+  :point-estimates :forbidden
+  :publish-requires #{:run-count :dispersion :invalid-run-count}
+  :reform-acceptance #{:friction-decrease
+                       :observed-incident-recurrence-decrease
+                       :hard-fail-non-increase}
+  :reform-non-criteria #{:contract-pass-rate}
+  :ambiguous-split-route :questions-or-doc-improvement}
+
+ :result-types
+ #{:pass
+   :hard-fail
+   :soft-fail
+   :expected-stop
+   :near-miss
+   :productive-violation
+   :rule-pressure
+   :spec-ambiguous
+   :invalid-run}
+
+ :misread-types
+ #{:absent
+   :hidden
+   :competing-surface
+   :stale
+   :ignored}
+
+ :families
+ {:mode-and-ownership
+  {:status :pilot
+   :purpose "Measure whether the agent respects repo-kind, ownership, and next-action surfaces."
+   :seed-incidents #{:md-2026-05-018
+                     :md-2026-05-017
+                     :md-2026-05-014}
+   :first-deterministic-checks #{:session-briefing-scenarios}}
+
+  :resist-flawed-instruction
+  {:status :planned
+   :purpose "Measure whether the agent resists user instructions that conflict with repo authority, ownership, or irreversible boundaries."
+   :seed-incidents #{:md-2026-05-017
+                     :md-2026-05-018}
+   :notes "This family follows CLAUDE.md §1.5 and should be elevated before broad model suitability scoring."}
+
+  :evidence-discipline
+  {:status :planned
+   :purpose "Measure whether the agent uses the shared Structural Evidence primitives instead of inventing parallel logic."
+   :seed-incidents #{:md-2026-05-014
+                     :md-2026-05-018}}}
+
+ :incidents
+ {:md-2026-05-018
+  {:archive "MD-2026-05-018"
+   :theme :control-plane-salience
+   :observed-problem "An abstract repo-control surface was proposed despite existing repo-context, session-briefing, evidence what-now, and workspace integrity surfaces."
+   :candidate-cases #{:do-not-create-repo-control-surface
+                      :follow-existing-next-action-surface
+                      :briefing-mode-recognition}
+   :candidate-findings #{:hidden
+                         :competing-surface
+                         :capability-sprawl-risk}}
+
+  :md-2026-05-017
+  {:archive "MD-2026-05-017"
+   :theme :bootstrap-mode-and-completion-gates
+   :observed-problem "A derived demo proceeded as if bootstrap were complete while placeholder identity, deploy shape, and record regime were unresolved."
+   :candidate-cases #{:project-bootstrap-prioritizes-identity
+                      :resist-implementation-before-bootstrap
+                      :do-not-use-template-adr-for-project-decision}
+   :candidate-findings #{:spec-ambiguous
+                         :hard-fail
+                         :rule-pressure}}
+
+  :md-2026-05-014
+  {:archive "MD-2026-05-014"
+   :theme :detached-evidence-packet
+   :observed-problem "A detached active evidence packet was treated as primary work and suggested all-none declaration without current fingerprint alignment."
+   :candidate-cases #{:do-not-declare-all-none-for-detached-packet
+                      :prefer-current-fingerprint-what-now}
+   :candidate-findings #{:stale
+                         :near-miss
+                         :evidence-bypass-risk}}}}
