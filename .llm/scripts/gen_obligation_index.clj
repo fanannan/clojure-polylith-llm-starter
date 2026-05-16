@@ -326,6 +326,67 @@
     (map #(test-obligation trace questions %) (:test-obligations ir))
     (orphan-trace-obligations ir trace))))
 
+(defn- dependency-map [items]
+  (let [known (set (map :id items))]
+    (into (sorted-map)
+          (for [item items]
+            [(:id item) (sorted-strings (filter known (:requires item)))]))))
+
+(defn- dependent-map [deps]
+  (reduce-kv (fn [m id parents]
+               (reduce (fn [m* parent]
+                         (update m* parent (fnil conj []) id))
+                       m
+                       parents))
+             (sorted-map)
+             deps))
+
+(defn- dependency-depths [deps]
+  (letfn [(depth [id visiting memo]
+            (cond
+              (contains? memo id)
+              [memo (get memo id)]
+
+              (contains? visiting id)
+              [(assoc memo id 0) 0]
+
+              :else
+              (let [[memo* depths]
+                    (reduce (fn [[memo' depths'] parent]
+                              (let [[memo'' depth'] (depth parent (conj visiting id) memo')]
+                                [memo'' (conj depths' depth')]))
+                            [memo []]
+                            (get deps id))]
+                (let [d (if (seq depths) (inc (apply max depths)) 0)]
+                  [(assoc memo* id d) d]))))]
+    (first
+     (reduce (fn [[memo _] id]
+               (depth id #{} memo))
+             [{} nil]
+             (keys deps)))))
+
+(defn- open-dependencies [item-by-id deps id]
+  (->> (get deps id)
+       (filter (fn [parent]
+                 (not= :complete (:category (get item-by-id parent)))))
+       sorted-strings))
+
+(defn- attach-frontier-dag [items]
+  (let [deps (dependency-map items)
+        dependents (dependent-map deps)
+        depths (dependency-depths deps)
+        item-by-id (into {} (map (juxt :id identity) items))]
+    (mapv (fn [item]
+            (let [id (:id item)
+                  requires (get deps id)
+                  blocked-by (open-dependencies item-by-id deps id)]
+              (assoc item
+                     :frontier {:requires requires
+                                :blocked-by blocked-by
+                                :dependents (sorted-strings (get dependents id))
+                                :depth (get depths id 0)})))
+          items)))
+
 (defn- by-category [items]
   (->> items
        (group-by :category)
@@ -362,7 +423,7 @@
          ir (design-ir)
          trace (trace-index)
          questions (questions-index)
-         items (obligations ir trace questions)]
+         items (attach-frontier-dag (obligations ir trace questions))]
      (into (sorted-map)
            (derivation/with-manifest
             {:schema/version "obligation-index.1"
@@ -457,7 +518,9 @@
 (defn- frontier-items [data]
   (->> (:obligations data)
        (remove #(= :complete (:category %)))
-       (sort-by (juxt #(get state-rank (:state %) 99)
+       (sort-by (juxt #(if (seq (get-in % [:frontier :blocked-by])) 1 0)
+                      #(get state-rank (:state %) 99)
+                      #(get-in % [:frontier :depth] 0)
                       #(get kind-rank (:kind %) 99)
                       :id))
        vec))
@@ -508,5 +571,7 @@
                  (name (:state item))
                  (:id item)
                  (str "(" (name (:kind item)) ", " (location item) ")"))
+        (when-let [blocked-by (seq (get-in item [:frontier :blocked-by]))]
+          (println "  blocked-by:" (str/join ", " blocked-by)))
         (println "  ->" (suggested-action item)))
       (println "- empty (all obligations are complete, or DESIGN has no obligations)"))))

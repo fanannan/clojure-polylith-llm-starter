@@ -14,7 +14,7 @@
 #   run     - record command-backed evidence results
 #   close   - compare predicted and actual scope before close
 #   backfill-invalidated-by - migrate older closed records to event staleness metadata
-#   prune-work - dry-run or confirm pruning of generated work artifacts without deleting declarations
+#   prune-work - dry-run or confirm pruning of generated/absorbed work artifacts without deleting unabsorbed declarations
 
 set -euo pipefail
 

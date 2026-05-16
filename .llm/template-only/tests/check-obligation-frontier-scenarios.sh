@@ -137,6 +137,23 @@ expect_frontier() {
   grep -q "$pattern" "$BASE/$label.out"
 }
 
+expect_frontier_before() {
+  local repo="$1"
+  local first_pattern="$2"
+  local second_pattern="$3"
+  local label="$4"
+  frontier "$repo" > "$BASE/$label.out"
+  local first_line
+  local second_line
+  first_line="$(grep -n "$first_pattern" "$BASE/$label.out" | head -1 | cut -d: -f1)"
+  second_line="$(grep -n "$second_pattern" "$BASE/$label.out" | head -1 | cut -d: -f1)"
+  if [ -z "$first_line" ] || [ -z "$second_line" ] || [ "$first_line" -ge "$second_line" ]; then
+    echo "$label frontier order mismatch" >&2
+    cat "$BASE/$label.out" >&2
+    exit 1
+  fi
+}
+
 expect_check_fail() {
   local repo="$1"
   local pattern="$2"
@@ -337,6 +354,34 @@ EOF
   expect_frontier_fail "$repo" "stale .llm/data/design-ir.edn" "09-frontier-stale-design"
 }
 
+scenario_10_dag_orders_open_prerequisites_first() {
+  local repo="$BASE/10-dag-orders-open-prerequisites"
+  copy_scripts "$repo"
+  cat > "$repo/.llm/repo-context.edn" <<'EOF'
+{:repo-kind :project :adoption-mode :complete}
+EOF
+  write_question "$repo" "未対応(open)"
+  cat > "$repo/DESIGN.md" <<'EOF'
+# DESIGN
+
+## 1. Purpose
+
+- REQ-001: [Q-2026-05-001] Invoice creation rules are undecided.
+
+## 4. Acceptance Criteria
+
+- [ ] AC-001: [REQ-001] Creating an invoice follows the resolved rule.
+EOF
+  generate_design "$repo"
+  generate_obligations "$repo"
+  expect_frontier_before "$repo" \
+    "accounted blocked-by-question REQ-001" \
+    "red missing-test AC-001" \
+    "10-frontier-dag-order"
+  expect_frontier "$repo" "blocked-by: REQ-001" "10-frontier-blocked-by"
+  assert_index "$repo" '(= ["REQ-001"] (get-in (first (filter #(= "AC-001" (:id %)) (:obligations data))) [:frontier :blocked-by]))' "AC-001 should be blocked by unfinished REQ-001"
+}
+
 scenario "01 missing boundary/test" scenario_01_missing_boundary_and_test_are_frontier
 scenario "02 boundary leaves test frontier" scenario_02_boundary_moves_frontier_to_tests
 scenario "03 boundary + test green" scenario_03_boundary_and_test_green
@@ -346,5 +391,6 @@ scenario "06 open question blocks obligation" scenario_06_open_question_blocks_o
 scenario "07 resolved question reactivates red" scenario_07_resolved_question_reactivates_red
 scenario "08 missing question ref red" scenario_08_missing_question_ref_is_red
 scenario "09 stale upstream blocks frontier" scenario_09_stale_upstream_blocks_frontier
+scenario "10 DAG orders open prerequisites first" scenario_10_dag_orders_open_prerequisites_first
 
 echo "All obligation frontier scenarios passed."

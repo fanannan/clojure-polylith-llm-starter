@@ -2234,8 +2234,10 @@
   (when-let [index (read-edn-if-exists ".llm/data/obligation-index.edn")]
     (->> (:obligations index)
          (remove #(= :complete (:category %)))
-         (sort-by (juxt #(get work-frontier-category-rank (:category %) 99)
+         (sort-by (juxt #(if (seq (get-in % [:frontier :blocked-by])) 1 0)
+                        #(get work-frontier-category-rank (:category %) 99)
                         #(get work-frontier-state-rank (:state %) 99)
+                        #(get-in % [:frontier :depth] 0)
                         #(get work-frontier-kind-rank (:kind %) 99)
                         :id))
          vec)))

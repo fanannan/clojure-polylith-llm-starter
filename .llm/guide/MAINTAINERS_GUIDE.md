@@ -876,7 +876,7 @@ Derive First, Declare Residual, Preserve Only What Reduces Future Fatigue, Audit
 - `evidence.sh why`: claim を支える evidence chain と不足 gap を説明する。LLM が「なぜ信じてよいか」を再読ではなく query で取得する入口
 - `evidence.sh stale`: closed evidence record の stale / unknown freshness を一覧する
 - `evidence.sh backfill-invalidated-by`: 古い closed record に `invalidated-by` と推定 `closed-git-rev` を後発充填する migration command
-- `evidence.sh prune-work`: `.llm/work/` の legacy / generated / transient artifact を regime 判定し、既定 dry-run で整理候補を表示する。`--confirm` でも human declaration / intent は削除しない
+- `evidence.sh prune-work`: `.llm/work/` の legacy / generated / transient artifact を regime 判定し、既定 dry-run で整理候補を表示する。`--confirm` でも未吸収の human declaration / intent は削除しない
 - `check-evidence-gate.sh`: staged/range diff の fingerprint と active view / declaration / run result / close record を照合する正本 gate
 - `evidence.sh predict`: 高リスク作業の任意 pre-flight として intent を binding し、予測 scope / required evidence / pre-flight context を保存
 - `evidence.sh declare`: 導出不能 residual を `none` または具体値として `.llm/work/declarations/` に明示
@@ -966,7 +966,7 @@ Severity は mode で分岐する。
 | `:repo-kind :project`, `:adoption-mode :partial` | 採用済み capability に関わる範囲を WARN / 必要に応じて ERROR |
 | `:repo-kind :project`, `:adoption-mode :complete` | 未被覆 obligation、unbacked disposition、stale required evidence は ERROR |
 
-frontier の順序は planner / ranking ではなく、design-ir 由来の relation DAG と severity で導出する。典型順は「DESIGN 必須節の欠落 → unresolved blocker → missing boundary / trace → missing test → manual verification required → stale evidence → housekeeping」である。heuristic が必要な場合も、並べ替え理由を inspect できるようにする。
+frontier の順序は planner / ranking ではなく、design-ir 由来の relation DAG と severity で導出する。test obligation が requirement / use case を参照しており、その親 obligation が未完了または accounted の場合、子の赤より親の unresolved / blocked / missing を先に出す。典型順は「DESIGN 必須節の欠落 → unresolved blocker → missing boundary / trace → missing test → manual verification required → stale evidence → housekeeping」である。heuristic が必要な場合も、`:frontier :blocked-by` / `:frontier :depth` として並べ替え理由を inspect できるようにする。
 
 実装前に先に閉じる friction:
 

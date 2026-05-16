@@ -47,8 +47,8 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 | `gen_trace_index.clj` | trace index 生成 / 検査の Clojure 実装。requirement / use case / test obligation ごとの implementation / test 対応と impact index を作る |
 | `gen-obligation-index.sh` | `design-ir.edn` と `trace-index.edn` から DESIGN 由来 obligation の coverage index `.llm/data/obligation-index.edn` を生成 |
 | `check-obligation-index.sh` | obligation index の derivation manifest freshness、生成同期、`:adoption-mode :complete` の red obligation を検査 |
-| `derive-work-frontier.sh` | fresh な obligation index から failing / accounted obligation を依存順に表示する read-only Work Frontier。永続 task は作らない |
-| `gen_obligation_index.clj` | obligation index / Work Frontier の Clojure 実装。DESIGN obligation を `:satisfied` / `:out-of-scope` / `:deferred` / `:blocked-by-question` / `:missing-boundary` / `:missing-test` / `:manual-verification-required` / `:unbacked-disposition` / `:unresolved-blocker` 等へ分類する |
+| `derive-work-frontier.sh` | fresh な obligation index から failing / accounted obligation を依存 DAG 順に表示する read-only Work Frontier。永続 task は作らない |
+| `gen_obligation_index.clj` | obligation index / Work Frontier の Clojure 実装。DESIGN obligation を `:satisfied` / `:out-of-scope` / `:deferred` / `:blocked-by-question` / `:missing-boundary` / `:missing-test` / `:manual-verification-required` / `:unbacked-disposition` / `:unresolved-blocker` 等へ分類し、`:frontier :requires` / `:frontier :blocked-by` / `:frontier :depth` を導出する |
 | `trace-impact.sh` | `trace-index.edn` を検索し、要件・受入基準・公開関数・変更差分から、影響する public boundary・test・test obligation を表示 |
 | `trace_impact.clj` | `trace-impact.sh` の Clojure 実装。DESIGN 更新前後の探索、commit 前の変更差分確認、session briefing の trace health に使う |
 | `install-git-hooks.sh` | repo-local hooks を `git config core.hooksPath .githooks` で有効化する。Claude Code / Codex / human 共通 |
@@ -282,7 +282,7 @@ EDN の `:schema/version` は `structural-evidence.N` 系で管理する。検�
 
 Structural Evidence の generated view は、change fingerprint を virtual observed input として刻み、generator digest、`derivation_manifest.clj`、`.llm/data/*` index、QUESTIONS / KNOWLEDGE、maintainer archive または ADR markdown を含む action key を持つ。差分が同じでも導出ロジックや observed inputs が変わった view は stale として扱い、declaration / run result は再生成後の view に fingerprint が一致する場合だけ再付着する。`propose` と writable gate は、declaration / run result を伴わない stale generated view を自動 prune する。
 
-旧 `.llm/work/` 直下 artifact の整理は `./.llm/scripts/evidence.sh prune-work` で dry-run できる。`--confirm` を付けた時だけ、closed record に吸収済みの generated / transient artifact や legacy generated view を削除する。human declaration / intent を含む legacy artifact は preserve として表示し、自動削除しない。
+旧 `.llm/work/` 直下 artifact の整理は `./.llm/scripts/evidence.sh prune-work` で dry-run できる。`--confirm` を付けた時だけ、closed record に吸収済みの generated / transient artifact や legacy generated view を削除する。未吸収の human declaration / intent を含む legacy artifact は preserve として表示し、自動削除しない。
 
 `check-evidence-boundary.sh` は packet 非正本性を機械検査する。packet は新しい requirement / knowledge / decision を定義せず、unknown や反復 residual を QUESTIONS / KNOWLEDGE / maintainer archive の候補として surface するだけに留める。
 
