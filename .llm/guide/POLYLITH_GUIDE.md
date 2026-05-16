@@ -1027,7 +1027,39 @@ CI 通過時以外にも、人間が `git tag stable-$(date +%Y%m%d-%H%M%S)` を
 
 ---
 
-## 9. 関連文書へのリンク
+## 9. 参照 repo の利用（任意）
+
+別の Polylith repo の brick 設計を、実装時の**比較材料**として読んでよい。ただし他 repo はコード参考に限定し、`:local/root` 組込み・自動再利用・cross-workspace catalog は採らない（重すぎる）。
+
+### 9.1 allowlist
+
+参照してよいローカル repo は `.llm/reference-repos.edn` の `:allowed-repos` に人間が明示的に列挙する。このファイルが存在し path が列挙されていること自体が、「これらの repo を read-only で読んでよい」という人間の承認である。ファイルが無い、または `:allowed-repos` が空なら参照は許可されていない。
+
+参照先 repo は、その `.llm/repo-context.edn` の `:template-name` または `:derived-from` が `clojure-polylith-llm-starter` 系列である（= 同系テンプレート由来）場合のみ参照可とする。出自証明は repo 単位で足り、brick 単位のマーカーは設けない。
+
+### 9.2 何を読んでよいか
+
+allowlist された参照 repo では、次を比較材料として読んでよい。
+
+- `brick.edn`（capability / 境界の切り方）
+- `interface.clj`（公開 API の形）
+- Malli 契約（`m/=>` の書き方、schema 設計）
+- 近接 test（境界テストの観点）
+- `deps.edn`（用途別機能カテゴリごとのライブラリ選定）
+
+### 9.3 セキュリティ境界（厳守）
+
+- **read-only**: 参照 repo を編集しない
+- **allowlist 限定**: `.llm/reference-repos.edn` に無い repo は読まない
+- **classpath 非組込み**: `:local/root` や deps で依存化しない
+- **コード非実行**: 参照 repo の build / test / script を実行しない
+- **コピーしない**: 参照先のコードをコピーせず、現在 repo の DESIGN と trace に合わせて再実装する。参照 repo は比較材料であって import 元ではない
+
+`.llm/data/brick-map.edn` の構造は、参照カタログの比較材料としても流用してよい。
+
+---
+
+## 10. 関連文書へのリンク
 
 - **../CLAUDE.md §1**: Polylith を採用する原理的根拠（機械化 + 副作用隔離）
 - **../CLAUDE.md §6.1**: poly コマンド早見表

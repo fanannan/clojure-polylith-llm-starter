@@ -1,0 +1,31 @@
+;; .llm/reference-repos.edn — 参照を許可するローカル repo の allowlist（任意ファイル）
+;;
+;; 目的:
+;;   実装時、別の Polylith repo の brick 設計（brick.edn / interface.clj /
+;;   Malli 契約 / 近接 test / deps.edn）を「比較材料」として読んでよい参照源を、
+;;   人間が明示的に allowlist する。
+;;
+;; 承認の意味:
+;;   このファイルが存在し :allowed-repos に path が列挙されていることが、
+;;   「これらのローカル repo を read-only で読んでよい」という人間の承認である。
+;;   ファイルが無い、または :allowed-repos が空なら、参照は許可されていない。
+;;
+;; 参照可能の条件:
+;;   各 path は、その repo の .llm/repo-context.edn の :template-name または
+;;   :derived-from が "clojure-polylith-llm-starter" 系列である（= 同系テンプレート
+;;   由来）場合のみ参照してよい。出自証明は repo 単位で足り、brick 単位の
+;;   マーカーは設けない。
+;;
+;; セキュリティ境界（厳守）:
+;;   - read-only。参照 repo を編集しない
+;;   - allowlist 限定。ここに無い repo は読まない
+;;   - classpath 非組込み。:local/root や deps で依存化しない
+;;   - コード非実行。参照 repo の build / test / script を実行しない
+;;   - コピーしない。現在 repo の DESIGN と trace に合わせて再実装する
+;;
+;; 詳細な参照導線は POLYLITH_GUIDE.md の「参照 repo の利用」節を見る。
+
+{:allowed-repos
+ [;; 参照を許可するローカル repo の絶対パスを列挙する。例:
+  ;; "/home/me/code/other-polylith-project"
+  ]}
