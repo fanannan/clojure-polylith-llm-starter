@@ -267,6 +267,15 @@ HTTP、永続化、ライフサイクル管理などの追加技術は、必要�
 - **LLM コーディングエージェント**（Claude Code 等、`CLAUDE.md` を読める LLM）
 - **Babashka**（任意）。`bb` が `PATH` にある場合、一部の `.llm/scripts/` Clojure wrapper は起動を高速化するため自動的に bb を使う。無い場合は通常どおり `clj` を使うため、bb は配布物の必須条件ではない。
 
+初期化に着手する前に、これらの実行ファイルの過不足を**一度だけ**確認できる：
+
+```bash
+./.llm/scripts/check-toolchain.sh
+```
+
+検出と不足分の導入提案のみを行い、インストールは自動実行しない。`clj-kondo` / `cljfmt` / `Splint` / `clj-watson` / `Polylith` は `deps.edn` の tools.deps alias であり、`clj` が取得するため個別インストールは不要。
+∵ .llm/guide/BOOTSTRAP_GUIDE.md §0
+
 Runtime の選択は `LLM_CLJ_RUNTIME` で制御できる。
 
 | 値 | 挙動 |

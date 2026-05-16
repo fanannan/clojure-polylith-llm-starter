@@ -73,6 +73,7 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 | `check-single-ns-per-file.sh` | 1 つの `.clj` / `.cljc` / `.cljs` ファイルに `(ns ...)` が複数ないか検査 |
 | `check-vulnerabilities.sh` | `clj-watson` による依存脆弱性スキャン（release 前必須、完了条件外） |
 | `lint-import-hooks.sh` | 依存ライブラリ提供の `clj-kondo` hook を `.clj-kondo/configs/` に取り込む |
+| `check-toolchain.sh` | 前提ツール preflight doctor。OS レベルの実行ファイル（Java / `clj` / `git` 必須、`bb` 任意）の過不足を検出し、不足分の OS 別導入方法を提案する。検出と提案のみで副作用なし。初期化着手前に一度だけ実行（`BOOTSTRAP_GUIDE.md §0`）。per-machine で一度きりの確認であり、完了条件・`check-workspace-integrity.sh`・`session-briefing.sh` には組み込まない。`clj-kondo` / `cljfmt` / `Splint` / `clj-watson` / `Polylith` は tools.deps alias のため検査対象外 |
 | `session-briefing.sh` | セッション起動時の状態ブリーフィング。`.llm/repo-context.edn` から `:repo-kind` を読み TEMPLATE MAINTENANCE / PROJECT モードを判定（conflict 最優先、bootstrap 完了痕跡 + `:template` で non-blocking ERROR）。モード別に表示内容を切り替える（CLAUDE.md §8.0 実装着手前の確認の機械化バックアップ） |
 | `check-mode-scope.sh` | テンプレ保守 vs 派生プロジェクトの所有権境界違反を機械検出。`.llm/repo-context.edn` を EDN として読み、`:project-owned` 配下のテンプレ保守マーカー混入、`:section-scoped` の section 跨ぎ違反等を報告。CLAUDE.md §1.2.1 機械化の実装 |
 | `check-adr-dir-empty.sh` | TEMPLATE モードで `.llm/memory/adr/` に `README.md` / `template.md` 以外の実 ADR が残っていないか検査 |

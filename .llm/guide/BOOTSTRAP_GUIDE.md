@@ -31,6 +31,22 @@ README.md が「**誰が何をするか**」を示すのに対し、本文書は
 
 ---
 
+## 0. 前提ツールの確認（preflight）
+
+初期化に着手する前に**一度だけ**、OS レベルのインストールが必要な実行ファイルの過不足を確認する：
+
+```bash
+./.llm/scripts/check-toolchain.sh
+```
+
+このスクリプトは検出と提案のみを行う（インストールは自動実行しない）。Java / `clj` / `git` のいずれかが不足していると、`poly` / lint / test など本テンプレートの機械化がそもそも動かない。不足分は提示された方法で人間が導入し、必須ツールが揃ってから §1 へ進む。`bb`（Babashka）は任意であり、不在のまま進めてよい。
+
+`clj-kondo` / `cljfmt` / `Splint` / `clj-watson` / `Polylith` は `deps.edn` の tools.deps alias であり、`clj` が Maven / Clojars / git から取得する。OS レベルの個別インストールは不要なので、本 preflight も検査しない。
+
+本確認は per-machine で一度きりの preflight である。完了条件・`check-workspace-integrity.sh`・`session-briefing.sh` のような毎回のゲートには含めない。
+
+---
+
 ## 1. 前提
 
 本テンプレートは、必須技術と追加ライブラリを分けて扱う：
