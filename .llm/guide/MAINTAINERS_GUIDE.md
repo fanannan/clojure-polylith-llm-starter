@@ -130,6 +130,8 @@
 | .llm/template-only/instrument/incident-index.edn | template-only | 指示追随計測器の実インシデント接地 index。contract case の種を maintainer archive / md mandate に trace するための保守者用 seed。派生プロジェクトへ配布しない |
 | .llm/template-only/instrument/cases.edn | template-only | 指示追随計測器の初期 case catalog。正本ではなく、実インシデント / md mandate に trace した観測 seed |
 | .llm/template-only/instrument/setup-run.sh | template-only | LLM を起動せず、template / project target repo と outside observer store を準備する instrument runner |
+| .llm/template-only/instrument/score-run.sh | template-only | 観測済み run の diff path / terminal marker から path-level preliminary score を作る単一 run scorer。model 能力値は出さない |
+| .llm/template-only/instrument/summarize-runs.sh | template-only | 複数 `score.edn` を case 単位に集約し、N / invalid 数 / result 分布と `:spec-ambiguous` route を出す。点推定は出さない |
 | .llm/template-only/tests/*.sh | template-only | テンプレート自身の重い E2E。通常ゲート外 |
 
 `.llm/template-only/` は `.llm/repo-context.edn :ownership :template-only` で表現する。これは `:template-owned` とは異なり、派生後に残さない領域である。
@@ -853,7 +855,7 @@ Requirement ID の検査順序:
 
 テンプレート保守で `session-briefing.sh` の mode 表示、`Control Plane`、または `--audit` を変更した場合は、通常ゲートとは別に `.llm/template-only/tests/check-session-briefing-scenarios.sh` を実行対象にする。この E2E は LLM を呼ばず、briefing という教材自体の key phrase / forbidden phrase / audit EDN を検査する。
 
-テンプレート保守で Instruction-Following Instrument の setup runner、case catalog、observer isolation を変更した場合は、通常ゲートとは別に `.llm/template-only/tests/check-instrument-setup-smoke.sh` を実行対象にする。この smoke は LLM を呼ばず、template / project target repo の作成、instrument artifact の非混入、outside observer store、observation / terminal marker を検査する。
+テンプレート保守で Instruction-Following Instrument の setup runner、case catalog、observer isolation、path-level scorer を変更した場合は、通常ゲートとは別に `.llm/template-only/tests/check-instrument-setup-smoke.sh` を実行対象にする。この smoke は LLM を呼ばず、template / project target repo の作成、instrument artifact の非混入、outside observer store、observation / terminal marker、単一 run の preliminary score を検査する。複数 run 集約や曖昧性 route を変更した場合は、`.llm/template-only/tests/check-instrument-summary-smoke.sh` も実行対象にする。
 
 ### 5.15 Structural Evidence View の保守
 
@@ -1115,7 +1117,7 @@ Measure instruction-following yield without letting the measurement corpus becom
 
 #### 5.18.2 数値評価の扱い
 
-固定・凍結した suite に対する測定は再現可能な観測として有用だが、小 N の点推定を「真の能力」の低不確実推定として扱ってはならない。公開・比較に使う数値は必ず `N`、invalid run 数、散らばり（例: run ごとの pass/fail 分布、信頼区間または最小限の range）を添える。単一 run の pass rate は indicative observation であり、客観的な能力値ではない。
+固定・凍結した suite に対する測定は再現可能な観測として有用だが、小 N の点推定を「真の能力」の低不確実推定として扱ってはならない。公開・比較に使う数値は必ず `N`、invalid run 数、散らばり（例: run ごとの pass/fail 分布、信頼区間または最小限の range）を添える。単一 run の pass rate は indicative observation であり、客観的な能力値ではない。`summarize-runs.sh` はこのために count / dispersion を出し、単一の pass rate を作らない。
 
 case あたり複数 run を要求する段階は高コストであるため、per-turn loop には入れない。この仕組みは `check-vulnerabilities.sh` と同じく遅い gate であり、周期はテンプレート version 境界または release 前に限定する。
 
@@ -1152,7 +1154,7 @@ oracle は計測器側の解釈であり、常に正しいとは限らない。c
 - md が曖昧で複数解釈が妥当だった
 - observer / adapter / hook plane が壊れて run が無効だった
 
-結果が割れた case を flake として平均しない。割れは、指示が曖昧または competing surface を持つ可能性を示す高価値 signal である。`:spec-ambiguous` は first-class result とし、QUESTIONS / 文書改善候補へ route する。
+結果が割れた case を flake として平均しない。割れは、指示が曖昧または competing surface を持つ可能性を示す高価値 signal である。`:spec-ambiguous` は first-class result とし、QUESTIONS / 文書改善候補へ route する。集約層は split valid outcomes を `:spec-ambiguous` として surface し、invalid run は observer / adapter plane の問題として別カウントに保つ。
 
 #### 5.18.6 Reform の循環回避と保存予算
 
@@ -1186,7 +1188,7 @@ session briefing は `:mode-and-ownership` の pilot input であり、計測器
 - observer store: raw observation、snapshot、terminal marker を target repo の外に置く
 - template repo: runner source と sanitized run record の置き場。raw transcript は commit しない
 
-この段階は model score を出さない。単一 run は raw measurement input であり、手動 review または将来の scorer へ渡す。
+`score-run.sh` は単一 run の path-level preliminary score だけを出す。`summarize-runs.sh` は複数 score の N / invalid 数 / result 分布を集約し、割れを `:spec-ambiguous` に route する。どちらも model 能力の点推定や reform 採否は出さない。
 
 ---
 

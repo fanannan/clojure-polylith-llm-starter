@@ -8,7 +8,7 @@
 - `examples/ideas/`: demo / benchmark 用に `IDEA.md` へコピーする着想メモ
 - `tests/`: テンプレート自身の保守 E2E と benchmark harness の simulation smoke
 - `benchmark/`: `IDEA.md` 起点の開発体験を観測し、テンプレート改善へ戻すための仕組み
-- `instrument/`: 指示追随計測器の保守者用 seed。実インシデントと将来の contract case family を対応づけ、合成 fixture への過適合を避ける
+- `instrument/`: 指示追随計測器の保守者用 seed / observer harness。実インシデントと将来の contract case family を対応づけ、合成 fixture への過適合を避ける
 
 ## Lifecycle
 
