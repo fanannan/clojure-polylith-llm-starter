@@ -52,3 +52,32 @@ benchmark setup は、agent 起動前に demo repo から `.llm/template-only/` 
 - Generalization requirement:
   - 反映は、外部 kernel 境界、評価指標、業務ルール分離の一般ルールとして説明できる場合に限る。
 
+## approval-workflow-engine
+
+- IDEA file: `../examples/ideas/IDEA.approval-workflow-engine.md`
+- Stress axes:
+  - state transition modeling
+  - authority and permission boundaries
+  - audit history
+  - overgeneration control around notifications and UI
+- Do not optimize for:
+  - a specific organization chart
+  - a full BPM product
+  - immediate UI/auth implementation
+- Generalization requirement:
+  - 反映は、状態遷移、権限境界、監査履歴の一般ルールとして説明できる場合に限る。
+
+## data-import-validation-pipeline
+
+- IDEA file: `../examples/ideas/IDEA.data-import-validation-pipeline.md`
+- Stress axes:
+  - validation vs normalization separation
+  - partial success and error reporting
+  - rerunnable batch behavior
+  - schema and fixture design
+- Do not optimize for:
+  - every spreadsheet format
+  - a specific partner data contract
+  - immediate DB persistence
+- Generalization requirement:
+  - 反映は、取り込み検証、正規化、部分成功、再実行性の一般ルールとして説明できる場合に限る。

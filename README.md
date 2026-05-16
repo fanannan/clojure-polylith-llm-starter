@@ -218,6 +218,8 @@ Rust のように静的型で閉じる方向ではなく、Clojure では Malli 
 | **既存 Clojure / Polylith repo に導入する人** | 本ファイル → `BOOTSTRAP_GUIDE.md` §4.1 | retrofit 手順の入口 |
 | **日常開発に入った LLM** | `CLAUDE.md` | 初期化後は索引だけ残る |
 | **まだ仕様を書けない人** | `IDEA.md` | 自由な着想メモ。雛形だけなら無視される |
+| **IDEA 差し替えで試したい人** | `.llm/template-only/examples/ideas/README.md` | demo IDEA のコピー手順 |
+| **保守者として benchmark を回す人** | `.llm/template-only/benchmark/README.md` | gate 間 segment 観測と setup 手順 |
 | **仕様を埋める人** | `DESIGN.md` | どこを埋めるかの導線 |
 | **技術選定で迷う人** | `STACK_GUIDE.md` | 参照先の案内 |
 | **派生後にテンプレートの由来を読み返す人** | `TEMPLATE_USAGE_GUIDE.md` | プロダクト README 置換後のテンプレート参照入口 |
@@ -235,6 +237,33 @@ Rust のように静的型で閉じる方向ではなく、Clojure では Malli 
 
 ---
 
+## Demo / Benchmark
+
+`IDEA.md` だけを差し替えて試す demo IDEA は、template repo 専用の
+`.llm/template-only/examples/ideas/` に置いている。
+
+```bash
+cp .llm/template-only/examples/ideas/IDEA.webhook-idempotency-processor.md IDEA.md
+```
+
+その後、通常の「開始手順（LLM 駆動初期化）」に従う。
+`.llm/template-only/` は派生プロジェクトには残さない領域であり、bootstrap 完了後に削除する。
+
+保守者が benchmark として観測する場合は、直接 agent を起動せず、まず setup を実行する。
+
+```bash
+./.llm/template-only/benchmark/setup-run.sh \
+  --scenario webhook-idempotency-processor \
+  --agent codex \
+  --model <model-name>
+```
+
+benchmark は無人完走テストではない。L0 / L1 gate 間の自律 segment を観測し、
+承認は runner 側の marker に記録する。考え方の正本:
+¤ .llm/template-only/benchmark/README.md
+
+---
+
 **必須技術基盤**: Clojure + tools.deps + Polylith + Malli + clj-kondo + cljfmt + Splint + clj-watson + `.llm/scripts/`。
 
 HTTP、永続化、ライフサイクル管理などの追加技術は、必要になった用途別機能カテゴリごとに選び、brick の `deps.edn` に追加する。推奨ライブラリは判断済み推奨集として guide 側に置く。
@@ -248,6 +277,8 @@ HTTP、永続化、ライフサイクル管理などの追加技術は、必要�
 | 初期化を始める | `README.md` | 本ファイルの「開始手順」まで |
 | 初期化の詳細手順を実行する | `.llm/guide/BOOTSTRAP_GUIDE.md` | ゲートと対象節だけ |
 | 既存 repo に後から導入する | `README.md` → `.llm/guide/BOOTSTRAP_GUIDE.md` §4.1 | 本ファイルの「既存 repo への導入」まで |
+| demo IDEA を試す | `.llm/template-only/examples/ideas/README.md` | IDEA コピー手順とサンプル一覧 |
+| benchmark を準備する | `.llm/template-only/benchmark/README.md` | protocol と `setup-run.sh` の考え方 |
 | 日常開発を進める | `CLAUDE.md` | 毎セッション最初から |
 | 着想から仕様を起こす | `IDEA.md` → `DESIGN.md` | IDEA は自由記載、DESIGN は仕様正本 |
 | 仕様を埋める・直す | `DESIGN.md` | §0 と該当節 |

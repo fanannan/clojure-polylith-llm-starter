@@ -34,6 +34,8 @@ post-commit hook、承認マーカー入口を用意する。
 |---|---|
 | `IDEA.subscription-billing-engine.md` | 純粋関数コア、Malli 契約、過剰設計抑制 |
 | `IDEA.webhook-idempotency-processor.md` | 外部入力、冪等性、承認境界、監査 |
+| `IDEA.approval-workflow-engine.md` | 状態遷移、権限、期限、監査 |
+| `IDEA.data-import-validation-pipeline.md` | 不正データ、正規化、エラー報告、再実行 |
 | `IDEA.demand-forecast-replenishment.md` | Python 連携、バッチ、評価指標、業務ルール分離 |
 
 ## 注意
@@ -43,4 +45,3 @@ IDEA は仕様正本ではない。ここには `AC-001` のような完成済�
 
 benchmark での評価意図は `benchmark/SCENARIOS.md` に置く。demo repo で agent を
 起動する前に `.llm/template-only/` を削除するため、agent はその catalog を読めない。
-

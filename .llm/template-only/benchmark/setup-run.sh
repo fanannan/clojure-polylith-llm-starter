@@ -160,6 +160,21 @@ cp "$run_dir/metadata.edn" "$demo_run_dir/metadata.edn"
 cat > "$run_dir/run.md" <<EOF
 # Benchmark Run: $run_id
 
+## Start Here
+
+This setup is complete. The benchmark runner has prepared the demo repository,
+copied the selected IDEA into \`IDEA.md\`, removed \`.llm/template-only/\`, installed
+a post-commit snapshot hook, and created marker commands for human approvals and
+terminal state.
+
+Run the agent manually from the demo repo:
+
+\`\`\`bash
+cd "$demo_dir"
+\`\`\`
+
+Then paste the prompt in the "Agent Prompt" section below into the agent.
+
 ## Identity
 
 - Scenario: \`$scenario\`
@@ -174,16 +189,35 @@ cat > "$run_dir/run.md" <<EOF
 
 This run is one observation point, not a verdict.
 
-Run the agent manually in the demo repo. When the agent reaches an L0/L1 gate
-and the human approves the next segment, record the approval marker:
+The agent should follow the normal template rules. It must stop at L0/L1 gates.
+When the agent reaches a gate, review the proposal outside the benchmark timing.
+If you approve the next segment, record the approval marker:
 
 \`\`\`bash
 $demo_run_dir/approve-next-segment.sh --level L1 --note "approved <what>"
 \`\`\`
 
-Human decision time is not measured. If the human stops the run for scheduling
-or availability reasons, mark the run as \`void\` in the notes before using it
-as benchmark evidence.
+Then tell the agent:
+
+\`\`\`text
+承認を runner 側に記録しました。承認済み範囲だけ続行してください。
+\`\`\`
+
+Human decision time is not measured. If you stop for scheduling or availability
+reasons, do not treat the run as benchmark evidence. Mark it as void:
+
+\`\`\`bash
+$demo_run_dir/mark-terminal-state.sh --state void --note "human stopped before protocol completion"
+\`\`\`
+
+When the run reaches a terminal state, record exactly one terminal marker:
+
+\`\`\`bash
+$demo_run_dir/mark-terminal-state.sh --state first-commit-ready --note "agent reached first commit ready"
+$demo_run_dir/mark-terminal-state.sh --state blocked-at-segment-2 --note "checks could not be made green"
+\`\`\`
+
+Post-commit snapshots are recorded automatically by the demo repo git hook.
 
 ## Agent Prompt
 
@@ -274,12 +308,62 @@ at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 rev="$(git rev-parse HEAD 2>/dev/null || printf unknown)"
 line="$(printf '{:event/type :approval-marker :at "%s" :level :%s :git/rev "%s" :note "%s"}\n' \
   "$at" "$level" "$rev" "$(escape "$note")")"
-printf '%s' "$line" >> "$DEMO_RUN_DIR/events.edn"
-printf '%s' "$line" >> "$TEMPLATE_RUN_DIR/events.edn"
+printf '%s\n' "$line" >> "$DEMO_RUN_DIR/events.edn"
+printf '%s\n' "$line" >> "$TEMPLATE_RUN_DIR/events.edn"
 echo "approval marker recorded: $level"
 APPROVE
 } > "$demo_run_dir/approve-next-segment.sh"
 chmod +x "$demo_run_dir/approve-next-segment.sh"
+
+{
+  echo '#!/usr/bin/env bash'
+  echo 'set -euo pipefail'
+  printf 'DEMO_RUN_DIR=%q\n' "$demo_run_dir"
+  printf 'TEMPLATE_RUN_DIR=%q\n' "$run_dir"
+  cat <<'TERMINAL'
+state=""
+note=""
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --state) shift; state="${1:-}" ;;
+    --note) shift; note="${1:-}" ;;
+    -h|--help)
+      echo "Usage: mark-terminal-state.sh --state first-commit-ready|blocked-at-segment-N|void --note <text>" >&2
+      exit 0
+      ;;
+    *)
+      echo "Usage: mark-terminal-state.sh --state first-commit-ready|blocked-at-segment-N|void --note <text>" >&2
+      exit 2
+      ;;
+  esac
+  shift
+done
+
+if [ -z "$state" ] || [ -z "$note" ]; then
+  echo "ERROR: --state and --note are required" >&2
+  exit 2
+fi
+
+case "$state" in
+  first-commit-ready|void|blocked-at-segment-[0-9]*) ;;
+  *) echo "ERROR: invalid --state: $state" >&2; exit 2 ;;
+esac
+
+escape() {
+  printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+}
+
+at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+rev="$(git rev-parse HEAD 2>/dev/null || printf unknown)"
+line="$(printf '{:event/type :terminal-state :at "%s" :state :%s :git/rev "%s" :note "%s"}\n' \
+  "$at" "$state" "$rev" "$(escape "$note")")"
+printf '%s\n' "$line" >> "$DEMO_RUN_DIR/events.edn"
+printf '%s\n' "$line" >> "$TEMPLATE_RUN_DIR/events.edn"
+echo "terminal state recorded: $state"
+TERMINAL
+} > "$demo_run_dir/mark-terminal-state.sh"
+chmod +x "$demo_run_dir/mark-terminal-state.sh"
 
 git -C "$demo_dir" add .
 git -C "$demo_dir" commit -q -m "Start benchmark demo"
@@ -291,5 +375,14 @@ echo "  Template run record: $run_dir"
 echo ""
 echo "Next:"
 echo "  cd \"$demo_dir\""
-echo "  Start your agent manually with the prompt in:"
-echo "  $demo_run_dir/run.md"
+echo "  Open the run guide:"
+echo "    $demo_run_dir/run.md"
+echo "  Start your agent manually with the Agent Prompt from that file."
+echo ""
+echo "At each approved L0/L1 gate, record:"
+echo "  $demo_run_dir/approve-next-segment.sh --level L1 --note \"approved <what>\""
+echo ""
+echo "At the end, record one terminal state:"
+echo "  $demo_run_dir/mark-terminal-state.sh --state first-commit-ready --note \"agent reached first commit ready\""
+echo "  $demo_run_dir/mark-terminal-state.sh --state blocked-at-segment-2 --note \"checks could not be made green\""
+echo "  $demo_run_dir/mark-terminal-state.sh --state void --note \"human stopped before protocol completion\""
