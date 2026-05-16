@@ -398,6 +398,48 @@ evidence_plane_brief() {
   echo "- what-now と status は closed record の invalidated-by から stale candidate を surface する。"
 }
 
+control_plane_brief() {
+  local state="$1"
+  local phase="${2:-}"
+
+  echo "## Control Plane"
+  echo ""
+
+  case "$state" in
+    unknown)
+      echo "- mode source: .llm/repo-context.edn (missing)"
+      echo "- primary action: recover or add the repo-context manifest before normal work"
+      echo "- next action surface: ./.llm/scripts/evidence.sh what-now after manifest recovery"
+      echo "- completion gate: unavailable until repo mode is known"
+      ;;
+    conflict)
+      echo "- mode source: .llm/repo-context.edn (:repo-kind :template) plus bootstrap traces"
+      echo "- state: conflict; do not continue as either pure template or complete project"
+      echo "- primary action: complete BOOTSTRAP_GUIDE manifest transform, then re-run briefing"
+      echo "- next action surface: mode repair first; evidence.sh what-now after conflict is cleared"
+      echo "- completion gate: check-workspace-integrity.sh blocks this state"
+      ;;
+    template)
+      echo "- mode source: .llm/repo-context.edn (:repo-kind :template)"
+      echo "- operating intent: template maintenance; keep :project-owned paths untouched"
+      echo "- decision log: maintainer archive, not ADR"
+      echo "- next action surface: ./.llm/scripts/evidence.sh what-now"
+      echo "- completion gate: task-specific checks + Structural Evidence gate + check-workspace-integrity.sh"
+      ;;
+    project)
+      echo "- mode source: .llm/repo-context.edn (:repo-kind :project)"
+      if [ "$phase" = "bootstrap" ]; then
+        echo "- operating intent: derived project bootstrap; finish identity and deploy shape first"
+      else
+        echo "- operating intent: derived project development"
+      fi
+      echo "- decision log: QUESTIONS / KNOWLEDGE / ADR by decision type"
+      echo "- next action surface: ./.llm/scripts/evidence.sh what-now"
+      echo "- completion gate: CLAUDE.md §5.5 + Structural Evidence gate + task-specific checks"
+      ;;
+  esac
+}
+
 tcp_port_open() {
   local host="$1"
   local port="$2"
@@ -430,6 +472,8 @@ ADOPTION_MODE="$(read_adoption_mode || true)"
 if [ -z "$REPO_KIND" ]; then
   echo "## MODE: UNKNOWN（manifest 不在）"
   echo ""
+  control_plane_brief "unknown"
+  echo ""
   echo "**ERROR (non-blocking)**: \`.llm/repo-context.edn\` が見つかりません。"
   echo "既存派生プロジェクトへ本テンプレ更新を持ち込んだ直後なら、"
   echo "\`:repo-kind :project\` の manifest を追加してください。"
@@ -458,6 +502,8 @@ fi
 if [ "$REPO_KIND" = "template" ] && has_bootstrap_traces; then
   echo "## MODE: CONFLICT"
   echo ""
+  control_plane_brief "conflict"
+  echo ""
   echo "**ERROR (non-blocking)**: bootstrap finalization missed manifest transform"
   echo ""
   echo "manifest は \`:repo-kind :template\` を主張していますが、bootstrap 完了痕跡"
@@ -473,6 +519,8 @@ fi
 # 3. TEMPLATE MAINTENANCE モード
 if [ "$REPO_KIND" = "template" ]; then
   echo "## MODE: TEMPLATE MAINTENANCE"
+  echo ""
+  control_plane_brief "template"
   echo ""
   echo "**本リポジトリはテンプレート自身**（clojure-polylith-llm-starter）。"
   echo "テンプレート保守作業を行うモード。派生プロジェクトの記録領域（manifest の"
@@ -514,6 +562,8 @@ else
   echo ""
 
   if is_bootstrap_phase; then
+    control_plane_brief "project" "bootstrap"
+    echo ""
     echo "## Phase: bootstrap（初期化未完了）"
     echo ""
     echo "### 未完了の指標"
@@ -523,6 +573,8 @@ else
     echo "- \`.llm/guide/BOOTSTRAP_GUIDE.md\` §2（初期化手順）"
     echo "- \`DESIGN.md\`（§1-§4, §8 の埋め込み対象）"
   else
+    control_plane_brief "project" "development"
+    echo ""
     echo "## Phase: development（ブートストラップ完了済）"
     echo ""
     echo "### 次に読む文書（作業内容に応じて）"
