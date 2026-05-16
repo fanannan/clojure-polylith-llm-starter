@@ -6,7 +6,7 @@
 ここに置くもの:
 
 - `examples/ideas/`: demo / benchmark 用に `IDEA.md` へコピーする着想メモ
-- `tests/`: テンプレート自身の保守 E2E
+- `tests/`: テンプレート自身の保守 E2E と benchmark harness の simulation smoke
 - `benchmark/`: `IDEA.md` 起点の開発体験を観測し、テンプレート改善へ戻すための仕組み
 
 ## Lifecycle
@@ -32,4 +32,3 @@ derived project
 `template-owned` ではなく、派生後削除対象を表す専用区分として扱う。
 
 ¤ ../repo-context.edn
-

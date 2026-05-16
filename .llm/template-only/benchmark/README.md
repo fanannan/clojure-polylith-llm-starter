@@ -77,6 +77,27 @@ runner、git hook、承認マーカーなど、agent の外側で取る。
 agent は通常どおり README / CLAUDE / guide を読んで作業する。benchmark の存在を
 agent に知らせないことを基本にする。
 
+## 自走性チェックと Simulation Smoke
+
+benchmark harness 自体は、自走できることを検査する必要がある。ただし、
+LLM や script が人間承認の代役をした run は、本物の benchmark 観測点ではない。
+
+その用途は simulation smoke として分離する。simulation smoke は、
+`setup-run.sh` が demo repo を作れること、`.llm/template-only/` が除去されること、
+post-commit hook が snapshot を残すこと、承認 marker と terminal marker が
+両方の run record に同期されることを確認する。
+
+simulation smoke では `simulate-approval.sh` を使う。この marker は
+`:approval/source :simulated-llm` として記録される。これを含む run は
+cross-run template evaluation に混ぜない。通常は terminal state を `void` とし、
+「harness の自走チェック」としてだけ読む。
+
+保守者向けの自走チェック:
+
+```bash
+./.llm/template-only/tests/check-benchmark-setup-smoke.sh
+```
+
 ## 記録の出自
 
 長期的に劣化しない記録は、出自を分けて読む。

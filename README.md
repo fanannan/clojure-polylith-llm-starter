@@ -262,6 +262,14 @@ benchmark は無人完走テストではない。L0 / L1 gate 間の自律 segme
 承認は runner 側の marker に記録する。考え方の正本:
 ¤ .llm/template-only/benchmark/README.md
 
+benchmark harness 自体の自走性は、simulation smoke として別に検査できる。
+これは LLM が人間承認を代行した benchmark evidence ではなく、setup / hook /
+marker 記録が壊れていないことの保守テストである。
+
+```bash
+./.llm/template-only/tests/check-benchmark-setup-smoke.sh
+```
+
 ---
 
 **必須技術基盤**: Clojure + tools.deps + Polylith + Malli + clj-kondo + cljfmt + Splint + clj-watson + `.llm/scripts/`。
@@ -279,6 +287,7 @@ HTTP、永続化、ライフサイクル管理などの追加技術は、必要�
 | 既存 repo に後から導入する | `README.md` → `.llm/guide/BOOTSTRAP_GUIDE.md` §4.1 | 本ファイルの「既存 repo への導入」まで |
 | demo IDEA を試す | `.llm/template-only/examples/ideas/README.md` | IDEA コピー手順とサンプル一覧 |
 | benchmark を準備する | `.llm/template-only/benchmark/README.md` | protocol と `setup-run.sh` の考え方 |
+| benchmark harness を検査する | `.llm/template-only/tests/README.md` | simulation smoke と保守 E2E |
 | 日常開発を進める | `CLAUDE.md` | 毎セッション最初から |
 | 着想から仕様を起こす | `IDEA.md` → `DESIGN.md` | IDEA は自由記載、DESIGN は仕様正本 |
 | 仕様を埋める・直す | `DESIGN.md` | §0 と該当節 |

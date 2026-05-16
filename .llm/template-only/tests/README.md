@@ -11,18 +11,20 @@
 ./.llm/template-only/tests/check-map-scenarios.sh
 ./.llm/template-only/tests/check-design-ir-scenarios.sh
 ./.llm/template-only/tests/check-trace-metadata-scenarios.sh
+./.llm/template-only/tests/check-benchmark-setup-smoke.sh
 ```
 
 この検査は `/tmp` に synthetic Polylith-like repos を作成し、`brick.edn` / `project.edn` / generated map の移行・生成・検査・修復シナリオを確認する。
 DESIGN IR 検査は `/tmp` に synthetic repos を作成し、DESIGN 抽出・既存分析 EDN 連携・stale IR 検出を確認する。
 trace metadata 検査は `/tmp` に synthetic repos を作成し、public boundary / deftest への trace metadata と誤配置検出を確認する。
+benchmark setup smoke は `/tmp` に demo repo を作成し、benchmark harness が人間なしで準備・marker 記録まで自走できることだけを確認する。これは benchmark evidence ではない。
 
 ## 位置づけ
 
 - 日常ゲート: `.llm/scripts/check-workspace-integrity.sh`
-- テンプレート保守 E2E: `./check-map-scenarios.sh`, `./check-design-ir-scenarios.sh`, `./check-trace-metadata-scenarios.sh`
+- テンプレート保守 E2E: `./check-map-scenarios.sh`, `./check-design-ir-scenarios.sh`, `./check-trace-metadata-scenarios.sh`, `./check-benchmark-setup-smoke.sh`
 
-`check-map-scenarios.sh`、`check-design-ir-scenarios.sh`、`check-trace-metadata-scenarios.sh` は、日常作業の高速ループに入れない。テンプレート配布物の信頼性を確認するための重い保守テストとして扱う。
+`check-map-scenarios.sh`、`check-design-ir-scenarios.sh`、`check-trace-metadata-scenarios.sh`、`check-benchmark-setup-smoke.sh` は、日常作業の高速ループに入れない。テンプレート配布物の信頼性を確認するための重い保守テストとして扱う。
 
 ## 常備する観点
 
@@ -47,3 +49,4 @@ trace metadata 検査は `/tmp` に synthetic repos を作成し、public bounda
 - trace metadata は public boundary `defn` と `deftest` にだけ許可すること
 - trace metadata の未知 ID と test obligation の誤配置を検出すること
 - trace metadata の空 ID、重複 ID、base 内部誤配置、`:adoption-mode :complete` の未対応 obligation error、related IDs 不整合を検出すること
+- benchmark setup が demo repo から `.llm/template-only/` を除去し、post-commit snapshot、simulation approval、terminal marker を記録できること

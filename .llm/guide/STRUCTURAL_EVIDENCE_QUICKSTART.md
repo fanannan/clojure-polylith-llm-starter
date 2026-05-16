@@ -2,6 +2,9 @@
 
 Structural Evidence View は、LLM が scope と evidence を自己申告する代わりに、git diff、repo-kind、Polylith 構造、生成 index、検査 script から review 用 view を導出する仕組みである。
 
+Structural Evidence View は変更後の close 機構であり、DESIGN 由来 obligation の未完了を選ぶ作業面ではない。Work Frontier / obligation coverage は、既存 check の typed failure を read-only に射影する別の生成 view として保守する。task artifact や task queue を作らない点は Structural Evidence と同じである。
+∵ .llm/guide/MAINTAINERS_GUIDE.md §5.16
+
 最低限の mantra:
 
 1. LLM の出力は claim であり、trust ではない。

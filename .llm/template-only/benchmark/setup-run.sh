@@ -194,7 +194,7 @@ When the agent reaches a gate, review the proposal outside the benchmark timing.
 If you approve the next segment, record the approval marker:
 
 \`\`\`bash
-$demo_run_dir/approve-next-segment.sh --level L1 --note "approved <what>"
+$demo_run_dir/approve-next-segment.sh --level L1 --source manual-human --note "approved <what>"
 \`\`\`
 
 Then tell the agent:
@@ -218,6 +218,20 @@ $demo_run_dir/mark-terminal-state.sh --state blocked-at-segment-2 --note "checks
 \`\`\`
 
 Post-commit snapshots are recorded automatically by the demo repo git hook.
+
+## Simulation Smoke
+
+If you only need to check whether the benchmark protocol can flow end-to-end
+without a human reviewer, use simulated approval markers. This is not a valid
+benchmark observation point.
+
+\`\`\`bash
+$demo_run_dir/simulate-approval.sh --level L1 --note "simulated approval for smoke"
+$demo_run_dir/mark-terminal-state.sh --state void --note "simulation smoke completed"
+\`\`\`
+
+Runs containing \`:approval/source :simulated-llm\` must not be mixed into
+cross-run template evaluation. Mark pure harness smoke runs as \`void\`.
 
 ## Agent Prompt
 
@@ -273,17 +287,19 @@ chmod +x "$demo_dir/.git/hooks/post-commit"
   cat <<'APPROVE'
 level=""
 note=""
+source="manual-human"
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --level) shift; level="${1:-}" ;;
     --note) shift; note="${1:-}" ;;
+    --source) shift; source="${1:-}" ;;
     -h|--help)
-      echo "Usage: approve-next-segment.sh --level L0|L1 --note <text>" >&2
+      echo "Usage: approve-next-segment.sh --level L0|L1 [--source manual-human|scripted-human|simulated-llm] --note <text>" >&2
       exit 0
       ;;
     *)
-      echo "Usage: approve-next-segment.sh --level L0|L1 --note <text>" >&2
+      echo "Usage: approve-next-segment.sh --level L0|L1 [--source manual-human|scripted-human|simulated-llm] --note <text>" >&2
       exit 2
       ;;
   esac
@@ -300,20 +316,31 @@ case "$level" in
   *) echo "ERROR: --level must be L0 or L1" >&2; exit 2 ;;
 esac
 
+case "$source" in
+  manual-human|scripted-human|simulated-llm) ;;
+  *) echo "ERROR: --source must be manual-human, scripted-human, or simulated-llm" >&2; exit 2 ;;
+esac
+
 escape() {
   printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
 }
 
 at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 rev="$(git rev-parse HEAD 2>/dev/null || printf unknown)"
-line="$(printf '{:event/type :approval-marker :at "%s" :level :%s :git/rev "%s" :note "%s"}\n' \
-  "$at" "$level" "$rev" "$(escape "$note")")"
+line="$(printf '{:event/type :approval-marker :at "%s" :level :%s :approval/source :%s :git/rev "%s" :note "%s"}' \
+  "$at" "$level" "$source" "$rev" "$(escape "$note")")"
 printf '%s\n' "$line" >> "$DEMO_RUN_DIR/events.edn"
 printf '%s\n' "$line" >> "$TEMPLATE_RUN_DIR/events.edn"
-echo "approval marker recorded: $level"
+echo "approval marker recorded: $level ($source)"
 APPROVE
 } > "$demo_run_dir/approve-next-segment.sh"
 chmod +x "$demo_run_dir/approve-next-segment.sh"
+
+cat > "$demo_run_dir/simulate-approval.sh" <<EOF
+#!/usr/bin/env bash
+exec "$(printf '%s' "$demo_run_dir/approve-next-segment.sh")" --source simulated-llm "\$@"
+EOF
+chmod +x "$demo_run_dir/simulate-approval.sh"
 
 {
   echo '#!/usr/bin/env bash'
@@ -380,7 +407,11 @@ echo "    $demo_run_dir/run.md"
 echo "  Start your agent manually with the Agent Prompt from that file."
 echo ""
 echo "At each approved L0/L1 gate, record:"
-echo "  $demo_run_dir/approve-next-segment.sh --level L1 --note \"approved <what>\""
+echo "  $demo_run_dir/approve-next-segment.sh --level L1 --source manual-human --note \"approved <what>\""
+echo ""
+echo "For simulation smoke only (not valid benchmark evidence):"
+echo "  $demo_run_dir/simulate-approval.sh --level L1 --note \"simulated approval for smoke\""
+echo "  $demo_run_dir/mark-terminal-state.sh --state void --note \"simulation smoke completed\""
 echo ""
 echo "At the end, record one terminal state:"
 echo "  $demo_run_dir/mark-terminal-state.sh --state first-commit-ready --note \"agent reached first commit ready\""

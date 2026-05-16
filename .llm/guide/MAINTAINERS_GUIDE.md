@@ -885,6 +885,83 @@ Derive First, Declare Residual, Preserve Only What Reduces Future Fatigue, Audit
 利用者向けの最小手順:
 ¤ .llm/guide/STRUCTURAL_EVIDENCE_QUICKSTART.md
 
+### 5.16 Work Frontier / obligation coverage の保守
+
+Work Frontier は task 管理層ではない。§1.1.1 全域性を、DESIGN 由来の仕様義務から public boundary / test / trace / evidence / 明示的 disposition までの連鎖へ拡張し、未接続・未検証・未説明の義務を typed failure として surface する生成 view である。
+
+中心原則:
+
+```text
+Make unfinished obligations typed, derive the frontier from failing checks, do not create tasks.
+```
+
+役割分担:
+
+- Authority Plane: `DESIGN.md`、QUESTIONS、KNOWLEDGE、maintainer archive が obligation の意味・保留・判断経緯を持つ
+- Index Plane: `design-ir.edn`、`trace-index.edn`、`obligation-index.edn` が DESIGN / trace / structure / evidence を join する。直接編集禁止
+- Verification Plane: `check-trace-metadata.sh`、`check-workspace-integrity.sh`、将来の obligation coverage check が未完了を ERROR / WARN にする
+- Work Frontier: failing obligation / blocked obligation を dependency order で表示する read-only projection。`.llm/work/tasks/` のような保存 task は作らない
+- Evidence View: frontier で選んだ赤を直した後、その変更を閉じるために使う。Evidence View は Work Frontier の代替ではない
+
+Obligation の状態は、complete / accounted but not complete / red に分ける。
+
+| 区分 | 状態 | 条件 |
+|---|---|---|
+| complete | `:satisfied` | public boundary、test、trace、必要 evidence が揃う |
+| complete | `:out-of-scope` | `DESIGN.md` §2.2 スコープ外に backing がある |
+| complete | `:deferred` | `DESIGN.md` §10 将来計画、または open Q に backing がある |
+| complete | `:non-code` | コード実装ではなく文書・運用・制約で満たす義務として DESIGN に backing がある |
+| complete | `:manual-verified` | DESIGN に検証方法があり、fresh manual / procedural evidence がある |
+| accounted | `:blocked-by-question` | open QUESTIONS Q への有効 link がある。Q 解決後は再評価する |
+| accounted | `:manual-verification-required` | DESIGN に検証方法はあるが fresh evidence がない |
+| red | `:missing-boundary` | 実装 boundary への trace がない |
+| red | `:missing-test` | `:trace/test-obligations` を持つ `deftest` がない |
+| red | `:missing-trace` | 実装または test はあるが DESIGN 由来 ID と接続されていない |
+| red | `:orphan-boundary` | 実装側 trace が DESIGN obligation に戻れない |
+| red | `:orphan-test` | test 側 trace が DESIGN obligation に戻れない |
+| red | `:stale-evidence` | backing evidence が後続変更で stale candidate になっている |
+| red | `:unbacked-disposition` | `:deferred` / `:out-of-scope` / `:manual-verified` / `:non-code` の backing がない |
+| red | `:unresolved-blocker` | block 理由が QUESTIONS 等の既存受け皿に接続されていない |
+
+完了判定は「red が無い」だけでは足りない。`accounted` は把握済みの未完了であり、release / 完成判定では残ってはならない。日常の frontier では `accounted` を red より下に表示し、LLM が実装で解決できない判断待ちとして扱う。
+
+Disposition authoring は DESIGN を優先する。section から導出できるものは既定導出する。
+
+- `DESIGN.md` §2.2: `:out-of-scope`
+- `DESIGN.md` §10: `:deferred`
+- `DESIGN.md` §6 / §7 / §9: 原則 `:non-code` または `:manual-verification-required`。検証方法が明示され、fresh evidence があれば `:manual-verified`
+- `DESIGN.md` §3 / §4: 原則 `:satisfied` を要求する。例外的に deferred / manual / non-code にする場合だけ、DESIGN 内の構造化注記または open Q backing を要求する
+
+自動 ambiguity detection は採用しない。曖昧さは open Q へ起票し、その Q への link を持つ `:blocked-by-question` として扱う。
+
+Severity は mode で分岐する。
+
+| repo state | obligation coverage の扱い |
+|---|---|
+| `:repo-kind :template` | root DESIGN の空欄は配布 scaffold として許容。behavior は synthetic project tests で検証する |
+| `:repo-kind :project`, `:adoption-mode :retrofit` | WARN。既存 repo の棚卸しを止めない |
+| `:repo-kind :project`, `:adoption-mode :partial` | 採用済み capability に関わる範囲を WARN / 必要に応じて ERROR |
+| `:repo-kind :project`, `:adoption-mode :complete` | 未被覆 obligation、unbacked disposition、stale required evidence は ERROR |
+
+frontier の順序は planner / ranking ではなく、design-ir 由来の relation DAG と severity で導出する。典型順は「DESIGN 必須節の欠落 → unresolved blocker → missing boundary / trace → missing test → manual verification required → stale evidence → housekeeping」である。heuristic が必要な場合も、並べ替え理由を inspect できるようにする。
+
+実装前に先に閉じる friction:
+
+1. maintainer archive の MD ID 重複を検出する。設計判断の anchor が重複 ID で曖昧になると、frontier 以前に Authority Plane が信用できない
+2. `session-briefing.sh` で `core.hooksPath` が `.githooks` かを surface する。pre-commit gate を前提にするなら、hook 未有効状態を隠さない
+3. active Evidence packet と current staged diff が対応しない場合、`evidence.sh what-now` はそれを primary work ではなく housekeeping として扱う。frontier head を residual cleanup が常に奪わないようにする
+
+実装順序:
+
+1. 本節と maintainer archive に設計判断を固定する
+2. `gen_design_ir.clj` を拡張し、DESIGN 項目を obligation domain として分類する
+3. `.llm/data/obligation-index.edn` を生成し、state / backing / trace / evidence / related Q を join する
+4. `check-trace-metadata.sh` / `gen-trace-index.sh` に DESIGN → public boundary / `deftest` の逆方向被覆を追加する
+5. `check-workspace-integrity.sh` に obligation-index drift / backing check を追加する
+6. `derive-work-frontier.sh` を read-only projection として追加する
+7. `session-briefing.sh` に Work Frontier head を Evidence Plane より上に表示する
+8. synthetic project の template E2E で、AC あり boundary/test なし、boundary のみ、boundary + test、manual verification、open Q backing、unbacked disposition、template scaffold 許容を検査する
+
 ---
 
 ## 6. 避けるべきアンチパターン

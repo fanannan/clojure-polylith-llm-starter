@@ -148,6 +148,9 @@ IDEA は、未整理の着想や要望を DESIGN へ構造化するための任�
 
 これら三つは**相互に強化する**。一つ緩めると他二つの効果も目減りする。
 
+**作業の全域化**: §1.1.1 全域性は、関数契約だけでなく DESIGN 由来の仕様義務にも適用する。要件・ユースケース・受入基準・制約が、public boundary / test / trace / evidence / 明示的な非実装理由のいずれにも接続されず静かに残る状態は、未完了を表す typed failure として扱う。これを実装する時は task artifact や planner を新設せず、`design-ir.edn` 由来の obligation index と total check から Work Frontier を導出する。`blocked-by-question` や `manual-verification-required` は「把握済みだが未完了」であり、complete ではない。
+∵ .llm/guide/MAINTAINERS_GUIDE.md §5.16
+
 **参照記法（本書および派生文書で統一）**: 表の原則を参照する時は `§1.1.1`（全域性）/ `§1.1.2`（不変性）/ `§1.1.3`（副作用の隔離）の形式を用いる。同様に §1.2 の四戦略は `§1.2.1`（機械化）/ `§1.2.2`（ループ短縮）/ `§1.2.3`（小単位分解）/ `§1.2.4`（早期破棄）。
 
 ### 1.2 四つの実装戦略（三原則を日々の開発で機能させる手段）
@@ -417,6 +420,9 @@ test obligation への対応は実装関数ではなく `deftest` に置く。
 `.llm/scripts/check-trace-metadata.sh` は未知 ID、空 ID、重複 ID、内部実装への trace metadata、実装関数への `:trace/test-obligations`、未対応 test obligation、test obligation の related IDs と test metadata の不整合を検出する。`:adoption-mode :complete` では未対応 test obligation と related IDs 不整合を error、`:retrofit` / `:partial` では warning とする。誤配置と未知 ID は常に error とする。
 
 `.llm/scripts/gen-trace-index.sh` は trace metadata から `docs/TRACE.md` と `.llm/data/trace-index.edn` を生成する。LLM は DESIGN 更新時や requirement / use case / test obligation を触る前に trace-index を読み、影響する public boundary と `deftest` を先に列挙してから実装する。
+
+Work Frontier / obligation coverage を実装する時は、本節の trace を逆方向にも使う。DESIGN 側の obligation から public boundary / `deftest` / evidence へ辿れない場合は coverage hole として扱い、`:adoption-mode :complete` では ERROR、`:retrofit` / `:partial` では WARN、`:repo-kind :template` の空 DESIGN scaffold では許容する。`:deferred` / `:out-of-scope` / `:manual-verified` などの disposition は DESIGN または Evidence 側の backing が無ければ complete 扱いしない。
+∵ .llm/guide/MAINTAINERS_GUIDE.md §5.16
 
 ### 5.5 完了条件（以下全通過で初めて完了報告）
 
@@ -754,6 +760,8 @@ Malli `:closed true` map の read-side 未定義キーアクセスは静的検�
 | 3 回試みても解決しない / 予想を超えて範囲が広がる | §7 自己停止プロトコル |
 
 この振り分けに載らない「タスク」概念は本テンプレートには存在しない。作業中の全事象は既存の受け皿（QUESTIONS.md / KNOWLEDGE.md / ADR / §7 自己停止）に流す。
+
+Work Frontier はこの規約の例外ではない。導入する場合も永続 task / task queue / begin-close workflow は作らず、failing obligation / blocked obligation を既存 check から read-only に射影するだけに留める。frontier の red は上表の失敗として処理し、判断が必要なら QUESTIONS、継続知識なら KNOWLEDGE、設計判断なら maintainer archive へ流す。
 
 ### 8.1 既存コンポーネントへの機能追加
 
