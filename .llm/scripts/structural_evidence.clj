@@ -1610,6 +1610,31 @@
 
     false))
 
+(defn- current-scope-intersects-record? [record current-packet]
+  (let [current-scope (:actual-scope current-packet)
+        record-scope (:actual-scope record)]
+    (and (seq (:paths current-scope))
+         (or (set-intersects? (:paths record-scope)
+                              (:paths current-scope))
+             (set-intersects? (:bricks record-scope)
+                              (:bricks current-scope))
+             (set-intersects? (:requirements record-scope)
+                              (:requirements current-scope))
+             (set-intersects? (:public-boundaries record-scope)
+                              (:public-boundaries current-scope))))))
+
+(defn- record-relation [record current-packet]
+  (if (or (same-fingerprint-content? record current-packet)
+          (current-scope-intersects-record? record current-packet))
+    :current
+    :historical))
+
+(defn- relation-actionability [relation]
+  (case relation
+    :current :primary
+    :historical :summary
+    :summary))
+
 (defn- evidence-staleness [entry record current-packet include-working-tree?]
   (let [deps (:invalidated-by entry)
         rev (or (:closed-git-rev record) (:repo-rev entry))]
@@ -1631,6 +1656,7 @@
 (defn- record-staleness [record current-packet]
   (let [same-fingerprint? (same-fingerprint-content? record current-packet)
         include-working-tree? (not same-fingerprint?)
+        relation (record-relation record current-packet)
         checks (mapv #(assoc (evidence-staleness % record current-packet include-working-tree?)
                              :id (:id %))
                      (:evidence record))
@@ -1639,6 +1665,8 @@
                (contains? statuses :stale-candidate) :stale-candidate
                (contains? statuses :unknown) :unknown
                :else :valid)
+     :relation relation
+     :actionability (relation-actionability relation)
      :checks checks}))
 
 (defn- closed-record-staleness [current-packet]
@@ -2192,6 +2220,23 @@
 (defn- matching-packets-by-content [packets fingerprint]
   (filter #(fingerprint-content-matches? % fingerprint) packets))
 
+(defn- stale-record-context [packet]
+  (let [stale-records (->> (closed-record-staleness packet)
+                           (filter #(= :stale-candidate (:status %)))
+                           vec)
+        current (->> stale-records
+                     (filter #(= :current (:relation %)))
+                     (take 5)
+                     vec)
+        historical (->> stale-records
+                        (filter #(= :historical (:relation %)))
+                        (take 5)
+                        vec)]
+    {:stale-candidates current
+     :historical-stale-candidates historical
+     :historical-stale-count (count (filter #(= :historical (:relation %))
+                                            stale-records))}))
+
 (defn- packet-failed-evidence [packet]
   (failed-evidence-statuses packet))
 
@@ -2273,21 +2318,22 @@
                         :id))
          vec)))
 
-(defn- work-frontier-head-plan [stale-candidates housekeeping]
+(defn- work-frontier-head-plan [stale-context housekeeping]
   (when-let [item (first (work-frontier-items))]
-    {:state :work-frontier-head
-     :obligation-id (:id item)
-     :obligation {:id (:id item)
-                  :kind (:kind item)
-                  :state (:state item)
-                  :category (:category item)
-                  :source (:source item)
-                  :frontier (:frontier item)}
-     :blocked-on []
-     :next-action (action "./.llm/scripts/derive-work-frontier.sh"
-                          "no current diff is pending; inspect the next unfinished DESIGN obligation")
-     :stale-candidates stale-candidates
-     :housekeeping housekeeping}))
+    (merge
+     {:state :work-frontier-head
+      :obligation-id (:id item)
+      :obligation {:id (:id item)
+                   :kind (:kind item)
+                   :state (:state item)
+                   :category (:category item)
+                   :source (:source item)
+                   :frontier (:frontier item)}
+      :blocked-on []
+      :next-action (action "./.llm/scripts/derive-work-frontier.sh"
+                           "no current diff is pending; inspect the next unfinished DESIGN obligation")
+      :housekeeping housekeeping}
+     stale-context)))
 
 (defn- orphan-declaration-plan [_current-fingerprint]
   (when-let [declaration (->> (declarations)
@@ -2324,7 +2370,7 @@
   (or (:task/id packet)
       (gate-task-id (:change/fingerprint packet))))
 
-(defn- active-packet-plan [active stale-candidates]
+(defn- active-packet-plan [active stale-context]
   (let [task (current-task-id active)
         missing (missing-residual-fields active)
         failed (failed-evidence-statuses active)
@@ -2333,40 +2379,44 @@
         packet-path (view-path task)]
     (cond
       (seq missing)
-      {:state :active-packet-pending-residual
-       :task-id task
-       :packet-path packet-path
-       :blocked-on [(block :residual missing)]
-       :next-action (action (str "./.llm/scripts/evidence.sh declare --task " task " --all-none")
-                            "residual fields are still nil; use concrete field declarations when residual impact exists")
-       :stale-candidates stale-candidates}
+      (merge
+       {:state :active-packet-pending-residual
+        :task-id task
+        :packet-path packet-path
+        :blocked-on [(block :residual missing)]
+        :next-action (action (str "./.llm/scripts/evidence.sh declare --task " task " --all-none")
+                             "residual fields are still nil; use concrete field declarations when residual impact exists")}
+       stale-context)
 
       (seq failed)
-      {:state :active-packet-failed-evidence
-       :task-id task
-       :packet-path packet-path
-       :blocked-on [(block :failed-evidence failed)]
-       :next-action (action (str "fix failed evidence: " (str/join ", " failed))
-                            "command-backed evidence failed")
-       :stale-candidates stale-candidates}
+      (merge
+       {:state :active-packet-failed-evidence
+        :task-id task
+        :packet-path packet-path
+        :blocked-on [(block :failed-evidence failed)]
+        :next-action (action (str "fix failed evidence: " (str/join ", " failed))
+                             "command-backed evidence failed")}
+       stale-context)
 
       (seq not-run)
-      {:state :active-packet-needs-evidence-run
-       :task-id task
-       :packet-path packet-path
-       :blocked-on [(block :missing-evidence not-run)]
-       :next-action (action (str "./.llm/scripts/evidence.sh run --task " task)
-                            "some command-backed evidence has not been recorded")
-       :stale-candidates stale-candidates}
+      (merge
+       {:state :active-packet-needs-evidence-run
+        :task-id task
+        :packet-path packet-path
+        :blocked-on [(block :missing-evidence not-run)]
+        :next-action (action (str "./.llm/scripts/evidence.sh run --task " task)
+                             "some command-backed evidence has not been recorded")}
+       stale-context)
 
       :else
-      {:state :active-packet-ready-to-close
-       :task-id task
-       :packet-path packet-path
-       :blocked-on []
-       :next-action (action (str "./.llm/scripts/evidence.sh close --task " task source-flag)
-                            "residual declarations and command-backed evidence are complete")
-       :stale-candidates stale-candidates})))
+      (merge
+       {:state :active-packet-ready-to-close
+        :task-id task
+        :packet-path packet-path
+        :blocked-on []
+        :next-action (action (str "./.llm/scripts/evidence.sh close --task " task source-flag)
+                             "residual declarations and command-backed evidence are complete")}
+       stale-context))))
 
 (defn- housekeeping-item [packet]
   (let [task (current-task-id packet)]
@@ -2378,18 +2428,19 @@
      :missing-evidence (missing-evidence-statuses packet)
      :failed-evidence (failed-evidence-statuses packet)}))
 
-(defn- detached-active-packet-plan [active stale-candidates]
+(defn- detached-active-packet-plan [active stale-context]
   (let [task (current-task-id active)
         packet-path (view-path task)]
-    {:state :detached-active-packet-housekeeping
-     :task-id task
-     :packet-path packet-path
-     :blocked-on [(block :detached-active-packet
-                         {:fingerprint (get-in active [:change/fingerprint :digest])})]
-     :next-action (action (str "./.llm/scripts/evidence.sh inspect --from " packet-path)
-                          "active derived view does not match the current change fingerprint; inspect before declaring residuals or discarding generated work files")
-     :housekeeping [(housekeeping-item active)]
-     :stale-candidates stale-candidates}))
+    (merge
+     {:state :detached-active-packet-housekeeping
+      :task-id task
+      :packet-path packet-path
+      :blocked-on [(block :detached-active-packet
+                          {:fingerprint (get-in active [:change/fingerprint :digest])})]
+      :next-action (action (str "./.llm/scripts/evidence.sh inspect --from " packet-path)
+                           "active derived view does not match the current change fingerprint; inspect before declaring residuals or discarding generated work files")
+      :housekeeping [(housekeeping-item active)]}
+     stale-context)))
 
 (defn- what-now-plan [opts]
   (if-let [derived-plan (required-derived-view-plan)]
@@ -2415,70 +2466,72 @@
                                     (conj (housekeeping-item active-stale))))
           clean-record (latest-clean-record closed-matches)
           stale-summary (when clean-record (record-staleness clean-record packet))
-          stale-candidates (->> (closed-record-staleness packet)
-                                (filter #(= :stale-candidate (:status %)))
-                                (take 5)
-                                vec)
+          stale-context (stale-record-context packet)
           orphan-declaration (orphan-declaration-plan fingerprint)
           source-flag (diff-source-flag packet)]
       (cond
         active-match
-        (active-packet-plan active-match stale-candidates)
+        (active-packet-plan active-match stale-context)
 
         (and (empty? files) active-mismatch)
-        (detached-active-packet-plan active-mismatch stale-candidates)
+        (detached-active-packet-plan active-mismatch stale-context)
 
         (and (empty? files) active-stale)
-        (detached-active-packet-plan active-stale stale-candidates)
+        (detached-active-packet-plan active-stale stale-context)
 
         orphan-declaration
-        (assoc orphan-declaration :stale-candidates stale-candidates)
+        (merge orphan-declaration stale-context)
 
         (and clean-record (= :stale-candidate (:status stale-summary)))
-        {:state :matching-close-record-stale-candidate
-         :task-id (:task/id clean-record)
-         :record-path (:record/path clean-record)
-         :blocked-on [(block :stale-candidate (:checks stale-summary))]
-         :next-action (action (str "./.llm/scripts/propose-review-packet.sh --task " task-id source-flag)
-                              "a matching close record exists, but one or more evidence dependencies changed")
-         :stale-candidates stale-candidates
-         :housekeeping housekeeping}
+        (merge
+         {:state :matching-close-record-stale-candidate
+          :task-id (:task/id clean-record)
+          :record-path (:record/path clean-record)
+          :blocked-on [(block :stale-candidate (:checks stale-summary))]
+          :next-action (action (str "./.llm/scripts/propose-review-packet.sh --task " task-id source-flag)
+                               "a matching close record exists, but one or more evidence dependencies changed")
+          :housekeeping housekeeping}
+         stale-context)
 
         clean-record
-        {:state :commit-ready
-         :task-id (:task/id clean-record)
-         :record-path (:record/path clean-record)
-         :blocked-on []
-         :next-action (action "git commit"
-                              "matching clean close record exists for the current change fingerprint")
-         :stale-candidates stale-candidates
-         :housekeeping housekeeping}
+        (merge
+         {:state :commit-ready
+          :task-id (:task/id clean-record)
+          :record-path (:record/path clean-record)
+          :blocked-on []
+          :next-action (action "git commit"
+                               "matching clean close record exists for the current change fingerprint")
+          :housekeeping housekeeping}
+         stale-context)
 
         (empty? files)
-        (or (work-frontier-head-plan stale-candidates housekeeping)
-            {:state :no-change
-             :blocked-on []
-             :next-action (action "none"
-                                  "no changed paths, active derived view, or unfinished obligation")
-             :stale-candidates stale-candidates
-             :housekeeping housekeeping})
+        (or (work-frontier-head-plan stale-context housekeeping)
+            (merge
+             {:state :no-change
+              :blocked-on []
+              :next-action (action "none"
+                                   "no changed paths, active derived view, or unfinished obligation")
+              :housekeeping housekeeping}
+             stale-context))
 
         (not= :required save-policy)
-        {:state :evidence-optional
-         :blocked-on []
-         :next-action (action "git commit"
-                              "current change is not save-required by Structural Evidence policy")
-         :stale-candidates stale-candidates
-         :housekeeping housekeeping}
+        (merge
+         {:state :evidence-optional
+          :blocked-on []
+          :next-action (action "git commit"
+                               "current change is not save-required by Structural Evidence policy")
+          :housekeeping housekeeping}
+         stale-context)
 
         :else
-        {:state :packet-required
-         :task-id task-id
-         :blocked-on [(block :packet-required)]
-         :next-action (action (str "./.llm/scripts/propose-review-packet.sh --task " task-id source-flag)
-                              "save-required change has no active derived view or close record")
-         :stale-candidates stale-candidates
-         :housekeeping housekeeping}))))
+        (merge
+         {:state :packet-required
+          :task-id task-id
+          :blocked-on [(block :packet-required)]
+          :next-action (action (str "./.llm/scripts/propose-review-packet.sh --task " task-id source-flag)
+                               "save-required change has no active derived view or close record")
+          :housekeeping housekeeping}
+         stale-context)))))
 
 (defn run-what-now [opts]
   (let [plan (what-now-plan opts)]
@@ -2521,10 +2574,17 @@
                      (:packet-path item)
                      "(active derived view does not match current fingerprint)")))
         (when (seq (:stale-candidates plan))
-          (println "Stale candidates:" (count (:stale-candidates plan)))
+          (println "Current stale records:" (count (:stale-candidates plan)))
           (doseq [candidate (:stale-candidates plan)]
             (println " -" (:task/id candidate)
-                     (str "(" (name (:status candidate)) ")"))))))))
+                     (str "(" (name (:status candidate)) ", "
+                          (name (:relation candidate)) ")"))))
+        (when (pos? (or (:historical-stale-count plan) 0))
+          (println "Historical stale records:" (:historical-stale-count plan))
+          (doseq [candidate (:historical-stale-candidates plan)]
+            (println " -" (:task/id candidate)
+                     (str "(" (name (:status candidate)) ", "
+                          (name (:relation candidate)) ")"))))))))
 
 (defn- gate-fail! [opts lines]
   (doseq [line lines]
@@ -3033,6 +3093,29 @@
         same-content-record (assoc project-design
                                    :status :clean-close
                                    :closed-git-rev "fixture-rev")
+        current-stale-record (-> project-design
+                                 (assoc :task/id "fixture-current-stale"
+                                        :status :clean-close
+                                        :closed-git-rev "fixture-rev"
+                                        :evidence [{:id :fixture-current
+                                                    :invalidated-by [{:type :path-changed
+                                                                      :paths ["DESIGN.md"]}]}])
+                                 (assoc-in [:change/fingerprint :digest] "different-current-digest")
+                                 (assoc-in [:change/fingerprint :content-digest] "different-current-content"))
+        historical-stale-record (-> current-stale-record
+                                    (assoc :task/id "fixture-historical-stale"
+                                           :evidence [{:id :fixture-historical
+                                                       :invalidated-by [{:type :path-changed
+                                                                         :paths ["OLD.md"]}]}])
+                                    (assoc-in [:actual-scope :paths] ["OLD.md"])
+                                    (assoc-in [:change/fingerprint :digest] "different-historical-digest")
+                                    (assoc-in [:change/fingerprint :content-digest] "different-historical-content"))
+        current-stale-context (with-redefs [closed-records (constantly [current-stale-record])
+                                            changed-paths-since (constantly #{"DESIGN.md"})]
+                                (stale-record-context project-design))
+        historical-stale-context (with-redefs [closed-records (constantly [historical-stale-record])
+                                               changed-paths-since (constantly #{"OLD.md"})]
+                                   (stale-record-context project-design))
         closed-missing (assoc project-design :status :closed)
         closed-declared (assoc project-design
                                :status :closed
@@ -3131,6 +3214,17 @@
              (= :unknown (:status (record-staleness no-deps-record project-design))))
     (assert! "matching content does not invalidate evidence with its own diff"
              (= :valid (:status (record-staleness same-content-record project-design))))
+    (assert! "current stale records remain primary stale candidates"
+             (let [candidate (first (:stale-candidates current-stale-context))]
+               (and candidate
+                    (= :current (:relation candidate))
+                    (= :primary (:actionability candidate)))))
+    (assert! "unrelated stale records are summarized as historical"
+             (let [candidate (first (:historical-stale-candidates historical-stale-context))]
+               (and (empty? (:stale-candidates historical-stale-context))
+                    (= 1 (:historical-stale-count historical-stale-context))
+                    (= :historical (:relation candidate))
+                    (= :summary (:actionability candidate)))))
     (assert! "what-now packet-required blocked-on is structured"
              (= [{:type :packet-required}] (:blocked-on packet-required-plan)))
 	    (assert! "what-now does not let stale active packet steal current diff"

@@ -870,7 +870,7 @@ Derive First, Declare Residual, Preserve Only What Reduces Future Fatigue, Audit
 初期 MVP:
 
 - `evidence.sh status`: session 開始時・任意時点で Evidence Plane を query
-- `evidence.sh what-now`: required derived view freshness、active view、human declaration、staged diff、未宣言 residual、未実行 evidence、stale candidate から、次に実行すべき 1 action を返す。current fingerprint と一致しない generated view は primary work ではなく housekeeping として扱い、fingerprint から外れた declaration は orphan declaration として扱う。内容確認なしの `declare --all-none` を促さない。LLM は手順暗記ではなくこの操作面を優先する
+- `evidence.sh what-now`: required derived view freshness、active view、human declaration、staged diff、未宣言 residual、未実行 evidence、stale candidate から、次に実行すべき 1 action を返す。current fingerprint / current scope と直接関係する stale だけを current stale records として扱い、無関係な過去 record は historical stale records として summary に落とす。current fingerprint と一致しない generated view は primary work ではなく housekeeping として扱い、fingerprint から外れた declaration は orphan declaration として扱う。内容確認なしの `declare --all-none` を促さない。LLM は手順暗記ではなくこの操作面を優先する
 - `evidence.sh search`: scope 語彙で closed evidence record を検索
 - `evidence.sh is-verified`: requirement / public boundary / 任意 claim 語彙について、trace、design coverage、passing evidence、gap を集約して verified / partially verified / unverified を返す
 - `evidence.sh why`: claim を支える evidence chain と不足 gap を説明する。LLM が「なぜ信じてよいか」を再読ではなく query で取得する入口
@@ -888,7 +888,7 @@ Derive First, Declare Residual, Preserve Only What Reduces Future Fatigue, Audit
 - `check-residual-declared.sh`: close 前 residual 宣言の検査
 - `check-evidence-boundary.sh`: packet が新しい requirement / knowledge / decision を定義して第 5 の正本化していないか検査
 - `check-structural-evidence-self-test.sh`: repo-kind 分岐と代表 derivation rule の fixture self-test
-- `session-briefing.sh`: Evidence Plane の active view / human declaration / closed record / `what-now` / stale candidate surface
+- `session-briefing.sh`: Evidence Plane の active view / human declaration / closed record / `what-now` / current stale records / historical stale records を surface
 
 保存条件:
 
@@ -900,7 +900,7 @@ Derive First, Declare Residual, Preserve Only What Reduces Future Fatigue, Audit
 
 - Packet が新しい requirement / knowledge / decision を定義してはならない。unknown は QUESTIONS 候補、反復 residual は KNOWLEDGE / derivation rule / ADR または maintainer archive 候補として昇格する
 - packet 非正本性は文書宣言だけにしない。`check-evidence-boundary.sh` を workspace integrity に組み込み、違反を機械的に検出する
-- closed record の evidence は `invalidated-by` を持つ。後続変更が依存 path / brick / requirement / public boundary に触れた場合、stale candidate として `status` / `what-now` / `search` に surface する
+- closed record の evidence は `invalidated-by` を持つ。後続変更が依存 path / brick / requirement / public boundary に触れた場合、stale candidate として `status` / `what-now` / `search` に surface する。`what-now` では current scope に直接関係する stale と historical stale を分け、historical record が primary action を奪わないようにする
 - gate は matching clean close record があっても stale evidence があれば pass しない。freshness は briefing 表示だけでなく commit 前の構造条件である
 - Task は 1 つの intent と 1 つの close mode を持つ atomic working set とする。1 task が複数 commit に分かれることは許容するが、1 commit に複数 task を混ぜない。session を跨ぐ場合は active view / declaration を fingerprint 照合して resume し、新規 packet で同じ intent を再作成しない
 - Template Migration Ledger は「どの template migration を適用済みか」を扱う。Evidence Close Record は「その task をなぜ close できたか」を扱う。Close Record が migration ledger を evidence として参照することは許すが、migration ledger から Close Record へ逆参照して二重管理しない
