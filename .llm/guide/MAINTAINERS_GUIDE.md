@@ -966,7 +966,7 @@ Severity は mode で分岐する。
 | `:repo-kind :project`, `:adoption-mode :partial` | 採用済み capability に関わる範囲を WARN / 必要に応じて ERROR |
 | `:repo-kind :project`, `:adoption-mode :complete` | 未被覆 obligation、unbacked disposition、stale required evidence は ERROR |
 
-frontier の順序は planner / ranking ではなく、design-ir 由来の relation DAG と severity で導出する。test obligation が requirement / use case を参照しており、その親 obligation が未完了または accounted の場合、子の赤より親の unresolved / blocked / missing を先に出す。典型順は「DESIGN 必須節の欠落 → unresolved blocker → missing boundary / trace → missing test → manual verification required → stale evidence → housekeeping」である。heuristic が必要な場合も、`:frontier :blocked-by` / `:frontier :depth` として並べ替え理由を inspect できるようにする。
+frontier の順序は planner / ranking ではなく、design-ir 由来の relation DAG と severity で導出する。test obligation が requirement / use case を参照しており、その親 obligation が未完了または accounted の場合、子の赤より親の unresolved / blocked / missing を先に出す。典型順は「DESIGN 必須節の欠落 → unresolved blocker → missing boundary / trace → missing test → manual verification required → stale evidence → housekeeping」である。heuristic が必要な場合も、`:frontier :requires` / `:frontier :blocked-by` / `:frontier :depth` として並べ替え理由を inspect でき、`derive-work-frontier.sh` と `evidence.sh what-now` の表示にも出す。
 
 実装前に先に閉じる friction:
 
@@ -1039,7 +1039,7 @@ Work Frontier と Index Plane の一貫性:
 
 Structural Evidence の分離:
 
-- generated view: scope / archetype / required evidence / cross-document context。完全再生成可能。change fingerprint を virtual observed input として刻み、Structural Evidence generator / manifest helper / observed context の digest を含む action key を持つ。生成ロジックや観測 context 変更後の古い view は stale として扱う
+- generated view: scope / archetype / required evidence / cross-document context。完全再生成可能。change fingerprint を virtual observed input として刻み、Structural Evidence generator / manifest helper / observed context の digest を含む action key を持つ。生成ロジックや観測 context 変更後の古い view は stale として扱う。active view / declaration / run result の再付着は source-specific `:digest` で厳密に行う一方、closed record の照合は staged diff と commit range で共通する content-addressed `:content-digest` を使い、pre-commit close と last-commit advisory が同じ変更を別物として扱わないようにする
 - declaration: semantic impact / unknowns / cross-brick effects / override / remaining fatigue。人間または LLM が明示した値
 - run result: command-backed evidence の一時観測結果。derived view ではない。再実行できるが、close record では当時の観測値として保存する
 - closed record: close 時点の immutable record。active work に同名 copy を残さず、必要なら pointer だけを残す

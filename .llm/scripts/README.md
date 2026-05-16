@@ -48,7 +48,7 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 | `gen-obligation-index.sh` | `design-ir.edn` と `trace-index.edn` から DESIGN 由来 obligation の coverage index `.llm/data/obligation-index.edn` を生成 |
 | `check-obligation-index.sh` | obligation index の derivation manifest freshness、生成同期、`:adoption-mode :complete` の red obligation を検査 |
 | `derive-work-frontier.sh` | fresh な obligation index から failing / accounted obligation を依存 DAG 順に表示する read-only Work Frontier。永続 task は作らない |
-| `gen_obligation_index.clj` | obligation index / Work Frontier の Clojure 実装。DESIGN obligation を `:satisfied` / `:out-of-scope` / `:deferred` / `:blocked-by-question` / `:missing-boundary` / `:missing-test` / `:manual-verification-required` / `:unbacked-disposition` / `:unresolved-blocker` 等へ分類し、`:frontier :requires` / `:frontier :blocked-by` / `:frontier :depth` を導出する |
+| `gen_obligation_index.clj` | obligation index / Work Frontier の Clojure 実装。DESIGN obligation を `:satisfied` / `:out-of-scope` / `:deferred` / `:blocked-by-question` / `:missing-boundary` / `:missing-test` / `:manual-verification-required` / `:unbacked-disposition` / `:unresolved-blocker` 等へ分類し、`:frontier :requires` / `:frontier :blocked-by` / `:frontier :dependents` / `:frontier :depth` を導出する |
 | `trace-impact.sh` | `trace-index.edn` を検索し、要件・受入基準・公開関数・変更差分から、影響する public boundary・test・test obligation を表示 |
 | `trace_impact.clj` | `trace-impact.sh` の Clojure 実装。DESIGN 更新前後の探索、commit 前の変更差分確認、session briefing の trace health に使う |
 | `install-git-hooks.sh` | repo-local hooks を `git config core.hooksPath .githooks` で有効化する。Claude Code / Codex / human 共通 |
@@ -245,7 +245,7 @@ git add <changed-files>
 
 `run` は login shell ではなく固定した最小環境で command-backed evidence を実行し、`tool-version`、`env-hash`、`repo-rev`、`duration-ms`、失敗時 tail を record に残す。`tool-version` は選択 runtime だけでなく、検出できた `clj` / `bb` の利用可否とバージョンも含める。`invalidated-by` は touched path / brick / requirement / public boundary から導出され、後続の event staleness 判定の根拠になる。
 
-`what-now` は required derived view freshness / active derived view / human declaration / evidence run / staged diff / closed record staleness / Work Frontier head を見て、次に実行すべき 1 action を返す。current fingerprint と一致しない generated view は primary work ではなく housekeeping として表示し、fingerprint から外れた declaration は orphan declaration として surface する。`declare --all-none` は確認済みの無を宣言する時だけ使う。`status` は gap 集約 view、`is-verified` は requirement や public boundary の検証 matrix、`why` は claim を支える evidence chain を返す。
+`what-now` は required derived view freshness / active derived view / human declaration / evidence run / staged diff / closed record staleness / Work Frontier head を見て、次に実行すべき 1 action を返す。current fingerprint と一致しない generated view は primary work ではなく housekeeping として表示し、fingerprint から外れた declaration は orphan declaration として surface する。closed record の照合では source-specific な `:digest` ではなく、staged diff と commit range で共通する `:content-digest` を使うため、pre-commit で閉じた evidence は直後の last-commit advisory でも同じ変更として扱われる。`declare --all-none` は確認済みの無を宣言する時だけ使う。`status` は gap 集約 view、`is-verified` は requirement や public boundary の検証 matrix、`why` は claim を支える evidence chain を返す。
 
 `backfill-invalidated-by` は古い closed record に `invalidated-by` と推定 `closed-git-rev` を後から充填する migration command である。通常はテンプレート更新時や evidence schema 更新時だけ実行する。
 
@@ -280,7 +280,7 @@ EDN の `:schema/version` は `structural-evidence.N` 系で管理する。検�
 
 `.llm/work/` は git 管理しない work area である。`views/` は stale なら再生成できる生成系 artifact、`runs/` は再実行可能な transient observation、`declarations/` は人間/LLM の判断であり fingerprint mismatch 時も自動削除しない。close 後は declaration と run result を closed record に吸収し、work artifact は削除する。closed evidence record を残す場合は、派生プロジェクトの privacy / commit policy に従って `.llm/evidence/closed/` 等に置く。Structural Evidence View は第 5 の正本ではなく、Authority / Structure / Index / Verification plane への索引である。
 
-Structural Evidence の generated view は、change fingerprint を virtual observed input として刻み、generator digest、`derivation_manifest.clj`、`.llm/data/*` index、QUESTIONS / KNOWLEDGE、maintainer archive または ADR markdown を含む action key を持つ。差分が同じでも導出ロジックや observed inputs が変わった view は stale として扱い、declaration / run result は再生成後の view に fingerprint が一致する場合だけ再付着する。`propose` と writable gate は、declaration / run result を伴わない stale generated view を自動 prune する。
+Structural Evidence の generated view は、change fingerprint を virtual observed input として刻み、generator digest、`derivation_manifest.clj`、`.llm/data/*` index、QUESTIONS / KNOWLEDGE、maintainer archive または ADR markdown を含む action key を持つ。差分が同じでも導出ロジックや observed inputs が変わった view は stale として扱い、declaration / run result は再生成後の source-specific fingerprint に一致する場合だけ再付着する。closed record の再照合は content-addressed な `:content-digest` で行い、staged close と commit range gate の lifecycle を同じ変更として接続する。`propose` と writable gate は、declaration / run result を伴わない stale generated view を自動 prune する。
 
 旧 `.llm/work/` 直下 artifact の整理は `./.llm/scripts/evidence.sh prune-work` で dry-run できる。`--confirm` を付けた時だけ、closed record に吸収済みの generated / transient artifact や legacy generated view を削除する。未吸収の human declaration / intent を含む legacy artifact は preserve として表示し、自動削除しない。
 

@@ -571,7 +571,12 @@
                  (name (:state item))
                  (:id item)
                  (str "(" (name (:kind item)) ", " (location item) ")"))
+        (when-let [requires (seq (get-in item [:frontier :requires]))]
+          (println "  requires:" (str/join ", " requires)))
         (when-let [blocked-by (seq (get-in item [:frontier :blocked-by]))]
           (println "  blocked-by:" (str/join ", " blocked-by)))
+        (when-let [depth (get-in item [:frontier :depth])]
+          (when (pos? depth)
+            (println "  frontier-depth:" depth)))
         (println "  ->" (suggested-action item)))
       (println "- empty (all obligations are complete, or DESIGN has no obligations)"))))

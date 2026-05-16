@@ -379,6 +379,8 @@ EOF
     "red missing-test AC-001" \
     "10-frontier-dag-order"
   expect_frontier "$repo" "blocked-by: REQ-001" "10-frontier-blocked-by"
+  expect_frontier "$repo" "requires: REQ-001" "10-frontier-requires"
+  expect_frontier "$repo" "frontier-depth: 1" "10-frontier-depth"
   assert_index "$repo" '(= ["REQ-001"] (get-in (first (filter #(= "AC-001" (:id %)) (:obligations data))) [:frontier :blocked-by]))' "AC-001 should be blocked by unfinished REQ-001"
 }
 

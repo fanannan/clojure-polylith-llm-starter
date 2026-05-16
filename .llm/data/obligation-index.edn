@@ -15,7 +15,7 @@
  :artifact/manifest
  #:derivation{:tool "gen-obligation-index",
               :action-key
-              "sha256:5a7bbedd4ba59fa67512e777bdf22747bedacc12dd649f30d3bb5d4899a9ab6c",
+              "sha256:7f85d868c0182a30b72e8612d7666004cc0451fcb362d161702d844c8cbbbe26",
               :input-policy
               {:untracked :error, :missing :explicit-empty},
               :inputs
@@ -29,7 +29,7 @@
                {:path ".llm/repo-context.edn",
                 :digest
                 "sha256:7271a9b7ab400aad882dd524f2001aeca49acb8d13e8254e6f78c7b9cd24e063"}],
-              :generated-at "2026-05-16T06:28:24.868233814Z",
+              :generated-at "2026-05-16T06:43:48.972584273Z",
               :output-path ".llm/data/obligation-index.edn",
               :tool-inputs
               [{:path ".llm/scripts/derivation_manifest.clj",
@@ -40,7 +40,7 @@
               :generator
               {:path ".llm/scripts/gen_obligation_index.clj",
                :digest
-               "sha256:f0bc3e074b58ef31a41effa8624f1d5fa5a06b44f62fff50becbbd7189ea8631"},
+               "sha256:79db6b2ae0996446f1f6dd43ac8a73546b11a28102f901ba730a3c5fe1f66a56"},
               :schema "derivation.1",
               :regime :derived-view,
               :id :obligation-index},

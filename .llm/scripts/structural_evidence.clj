@@ -406,6 +406,15 @@
     :else
     "missing"))
 
+(defn- fingerprint-content-data [fingerprint]
+  {:paths (:paths fingerprint)
+   :path-status (:path-status fingerprint)
+   :path-hashes (:path-hashes fingerprint)})
+
+(defn- fingerprint-content-digest [fingerprint]
+  (or (:content-digest fingerprint)
+      (sha1-hex (pr-str (fingerprint-content-data fingerprint)))))
+
 (defn- change-fingerprint [opts files]
   (let [statuses (if (seq (:changed-files opts))
                    (mapv (fn [path] {:status "M" :path path}) files)
@@ -424,9 +433,11 @@
               :paths (vec files)
               :path-status (into (sorted-map) status-by-path)
               :path-hashes path-hashes}
+        content-digest (fingerprint-content-digest data)
         digest (sha1-hex (pr-str data))]
     (assoc data
            :digest digest
+           :content-digest content-digest
            :derived-at (.toString (java.time.Instant/now)))))
 
 (defn- component-name [path]
@@ -995,6 +1006,14 @@
        (= (get-in a [:change/fingerprint :digest])
           (get-in b [:change/fingerprint :digest]))))
 
+(defn- same-fingerprint-content? [a b]
+  (let [a-fingerprint (:change/fingerprint a)
+        b-fingerprint (:change/fingerprint b)]
+    (and a-fingerprint
+         b-fingerprint
+         (= (fingerprint-content-digest a-fingerprint)
+            (fingerprint-content-digest b-fingerprint)))))
+
 (defn- assemble-packet
   ([view]
    (assemble-packet view (declaration-for (:task/id view)) (run-result-for (:task/id view))))
@@ -1264,6 +1283,7 @@
        "## Change Fingerprint\n\n"
        "- source: `" (name (get-in packet [:change/fingerprint :source])) "`\n"
        "- digest: `" (get-in packet [:change/fingerprint :digest]) "`\n"
+       "- content-digest: `" (get-in packet [:change/fingerprint :content-digest]) "`\n"
        "- paths: " (count (get-in packet [:change/fingerprint :paths])) "\n\n"
        "## Actual Scope\n\n"
        "### Paths\n"
@@ -1606,8 +1626,7 @@
              :reason "no invalidating change detected"})))
 
 (defn- record-staleness [record current-packet]
-  (let [same-fingerprint? (= (get-in record [:change/fingerprint :digest])
-                             (get-in current-packet [:change/fingerprint :digest]))
+  (let [same-fingerprint? (same-fingerprint-content? record current-packet)
         include-working-tree? (not same-fingerprint?)
         checks (mapv #(assoc (evidence-staleness % record current-packet include-working-tree?)
                              :id (:id %))
@@ -2014,6 +2033,12 @@
   (= (:digest (:change/fingerprint packet))
      (:digest fingerprint)))
 
+(defn- fingerprint-content-matches? [packet fingerprint]
+  (and (:change/fingerprint packet)
+       fingerprint
+       (= (fingerprint-content-digest (:change/fingerprint packet))
+          (fingerprint-content-digest fingerprint))))
+
 (defn- gate-task-id [fingerprint]
   (str (.toString (java.time.LocalDate/now))
        "-evidence-gate-"
@@ -2161,6 +2186,9 @@
 (defn- matching-packets [packets fingerprint]
   (filter #(fingerprint-matches? % fingerprint) packets))
 
+(defn- matching-packets-by-content [packets fingerprint]
+  (filter #(fingerprint-content-matches? % fingerprint) packets))
+
 (defn- packet-failed-evidence [packet]
   (failed-evidence-statuses packet))
 
@@ -2250,7 +2278,8 @@
                   :kind (:kind item)
                   :state (:state item)
                   :category (:category item)
-                  :source (:source item)}
+                  :source (:source item)
+                  :frontier (:frontier item)}
      :blocked-on []
      :next-action (action "./.llm/scripts/derive-work-frontier.sh"
                           "no current diff is pending; inspect the next unfinished DESIGN obligation")
@@ -2368,7 +2397,7 @@
           fingerprint (:change/fingerprint packet)
           files (get-in packet [:actual-scope :paths])
           save-policy (:save-policy packet)
-          closed-matches (matching-packets (closed-records) fingerprint)
+          closed-matches (matching-packets-by-content (closed-records) fingerprint)
           active-all (active-packets)
           active-fresh (filter fresh-derived-view? active-all)
           active-stale (first (remove fresh-derived-view? active-all))
@@ -2469,7 +2498,15 @@
           (println "Obligation:" (:id obligation)
                    (str "(" (name (:category obligation)) ","
                         (name (:state obligation)) ","
-                        (name (:kind obligation)) ")")))
+                        (name (:kind obligation)) ")"))
+          (when-let [frontier (:frontier obligation)]
+            (when-let [requires (seq (:requires frontier))]
+              (println "Requires:" (str/join ", " requires)))
+            (when-let [blocked-by (seq (:blocked-by frontier))]
+              (println "Blocked by:" (str/join ", " blocked-by)))
+            (when-let [depth (:depth frontier)]
+              (when (pos? depth)
+                (println "Frontier depth:" depth)))))
         (println "Next:" (get-in plan [:next-action :command]))
         (println "Reason:" (get-in plan [:next-action :rationale]))
         (when (seq (:blocked-on plan))
@@ -2515,7 +2552,7 @@
         files (get-in packet [:actual-scope :paths])
         _ (when-not (:no-write opts)
             (prune-stale-generated-views! packet {:keep-task-id task-id}))
-        closed-matches (matching-packets (closed-records) fingerprint)
+        closed-matches (matching-packets-by-content (closed-records) fingerprint)
         active-matches (matching-packets (filter fresh-derived-view? (active-packets)) fingerprint)
         predict-matches (matching-packets (filter fresh-derived-view? (predict-packets)) fingerprint)
         clean-record (->> closed-matches
@@ -2953,15 +2990,37 @@
                                         git-rev (constantly "fixture-rev")
                                         default-branch (constantly "main")]
                             (derive-packet {:changed-files ["components/foo/src/acme/foo/interface.clj"]}))
-	        project-design (with-redefs [repo-context (constantly {:repo-kind :project :adoption-mode :complete})
-	                                     git-rev (constantly "fixture-rev")
-	                                     default-branch (constantly "main")]
-	                         (derive-packet {:changed-files ["DESIGN.md"]}))
+        project-design (with-redefs [repo-context (constantly {:repo-kind :project :adoption-mode :complete})
+                                     git-rev (constantly "fixture-rev")
+                                     default-branch (constantly "main")]
+                         (derive-packet {:changed-files ["DESIGN.md"]}))
         project-design-view (view-artifact project-design)
-	        backfilled (backfilled-record (assoc project-design
-	                                             :evidence
-	                                             (mapv #(assoc % :invalidated-by [])
-	                                                   (:evidence project-design))))
+        staged-design-record (update project-design
+                                     :change/fingerprint
+                                     merge
+                                     {:source :staged-diff
+                                      :base nil
+                                      :head "HEAD"
+                                      :digest "source-specific-staged"})
+        range-design-current (update project-design
+                                     :change/fingerprint
+                                     merge
+                                     {:source :git-diff
+                                      :base "HEAD~1"
+                                      :head "HEAD"
+                                      :digest "source-specific-range"})
+        legacy-staged-design-record (update staged-design-record
+                                            :change/fingerprint
+                                            dissoc
+                                            :content-digest)
+        legacy-range-design-current (update range-design-current
+                                            :change/fingerprint
+                                            dissoc
+                                            :content-digest)
+        backfilled (backfilled-record (assoc project-design
+                                             :evidence
+                                             (mapv #(assoc % :invalidated-by [])
+                                                   (:evidence project-design))))
         no-deps-record (assoc project-design
                               :status :clean-close
                               :closed-git-rev "fixture-rev"
@@ -3048,8 +3107,16 @@
     (assert! "gate task id uses 64-bit digest prefix"
              (re-find #"-evidence-gate-[0-9a-f]{16}$"
                       (gate-task-id (:change/fingerprint project-design))))
-	    (assert! "required evidence records invalidation dependencies"
-	             (every? #(seq (:invalidated-by %)) (:evidence project-design)))
+    (assert! "content digest matches staged close records to commit-range gates"
+             (and (not (fingerprint-matches? staged-design-record
+                                             (:change/fingerprint range-design-current)))
+                  (fingerprint-content-matches? staged-design-record
+                                                (:change/fingerprint range-design-current))))
+    (assert! "content digest can be inferred for legacy closed records"
+             (fingerprint-content-matches? legacy-staged-design-record
+                                           (:change/fingerprint legacy-range-design-current)))
+    (assert! "required evidence records invalidation dependencies"
+             (every? #(seq (:invalidated-by %)) (:evidence project-design)))
 	    (assert! "backfill restores invalidation dependencies"
 	             (every? #(seq (:invalidated-by %)) (:evidence backfilled)))
 	    (assert! "backfill infers closed git revision"
