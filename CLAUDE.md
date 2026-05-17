@@ -513,6 +513,14 @@ Clojure CLI の呼び出しは `clj` に統一する。`clojure` は使用しな
 - **適用範囲**: CLAUDE.md・`.llm/guide/` 配下・`.llm/scripts/` 配下・`.claude/settings.local.json`（いずれも git 管理下）、および LLM が新規に提案するコマンド例
 - **例外**: なし（対話 REPL 起動を allowlist やスクリプトに載せる場面は現状存在しない。REPL 対話は開発者がターミナルで直接起動するのみ）
 
+### 5.7 生成物の鮮度
+
+[mandate: M-0016/derived-view-freshness type:derived-artifact tier:kernel]
+
+`.llm/data/` 配下の分析 index、`docs/` 配下の閲覧用 Map、DESIGN IR、Trace Index、`mandates.edn` などの生成物は、すべて authored source からの derived view である。source（`brick.edn`・`workspace.edn`・`DESIGN.md`・trace metadata・lib-catalog EDN block・mandate annotation 等）を編集したら、対応する generator を同一コミット内で再生成し、drift した生成物をコミットしない。再生成漏れは `.llm/scripts/check-derived-artifacts.sh`（derivation manifest の freshness 総合検査）が検出し、個別には `.llm/scripts/check-brick-map.sh`・`.llm/scripts/check-workspace-map.sh`・`.llm/scripts/check-design-ir.sh`・`.llm/scripts/check-trace-index.sh` が担う。各生成物の再生成コマンドは、freshness 検査が drift を報告する際に `:regenerate-command` として表示する。
+
+[/mandate]
+
 ---
 
 ## 6. Polylith と技術選定の運用
@@ -826,7 +834,11 @@ Work Frontier はこの規約の例外ではない。導入する場合も永続
 clj -M:poly create component name:<name>
 ```
 
-**重要**: `poly create` は brick ディレクトリしか作らない。ルート `deps.edn` の `:dev :extra-paths` / `:extra-deps` とワークスペース構成の追従は手動で行う。作業後は完了条件（§5.5）の `./.llm/scripts/check-workspace-integrity.sh` が登録漏れを検知する。
+[mandate: M-0017/brick-registration type:invariant tier:kernel]
+
+**重要**: `poly create` は brick ディレクトリしか作らない。ルート `deps.edn` の `:dev :extra-paths` / `:extra-deps` とワークスペース構成の追従は手動で行う。新規 brick がルート `deps.edn` と `workspace.edn` に登録されていない状態は構造的な未完了であり、`.llm/scripts/check-brick-registration.sh`（完了条件 §5.5 の `check-workspace-integrity.sh` 配下で起動）が登録漏れを検知する。
+
+[/mandate]
 ¤ .llm/guide/BOOTSTRAP_GUIDE.md §2.5
 
 **Brick / Workspace Map の再生成（手順の一部）**: brick の追加、`brick.edn` / `workspace.edn` / 公開 API の編集を行ったら、その作業と同一ステップとして Brick Map を再生成する（project / workspace 構成を触った場合は Workspace Map も再生成する）。生成物は同じコミットに含める。`check-workspace-integrity.sh` の Map drift 検査は再生成漏れの安全網であり、再生成を後回しにしてよい根拠ではない。
