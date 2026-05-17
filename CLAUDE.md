@@ -73,6 +73,8 @@
 
 ### 参照マーカー規約
 
+[mandate: M-0002/doc-reference-markers type:invariant tier:kernel]
+
 Markdown 文書から別の Markdown 文書を指す時は、本文中に裸で埋め込まず、独立行に分離して次の 3 種で型付けする。
 
 - `¤`: 実行前に読む必須参照
@@ -368,6 +370,8 @@ Integrant・FlowStorm・Portal は必須技術基盤ではない。前者はプ�
 
 ### 5.1 clj-kondo（保存時にエディタで赤線）
 
+[mandate: M-0003/clj-kondo-clean type:invariant tier:kernel]
+
 `.clj-kondo/config.edn` で `error` 扱い：
 
 - `:refer-all` / `:use` 禁止（`clojure.test` を除く）
@@ -377,9 +381,13 @@ Integrant・FlowStorm・Portal は必須技術基盤ではない。前者はプ�
 
 ### 5.2 cljfmt（保存時自動整形）
 
+[mandate: M-0004/cljfmt-conformance type:invariant tier:kernel]
+
 `cljfmt.edn` の設定で、フォーマット議論を完全排除。
 
 ### 5.3 `poly check`（Polylith 構造違反）
+
+[mandate: M-0005/polylith-structure type:invariant tier:kernel]
 
 - コンポーネント間は `interface.clj` 経由のみ
 - `base` は外部公開 API（REST/Lambda/CLI など）を持つ入口、`component` は再利用単位として内部実装を公開 API で提供
@@ -388,6 +396,8 @@ Integrant・FlowStorm・Portal は必須技術基盤ではない。前者はプ�
 - 違反時は CI が落ちる（詳細は `.llm/guide/POLYLITH_GUIDE.md`）
 
 ### 5.4 Malli instrumentation
+
+[mandate: M-0006/malli-contract-verified type:workflow tier:kernel]
 
 Malli は必須技術基盤。`dev/user.clj` で `(malli-on!)` helper を提供する：
 
@@ -399,6 +409,8 @@ Malli は必須技術基盤。`dev/user.clj` で `(malli-on!)` helper を提供�
 特に `interface.clj`、`m/=>` 契約、外部入力 schema の変更では、Malli instrumentation を有効化した REPL eval、または instrumentation を有効化した test fixture で契約を別途確認する。
 
 ### 5.4.1 仕様 trace metadata
+
+[mandate: M-0007/trace-metadata-placement type:invariant tier:kernel]
 
 仕様とコードの対応は、人間が記憶で追うのではなく Clojure metadata と `design-ir.edn` の照合で検査する。
 
@@ -430,6 +442,8 @@ Work Frontier / obligation coverage を実装する時は、本節の trace を�
 ∵ .llm/guide/MAINTAINERS_GUIDE.md §5.16
 
 ### 5.5 完了条件（以下全通過で初めて完了報告）
+
+[mandate: M-0008/completion-gate-before-report type:workflow tier:kernel]
 
 完了条件はプロジェクト状態で分岐する。LLM は次の表を**上から順に評価し、最初に一致した行で判定を確定**してからコマンドを実行する。
 
