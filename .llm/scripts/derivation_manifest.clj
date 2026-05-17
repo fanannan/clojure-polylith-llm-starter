@@ -24,22 +24,22 @@
     :kind :embedded-edn}
    {:path ".llm/data/mandates.edn"
     :kind :embedded-edn}
-   {:path "docs/BRICKS.md"
+   {:path "docs/GENERATED_VIEW_BRICKS.md"
     :kind :sidecar
     :manifest-path ".llm/data/brick-map.manifest.edn"}
    {:path ".llm/data/brick-map.edn"
     :kind :sidecar
     :manifest-path ".llm/data/brick-map.manifest.edn"}
-   {:path "docs/PROJECTS.md"
+   {:path "docs/GENERATED_VIEW_PROJECTS.md"
     :kind :sidecar
     :manifest-path ".llm/data/workspace-map.manifest.edn"}
-   {:path "docs/WORKSPACE.md"
+   {:path "docs/GENERATED_VIEW_WORKSPACE.md"
     :kind :sidecar
     :manifest-path ".llm/data/workspace-map.manifest.edn"}
    {:path ".llm/data/workspace-map.edn"
     :kind :sidecar
     :manifest-path ".llm/data/workspace-map.manifest.edn"}
-   {:path "docs/TRACE.md"
+   {:path "docs/GENERATED_VIEW_TRACE.md"
     :kind :sidecar
     :manifest-path ".llm/data/trace-index.manifest.edn"}
    {:path ".llm/data/trace-index.edn"

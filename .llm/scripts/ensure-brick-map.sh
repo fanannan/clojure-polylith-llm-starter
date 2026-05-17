@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # scripts/ensure-brick-map.sh
 #
-# Creates missing brick.edn skeletons, regenerates docs/BRICKS.md and
+# Creates missing brick.edn skeletons, regenerates docs/GENERATED_VIEW_BRICKS.md and
 # .llm/data/brick-map.edn, and reports TODO placeholders as warnings.
 
 set -euo pipefail

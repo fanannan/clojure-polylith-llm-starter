@@ -246,7 +246,7 @@ clj -M:poly create project name:<deploy>
 ∵ POLYLITH_GUIDE.md §1.1
 ∵ SPEC_GUIDE.md §8.1
 
-各 brick には、実装より先に `brick.edn` を作成する。component は所有する capability を `:brick/provides` に、base は外部 entrypoint と利用 capability を `:brick/entrypoint` / `:brick/uses` に記録する。類似 brick の探索軸が明確な場合だけ、任意の単数 keyword として `:brick/group` を記録する。`docs/BRICKS.md` と `.llm/data/brick-map.edn` はこの EDN と `interface.clj` から生成される派生成果物であり、直接編集しない。
+各 brick には、実装より先に `brick.edn` を作成する。component は所有する capability を `:brick/provides` に、base は外部 entrypoint と利用 capability を `:brick/entrypoint` / `:brick/uses` に記録する。類似 brick の探索軸が明確な場合だけ、任意の単数 keyword として `:brick/group` を記録する。`docs/GENERATED_VIEW_BRICKS.md` と `.llm/data/brick-map.edn` はこの EDN と `interface.clj` から生成される派生成果物であり、直接編集しない。
 ∵ POLYLITH_GUIDE.md §1.1
 
 ### 2.4 必要な用途別機能カテゴリの推奨ライブラリを brick deps.edn に反映
@@ -296,13 +296,13 @@ deps.edn へ入れるライブラリは必要な用途別機能カテゴリ単�
 
 ### 2.5.1 Brick Map の生成
 
-brick 構成・機能分担・公開 API は、閲覧用の `docs/BRICKS.md` と検索用の `.llm/data/brick-map.edn` に生成する。閲覧用 Brick Map は group-first view を持ち、検索用 index は `:groups` を持つ。これらは類似 brick の探索と再分割 smell の発見に使う補助 index であり、構造境界ではない。これらのファイルは自動生成物であり、直接編集しない。
+brick 構成・機能分担・公開 API は、閲覧用の `docs/GENERATED_VIEW_BRICKS.md` と検索用の `.llm/data/brick-map.edn` に生成する。閲覧用 Brick Map は group-first view を持ち、検索用 index は `:groups` を持つ。これらは類似 brick の探索と再分割 smell の発見に使う補助 index であり、構造境界ではない。これらのファイルは自動生成物であり、直接編集しない。
 
 ```bash
 clj -Sdeps '{:paths [".llm/scripts"]}' -X gen-brick-map/generate
 ```
 
-`check-workspace-integrity.sh` は `docs/BRICKS.md` が最新かを検査するため、brick 追加・capability 変更・公開 API 変更後は必ず再生成する。
+`check-workspace-integrity.sh` は `docs/GENERATED_VIEW_BRICKS.md` が最新かを検査するため、brick 追加・capability 変更・公開 API 変更後は必ず再生成する。
 
 既存 repo への導入などで `brick.edn` が欠落している場合は、欠落 skeleton と下流生成物をまとめて作る。
 
@@ -421,7 +421,7 @@ I/O リソースの起動・停止管理が必要な場合のみ実施する。�
   ```bash
   ./.llm/scripts/check-workspace-integrity.sh
   ```
-  この検査には trace metadata 検査と Trace Index 生成物検査も含まれる。`:adoption-mode :complete` では、未対応 test obligation も失敗として扱う。trace metadata を追加・変更した場合は `./.llm/scripts/gen-trace-index.sh` で `docs/TRACE.md` / `.llm/data/trace-index.edn` を再生成する。
+  この検査には trace metadata 検査と Trace Index 生成物検査も含まれる。`:adoption-mode :complete` では、未対応 test obligation も失敗として扱う。trace metadata を追加・変更した場合は `./.llm/scripts/gen-trace-index.sh` で `docs/GENERATED_VIEW_TRACE.md` / `.llm/data/trace-index.edn` を再生成する。
 
 **workspace 全体の品質確認**:
 

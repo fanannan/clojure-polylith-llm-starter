@@ -33,8 +33,8 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 | `check-workspace-integrity.sh` | 下記の workspace 整合性検査を束ねる総合検査（完了条件から呼ぶ） |
 | `check-placeholders.sh` | `workspace.edn` / `deps.edn` のプレースホルダ `myorg.myapp` 残存検査。template repo では `.llm/repo-context.edn :repo-kind :template` を根拠に配布用 placeholder を許容 |
 | `check-brick-registration.sh` | `components/` / `bases/` の brick が `deps.edn` に登録されているか検査 |
-| `check-brick-map.sh` | 全 brick の `brick.edn` を検査し、`docs/BRICKS.md` / `.llm/data/brick-map.edn` / `.llm/data/brick-map.manifest.edn` が `brick.edn` / `interface.clj` からの生成結果と同期しているか検査 |
-| `check-workspace-map.sh` | `projects/*/project.edn` と workspace/project 生成物を検査し、`docs/PROJECTS.md` / `docs/WORKSPACE.md` / `.llm/data/workspace-map.edn` / `.llm/data/workspace-map.manifest.edn` の drift を検出 |
+| `check-brick-map.sh` | 全 brick の `brick.edn` を検査し、`docs/GENERATED_VIEW_BRICKS.md` / `.llm/data/brick-map.edn` / `.llm/data/brick-map.manifest.edn` が `brick.edn` / `interface.clj` からの生成結果と同期しているか検査 |
+| `check-workspace-map.sh` | `projects/*/project.edn` と workspace/project 生成物を検査し、`docs/GENERATED_VIEW_PROJECTS.md` / `docs/GENERATED_VIEW_WORKSPACE.md` / `.llm/data/workspace-map.edn` / `.llm/data/workspace-map.manifest.edn` の drift を検出 |
 | `gen-design-ir.sh` | `DESIGN.md` と既存 `.llm/data/*.edn` 分析情報から `.llm/data/design-ir.edn` を生成 |
 | `check-design-ir.sh` | `.llm/data/design-ir.edn` の derivation manifest freshness と、`DESIGN.md` および既存分析 EDN との同期を検査 |
 | `gen_design_ir.clj` | `gen-design-ir.sh` / `check-design-ir.sh` の Clojure 実装。明示 requirement / use case / acceptance item と `[REQ-001]` / `[UC-1]` trace を抽出し、constraint と実装 requirement を分けて brick-map / workspace-map / libs と照合 |
@@ -42,8 +42,8 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 | `derivation_manifest.clj` | generated artifact の generator / observed inputs / action key を記録・検査する共通実装 |
 | `check-trace-metadata.sh` | Clojure コード / テストコードの `:trace/*` metadata を `.llm/data/design-ir.edn` と照合。実装コード側は stable public boundary のみ許可し、AC/TO は `deftest` 側へ限定。`:adoption-mode :complete` では未対応 test obligation も失敗 |
 | `check_trace_metadata.clj` | `check-trace-metadata.sh` の Clojure 実装。top-level form を読み、public boundary `defn` と `deftest` の var metadata / attr-map に置かれた `:trace/requirements` / `:trace/use-cases` / `:trace/test-obligations` を検査。空 ID・重複 ID・related IDs 不整合も検出 |
-| `gen-trace-index.sh` | `design-ir.edn` と Clojure `:trace/*` metadata から `docs/TRACE.md` / `.llm/data/trace-index.edn` / `.llm/data/trace-index.manifest.edn` を生成 |
-| `check-trace-index.sh` | `docs/TRACE.md` / `.llm/data/trace-index.edn` / `.llm/data/trace-index.manifest.edn` が `design-ir.edn` と trace metadata からの生成結果と同期しているか検査 |
+| `gen-trace-index.sh` | `design-ir.edn` と Clojure `:trace/*` metadata から `docs/GENERATED_VIEW_TRACE.md` / `.llm/data/trace-index.edn` / `.llm/data/trace-index.manifest.edn` を生成 |
+| `check-trace-index.sh` | `docs/GENERATED_VIEW_TRACE.md` / `.llm/data/trace-index.edn` / `.llm/data/trace-index.manifest.edn` が `design-ir.edn` と trace metadata からの生成結果と同期しているか検査 |
 | `gen_trace_index.clj` | trace index 生成 / 検査の Clojure 実装。requirement / use case / test obligation ごとの implementation / test 対応と impact index を作る |
 | `gen-obligation-index.sh` | `design-ir.edn` と `trace-index.edn` から DESIGN 由来 obligation の coverage index `.llm/data/obligation-index.edn` を生成 |
 | `check-obligation-index.sh` | obligation index の derivation manifest freshness、生成同期、`:adoption-mode :complete` の red obligation を検査 |
@@ -69,12 +69,12 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 | `check-conflicting-libs.sh` | `STACK_GUIDE.md` に埋め込まれた `;; lib-catalog` EDN block 由来の併用禁止ペアを検知（`.llm/data/conflicts.patterns` を読む） |
 | `check-doc-references.sh` | Markdown 間参照が `¤ / ∵ / ⚠` で型付けされているか検査。通常は default scope、保守監査では `--all` |
 | `gen_lib_catalog.clj` | `STACK_GUIDE.md` に埋め込まれた `;; lib-catalog` EDN block 群を合成し `.llm/data/{libs.edn, deprecated-libs.patterns, forbidden-requires.patterns, conflicts.patterns, lib-catalog.manifest.edn}` を生成（`clj -X:gen-lib-catalog`）。schema 検証 + uniqueness 検査付き |
-| `gen_brick_map.clj` | `components/*/brick.edn` / `bases/*/brick.edn` と `interface.clj` から `docs/BRICKS.md` / `.llm/data/brick-map.edn` / `.llm/data/brick-map.manifest.edn` を生成。group-first view と `:groups` index を出力し、component/base の意味違反、重複 capability、base の未提供 capability 参照、`:brick/not-for` 衝突、要求 ID 対応、任意 `:brick/group` の形式、capability と公開 API 名の対応も検査。group 由来の再分割 smell は advisory warning に留める |
-| `gen_workspace_map.clj` | `projects/*/project.edn` / `workspace.edn` / `deps.edn` / `brick.edn` から `docs/PROJECTS.md` / `docs/WORKSPACE.md` / `.llm/data/workspace-map.edn` / `.llm/data/workspace-map.manifest.edn` を生成。project の deploy intent、entrypoint、includes、deps との整合を検査 |
+| `gen_brick_map.clj` | `components/*/brick.edn` / `bases/*/brick.edn` と `interface.clj` から `docs/GENERATED_VIEW_BRICKS.md` / `.llm/data/brick-map.edn` / `.llm/data/brick-map.manifest.edn` を生成。group-first view と `:groups` index を出力し、component/base の意味違反、重複 capability、base の未提供 capability 参照、`:brick/not-for` 衝突、要求 ID 対応、任意 `:brick/group` の形式、capability と公開 API 名の対応も検査。group 由来の再分割 smell は advisory warning に留める |
+| `gen_workspace_map.clj` | `projects/*/project.edn` / `workspace.edn` / `deps.edn` / `brick.edn` から `docs/GENERATED_VIEW_PROJECTS.md` / `docs/GENERATED_VIEW_WORKSPACE.md` / `.llm/data/workspace-map.edn` / `.llm/data/workspace-map.manifest.edn` を生成。project の deploy intent、entrypoint、includes、deps との整合を検査 |
 | `propose-brick-edn.sh` | `brick.edn` を持たない既存 brick に対し、`interface.clj` から分かる範囲で skeleton 案を表示する移行補助（書き込みなし） |
-| `ensure-brick-map.sh` | 欠落した `brick.edn` skeleton を自動作成し、`docs/BRICKS.md` / `.llm/data/brick-map.edn` / `.llm/data/brick-map.manifest.edn` を再生成する。TODO は警告として表示 |
+| `ensure-brick-map.sh` | 欠落した `brick.edn` skeleton を自動作成し、`docs/GENERATED_VIEW_BRICKS.md` / `.llm/data/brick-map.edn` / `.llm/data/brick-map.manifest.edn` を再生成する。TODO は警告として表示 |
 | `propose-project-edn.sh` | `project.edn` を持たない登録済み project に対し、`projects/<name>/deps.edn` から分かる範囲で skeleton 案を表示する移行補助（書き込みなし） |
-| `ensure-workspace-map.sh` | 欠落した `project.edn` skeleton を自動作成し、`docs/PROJECTS.md` / `docs/WORKSPACE.md` / `.llm/data/workspace-map.edn` / `.llm/data/workspace-map.manifest.edn` を再生成する。TODO は警告として表示 |
+| `ensure-workspace-map.sh` | 欠落した `project.edn` skeleton を自動作成し、`docs/GENERATED_VIEW_PROJECTS.md` / `docs/GENERATED_VIEW_WORKSPACE.md` / `.llm/data/workspace-map.edn` / `.llm/data/workspace-map.manifest.edn` を再生成する。TODO は警告として表示 |
 | `check-interface-contracts.sh` | `interface.clj` の全公開 `defn` に対応する `m/=>` 契約があるか検査 |
 | `check-test-instrumentation.sh` | `interface_test.clj` が `:once` fixture で Malli instrumentation を有効化しているか検査 |
 | `check_test_instrumentation.clj` | `check-test-instrumentation.sh` の Clojure 実装。`use-fixtures :once` と fixture 定義を結び付けて `malli.dev/start!` を検査 |

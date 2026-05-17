@@ -131,7 +131,7 @@ base の `brick.edn` は外部 entrypoint と利用 capability を表す。base 
  :brick/authors ["Hanako Tanaka <hanako@example.com>"]}
 ```
 
-`docs/BRICKS.md` と `.llm/data/brick-map.edn` は自動生成物であり、直接編集しない。再生成は次で行う。
+`docs/GENERATED_VIEW_BRICKS.md` と `.llm/data/brick-map.edn` は自動生成物であり、直接編集しない。再生成は次で行う。
 
 ```bash
 clj -Sdeps '{:paths [".llm/scripts"]}' -X gen-brick-map/generate
@@ -168,7 +168,7 @@ TODO・空の `:brick/provides`・曖昧な capability / API 対応は、`:adopt
 ある機能が既存 brick に実装済みかを調べる時は、次の順に確認する。
 
 1. capability 名が分かる場合は `.llm/data/brick-map.edn` の `:capabilities` を見る
-2. 機能名・要求 ID・自然言語の語彙しか分からない場合は `docs/BRICKS.md` と `.llm/data/brick-map.edn` を検索する
+2. 機能名・要求 ID・自然言語の語彙しか分からない場合は `docs/GENERATED_VIEW_BRICKS.md` と `.llm/data/brick-map.edn` を検索する
 3. 候補 group が分かる場合は `.llm/data/brick-map.edn` の `:groups` と閲覧用 Brick Map の `Groups` を見て、同一 group の既存 brick を確認する
 4. 見つかった capability は、提供元 component の `interface.clj` 経由で利用する
 5. 見つからない場合だけ、新規 component capability の追加候補として扱う
@@ -720,7 +720,7 @@ components/<name>/
 6. project の `deps.edn` に `:local/root` で登録
 7. development の `deps.edn` の `:dev` エイリアス `:extra-paths` にソースパスを追加（`components/<name>/src` 等）
 8. **development の `deps.edn` の `:dev` エイリアス `:extra-deps` に `:local/root` で登録**（`poly/<name> {:local/root "components/<name>"}`）。これにより brick deps.edn の `:deps` が推移的解決され、REPL で利用可能になる
-9. `clj -Sdeps '{:paths [".llm/scripts"]}' -X gen-brick-map/generate` で `docs/BRICKS.md` を再生成
+9. `clj -Sdeps '{:paths [".llm/scripts"]}' -X gen-brick-map/generate` で `docs/GENERATED_VIEW_BRICKS.md` を再生成
 10. `clj -M:poly check` で構造検証
 11. `clj -M:poly test project:<project-name>` で特定 project 配下の brick テストを実行（全 project・全 brick を流すなら `clj -M:poly test :all`）
 
@@ -734,7 +734,7 @@ clj -M:poly create base name:<name>
 
 用途の例：HTTP API（既存 entry base と）は別の CLI、Lambda 関数、バッチジョブなど。
 
-その後、`bases/<name>/brick.edn` に `:brick/type :base`、`:brick/entrypoint`、`:brick/uses` を記録する。base は capability を所有しないため `:brick/provides` を書かない。続いて `bases/<name>/deps.edn` に必要なライブラリを追加、本文書 §2.2 base コード例を雛形として `core.clj`/`system.clj` などを実装し、`docs/BRICKS.md` を再生成する。
+その後、`bases/<name>/brick.edn` に `:brick/type :base`、`:brick/entrypoint`、`:brick/uses` を記録する。base は capability を所有しないため `:brick/provides` を書かない。続いて `bases/<name>/deps.edn` に必要なライブラリを追加、本文書 §2.2 base コード例を雛形として `core.clj`/`system.clj` などを実装し、`docs/GENERATED_VIEW_BRICKS.md` を再生成する。
 
 ### 3.3 新規プロジェクト追加（**人間専権**）
 

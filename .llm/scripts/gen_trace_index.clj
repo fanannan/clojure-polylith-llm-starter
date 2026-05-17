@@ -9,7 +9,7 @@
    [derivation-manifest :as derivation]))
 
 (def generator-path ".llm/scripts/gen_trace_index.clj")
-(def default-doc-file "docs/TRACE.md")
+(def default-doc-file "docs/GENERATED_VIEW_TRACE.md")
 (def default-index-file ".llm/data/trace-index.edn")
 (def default-manifest-file ".llm/data/trace-index.manifest.edn")
 
@@ -360,7 +360,7 @@ Regenerate with:
            "\nNo test obligations are defined yet.\n"))))
 
 (defn generate
-  "Generate docs/TRACE.md, .llm/data/trace-index.edn, and sidecar manifest."
+  "Generate docs/GENERATED_VIEW_TRACE.md, .llm/data/trace-index.edn, and sidecar manifest."
   [{:keys [out-file index-file manifest-file]}]
   (let [out-file (or out-file default-doc-file)
         index-file (or index-file default-index-file)
@@ -376,7 +376,7 @@ Regenerate with:
     (println "generated" manifest-file)))
 
 (defn check
-  "Compare generated Trace Map with docs/TRACE.md and .llm/data/trace-index.edn."
+  "Compare generated Trace Map with docs/GENERATED_VIEW_TRACE.md and .llm/data/trace-index.edn."
   [_]
   (let [ir (design-ir)
         index (trace-index)
@@ -392,7 +392,7 @@ Regenerate with:
       (println "check-trace-index: OK (no trace metadata)")
 
       (not (file? default-doc-file))
-      (throw (ex-info "ERROR: docs/TRACE.md is missing. Run gen-trace-index/generate after adding trace metadata." {}))
+      (throw (ex-info "ERROR: docs/GENERATED_VIEW_TRACE.md is missing. Run gen-trace-index/generate after adding trace metadata." {}))
 
       (not (file? default-index-file))
       (throw (ex-info "ERROR: .llm/data/trace-index.edn is missing. Run gen-trace-index/generate after adding trace metadata." {}))
@@ -406,4 +406,4 @@ Regenerate with:
       (println "check-trace-index: OK")
 
       :else
-      (throw (ex-info "ERROR: docs/TRACE.md, .llm/data/trace-index.edn, or .llm/data/trace-index.manifest.edn is not synchronized with design-ir/trace metadata.\nFix: clj -Sdeps '{:paths [\".llm/scripts\"]}' -X gen-trace-index/generate" {})))))
+      (throw (ex-info "ERROR: docs/GENERATED_VIEW_TRACE.md, .llm/data/trace-index.edn, or .llm/data/trace-index.manifest.edn is not synchronized with design-ir/trace metadata.\nFix: clj -Sdeps '{:paths [\".llm/scripts\"]}' -X gen-trace-index/generate" {})))))

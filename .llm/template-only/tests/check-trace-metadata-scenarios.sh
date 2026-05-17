@@ -304,7 +304,7 @@ scenario_11_trace_index_generation_and_drift() {
   write_valid_code "$repo"
   generate_ir "$repo"
   generate_trace_index "$repo"
-  test -f "$repo/docs/TRACE.md"
+  test -f "$repo/docs/GENERATED_VIEW_TRACE.md"
   test -f "$repo/.llm/data/trace-index.edn"
   assert_trace_index "$repo" '(= 2 (get-in data [:summary :trace-entry-count]))' "trace entry count mismatch"
   assert_trace_index "$repo" '(contains? (set (keys (:by-requirement data))) "REQ-001")' "REQ-001 trace missing"

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # scripts/check-brick-map.sh
 #
-# Validates Polylith brick metadata and generated docs/BRICKS.md drift.
+# Validates Polylith brick metadata and generated docs/GENERATED_VIEW_BRICKS.md drift.
 
 set -euo pipefail
 

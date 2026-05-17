@@ -138,7 +138,7 @@ run_step_if_capability "polylith" "プレースホルダ残存検査" \
 run_step_if_capability "polylith" "brick 登録整合検査" \
   "$SCRIPT_DIR/check-brick-registration.sh"
 
-# --- brick metadata / docs/BRICKS.md drift ---
+# --- brick metadata / docs/GENERATED_VIEW_BRICKS.md drift ---
 run_step_if_capability "polylith" "Brick Map 生成物検査" \
   "$SCRIPT_DIR/check-brick-map.sh"
 

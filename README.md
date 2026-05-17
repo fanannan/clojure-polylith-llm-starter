@@ -51,7 +51,6 @@ commit → release
 | 技術選定を決める | `.llm/guide/STACK_GUIDE.md` |
 | Structural Evidence workflow を実行する | `.llm/guide/RUNBOOK_STRUCTURAL_EVIDENCE.md` |
 | テンプレート自体を保守する | `.llm/guide/MAINTAINERS_GUIDE.md` |
-| 文書命名を repo 全体で置換する計画を見る | `.llm/guide/MAINTAINER_DOCUMENT_NAMING_MIGRATION.md` |
 | 派生後にテンプレート由来の情報を読み返す | `.llm/guide/TEMPLATE_USAGE_GUIDE.md` |
 
 ## 最小開始手順
@@ -109,12 +108,8 @@ bash .llm/scripts/session-briefing.sh
 | ユーザー向け補助説明 | `README_*.md` | 初見ユーザーの理解を補う。作業規約や生成物ではない |
 | LLM / 運用 guide | `.llm/guide/*_GUIDE.md` | 日常作業、仕様翻案、協働、技術選定などの正本 |
 | テンプレート保守手順 | `.llm/guide/MAINTAINER_*.md` | テンプレート保守者が使う移行・整理手順 |
-| 実行手順 | `.llm/guide/RUNBOOK_*.md` | 派生プロジェクト実行時に使う手順。現在の一部文書は後続で改名予定 |
-| 生成 view | `docs/*.md`, `.llm/data/*.edn` | script から生成される閲覧用 / 機械可読 index。直接編集しない |
-
-generated docs の命名整理は、現在の作業では実行しない。repo 全体での置換は別タスクとして、参照・生成器・検査・migration ledger をまとめて更新する。
-
-¤ .llm/guide/MAINTAINER_DOCUMENT_NAMING_MIGRATION.md
+| 実行手順 | `.llm/guide/RUNBOOK_*.md` | 派生プロジェクト実行時に使う操作手順 |
+| 生成 view | `docs/GENERATED_VIEW_*.md`, `.llm/data/*.edn` | script から生成される閲覧用 / 機械可読 index。直接編集しない |
 
 ## 向いているプロジェクト
 

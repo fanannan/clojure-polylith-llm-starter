@@ -96,7 +96,7 @@
 | IDEA.md | A（テンプレートでは雛形）→ E（プロジェクトでは任意更新対象） | 未整理の着想メモ。仕様正本ではなく、DESIGN.md へ構造化するための入力補助。雛形だけなら無視される |
 | DESIGN.md | A（テンプレートでは雛形）→ E（プロジェクトでは継続更新対象） | プロダクト仕様。テンプレートは必須/推奨/任意項目の骨組みのみ。プロジェクト固有情報（§8）もここに集約 |
 
-文書名は、可能な範囲で主たる読者と性質を先頭 prefix で表す。`README_*` は、ルート README を肥大化させずに初見ユーザーの理解を補うためのユーザー向け参考情報である。`.llm/guide/MAINTAINER_*` はテンプレート保守者だけが使う移行・整理手順、`.llm/guide/RUNBOOK_*` は派生プロジェクト実行時にも使う操作手順、`docs/GENERATED_VIEW_*` は自動生成された閲覧用 view の将来命名とする。これらは guide / CLAUDE / script の正本性を置き換えない。新しいユーザー向け補助説明を追加する時は、可能な限り `README_<TOPIC>` としてルートに置き、README から短く導線を張る。実行手順・承認規約・検査仕様は `.llm/guide/` または `.llm/scripts/README` に置く。
+文書名は、可能な範囲で主たる読者と性質を先頭 prefix で表す。`README_*` は、ルート README を肥大化させずに初見ユーザーの理解を補うためのユーザー向け参考情報である。`.llm/guide/MAINTAINER_*` はテンプレート保守者だけが使う移行・整理手順、`.llm/guide/RUNBOOK_*` は派生プロジェクト実行時にも使う操作手順、`docs/GENERATED_VIEW_*` は自動生成された閲覧用 view とする。これらは guide / CLAUDE / script の正本性を置き換えない。新しいユーザー向け補助説明を追加する時は、可能な限り `README_<TOPIC>` としてルートに置き、README から短く導線を張る。実行手順・承認規約・検査仕様は `.llm/guide/` または `.llm/scripts/README` に置く。
 
 #### .llm/guide/（プロジェクト運営ガイド）
 
@@ -110,7 +110,6 @@
 | .llm/guide/COLLABORATION_GUIDE.md | A | LLM と人間の協働プロトコル。「判断とプロセスの対称性」の具体実装 |
 | .llm/guide/BOOTSTRAP_GUIDE.md | A | プロジェクト初期化手順。初期化完了後も移動せず、以後は通常作業で参照頻度が下がるだけ |
 | .llm/guide/MAINTAINERS_GUIDE.md（本文書） | A | テンプレート保守の羅針盤 |
-| .llm/guide/MAINTAINER_DOCUMENT_NAMING_MIGRATION.md | A | 文書名で種別を明示する repo 全体移行の保守者向け手順。実際の rename は別タスク |
 
 #### .llm/templates/（Markdown 雛形 / プラットフォーム非依存断片）
 
@@ -824,7 +823,7 @@ Brick / Project / Workspace Map は、Polylith 構造に対するテンプレー
 - `project.edn`: deploy / build intent、entrypoint、include brick、requirement 対応
 - `interface.clj`: 公開 API と契約の実装事実
 - `deps.edn` / `workspace.edn`: classpath と Polylith 構造事実
-- `docs/BRICKS.md` / `docs/PROJECTS.md` / `docs/WORKSPACE.md` / `.llm/data/*-map.edn`: 自動生成物。直接編集禁止。対応する `.llm/data/*-map.manifest.edn` sidecar が freshness を担う
+- `docs/GENERATED_VIEW_BRICKS.md` / `docs/GENERATED_VIEW_PROJECTS.md` / `docs/GENERATED_VIEW_WORKSPACE.md` / `.llm/data/*-map.edn`: 自動生成物。直接編集禁止。対応する `.llm/data/*-map.manifest.edn` sidecar が freshness を担う
 
 機械が自動生成してよいのは skeleton / proposal / generated docs / index までである。責務説明、capability の意味、not-for、requirement 対応は設計意図なので、推測で確定しない。不明点は TODO に残し、`:adoption-mode :retrofit` / `:partial` では WARN、`:complete` では ERROR とする。
 

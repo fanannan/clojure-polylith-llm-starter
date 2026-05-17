@@ -9,7 +9,7 @@
    [derivation-manifest :as derivation]))
 
 (def generator-path ".llm/scripts/gen_brick_map.clj")
-(def default-doc-file "docs/BRICKS.md")
+(def default-doc-file "docs/GENERATED_VIEW_BRICKS.md")
 (def default-index-file ".llm/data/brick-map.edn")
 (def default-manifest-file ".llm/data/brick-map.manifest.edn")
 
@@ -664,7 +664,7 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
              :entrypoints entrypoints})))))
 
 (defn generate
-  "Generate docs/BRICKS.md, .llm/data/brick-map.edn, and sidecar manifest."
+  "Generate docs/GENERATED_VIEW_BRICKS.md, .llm/data/brick-map.edn, and sidecar manifest."
   [{:keys [out-file index-file manifest-file auto-create?]}]
   (let [out-file (or out-file default-doc-file)
         index-file (or index-file default-index-file)
@@ -709,7 +709,7 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
   (generate {:auto-create? true}))
 
 (defn check
-  "Validate brick.edn and compare generated Brick Map with docs/BRICKS.md."
+  "Validate brick.edn and compare generated Brick Map with docs/GENERATED_VIEW_BRICKS.md."
   [_]
   (let [dirs (vec (brick-dirs))
         outputs-exist? (or (file? default-doc-file)
@@ -727,7 +727,7 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
         (report-group-advisories! bricks)
         (report-author-evidence! bricks {:strict? (= :complete (adoption-mode))})
         (when-not (file? default-doc-file)
-          (error! "ERROR: docs/BRICKS.md is missing. Run gen-brick-map/generate after adding bricks."))
+          (error! "ERROR: docs/GENERATED_VIEW_BRICKS.md is missing. Run gen-brick-map/generate after adding bricks."))
         (when-not (file? default-index-file)
           (error! "ERROR: .llm/data/brick-map.edn is missing. Run gen-brick-map/generate after adding bricks."))
         (when-not (file? default-manifest-file)
@@ -739,5 +739,5 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
                    (= expected-index actual-index)
                    (= expected-manifest actual-manifest))
             (println "check-brick-map: OK")
-            (error! "ERROR: docs/BRICKS.md, .llm/data/brick-map.edn, or .llm/data/brick-map.manifest.edn is not synchronized with brick.edn/interface.clj."
+            (error! "ERROR: docs/GENERATED_VIEW_BRICKS.md, .llm/data/brick-map.edn, or .llm/data/brick-map.manifest.edn is not synchronized with brick.edn/interface.clj."
                     "Fix: clj -Sdeps '{:paths [\".llm/scripts\"]}' -X gen-brick-map/generate")))))))

@@ -8,8 +8,8 @@
    [derivation-manifest :as derivation]))
 
 (def generator-path ".llm/scripts/gen_workspace_map.clj")
-(def default-projects-file "docs/PROJECTS.md")
-(def default-workspace-file "docs/WORKSPACE.md")
+(def default-projects-file "docs/GENERATED_VIEW_PROJECTS.md")
+(def default-workspace-file "docs/GENERATED_VIEW_WORKSPACE.md")
 (def default-index-file ".llm/data/workspace-map.edn")
 (def default-manifest-file ".llm/data/workspace-map.manifest.edn")
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # scripts/check-trace-index.sh
 #
-# Validate generated docs/TRACE.md and .llm/data/trace-index.edn drift.
+# Validate generated docs/GENERATED_VIEW_TRACE.md and .llm/data/trace-index.edn drift.
 
 set -euo pipefail
 

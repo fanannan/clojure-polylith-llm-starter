@@ -350,7 +350,7 @@ scenario_14_workspace_drift_repair() {
   base_files "$repo" complete
   complete_metadata "$repo"
   run_generate_all "$repo"
-  printf '\nmanual drift\n' >> "$repo/docs/WORKSPACE.md"
+  printf '\nmanual drift\n' >> "$repo/docs/GENERATED_VIEW_WORKSPACE.md"
   expect_fail "$repo" "./.llm/scripts/check-workspace-map.sh" "not synchronized" "14-workspace-drift"
   (
     cd "$repo"
@@ -470,8 +470,8 @@ scenario_23_brick_group_index() {
   base_files "$repo" complete
   complete_metadata "$repo"
   run_generate_all "$repo"
-  grep -q '## Groups' "$repo/docs/BRICKS.md"
-  grep -q '### `:invoice`' "$repo/docs/BRICKS.md"
+  grep -q '## Groups' "$repo/docs/GENERATED_VIEW_BRICKS.md"
+  grep -q '### `:invoice`' "$repo/docs/GENERATED_VIEW_BRICKS.md"
   grep -q ':groups' "$repo/.llm/data/brick-map.edn"
   grep -q ':invoice \["components/invoice"\]' "$repo/.llm/data/brick-map.edn"
   grep -q ':public-api \["bases/web-api"\]' "$repo/.llm/data/brick-map.edn"

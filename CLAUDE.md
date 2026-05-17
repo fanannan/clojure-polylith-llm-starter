@@ -47,7 +47,6 @@
 | `.llm/guide/COLLABORATION_GUIDE.md` | LLM と人間の協働プロトコル（役割分担・曖昧性解消・対話） |
 | `.llm/guide/BOOTSTRAP_GUIDE.md` | プロジェクト初期化手順 |
 | `.llm/guide/MAINTAINERS_GUIDE.md` | テンプレート自体の設計原則・保守者向け |
-| `.llm/guide/MAINTAINER_DOCUMENT_NAMING_MIGRATION.md` | README / RUNBOOK / MAINTAINER / GENERATED_VIEW への文書命名移行手順。実際の rename は別タスクで行う |
 
 ### .llm/memory/（プロジェクトの記憶）
 
@@ -110,7 +109,6 @@ Markdown 文書から別の Markdown 文書を指す時は、本文中に裸で�
 | **他エージェント（Codex 等）実行時** | AGENTS.md |
 | **README 置換後にテンプレート由来・利用手順を確認する時** | `.llm/guide/TEMPLATE_USAGE_GUIDE.md` |
 | **テンプレート自体の改修（ライブラリ更新・規約追加を含む）** | `.llm/guide/MAINTAINERS_GUIDE.md` |
-| **文書命名の repo 全体移行を行う時** | `.llm/guide/MAINTAINER_DOCUMENT_NAMING_MIGRATION.md` |
 
 ---
 
@@ -446,7 +444,7 @@ test obligation への対応は実装関数ではなく `deftest` に置く。
 
 `.llm/scripts/check-trace-metadata.sh` は未知 ID、空 ID、重複 ID、内部実装への trace metadata、実装関数への `:trace/test-obligations`、未対応 test obligation、test obligation の related IDs と test metadata の不整合を検出する。`:adoption-mode :complete` では未対応 test obligation と related IDs 不整合を error、`:retrofit` / `:partial` では warning とする。誤配置と未知 ID は常に error とする。
 
-`.llm/scripts/gen-trace-index.sh` は trace metadata から `docs/TRACE.md` と `.llm/data/trace-index.edn` を生成する。LLM は DESIGN 更新時や requirement / use case / test obligation を触る前に trace-index を読み、影響する public boundary と `deftest` を先に列挙してから実装する。
+`.llm/scripts/gen-trace-index.sh` は trace metadata から `docs/GENERATED_VIEW_TRACE.md` と `.llm/data/trace-index.edn` を生成する。LLM は DESIGN 更新時や requirement / use case / test obligation を触る前に trace-index を読み、影響する public boundary と `deftest` を先に列挙してから実装する。
 
 [/mandate]
 
@@ -730,7 +728,7 @@ subagent / tool 呼び出し / 長い shell 実行は、ユーザへの最終応
 |---|---|---|
 | L0 | `session-briefing.sh` の MODE と次に読む文書を確認。テンプレート保守時は `L0 Template Test Recommendation（テンプレート保守テスト提言）` も確認 | 作業 mode・所有権・テンプレート保守で起動候補にする test が分かる |
 | L1 | DESIGN / KNOWLEDGE / QUESTIONS / ADR の見出し・状態欄を scan | 対象ドメイン・未決 Q・関連 ADR の有無が分かる |
-| L2 | タスク語彙・対象 namespace・機能名で `.llm/data/brick-map.edn` / `docs/BRICKS.md` / repo 全体を `rg` する。候補 `:brick/group` が分かる場合は `:groups` index と同一 group の既存 brick も見る | 既存 capability・担当 brick・候補 group・同一 group の既存 brick・関連節または「該当なし」を説明できる |
+| L2 | タスク語彙・対象 namespace・機能名で `.llm/data/brick-map.edn` / `docs/GENERATED_VIEW_BRICKS.md` / repo 全体を `rg` する。候補 `:brick/group` が分かる場合は `:groups` index と同一 group の既存 brick も見る | 既存 capability・担当 brick・候補 group・同一 group の既存 brick・関連節または「該当なし」を説明できる |
 | L3 | 触るファイル周辺の ns/docstring/comment、`interface.clj`、近接 test を読む | コード内の局所規約と既存境界が分かる |
 | L4 | README・直近対話・Issue 由来の上位文脈を確認 | 上位プロジェクトや外部合意の有無が分かる |
 
@@ -772,8 +770,8 @@ LLM のフィードバックループは**編集単位でターン内に閉じ�
 | `interface.clj` / `m/=>` 契約 / 外部入力 schema の変更 | REPL eval 必須 → `clj -M:poly test` | `poly test` は回帰確認。契約検証は instrumentation 下で別途行う |
 | runtime wiring、publisher、defrecord / protocol、ns graph 変更 | REPL eval 必須。必要に応じて `(safe-reset!)` / `(hard-reset!)` | 起動中 JVM の状態に依存するため |
 | deps.edn、brick 構造、workspace.edn 変更 | `clj -M:poly check` + 依存解決確認 + fresh JVM 判断 | REPL の既存 classpath では確認不足 |
-| `brick.edn`、公開 API、capability 変更 | `./.llm/scripts/check-workspace-integrity.sh` | `docs/BRICKS.md` / `.llm/data/brick-map.edn` の drift、重複 capability、base の未提供 capability 参照を検出 |
-| `project.edn`、project deps、workspace project 構成変更 | `./.llm/scripts/check-workspace-integrity.sh` | `docs/PROJECTS.md` / `docs/WORKSPACE.md` / `.llm/data/workspace-map.edn` の drift、entrypoint/includes/deps 整合を検出 |
+| `brick.edn`、公開 API、capability 変更 | `./.llm/scripts/check-workspace-integrity.sh` | `docs/GENERATED_VIEW_BRICKS.md` / `.llm/data/brick-map.edn` の drift、重複 capability、base の未提供 capability 参照を検出 |
+| `project.edn`、project deps、workspace project 構成変更 | `./.llm/scripts/check-workspace-integrity.sh` | `docs/GENERATED_VIEW_PROJECTS.md` / `docs/GENERATED_VIEW_WORKSPACE.md` / `.llm/data/workspace-map.edn` の drift、entrypoint/includes/deps 整合を検出 |
 | 完了報告前 | §5.5 完了条件 | `poly test :all` で全体検証 |
 
 文書のみのテンプレ保守では REPL eval は不要である。Markdown 参照・archive staging・mode boundary など、変更対象に対応する script gate を優先する。`.llm/scripts/*.clj` / `.llm/scripts/*.sh` を触った場合は総合検査と該当 script の単体実行を行う。Clojure/Polylith の構造や runtime code を触った場合だけ、REPL と `poly` gate を通常どおり要求する。

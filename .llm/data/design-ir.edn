@@ -165,7 +165,7 @@
  :artifact/manifest
  #:derivation{:tool "gen-design-ir",
               :action-key
-              "sha256:24e354b3015952d6f805dd87b27950ed30012b116b6e29bc5e0dbd9384025517",
+              "sha256:24dc7d6f2ff012d63a26472ec55e892125922374d795860cd98347f1aab1139d",
               :input-policy
               {:untracked :error, :missing :explicit-empty},
               :inputs
@@ -177,12 +177,12 @@
                {:path ".llm/data/libs.edn",
                 :digest
                 "sha256:268f6308cc2b4f8cba8c15587eba86cbf168110bafe76bf184311565b9cc117c"}],
-              :generated-at "2026-05-17T05:18:59.551063654Z",
+              :generated-at "2026-05-17T08:40:37.343556201Z",
               :output-path ".llm/data/design-ir.edn",
               :tool-inputs
               [{:path ".llm/scripts/derivation_manifest.clj",
                 :digest
-                "sha256:e55701221202793fe03b60510c9927e75de32860fc4720d2d0a8644acda28fdb"}],
+                "sha256:698c3d9f9e540f9dfa6b58f033d6bf67085d79cd79b2ffa75cbb021e925cc69b"}],
               :regenerate-command "./.llm/scripts/gen-design-ir.sh",
               :generator
               {:path ".llm/scripts/gen_design_ir.clj",
