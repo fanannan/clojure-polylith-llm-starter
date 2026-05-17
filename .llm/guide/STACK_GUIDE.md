@@ -2873,6 +2873,12 @@ LLM はプロジェクト種別ではなく、§3 の用途別機能カテゴリ
 
 ### 6.1 基本チェック（brick 単位）
 
+[mandate: M-0015/brick-deps-self-contained type:invariant tier:extended]
+
+各 brick の `deps.edn` は、その brick の `src` が require する external namespace を自己完結的に解決できる。`development` の `:dev` alias 経由でだけ解決される依存は構造的な欠落であり、brick 自身の `deps.edn` に宣言する。`.llm/scripts/check-brick-deps-self-contained.sh` が require 解析で検出する。
+
+[/mandate]
+
 ```bash
 # 各 brick が依存解決できること
 cd bases/<entry> && clj -Spath > /dev/null && echo ok
@@ -2968,6 +2974,26 @@ brick deps.edn が必要な用途別機能カテゴリに対応する §3 機能
 
 - **§3 「代替と却下」節**: 特定機能で採用候補として比較・却下した（他機能では有用かもしれない中立的却下）。機能文脈を持つ。
 - **§8 禁止・非推奨**: **どこでも**採用すべきでない（理由が明確）。横断的な扱い。本節は理由タグと手順のみ残し、エントリは §3 の機能節内に記載する（採否を機能ごとに一望できる単一の正本のため）。
+
+**採用規律**: §8 / §3 の lib-catalog が分類するライブラリ採否と、採用済み依存の時間軸リスクは、人間の記憶ではなく brick `deps.edn` と resolved 依存の機械検査で守る。
+
+[mandate: M-0012/no-deprecated-or-forbidden-libs type:prohibition tier:extended]
+
+lib-catalog で `:deprecated`（禁止・非推奨）と分類されたライブラリは、どの brick でも採用しない。brick `deps.edn` への採用宣言は `.llm/scripts/check-deprecated-libs.sh` が、その namespace の `(:require ...)` 使用は `.llm/scripts/check-forbidden-requires.sh` が、コード内のシンボル使用は clj-kondo `:discouraged-var` が、それぞれ別面で検出する。
+
+[/mandate]
+
+[mandate: M-0013/no-conflicting-libs type:prohibition tier:extended]
+
+lib-catalog の `:relations :conflicts-with` で併用禁止と宣言されたライブラリペアを、同一 `deps.edn` に共存させない。`.llm/scripts/check-conflicting-libs.sh` が生成物 `.llm/data/conflicts.patterns` を読んで検出する。
+
+[/mandate]
+
+[mandate: M-0014/no-known-vulnerabilities type:invariant tier:extended]
+
+採用済みの依存が後から脆弱化する時間軸のリスクに対し、release 前に `.llm/scripts/check-vulnerabilities.sh`（clj-watson）を通し、未修正の既知脆弱性を残さない。
+
+[/mandate]
 
 ### 8.0 理由タグ
 
