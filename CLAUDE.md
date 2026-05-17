@@ -47,6 +47,7 @@
 | `.llm/guide/COLLABORATION_GUIDE.md` | LLM と人間の協働プロトコル（役割分担・曖昧性解消・対話） |
 | `.llm/guide/BOOTSTRAP_GUIDE.md` | プロジェクト初期化手順 |
 | `.llm/guide/MAINTAINERS_GUIDE.md` | テンプレート自体の設計原則・保守者向け |
+| `.llm/guide/MAINTAINER_DOCUMENT_NAMING_MIGRATION.md` | README / RUNBOOK / MAINTAINER / GENERATED_VIEW への文書命名移行手順。実際の rename は別タスクで行う |
 
 ### .llm/memory/（プロジェクトの記憶）
 
@@ -105,6 +106,7 @@ Markdown 文書から別の Markdown 文書を指す時は、本文中に裸で�
 | **他エージェント（Codex 等）実行時** | AGENTS.md |
 | **README 置換後にテンプレート由来・利用手順を確認する時** | `.llm/guide/TEMPLATE_USAGE_GUIDE.md` |
 | **テンプレート自体の改修（ライブラリ更新・規約追加を含む）** | `.llm/guide/MAINTAINERS_GUIDE.md` |
+| **文書命名の repo 全体移行を行う時** | `.llm/guide/MAINTAINER_DOCUMENT_NAMING_MIGRATION.md` |
 
 ---
 

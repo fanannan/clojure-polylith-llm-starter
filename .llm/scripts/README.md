@@ -143,18 +143,11 @@ map generator / checker / migration script を変更した時、またはテン�
 テンプレート保守 mode の `session-briefing.sh` は、現在の git diff に対応する候補を `L0 Template Test Recommendation（テンプレート保守テスト提言）` に表示する。この提言は heavy test を自動 gate 化せず、bounded task の task-specific check 選択を前倒しするためのもの。
 
 ```bash
-./.llm/template-only/tests/check-map-scenarios.sh
-./.llm/template-only/tests/check-design-ir-scenarios.sh
-./.llm/template-only/tests/check-trace-metadata-scenarios.sh
-./.llm/template-only/tests/check-obligation-frontier-scenarios.sh
-./.llm/template-only/tests/check-session-briefing-scenarios.sh
-./.llm/template-only/tests/check-instrument-cases-smoke.sh
-./.llm/template-only/tests/check-instrument-setup-smoke.sh
-./.llm/template-only/tests/check-instrument-summary-smoke.sh
-./.llm/template-only/tests/check-benchmark-setup-smoke.sh
+./.llm/template-only/tests/run-all.sh           # 全テストを実行
+./.llm/template-only/tests/run-all.sh --list    # テスト一覧（実行しない）
 ```
 
-これらの検査は `/tmp` に synthetic repos を作成する。日常の `check-workspace-integrity.sh` には含めない。
+`run-all.sh` は `.llm/template-only/tests/check-*.sh` を glob で収集する。手書きの一覧は持たない。これらの検査は `/tmp` に synthetic repos を作成するため、日常の `check-workspace-integrity.sh` には含めない。
 
 ### hook 取り込みの起動タイミング（`lint-import-hooks.sh`）
 

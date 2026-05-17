@@ -19,6 +19,7 @@ copy_scripts() {
   mkdir -p "$repo/.llm/scripts" "$repo/.llm/data"
   cp "$TEMPLATE_ROOT/.llm/scripts/run-clj-tool.sh" "$repo/.llm/scripts/"
   cp "$TEMPLATE_ROOT/.llm/scripts/gen_design_ir.clj" "$repo/.llm/scripts/"
+  cp "$TEMPLATE_ROOT/.llm/scripts/derivation_manifest.clj" "$repo/.llm/scripts/"
   cp "$TEMPLATE_ROOT/.llm/scripts/gen-design-ir.sh" "$repo/.llm/scripts/"
   cp "$TEMPLATE_ROOT/.llm/scripts/check-design-ir.sh" "$repo/.llm/scripts/"
   chmod +x "$repo/.llm/scripts"/*.sh
@@ -186,7 +187,7 @@ scenario_04_stale_ir_detection_and_repair() {
 
 - REQ-002: 追加要求
 EOF
-  expect_fail "$repo" "./.llm/scripts/check-design-ir.sh" "not synchronized" "04-stale"
+  expect_fail "$repo" "./.llm/scripts/check-design-ir.sh" "not fresh" "04-stale"
   run_generate "$repo"
   run_check "$repo"
 }

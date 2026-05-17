@@ -19,6 +19,7 @@ copy_scripts() {
   mkdir -p "$repo/.llm/scripts" "$repo/.llm/data"
   cp "$TEMPLATE_ROOT/.llm/scripts/run-clj-tool.sh" "$repo/.llm/scripts/"
   cp "$TEMPLATE_ROOT/.llm/scripts/gen_design_ir.clj" "$repo/.llm/scripts/"
+  cp "$TEMPLATE_ROOT/.llm/scripts/derivation_manifest.clj" "$repo/.llm/scripts/"
   cp "$TEMPLATE_ROOT/.llm/scripts/gen-design-ir.sh" "$repo/.llm/scripts/"
   cp "$TEMPLATE_ROOT/.llm/scripts/check_trace_metadata.clj" "$repo/.llm/scripts/"
   cp "$TEMPLATE_ROOT/.llm/scripts/check-trace-metadata.sh" "$repo/.llm/scripts/"
