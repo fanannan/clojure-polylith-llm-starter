@@ -364,6 +364,16 @@ Malli instrumentation セクションはすべてのプロジェクトで有効�
 dev/user.clj の具体例は別紙に置く。
 ∵ POLYLITH_GUIDE.md §2.4
 
+### 2.6.1 参照 repo の登録（任意）
+
+別の clojure-polylith-llm-starter 系列 repo の brick 設計（`brick.edn` / `interface.clj` / Malli 契約 / 近接 test / `deps.edn`）を、実装時の比較材料として読みたい場合のみ実施する。不要ならスキップしてよく、bootstrap 後でも随時登録できる。
+
+- [ ] `./.llm/scripts/reference-repos.sh add <path>` で参照 repo を登録する（パス実在・Polylith repo・テンプレート由来を自動検証）
+- [ ] `./.llm/scripts/reference-repos.sh list` / `check` で登録内容と有効性を確認する
+
+allowlist の正本は `.llm/reference-repos.edn`（派生プロジェクトが所有する設定。空でも問題ない）。参照は read-only・allowlist 限定であり、コピーではなく取り込み先 DESIGN に合わせた再実装が前提。
+∵ POLYLITH_GUIDE.md §9
+
 ### 2.7 ライフサイクル設定ファイル作成（必要な場合のみ）
 
 I/O リソースの起動・停止管理が必要な場合のみ実施する。ライブラリ配布や単発 CLI などでは本節をスキップ：

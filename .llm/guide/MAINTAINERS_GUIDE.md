@@ -151,6 +151,7 @@
 |---|---|---|
 | deps.edn | D | 必須技術基盤のみ（正本は STACK_GUIDE.md §2.1）。用途依存ライブラリは brick の deps.edn に配置（選択肢 H、§2.2 参照）。`:dev :extra-deps` には開発支援ライブラリを配置 |
 | workspace.edn | D | `:projects` は `development` のみ有効、`:top-namespace` は placeholder |
+| .llm/reference-repos.edn | D | 参照 repo allowlist。template は空 `:allowed-repos` の scaffold で配布、派生プロジェクトが `reference-repos.sh` で管理（`:ownership :project-owned`、POLYLITH_GUIDE.md §9） |
 | development/src/dev/user.clj | D | tn/set-refresh-dirs は有効、Integrant/Malli-dev/Portal のセクションは必要な用途別機能カテゴリに応じて有効化 |
 
 ### 3.4 .llm/memory（E: 継続更新対象）

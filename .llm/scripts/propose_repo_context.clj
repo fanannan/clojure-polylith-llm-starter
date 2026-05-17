@@ -18,6 +18,7 @@
 (def default-ownership
   {:project-owned
    #{".llm/memory/adr/NNNN-*.md"
+     ".llm/reference-repos.edn"
      "components/*/**"
      "bases/*/**"
      "projects/*/**"}

@@ -76,8 +76,11 @@
 
  :ownership
  {;; 派生プロジェクトが所有・編集する領域。テンプレ保守作業ではここを touch しない。
+  ;; reference-repos.edn は template が空 scaffold を seed するが、:allowed-repos の
+  ;; 内容は派生プロジェクトが所有する開発設定（reference-repos.sh で管理）。
   :project-owned
   #{".llm/memory/adr/NNNN-*.md"   ; NNNN-*.md パターン。README.md / template.md は除外
+    ".llm/reference-repos.edn"    ; 参照 repo allowlist。内容は project 所有
     "components/*/**"              ; brick subdir 配下を再帰的に。top-level README は除外
     "bases/*/**"
     "projects/*/**"}
