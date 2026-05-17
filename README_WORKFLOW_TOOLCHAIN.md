@@ -5,7 +5,7 @@
 README は初見の入口であり、本文書は「実際にどのループを回すのか」「どの tool が何を保証するのか」を理解するための補助文書である。テンプレートの動作制御文書でも、自動生成文書でもない。日常作業の正本は CLAUDE、各手順の正本は対応 guide / script 側にある。
 
 ¤ CLAUDE.md
-¤ .llm/guide/STRUCTURAL_EVIDENCE_QUICKSTART.md
+¤ .llm/guide/RUNBOOK_STRUCTURAL_EVIDENCE.md
 ¤ .llm/guide/TEMPLATE_USAGE_GUIDE.md
 
 ---

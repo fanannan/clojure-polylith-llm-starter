@@ -54,7 +54,7 @@
 
 | 現在 | 変更後候補 | 種別 | 備考 |
 |---|---|---|---|
-| `.llm/guide/STRUCTURAL_EVIDENCE_QUICKSTART.md` | `.llm/guide/RUNBOOK_STRUCTURAL_EVIDENCE.md` | 実行手順 | `QUICKSTART` は初回導入感が強く、日常操作面として弱い。M-0023 の mandate annotation を含むため、rename 後に mandates index 再生成が必須 |
+| `.llm/guide/RUNBOOK_STRUCTURAL_EVIDENCE.md` | 完了済み | 実行手順 | Structural Evidence の操作面。M-0023 の mandate annotation を含むため、rename 後に mandates index 再生成が必要だった |
 | `docs/BRICKS.md` | `docs/GENERATED_VIEW_BRICKS.md` | 生成閲覧 view | 生成器、manifest、検査、参照文書を同時更新。docs は mandate scan 対象外 |
 | `docs/PROJECTS.md` | `docs/GENERATED_VIEW_PROJECTS.md` | 生成閲覧 view | workspace map 生成器と同時更新。docs は mandate scan 対象外 |
 | `docs/WORKSPACE.md` | `docs/GENERATED_VIEW_WORKSPACE.md` | 生成閲覧 view | workspace map 生成器と同時更新。docs は mandate scan 対象外 |
@@ -64,11 +64,11 @@
 
 ## 3.1 mandate / derived artifact との相互作用
 
-### 候補 1: Structural Evidence 操作面
+### 完了済み: Structural Evidence 操作面
 
-旧名文書には M-0023 / structural-evidence-boundary の authored mandate annotation がある。rename 後も `.llm/guide/*.md` glob に入るため annotation 自体は scan され続け、dangling mandate にはならない。
+Structural Evidence 操作面の文書には M-0023 / structural-evidence-boundary の authored mandate annotation がある。現在も `.llm/guide/*.md` glob に入るため annotation 自体は scan され続け、dangling mandate にはならない。
 
-ただし `.llm/data/mandates.edn` の `:defined-in` は旧名から新名へ変わる。`.llm/guide/` corpus digest も変わるため、次を同一タスクで行う。
+この rename では `.llm/data/mandates.edn` の `:defined-in` と `.llm/guide/` corpus digest が変わるため、次を同一タスクで行う必要があった。
 
 - CLAUDE、README、script README、作業ループ説明、保守 guide 内の旧名参照を更新する
 - `gen_mandates.clj` と `check_instrument_cases.clj` の scan 範囲が新名文書を拾うことを点検する。`.llm/guide/*.md` のままならコード変更は不要
@@ -88,25 +88,24 @@
 対象語彙を repo 全体で洗い出す。
 
 ```bash
-rg -n "STRUCTURAL_EVIDENCE_QUICKSTART|RUNBOOK_STRUCTURAL_EVIDENCE|M-0023|structural-evidence-boundary"
+rg -n "RUNBOOK_STRUCTURAL_EVIDENCE|M-0023|structural-evidence-boundary"
 rg -n "docs/(BRICKS|PROJECTS|WORKSPACE|TRACE)\\.md|BRICKS\\.md|PROJECTS\\.md|WORKSPACE\\.md|TRACE\\.md|GENERATED_VIEW_"
 rg -n "mandates\\.edn|gen_mandates|check_instrument_cases|:defined-in|check-instrument-cases"
-rg -n "README_WORKFLOW_TOOLCHAIN|QUICKSTART|RUNBOOK_|MAINTAINER_"
+rg -n "README_WORKFLOW_TOOLCHAIN|RUNBOOK_|MAINTAINER_"
 ```
 
 棚卸しでは、Markdown 参照だけでなく、Clojure generator、shell wrapper、derivation manifest、mandate generator、instrument case checker、check script、template-only test、README の索引も含める。`.llm/data/mandates.edn` の hit は手編集対象ではなく、再生成対象の発見として扱う。
 
-### Phase 1: 実行手順名を先に分ける
+### Phase 1: 実行手順名を先に分ける（完了済み）
 
-Structural Evidence の操作面を rename する場合は、まず文書 rename と参照更新だけを 1 commit に閉じる。
+Structural Evidence の操作面は `RUNBOOK_STRUCTURAL_EVIDENCE` へ移行済みである。今後同種の runbook rename を行う場合は、まず文書 rename と参照更新だけを 1 commit に閉じる。
 
 ```bash
-git mv .llm/guide/STRUCTURAL_EVIDENCE_QUICKSTART.md .llm/guide/RUNBOOK_STRUCTURAL_EVIDENCE.md
-rg -n "STRUCTURAL_EVIDENCE_QUICKSTART" .
+rg -n "RUNBOOK_STRUCTURAL_EVIDENCE" .
 rg -n "M-0023|structural-evidence-boundary|RUNBOOK_STRUCTURAL_EVIDENCE|:defined-in" .llm/guide .llm/data .llm/scripts .llm/template-only CLAUDE.md README.md
 ```
 
-更新対象は少なくとも、日常作業規約、README、作業ループ説明、script README、保守 guide、Structural Evidence script の help / output である。
+更新対象は少なくとも、日常作業規約、README、作業ループ説明、script README、保守 guide、対象 script の help / output である。
 
 mandate 体系の追加対象:
 

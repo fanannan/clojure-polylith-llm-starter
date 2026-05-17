@@ -939,7 +939,7 @@ Derive First, Declare Residual, Preserve Only What Reduces Future Fatigue, Audit
 - Template Migration Ledger は「どの template migration を適用済みか」を扱う。Evidence Close Record は「その task をなぜ close できたか」を扱う。Close Record が migration ledger を evidence として参照することは許すが、migration ledger から Close Record へ逆参照して二重管理しない
 
 利用者向けの最小手順:
-¤ .llm/guide/STRUCTURAL_EVIDENCE_QUICKSTART.md
+¤ .llm/guide/RUNBOOK_STRUCTURAL_EVIDENCE.md
 
 ### 5.16 Work Frontier / obligation coverage の保守
 

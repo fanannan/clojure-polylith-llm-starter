@@ -287,7 +287,7 @@ Git hook を使う場合:
 EDN の `:schema/version` は `structural-evidence.N` 系で管理する。検討段階の仮称や release 名を schema / artifact 名に使わない。
 
 詳細な最小手順:
-¤ .llm/guide/STRUCTURAL_EVIDENCE_QUICKSTART.md
+¤ .llm/guide/RUNBOOK_STRUCTURAL_EVIDENCE.md
 
 `.llm/work/` は git 管理しない work area である。`views/` は stale なら再生成できる生成系 artifact、`runs/` は再実行可能な transient observation、`declarations/` は人間/LLM の判断であり fingerprint mismatch 時も自動削除しない。close 後は declaration と run result を closed record に吸収し、work artifact は削除する。closed evidence record を残す場合は、派生プロジェクトの privacy / commit policy に従って `.llm/evidence/closed/` 等に置く。Structural Evidence View は第 5 の正本ではなく、Authority / Structure / Index / Verification plane への索引である。
 

@@ -1,4 +1,4 @@
-# Structural Evidence Quickstart
+# RUNBOOK_STRUCTURAL_EVIDENCE.md — Structural Evidence 操作手順
 
 Structural Evidence View は、LLM が scope と evidence を自己申告する代わりに、git diff、repo-kind、Polylith 構造、生成 index、検査 script から review 用 view を導出する仕組みである。
 

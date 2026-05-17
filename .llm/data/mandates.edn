@@ -6,18 +6,18 @@
  :artifact/manifest
  #:derivation{:tool "gen-mandates",
               :action-key
-              "sha256:538d341cc3dada71881f2be3ff3ed4602b2a485296f8724600297aab235cb1ae",
+              "sha256:e66653dad67a3215097723214ac51f015cb90da6aeec96909b31f171c4a7ba17",
               :input-policy
               {:missing :explicit-empty,
                :directory-roots :recursive-digest},
               :inputs
               [{:path "CLAUDE.md",
                 :digest
-                "sha256:d1fbbae32b13d367c5df8d49f7556331cce1dc722ec6ed31d5d97587fd107ecc"}
+                "sha256:5a362314ac6bbc754c407723b8a00b36001a9a19a8436809cadbbb834d7a7c01"}
                {:path ".llm/guide",
                 :input/kind :directory,
                 :digest
-                "sha256:d8df469e6bd030a0111d6ff05e59f8dc86b23320115c2439a9d6094cabaceede"}
+                "sha256:3f8796e6f35256eea3194e4e0d85e1c72d6ee17d04979f93ff720ac02d8e98ed"}
                {:path ".llm/template-only/tests",
                 :input/kind :directory,
                 :digest
@@ -40,7 +40,7 @@
  :mandates
  {"M-0001"
   {:tier :kernel,
-   :source/git-rev "cbaf8451c0a05ccfe9910aae8b6eae8f4deaf0d2",
+   :source/git-rev "3aec0896fd0006da07abd3910b1dd78d03fe018a",
    :verified-by
    [".llm/template-only/tests/check-session-briefing-scenarios.sh"],
    :source/digest
@@ -53,7 +53,7 @@
    :source/heading "8.0 実装着手前の確認（すべての作業に共通）"},
   "M-0002"
   {:tier :kernel,
-   :source/git-rev "cbaf8451c0a05ccfe9910aae8b6eae8f4deaf0d2",
+   :source/git-rev "3aec0896fd0006da07abd3910b1dd78d03fe018a",
    :verified-by [],
    :source/digest
    "sha256:11ffa8ba74f1f248d876ac17c10edafba479ed252c4b53f405b79f0aae714253",
@@ -65,7 +65,7 @@
    :source/heading "参照マーカー規約"},
   "M-0003"
   {:tier :kernel,
-   :source/git-rev "cbaf8451c0a05ccfe9910aae8b6eae8f4deaf0d2",
+   :source/git-rev "3aec0896fd0006da07abd3910b1dd78d03fe018a",
    :verified-by [],
    :source/digest
    "sha256:ef3c2e7d9f92d7ba57c28fd7736b270bbc51b491a11e22373544bed2e6a47f8f",
@@ -77,7 +77,7 @@
    :source/heading "5.1 clj-kondo（保存時にエディタで赤線）"},
   "M-0004"
   {:tier :kernel,
-   :source/git-rev "cbaf8451c0a05ccfe9910aae8b6eae8f4deaf0d2",
+   :source/git-rev "3aec0896fd0006da07abd3910b1dd78d03fe018a",
    :verified-by [],
    :source/digest
    "sha256:a31460115e317a82e60d6c11308620c3ade47fde9c5d36e565fa497f65079f4e",
@@ -89,7 +89,7 @@
    :source/heading "5.2 cljfmt（保存時自動整形）"},
   "M-0005"
   {:tier :kernel,
-   :source/git-rev "cbaf8451c0a05ccfe9910aae8b6eae8f4deaf0d2",
+   :source/git-rev "3aec0896fd0006da07abd3910b1dd78d03fe018a",
    :verified-by [],
    :source/digest
    "sha256:d2aa7c4f088be39a5d89b740f6730bcde0e4be896608e29505622a5ab2f67bae",
@@ -101,7 +101,7 @@
    :source/heading "5.3 `poly check`（Polylith 構造違反）"},
   "M-0006"
   {:tier :kernel,
-   :source/git-rev "cbaf8451c0a05ccfe9910aae8b6eae8f4deaf0d2",
+   :source/git-rev "3aec0896fd0006da07abd3910b1dd78d03fe018a",
    :verified-by [],
    :source/digest
    "sha256:eb82d3a183e1dfd41ab3dd8428876116541b6f7bc3cca29411d0b96664660532",
@@ -113,7 +113,7 @@
    :source/heading "5.4 Malli instrumentation"},
   "M-0007"
   {:tier :kernel,
-   :source/git-rev "cbaf8451c0a05ccfe9910aae8b6eae8f4deaf0d2",
+   :source/git-rev "3aec0896fd0006da07abd3910b1dd78d03fe018a",
    :verified-by
    [".llm/template-only/tests/check-trace-metadata-scenarios.sh"],
    :source/digest
@@ -128,7 +128,7 @@
    :source/heading "5.4.1 仕様 trace metadata"},
   "M-0008"
   {:tier :kernel,
-   :source/git-rev "cbaf8451c0a05ccfe9910aae8b6eae8f4deaf0d2",
+   :source/git-rev "3aec0896fd0006da07abd3910b1dd78d03fe018a",
    :verified-by [],
    :source/digest
    "sha256:35561c9028d34cae22991bf944bf19a0f10ae86e704fc066016a9b6062198924",
@@ -140,7 +140,7 @@
    :source/heading "5.5 完了条件（以下全通過で初めて完了報告）"},
   "M-0009"
   {:tier :kernel,
-   :source/git-rev "cbaf8451c0a05ccfe9910aae8b6eae8f4deaf0d2",
+   :source/git-rev "3aec0896fd0006da07abd3910b1dd78d03fe018a",
    :verified-by [],
    :source/digest
    "sha256:68bb4e741c034dd23e886fc24e8fac81a5153a0b80cd88f6d33b187fadbaf208",
@@ -152,7 +152,7 @@
    :source/heading "11.1 4 種類の文書と参照先"},
   "M-0010"
   {:tier :kernel,
-   :source/git-rev "cbaf8451c0a05ccfe9910aae8b6eae8f4deaf0d2",
+   :source/git-rev "3aec0896fd0006da07abd3910b1dd78d03fe018a",
    :verified-by [],
    :source/digest
    "sha256:54a8408fccd3fa67d26b19de3ec5dbf5ada55848cd7e60df51e9d7af60d50fc6",
@@ -166,7 +166,7 @@
    :source/heading "11.1 4 種類の文書と参照先"},
   "M-0011"
   {:tier :extended,
-   :source/git-rev "cbaf8451c0a05ccfe9910aae8b6eae8f4deaf0d2",
+   :source/git-rev "3aec0896fd0006da07abd3910b1dd78d03fe018a",
    :verified-by [],
    :source/digest
    "sha256:e70863206e1f32d8de332ebaf8fe8db438f8e892812ac4e585bf51ac987de2d2",
@@ -178,7 +178,7 @@
    :source/heading "4. 関数設計"},
   "M-0012"
   {:tier :extended,
-   :source/git-rev "cbaf8451c0a05ccfe9910aae8b6eae8f4deaf0d2",
+   :source/git-rev "3aec0896fd0006da07abd3910b1dd78d03fe018a",
    :verified-by [],
    :source/digest
    "sha256:8c841438d5704141681f2a2e911b6c3be523ef5876935ef333ce52cbb5bcd7f2",
@@ -192,7 +192,7 @@
    :source/heading "8. 禁止・非推奨ライブラリ（理由タグ定義と追加手順のみ）"},
   "M-0013"
   {:tier :extended,
-   :source/git-rev "cbaf8451c0a05ccfe9910aae8b6eae8f4deaf0d2",
+   :source/git-rev "3aec0896fd0006da07abd3910b1dd78d03fe018a",
    :verified-by [],
    :source/digest
    "sha256:ccb96a302973c060a1774ffff48f1213f25cd8d7859b75b82497a51c1609bc43",
@@ -204,7 +204,7 @@
    :source/heading "8. 禁止・非推奨ライブラリ（理由タグ定義と追加手順のみ）"},
   "M-0014"
   {:tier :extended,
-   :source/git-rev "cbaf8451c0a05ccfe9910aae8b6eae8f4deaf0d2",
+   :source/git-rev "3aec0896fd0006da07abd3910b1dd78d03fe018a",
    :verified-by [],
    :source/digest
    "sha256:9e3eec529ef6858016a45f931345c4c789adbcdaac3a23b777241a3b5450cbc4",
@@ -216,7 +216,7 @@
    :source/heading "8. 禁止・非推奨ライブラリ（理由タグ定義と追加手順のみ）"},
   "M-0015"
   {:tier :extended,
-   :source/git-rev "cbaf8451c0a05ccfe9910aae8b6eae8f4deaf0d2",
+   :source/git-rev "3aec0896fd0006da07abd3910b1dd78d03fe018a",
    :verified-by [],
    :source/digest
    "sha256:7c8dd3cb54e585b86c1c6d142d2ae18f8c33d1f91e0325baec7b9b8a960b906a",
@@ -228,7 +228,7 @@
    :source/heading "6.1 基本チェック（brick 単位）"},
   "M-0016"
   {:tier :kernel,
-   :source/git-rev "cbaf8451c0a05ccfe9910aae8b6eae8f4deaf0d2",
+   :source/git-rev "3aec0896fd0006da07abd3910b1dd78d03fe018a",
    :verified-by
    [".llm/template-only/tests/check-design-ir-scenarios.sh"
     ".llm/template-only/tests/check-map-scenarios.sh"],
@@ -247,7 +247,7 @@
    :source/heading "5.7 生成物の鮮度"},
   "M-0017"
   {:tier :kernel,
-   :source/git-rev "cbaf8451c0a05ccfe9910aae8b6eae8f4deaf0d2",
+   :source/git-rev "3aec0896fd0006da07abd3910b1dd78d03fe018a",
    :verified-by [],
    :source/digest
    "sha256:4bdb7bc8f895e4e3309dcab5f8f618987287540fb261e89c58f6551115966f87",
@@ -259,7 +259,7 @@
    :source/heading "8.2 新規コンポーネント追加（承認必須）"},
   "M-0018"
   {:tier :extended,
-   :source/git-rev "cbaf8451c0a05ccfe9910aae8b6eae8f4deaf0d2",
+   :source/git-rev "3aec0896fd0006da07abd3910b1dd78d03fe018a",
    :verified-by [],
    :source/digest
    "sha256:8529eddbdf1f3c5175cc826232affc684ec72f2e93d86eefe730e3a6fb2fd7ce",
@@ -271,7 +271,7 @@
    :source/heading "14.1 1 ファイル 1 名前空間"},
   "M-0019"
   {:tier :kernel,
-   :source/git-rev "cbaf8451c0a05ccfe9910aae8b6eae8f4deaf0d2",
+   :source/git-rev "3aec0896fd0006da07abd3910b1dd78d03fe018a",
    :verified-by
    [".llm/template-only/tests/check-obligation-frontier-scenarios.sh"],
    :source/digest
@@ -284,7 +284,7 @@
    :source/heading "5.4.1 仕様 trace metadata"},
   "M-0020"
   {:tier :extended,
-   :source/git-rev "cbaf8451c0a05ccfe9910aae8b6eae8f4deaf0d2",
+   :source/git-rev "3aec0896fd0006da07abd3910b1dd78d03fe018a",
    :verified-by [],
    :source/digest
    "sha256:9de857667c942c66e74abeb21518baeee89e8517666710057f4b007efc53a826",
@@ -296,7 +296,7 @@
    :source/heading "2.1 プロジェクト想定の決定（人間が判断、LLM は文章化）"},
   "M-0021"
   {:tier :extended,
-   :source/git-rev "cbaf8451c0a05ccfe9910aae8b6eae8f4deaf0d2",
+   :source/git-rev "3aec0896fd0006da07abd3910b1dd78d03fe018a",
    :verified-by [],
    :source/digest
    "sha256:eefed91c5f04bcb9086bd8ff49f6cadbc3271d1b5f0b8c1466cbcf944e49122f",
@@ -310,7 +310,7 @@
    :source/heading "7.2 Archive entry の状態"},
   "M-0022"
   {:tier :extended,
-   :source/git-rev "cbaf8451c0a05ccfe9910aae8b6eae8f4deaf0d2",
+   :source/git-rev "3aec0896fd0006da07abd3910b1dd78d03fe018a",
    :verified-by [],
    :source/digest
    "sha256:0673efe110ccefbef738bae5caa261bea9a7f1ce9ddf34c25ed05f37cf0ac0ff",
@@ -324,7 +324,7 @@
    :source/heading "7.1 記録先"},
   "M-0023"
   {:tier :extended,
-   :source/git-rev "cbaf8451c0a05ccfe9910aae8b6eae8f4deaf0d2",
+   :source/git-rev "3aec0896fd0006da07abd3910b1dd78d03fe018a",
    :verified-by [],
    :source/digest
    "sha256:25c2444e5123d4d0511341d322ad9d760570028cb143d31cdebb2831b60fb186",
@@ -332,7 +332,7 @@
    [".llm/scripts/check-evidence-boundary.sh"
     ".llm/scripts/check-evidence-gate.sh"
     ".llm/scripts/check-residual-declared.sh"],
-   :defined-in "STRUCTURAL_EVIDENCE_QUICKSTART.md",
+   :defined-in "RUNBOOK_STRUCTURAL_EVIDENCE.md",
    :hint "structural-evidence-boundary",
    :status :active,
    :instruction/type :invariant,

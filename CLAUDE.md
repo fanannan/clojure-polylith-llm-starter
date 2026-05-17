@@ -205,7 +205,7 @@ IDEA は、未整理の着想や要望を DESIGN へ構造化するための任�
 - **現時点で有効な知識の活用で再発見の疲労を避ける**: 実装中に判明した契約・不変条件・暗黙知は KNOWLEDGE に集約される。LLM は実装着手前に関連節を必ず確認し、同じ判断を繰り返さないこと（詳細は §8, §11）
 ¤ .llm/memory/KNOWLEDGE.md
 - **主張と証跡の対応で未来の再確認疲労を避ける**: LLM の出力は trust ではなく claim である。scope / evidence requirement は可能な限り git diff・Polylith 構造・Malli 契約・trace index・検査 script から導出し、LLM は導出不能な意図・未知・残疲労だけを明示する。Review Fatigue Packet は第 5 の正本ではなく、次セッションが検証済みの足場を復元するための生成 view である。
-¤ .llm/guide/STRUCTURAL_EVIDENCE_QUICKSTART.md
+¤ .llm/guide/RUNBOOK_STRUCTURAL_EVIDENCE.md
 ∵ .llm/guide/MAINTAINERS_GUIDE.md §5.15
 - **「前提の明示」で解空間を早期に収束させる**: LLM との協働では、ユーザーが価値判断・運用制約・採否の向きを**早期に明示**するほど、LLM の提案解空間が適切に狭まり、設計コストが下がる。例: 「Babashka は使わない、shell script で書く」「サンプルコードはコメントで残す」のように採否の向きを与えると、LLM は条件付き生成・動的削除のような複雑な方向を自発的に閉じる。これは §1.3「現時点で有効な知識の活用」の延長で、**前提の言語化自体が協働の知識**になる。判断根拠が不明な時はユーザーに前提を訊くのが効率的（`.llm/guide/COLLABORATION_GUIDE.md` §4）
 ∵ .llm/guide/COLLABORATION_GUIDE.md §4
@@ -699,7 +699,7 @@ subagent / tool 呼び出し / 長い shell 実行は、ユーザへの最終応
 §1.2.3 小単位分解の実装。
 
 **Evidence gate の義務**: ファイル編集を伴う bounded task では、commit 前に `./.llm/scripts/check-evidence-gate.sh --staged` を通す。save-required な staged diff は Structural Evidence packet / residual declaration / close record が無いと block される。迷ったら `./.llm/scripts/evidence.sh what-now` で次 action を確認する。通常は `./.llm/scripts/propose-review-packet.sh --task <id> --staged` → `./.llm/scripts/evidence.sh declare ...` → `./.llm/scripts/evidence.sh run --task <id>` → `./.llm/scripts/evidence.sh close --task <id> --staged` の順で閉じる。claim の根拠確認には `is-verified` / `why` を使う。`predict` は高リスク作業の pre-flight 用であり、actual staged diff gate が正本である。
-¤ .llm/guide/STRUCTURAL_EVIDENCE_QUICKSTART.md
+¤ .llm/guide/RUNBOOK_STRUCTURAL_EVIDENCE.md
 
 ### 8.0 実装着手前の確認（すべての作業に共通）
 
