@@ -65,31 +65,30 @@ The summary routes split valid outcomes to `:spec-ambiguous` instead of averagin
 
 ## Mandate Annotations
 
-Cases may trace to authored `llm-mandate` annotations, but the annotation is
-only tracking metadata. It must describe an obligation already present in nearby
+Cases may trace to authored mandate annotations, but the annotation is only
+tracking metadata. It must describe an obligation already present in nearby
 prose and must not define a new obligation by itself.
 
+A mandate annotation is a visible one-line directive placed above the prose it
+identifies:
+
 ```md
-<!-- llm-mandate
-{:id :session-start-briefing-first
- :kind :mandate
- :severity :hard
- :applies-to #{:codex}
- :binding #{:agents-md :session-briefing :briefing-fixture-test}
- :instrument/family :mode-and-ownership}
--->
-On session start, run `bash .llm/scripts/session-briefing.sh` and read its output first.
+[mandate: M-0001/session-start-briefing-first type:workflow tier:kernel]
+
+On session start, read the session briefing before the first file write.
 ```
 
-`check-cases.sh` scans markdown under `--mandate-root` (default: repository
-root), ignores fenced code blocks, and rejects `:trace/mandates` values that do
-not point at a valid authored annotation.
+The `M-NNNN` id is the immutable join key; the text after the slash is a
+human-facing hint only. `check-cases.sh` scans `CLAUDE.md` and `.llm/guide/*.md`
+under `--mandate-root` (default: repository root), ignores fenced code blocks,
+validates annotation shape, and rejects `:trace/mandates` values that do not
+point at an existing `M-NNNN` id.
 
 ## Files
 
 - `incident-index.edn`: observed incident seeds and measurement policy.
-- `cases.edn`: initial case catalog. Cases must trace to an incident or an authored `llm-mandate` annotation.
-- `check-cases.sh`: validates case catalog trace, authored `llm-mandate` references, and shape invariants.
+- `cases.edn`: initial case catalog. Cases must trace to an incident or an authored `[mandate:]` annotation.
+- `check-cases.sh`: validates case catalog trace, authored `[mandate:]` references, and shape invariants.
 - `check_instrument_cases.clj`: EDN parser-backed implementation of `check-cases.sh`.
 - `setup-run.sh`: prepares a target repo and outside observer store.
 - `score-run.sh`: path-level preliminary scorer for a single observed run.

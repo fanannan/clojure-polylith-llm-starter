@@ -4,7 +4,8 @@
    This checker protects the instrument from becoming a free-floating synthetic
    suite. Non-exploratory cases must trace to an observed incident or an authored
    mandate. Incident traces must be known to incident-index.edn, and mandate
-   traces must point at authored llm-mandate annotations."
+   traces must point at authored [mandate: ...] annotations in CLAUDE.md or
+   .llm/guide/*.md."
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]
@@ -17,14 +18,14 @@
 (def allowed-statuses #{:pilot :planned :exploratory :disabled})
 (def allowed-target-modes #{:template :project})
 (def allowed-project-phases #{:bootstrap :development})
-(def allowed-instruction-kinds #{:mandate
-                                 :prohibition
-                                 :workflow
-                                 :heuristic
-                                 :principle
-                                 :anti-pattern})
-(def allowed-severities #{:hard :soft :advisory})
-(def mandate-block-re #"(?s)<!--\s*llm-mandate\s*(.*?)\s*-->")
+;; Mandate annotation format (plan §5.5 / §5.6): a visible one-line directive
+;; `[mandate: M-NNNN/hint type:<type> tier:<tier>]`. The checker validates shape
+;; only; the rule meaning lives in the nearby prose.
+(def allowed-instruction-types #{:workflow :prohibition :invariant :derived-artifact})
+(def allowed-mandate-tiers #{:kernel :extended})
+(def mandate-id-re #"M-\d{4}")
+(def mandate-hint-re #"[a-z0-9-]+")
+(def mandate-annotation-re #"(?m)^\[mandate:\s*(.+?)\]\s*$")
 
 (defn- usage []
   (binding [*out* *err*]
@@ -71,19 +72,20 @@
   (when (and (some? value) (not (keyword-set? value)))
     [(error path (str field " must be a set of keywords"))]))
 
-(defn- normalize-trace-set [value]
-  (if (keyword-set? value) value #{}))
+(defn- string-set? [x]
+  (and (set? x) (every? string? x)))
+
+(defn- optional-string-set-errors [path field value]
+  (when (and (some? value) (not (string-set? value)))
+    [(error path (str field " must be a set of strings"))]))
+
+(defn- normalize-trace-set [pred value]
+  (if (pred value) value #{}))
 
 (defn- relative-path [root file]
   (let [root-path (.toPath (.getCanonicalFile (io/file root)))
         file-path (.toPath (.getCanonicalFile file))]
     (str/replace (str (.relativize root-path file-path)) "\\" "/")))
-
-(defn- ignored-mandate-file? [rel-path]
-  (or (str/starts-with? rel-path ".git/")
-      (str/starts-with? rel-path ".llm/work/")
-      (str/starts-with? rel-path ".llm/evidence/")
-      (str/starts-with? rel-path ".llm/template-only/instrument/runs/")))
 
 (defn- strip-fenced-code-blocks [content]
   (let [lines (str/split-lines content)]
@@ -99,81 +101,86 @@
          :lines
          (str/join "\n"))))
 
-(defn- markdown-files [root]
-  (let [root-file (io/file root)]
-    (if-not (.isDirectory root-file)
-      []
-      (->> (file-seq root-file)
-           (filter #(.isFile %))
-           (filter #(str/ends-with? (.getName %) ".md"))
-           (map (fn [file]
-                  {:file file
-                   :rel-path (relative-path root-file file)}))
-           (remove #(ignored-mandate-file? (:rel-path %)))))))
+(defn- corpus-mandate-files [root]
+  ;; Mandate annotations are authored only in CLAUDE.md and .llm/guide/*.md
+  ;; (plan §5.8). AGENTS.md, the maintainer archive, and .llm/memory are out of
+  ;; scan range so that quoted examples never join as real mandates.
+  (let [root-file (io/file root)
+        claude (io/file root-file "CLAUDE.md")
+        guide-dir (io/file root-file ".llm/guide")
+        guide-files (when (.isDirectory guide-dir)
+                      (->> (.listFiles guide-dir)
+                           (filter #(.isFile %))
+                           (filter #(str/ends-with? (.getName %) ".md"))))]
+    (->> (cons claude guide-files)
+         (filter (fn [f] (and f (.isFile f))))
+         (map (fn [file]
+                {:file file
+                 :rel-path (relative-path root-file file)})))))
 
-(defn- mandate-form-errors [path form]
-  (if-not (map? form)
-    [(error path "llm-mandate annotation must be an EDN map")]
-    (vec
-     (concat
-      (when-not (keyword? (:id form))
-        [(error path ":id must be a keyword")])
-      (when-not (contains? allowed-instruction-kinds (:kind form))
-        [(error path (str ":kind must be one of " (pr-str allowed-instruction-kinds)))])
-      (when-not (contains? allowed-severities (:severity form))
-        [(error path (str ":severity must be one of " (pr-str allowed-severities)))])
-      (when-not (keyword-set? (:binding form))
-        [(error path ":binding must be a set of keywords")])
-      (when (and (contains? form :applies-to)
-                 (not (keyword-set? (:applies-to form))))
-        [(error path ":applies-to must be a set of keywords")])
-      (when (and (contains? form :instrument/family)
-                 (not (keyword? (:instrument/family form))))
-        [(error path ":instrument/family must be a keyword")])))))
+(defn- parse-mandate-annotation [body]
+  ;; body: "M-0001/session-start-briefing-first type:workflow tier:kernel"
+  (let [tokens (str/split (str/trim body) #"\s+")
+        id-token (first tokens)
+        [id hint] (when id-token (str/split id-token #"/" 2))
+        attrs (into {}
+                    (keep (fn [token]
+                            (let [[k v] (str/split token #":" 2)]
+                              (when (and k v (seq k) (seq v)) [k v])))
+                          (rest tokens)))]
+    {:id id
+     :hint hint
+     :type (some-> (get attrs "type") keyword)
+     :tier (some-> (get attrs "tier") keyword)}))
+
+(defn- mandate-annotation-errors [path {:keys [id hint type tier]}]
+  (vec
+   (concat
+    (when-not (and (string? id) (re-matches mandate-id-re id))
+      [(error path "mandate id must match M-NNNN")])
+    (when-not (and (string? hint) (re-matches mandate-hint-re hint))
+      [(error path "mandate hint after the slash must match [a-z0-9-]+")])
+    (when-not (contains? allowed-instruction-types type)
+      [(error path (str "type: must be one of " (pr-str allowed-instruction-types)))])
+    (when-not (contains? allowed-mandate-tiers tier)
+      [(error path (str "tier: must be one of " (pr-str allowed-mandate-tiers)))]))))
 
 (defn- parse-mandate-file [{:keys [file rel-path]}]
   (let [content (strip-fenced-code-blocks (slurp file))]
     (reduce
      (fn [acc [idx [_ body]]]
-       (let [path (str rel-path " llm-mandate[" idx "]")]
-         (try
-           (let [form (edn/read-string body)]
-             (-> acc
-                 (update :annotations conj {:source/file rel-path
-                                            :source/index idx
-                                            :form form})
-                 (update :diagnostics into (mandate-form-errors path form))))
-           (catch Exception e
-             (update acc :diagnostics conj
-                     (error path (str "invalid EDN: " (.getMessage e))))))))
+       (let [path (str rel-path " [mandate:" idx "]")
+             annotation (parse-mandate-annotation body)]
+         (-> acc
+             (update :annotations conj (assoc annotation
+                                              :source/file rel-path
+                                              :source/index idx))
+             (update :diagnostics into (mandate-annotation-errors path annotation)))))
      {:annotations [] :diagnostics []}
-     (map-indexed vector (re-seq mandate-block-re content)))))
+     (map-indexed vector (re-seq mandate-annotation-re content)))))
 
 (defn- collect-mandates [root]
-  (let [root-file (io/file root)]
-    (if-not (.isDirectory root-file)
-      {:mandate-ids #{}
-       :diagnostics [(error "llm-mandate" (str "--mandate-root is not a directory: " root))]}
-      (let [{:keys [annotations diagnostics]}
-            (reduce
-             (fn [acc file-item]
-               (let [parsed (parse-mandate-file file-item)]
-                 (-> acc
-                     (update :annotations into (:annotations parsed))
-                     (update :diagnostics into (:diagnostics parsed)))))
-             {:annotations [] :diagnostics []}
-             (markdown-files root-file))
-            by-id (->> annotations
-                      (filter #(keyword? (get-in % [:form :id])))
-                      (group-by #(get-in % [:form :id])))
-            duplicate-errors
-            (for [[id items] by-id
-                  :when (> (count items) 1)]
-              (error "llm-mandate"
-                     (str "duplicate :id " id " in "
-                          (str/join ", " (map :source/file items)))))]
-        {:mandate-ids (set (keys by-id))
-         :diagnostics (vec (concat diagnostics duplicate-errors))}))))
+  (let [{:keys [annotations diagnostics]}
+        (reduce
+         (fn [acc file-item]
+           (let [parsed (parse-mandate-file file-item)]
+             (-> acc
+                 (update :annotations into (:annotations parsed))
+                 (update :diagnostics into (:diagnostics parsed)))))
+         {:annotations [] :diagnostics []}
+         (corpus-mandate-files root))
+        by-id (->> annotations
+                   (filter #(and (string? (:id %))
+                                 (re-matches mandate-id-re (:id %))))
+                   (group-by :id))
+        duplicate-errors
+        (for [[id items] by-id
+              :when (> (count items) 1)]
+          (error "mandate"
+                 (str "duplicate mandate id " id " in "
+                      (str/join ", " (map :source/file items)))))]
+    {:mandate-ids (set (keys by-id))
+     :diagnostics (vec (concat diagnostics duplicate-errors))}))
 
 (defn- case-seq [cases]
   (for [[family-id family] (:families cases)
@@ -210,8 +217,8 @@
         project-phase (:target/project-phase case-map)
         incidents-value (:trace/incidents case-map)
         mandates-value (:trace/mandates case-map)
-        incidents (normalize-trace-set incidents-value)
-        mandates (normalize-trace-set mandates-value)
+        incidents (normalize-trace-set keyword-set? incidents-value)
+        mandates (normalize-trace-set string-set? mandates-value)
         exploratory? (= :exploratory status)
         unknown-incidents (seq (remove known-incidents incidents))
         unknown-mandates (seq (remove known-mandates mandates))
@@ -240,7 +247,7 @@
         [(error path ":prompt must be a non-empty string")])
       (expectation-errors path (:observable-expectations case-map))
       (optional-keyword-set-errors path ":trace/incidents" incidents-value)
-      (optional-keyword-set-errors path ":trace/mandates" mandates-value)
+      (optional-string-set-errors path ":trace/mandates" mandates-value)
       (when-not (or exploratory? (seq incidents) (seq mandates))
         [(error path "non-exploratory case must trace to an incident or authored mandate")])
       (when unknown-incidents

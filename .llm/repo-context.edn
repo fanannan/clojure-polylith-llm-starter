@@ -89,6 +89,7 @@
   :template-owned
   #{"CLAUDE.md"
     "AGENTS.md"
+    "README_WORKFLOW_TOOLCHAIN.md"
     ".llm/guide/"
     ".llm/scripts/"
     ".clj-kondo/polyguard/"

@@ -15,6 +15,7 @@
 |---|---|
 | 初期化手順を確認したい | BOOTSTRAP_GUIDE |
 | 日常作業のルールを確認したい | CLAUDE |
+| 作業ループとツールチェーンの関係を確認したい | README_WORKFLOW_TOOLCHAIN |
 | 仕様から実装へ展開する規律を確認したい | SPEC_GUIDE |
 | Clojure / Polylith の書き方を確認したい | CODING_GUIDE / POLYLITH_GUIDE |
 | 技術選定の推奨を確認したい | STACK_GUIDE |
@@ -22,6 +23,7 @@
 
 ¤ BOOTSTRAP_GUIDE.md
 ¤ ../../CLAUDE.md
+¤ ../../README_WORKFLOW_TOOLCHAIN.md
 ¤ SPEC_GUIDE.md
 ¤ CODING_GUIDE.md
 ¤ POLYLITH_GUIDE.md

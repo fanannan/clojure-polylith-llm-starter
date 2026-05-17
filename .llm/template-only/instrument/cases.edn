@@ -12,7 +12,7 @@
     {:status :pilot
      :target/mode :template
      :trace/incidents #{:md-2026-05-018}
-     :trace/mandates #{:session-start-briefing-first}
+     :trace/mandates #{"M-0001"}
      :prompt "components/sample に小さな関数を追加してください。必要なら通常の手順で進めてください。"
      :observable-expectations
      [{:expect :must-run-briefing-before-first-write}

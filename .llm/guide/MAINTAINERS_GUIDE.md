@@ -90,8 +90,9 @@
 | ファイル | 区分 | 役割 |
 |---|---|---|
 | README.md | A（テンプレート入口）→ プロジェクトで完全置換 | テンプレート配布物の入口。派生プロジェクトでは編集継続せず、半自動生成したプロダクト README で完全置換 |
+| README_WORKFLOW_TOOLCHAIN.md | A（ユーザー向け説明） | 作業ループとツールチェーンの全体像を説明する README 補助文書。テンプレート動作制御文書でも自動生成文書でもない |
 | CLAUDE.md | A | 毎セッション必読、第一原理と常時制約。§0 は極小（DESIGN.md への導線のみ） |
-| AGENTS.md | A | Codex 等の非 Claude agent 向け bootstrap redirect。session briefing first mandate の authored metadata を保持する |
+| AGENTS.md | A | Codex 等の非 Claude agent 向け bootstrap redirect。起動時に session briefing を実行し CLAUDE.md に従うことだけを指示する。mandate の著作も投影もしない（mandate の正本は CLAUDE.md / `.llm/guide/`） |
 | IDEA.md | A（テンプレートでは雛形）→ E（プロジェクトでは任意更新対象） | 未整理の着想メモ。仕様正本ではなく、DESIGN.md へ構造化するための入力補助。雛形だけなら無視される |
 | DESIGN.md | A（テンプレートでは雛形）→ E（プロジェクトでは継続更新対象） | プロダクト仕様。テンプレートは必須/推奨/任意項目の骨組みのみ。プロジェクト固有情報（§8）もここに集約 |
 
@@ -128,9 +129,9 @@
 | .llm/template-only/benchmark/README.md | template-only | benchmark の考え方。無人完走ではなく gate 間自律 segment を観測する |
 | .llm/template-only/benchmark/setup-run.sh | template-only | demo repo 作成、IDEA コピー、template-only 削除、post-commit hook、承認マーカー入口の最小 setup |
 | .llm/template-only/benchmark/SCENARIOS.md | template-only | 保守者向けの評価意図。agent には見せない |
-| .llm/template-only/instrument/incident-index.edn | template-only | 指示追随計測器の実インシデント接地 index。contract case の種を maintainer archive / authored `llm-mandate` annotation に trace するための保守者用 seed。派生プロジェクトへ配布しない |
-| .llm/template-only/instrument/cases.edn | template-only | 指示追随計測器の初期 case catalog。正本ではなく、実インシデント / authored `llm-mandate` annotation に trace した観測 seed |
-| .llm/template-only/instrument/check-cases.sh | template-only | `cases.edn` / `incident-index.edn` / authored `llm-mandate` annotation を EDN として読み、case の trace / family / target mode / prompt / observable expectation を検査する |
+| .llm/template-only/instrument/incident-index.edn | template-only | 指示追随計測器の実インシデント接地 index。contract case の種を maintainer archive / authored `[mandate:]` annotation に trace するための保守者用 seed。派生プロジェクトへ配布しない |
+| .llm/template-only/instrument/cases.edn | template-only | 指示追随計測器の初期 case catalog。正本ではなく、実インシデント / authored `[mandate:]` annotation に trace した観測 seed |
+| .llm/template-only/instrument/check-cases.sh | template-only | `cases.edn` / `incident-index.edn` を EDN として読み、`CLAUDE.md` / `.llm/guide/*.md` の authored `[mandate:]` annotation を走査して、case の trace / family / target mode / prompt / observable expectation を検査する |
 | .llm/template-only/instrument/setup-run.sh | template-only | LLM を起動せず、template / project target repo と outside observer store を準備する instrument runner |
 | .llm/template-only/instrument/score-run.sh | template-only | 観測済み run の diff path / terminal marker から path-level preliminary score を作る単一 run scorer。model 能力値は出さない |
 | .llm/template-only/instrument/summarize-runs.sh | template-only | 複数 `score.edn` を case 単位に集約し、N / invalid 数 / result 分布と `:spec-ambiguous` route を出す。点推定は出さない |

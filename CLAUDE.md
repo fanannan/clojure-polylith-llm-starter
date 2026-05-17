@@ -32,6 +32,7 @@
 | **CLAUDE.md（本文書）** | 第一原理と常時制約 |
 | **IDEA.md** | 任意の着想メモ。仕様化前の要望・背景・制約を DESIGN へ構造化する入口 |
 | **DESIGN.md** | プロダクト仕様（何を作るか） |
+| **README_WORKFLOW_TOOLCHAIN.md** | 作業ループとツールチェーンのユーザー向け説明。作業規約の正本ではない |
 | **AGENTS.md** | 非 Claude エージェント（Codex、GitHub Copilot 等が読む標準慣習、OpenAI 提唱）向け bootstrap redirect。session briefing 実行、`CLAUDE.md` 正本、Structural Evidence は `.llm/scripts/` の共有 primitive を使うことだけを指示する。ポリシー正本ではない |
 
 ### .llm/guide/（プロジェクト運営ガイド）
@@ -659,6 +660,10 @@ subagent / tool 呼び出し / 長い shell 実行は、ユーザへの最終応
 ¤ .llm/guide/STRUCTURAL_EVIDENCE_QUICKSTART.md
 
 ### 8.0 実装着手前の確認（すべての作業に共通）
+
+[mandate: M-0001/session-start-briefing-first type:workflow tier:kernel]
+
+セッション開始後、最初のファイル書き込みより前に session briefing を読む。session briefing は `.llm/scripts/session-briefing.sh` の出力で、Claude Code では SessionStart hook が自動注入し、他エージェントは起動時に手動実行する。
 
 どの作業を行う時も、着手前に以下を確認する。これは §1.3「現時点で有効な知識の活用で再発見の疲労を避ける」の具体実装：
 

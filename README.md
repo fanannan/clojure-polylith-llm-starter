@@ -294,6 +294,7 @@ HTTP、永続化、ライフサイクル管理などの追加技術は、必要�
 | 着想から仕様を起こす | `IDEA.md` → `DESIGN.md` | IDEA は自由記載、DESIGN は仕様正本 |
 | 仕様を埋める・直す | `DESIGN.md` | §0 と該当節 |
 | IDEA から仕様へ翻案する | `.llm/guide/SPEC_GUIDE.md` | reconciliation と test obligation の節 |
+| 作業ループとツールチェーンを把握する | `README_WORKFLOW_TOOLCHAIN.md` | template / project の loop と支える toolchain |
 | 技術選定を決める | `.llm/guide/STACK_GUIDE.md` | 冒頭の位置づけ + 該当機能節 |
 | Polylith 構造を決める | `.llm/guide/POLYLITH_GUIDE.md` | 冒頭の前提 + 該当手順節 |
 | Structural Evidence workflow を使う | `.llm/guide/STRUCTURAL_EVIDENCE_QUICKSTART.md` | `what-now` / `status` / `search` / `is-verified` / `why` / `stale` / `gate` / `declare` / `run` / `close` |
@@ -537,6 +538,7 @@ cd /path/to/repo
 ```
 <project-root>/
 ├── README.md                    ← テンプレート入口（派生時はプロダクト README へ完全置換）
+├── README_WORKFLOW_TOOLCHAIN.md ← 作業ループとツールチェーンのユーザー向け説明
 ├── CLAUDE.md                    ← LLM 向け作業規約（毎セッション必読）
 ├── DESIGN.md                    ← プロダクト仕様（初期化時に埋める）
 │
@@ -623,6 +625,7 @@ cd /path/to/repo
 | 目的 | 読むべき文書 |
 |---|---|
 | LLM 作業規約 | `CLAUDE.md` |
+| 作業ループとツールチェーンの全体像 | `README_WORKFLOW_TOOLCHAIN.md` |
 | プロダクト仕様の確認・記入 | `DESIGN.md` |
 | 初期化手順の詳細 | `.llm/guide/BOOTSTRAP_GUIDE.md` |
 | 技術選定 | `.llm/guide/STACK_GUIDE.md` |
@@ -649,6 +652,9 @@ cd /path/to/repo
 - **技術選定の判断済み推奨集**: 必須技術基盤はワークスペースルートで常に採用し、追加ライブラリは必要な brick の `deps.edn` に配置する。判断済み推奨集は `.llm/guide/STACK_GUIDE.md`
 - **4 種の文書分離**: 仕様(DESIGN) / 知識(KNOWLEDGE) / 決定履歴(ADR) / 判断保留(QUESTIONS)
 - **自己停止プロトコル**: LLM が時間感覚なく詰まった時、ターン数閾値で停止し Q を立てる
+
+作業ループとツールチェーンの対応関係はユーザー向け説明文書に分離する。README は入口に留める。
+¤ README_WORKFLOW_TOOLCHAIN.md
 
 詳細は `CLAUDE.md` §1 と `.llm/guide/MAINTAINERS_GUIDE.md`。
 
