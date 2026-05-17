@@ -4,7 +4,7 @@
 派生プロジェクトのアプリケーションテストではない。
 
 通常の完了条件では実行しない。generator / checker / migration script を変更した時、またはテンプレート release 前に実行する。
-テンプレート保守 mode では `session-briefing.sh` が L0 の提言として、現在の git diff に対応する起動候補を `L0 Template Test Recommendation` に表示する。
+テンプレート保守 mode では `session-briefing.sh` が L0 の提言として、現在の git diff に対応する起動候補を `L0 Template Test Recommendation（テンプレート保守テスト提言）` に表示する。
 
 ## 実行
 

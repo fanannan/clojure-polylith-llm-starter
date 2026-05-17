@@ -460,13 +460,13 @@ collect_template_test_commands_for_path() {
 }
 
 template_test_recommendation_brief() {
-  echo "## L0 Template Test Recommendation"
+  echo "## L0 Template Test Recommendation（テンプレート保守テスト提言）"
   echo ""
-  echo "- scope: advisory L0 prompt for template maintenance; this is not a repo mode or automatic gate"
+  echo "- 位置づけ: テンプレート保守の L0 確認で見る任意提言。repo mode や自動 gate ではない。"
 
   if ! git rev-parse --git-dir >/dev/null 2>&1; then
-    echo "- current diff: unavailable (not a git repository)"
-    echo "- suggested template-only checks before close: consult .llm/template-only/tests/README.md"
+    echo "- 現在の差分: 取得不可（git リポジトリではありません）"
+    echo "- close 前の起動候補: .llm/template-only/tests/README.md を確認"
     return
   fi
 
@@ -477,9 +477,9 @@ template_test_recommendation_brief() {
     | sort -u)"
 
   if [ -z "$changed_paths" ]; then
-    echo "- current diff: none"
-    echo "- suggested template-only checks before close: none from current diff"
-    echo "- note: after editing template-owned scripts, re-run briefing or consult .llm/template-only/tests/README.md"
+    echo "- 現在の差分: なし"
+    echo "- close 前の起動候補: 現在の差分からは不要"
+    echo "- 補足: template-owned script を編集した後は briefing を再実行するか、.llm/template-only/tests/README.md を確認"
     return
   fi
 
@@ -493,13 +493,13 @@ $changed_paths
 EOF
 
   if [ -z "$TEMPLATE_TEST_COMMANDS" ]; then
-    echo "- current diff: present, but no template-only E2E mapping matched"
-    echo "- suggested template-only checks before close: choose task-specific checks manually"
+    echo "- 現在の差分: あり。ただし既知の template-only E2E 対応表には一致しない"
+    echo "- close 前の起動候補: 変更内容に応じて task-specific check を手動で選ぶ"
     return
   fi
 
-  echo "- current diff: matched template-maintenance test mapping"
-  echo "- suggested template-only checks before close:"
+  echo "- 現在の差分: template maintenance test 対応表に一致"
+  echo "- close 前の起動候補:"
   printf '%s' "$TEMPLATE_TEST_COMMANDS" | sed '/^$/d; s/^/  - /'
 }
 

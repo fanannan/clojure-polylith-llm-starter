@@ -82,7 +82,7 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 | `check-vulnerabilities.sh` | `clj-watson` による依存脆弱性スキャン（release 前必須、完了条件外） |
 | `lint-import-hooks.sh` | 依存ライブラリ提供の `clj-kondo` hook を `.clj-kondo/configs/` に取り込む |
 | `check-toolchain.sh` | 前提ツール preflight doctor。OS レベルの実行ファイル（Java / `clj` / `git` 必須、`bb` 任意）の過不足を検出し、不足分の OS 別導入方法を提案する。検出と提案のみで副作用なし。初期化着手前に一度だけ実行（`BOOTSTRAP_GUIDE.md §0`）。per-machine で一度きりの確認であり、完了条件・`check-workspace-integrity.sh`・`session-briefing.sh` には組み込まない。`clj-kondo` / `cljfmt` / `Splint` / `clj-watson` / `Polylith` は tools.deps alias のため検査対象外 |
-| `session-briefing.sh` | セッション起動時の状態ブリーフィング。`.llm/repo-context.edn` から `:repo-kind` を読み TEMPLATE MAINTENANCE / PROJECT モードを判定（conflict 最優先、bootstrap 完了痕跡 + `:template` で non-blocking ERROR）。`Control Plane` として mode source / operating intent / decision log / next action surface / completion gate を短く表示し、モード別に表示内容を切り替える（CLAUDE.md §8.0 実装着手前の確認の機械化バックアップ）。テンプレート保守時は現在の git diff から `L0 Template Test Recommendation` を advisory に表示する。`--audit` / `--audit --format edn` で Control Plane の位置・bullet 数・next action surface・forbidden surface・budget を確認できる |
+| `session-briefing.sh` | セッション起動時の状態ブリーフィング。`.llm/repo-context.edn` から `:repo-kind` を読み TEMPLATE MAINTENANCE / PROJECT モードを判定（conflict 最優先、bootstrap 完了痕跡 + `:template` で non-blocking ERROR）。`Control Plane` として mode source / operating intent / decision log / next action surface / completion gate を短く表示し、モード別に表示内容を切り替える（CLAUDE.md §8.0 実装着手前の確認の機械化バックアップ）。テンプレート保守時は現在の git diff から `L0 Template Test Recommendation（テンプレート保守テスト提言）` を advisory に表示する。`--audit` / `--audit --format edn` で Control Plane の位置・bullet 数・next action surface・forbidden surface・budget を確認できる |
 | `check-mode-scope.sh` | テンプレ保守 vs 派生プロジェクトの所有権境界違反を機械検出。`.llm/repo-context.edn` を EDN として読み、`:project-owned` 配下のテンプレ保守マーカー混入、`:section-scoped` の section 跨ぎ違反等を報告。CLAUDE.md §1.2.1 機械化の実装 |
 | `check-adr-dir-empty.sh` | TEMPLATE モードで `.llm/memory/adr/` に `README.md` / `template.md` 以外の実 ADR が残っていないか検査 |
 | `check-archive-staleness.sh` | maintainer discussion archive entry の staging schema、30 日超 open、吸収先 link 切れを検査 |
@@ -140,7 +140,7 @@ NVD API key 推奨（`https://nvd.nist.gov/developers/request-an-api-key`）。�
 `.llm/template-only/tests/` は、テンプレート自身の配布・移行・生成・検査を確認する E2E シナリオテストを置く。派生プロジェクトのアプリケーションテストではない。
 
 map generator / checker / migration script を変更した時、またはテンプレート release 前に実行する。
-テンプレート保守 mode の `session-briefing.sh` は、現在の git diff に対応する候補を `L0 Template Test Recommendation` に表示する。この提言は heavy test を自動 gate 化せず、bounded task の task-specific check 選択を前倒しするためのもの。
+テンプレート保守 mode の `session-briefing.sh` は、現在の git diff に対応する候補を `L0 Template Test Recommendation（テンプレート保守テスト提言）` に表示する。この提言は heavy test を自動 gate 化せず、bounded task の task-specific check 選択を前倒しするためのもの。
 
 ```bash
 ./.llm/template-only/tests/check-map-scenarios.sh

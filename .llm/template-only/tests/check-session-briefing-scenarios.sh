@@ -114,8 +114,8 @@ scenario_template_clean() {
   require_line "template-clean" "operating intent: template maintenance; keep :project-owned paths untouched"
   require_line "template-clean" "decision log: maintainer archive, not ADR"
   require_line "template-clean" "next action surface: ./.llm/scripts/evidence.sh what-now"
-  require_line "template-clean" "L0 Template Test Recommendation"
-  require_line "template-clean" "advisory L0 prompt for template maintenance; this is not a repo mode or automatic gate"
+  require_line "template-clean" "L0 Template Test Recommendation（テンプレート保守テスト提言）"
+  require_line "template-clean" "テンプレート保守の L0 確認で見る任意提言。repo mode や自動 gate ではない。"
   forbid_line "template-clean" "QUESTIONS / KNOWLEDGE / ADR by decision type"
   forbid_line "template-clean" "repo-control.sh"
 }
@@ -128,8 +128,9 @@ scenario_template_l0_test_recommendation() {
   (cd "$repo" && git init -q)
   run_briefing "template-l0-test-recommendation" "$repo"
 
-  require_line "template-l0-test-recommendation" "L0 Template Test Recommendation"
-  require_line "template-l0-test-recommendation" "current diff: matched template-maintenance test mapping"
+  require_line "template-l0-test-recommendation" "L0 Template Test Recommendation（テンプレート保守テスト提言）"
+  require_line "template-l0-test-recommendation" "現在の差分: template maintenance test 対応表に一致"
+  require_line "template-l0-test-recommendation" "close 前の起動候補:"
   require_line "template-l0-test-recommendation" "./.llm/template-only/tests/check-session-briefing-scenarios.sh"
   forbid_line "template-l0-test-recommendation" "repo-control.sh"
 }

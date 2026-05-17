@@ -679,7 +679,7 @@ subagent / tool 呼び出し / 長い shell 実行は、ユーザへの最終応
 
 | 深度 | 何をするか | 十分条件 |
 |---|---|---|
-| L0 | `session-briefing.sh` の MODE と次に読む文書を確認。テンプレート保守時は `L0 Template Test Recommendation` も確認 | 作業 mode・所有権・テンプレート保守で起動候補にする test が分かる |
+| L0 | `session-briefing.sh` の MODE と次に読む文書を確認。テンプレート保守時は `L0 Template Test Recommendation（テンプレート保守テスト提言）` も確認 | 作業 mode・所有権・テンプレート保守で起動候補にする test が分かる |
 | L1 | DESIGN / KNOWLEDGE / QUESTIONS / ADR の見出し・状態欄を scan | 対象ドメイン・未決 Q・関連 ADR の有無が分かる |
 | L2 | タスク語彙・対象 namespace・機能名で `.llm/data/brick-map.edn` / `docs/BRICKS.md` / repo 全体を `rg` する。候補 `:brick/group` が分かる場合は `:groups` index と同一 group の既存 brick も見る | 既存 capability・担当 brick・候補 group・同一 group の既存 brick・関連節または「該当なし」を説明できる |
 | L3 | 触るファイル周辺の ns/docstring/comment、`interface.clj`、近接 test を読む | コード内の局所規約と既存境界が分かる |
