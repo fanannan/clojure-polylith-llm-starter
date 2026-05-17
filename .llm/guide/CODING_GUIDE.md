@@ -433,7 +433,7 @@ CLAUDE.md §1.1.1 全域性・§1.1.3 副作用隔離の具体化。
 
 [mandate: M-0011/function-structure-limits type:invariant tier:extended]
 
-関数の構造制約（関数長・引数数・destructuring 深さ・top-level 可変状態・catch 規律）は `.clj-kondo/polyguard/` hook が error として機械強制する。個別規準は本節各項（引数設計・関数の大きさ）と §7.2 catch 規律に従う。
+関数の構造制約（関数長・引数数・destructuring 深さ・top-level 可変状態・catch 規律）は `.clj-kondo/polyguard/hooks.clj` の hook が error として機械強制する。個別規準は本節各項（引数設計・関数の大きさ）と §7.2 catch 規律に従う。
 
 [/mandate]
 

@@ -399,7 +399,7 @@ Integrant・FlowStorm・Portal は必須技術基盤ではない。前者はプ�
 - `base` は外部公開 API（REST/Lambda/CLI など）を持つ入口、`component` は再利用単位として内部実装を公開 API で提供
 - `base` から `component` への依存は可（単方向）。`component` が `base` を参照するのは不可
 - project は `:local/root` のみ
-- 違反時は CI が落ちる（詳細は `.llm/guide/POLYLITH_GUIDE.md`）
+- 違反は `clj -M:poly check` が、`interface.clj` の公開境界契約の整合は `.llm/scripts/check-interface-contracts.sh` が検出する（詳細は `.llm/guide/POLYLITH_GUIDE.md`）
 
 [/mandate]
 

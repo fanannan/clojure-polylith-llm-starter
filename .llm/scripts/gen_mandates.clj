@@ -42,7 +42,11 @@
 ;; heading, so source/digest covers only the rule and not unrelated prose.
 (def mandate-end-marker "[/mandate]")
 (def heading-re #"^#{1,6}\s")
-(def script-mention-re #"\.llm/scripts/[a-z0-9_-]+\.(?:sh|clj)")
+;; Enforcer artifacts a mandate's prose may name: .llm/scripts check/gen
+;; scripts, clj-kondo config and polyguard hooks, and the cljfmt config.
+;; enforced-by is the set of these the surrounding prose mentions.
+(def enforcer-mention-re
+  #"\.llm/scripts/[a-z0-9_-]+\.(?:sh|clj)|\.clj-kondo/[a-z0-9_/-]+\.(?:edn|clj)|\bcljfmt\.edn")
 (def test-dir ".llm/template-only/tests")
 ;; A template-only test declares the mandate(s) it verifies with a visible
 ;; [MANDATE:M-NNNN] token in its header comment. verified-by is the reverse of
@@ -153,7 +157,7 @@
                     :instruction/type (:type annotation)
                     :tier (:tier annotation)
                     :status :active
-                    :enforced-by (vec (sort (distinct (re-seq script-mention-re section))))
+                    :enforced-by (vec (sort (distinct (re-seq enforcer-mention-re section))))
                     :verified-by []}})))
      lines)))
 

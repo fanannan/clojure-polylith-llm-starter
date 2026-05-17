@@ -13,12 +13,12 @@
  :artifact/manifest
  #:derivation{:tool "gen-lib-catalog",
               :action-key
-              "sha256:9c835c89800a532550214a88d8bb82e1d349273307280740f931c5392bdff776",
+              "sha256:e5a4adb5dcf134acdabdd4f14d3feeb5c12f5fc162d292acd454f963a0de3165",
               :input-policy {:untracked :error},
               :inputs
               [{:path ".llm/guide/STACK_GUIDE.md",
                 :digest
-                "sha256:80234df8fdb002bf9b6edca7f319da3e8b633295cabfb5c441a9cb984f26e27c"}],
+                "sha256:b7de07ab077bd664f360005757924756f9d9367584b224b895e24a0f94562902"}],
               :generated-at "deterministic",
               :output-path ".llm/data/lib-catalog",
               :regenerate-command "clj -X:gen-lib-catalog",

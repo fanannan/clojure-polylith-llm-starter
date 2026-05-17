@@ -5,7 +5,12 @@
    suite. Non-exploratory cases must trace to an observed incident or an authored
    mandate. Incident traces must be known to incident-index.edn, and mandate
    traces must point at authored [mandate: ...] annotations in CLAUDE.md or
-   .llm/guide/*.md."
+   .llm/guide/*.md.
+
+   It also runs the reverse mandate-binding audit (plan §10.4): each mandate in
+   .llm/data/mandates.edn should name an enforcer, and every gate script run by
+   check-workspace-integrity.sh must be a mandate enforced-by or a backed
+   pure-infrastructure classification."
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]
@@ -14,6 +19,24 @@
 (def default-cases ".llm/template-only/instrument/cases.edn")
 (def default-incident-index ".llm/template-only/instrument/incident-index.edn")
 (def default-mandate-root ".")
+(def default-mandates-index ".llm/data/mandates.edn")
+(def default-integrity-script ".llm/scripts/check-workspace-integrity.sh")
+(def gate-script-re #"check-[a-z0-9-]+\.sh")
+
+;; Gate scripts run by check-workspace-integrity.sh that enforce no corpus
+;; mandate. Each carries backing (plan §5.7): a reason and the maintainer
+;; archive entry where the classification was reviewed. A classification
+;; without backing, or one for a script the gate no longer runs, is flagged.
+(def pure-infrastructure-gate-scripts
+  [{:script "check-workspace-integrity.sh"
+    :reason "umbrella aggregator; enforces mandates only through the sub-checks it runs"
+    :reviewed-in :md-2026-05-018}
+   {:script "check-structural-evidence-self-test.sh"
+    :reason "fixture self-test of Structural Evidence derivation rules; verifies tooling, enforces no corpus mandate"
+    :reviewed-in :md-2026-05-018}
+   {:script "check-adoption-mode-scenarios.sh"
+    :reason "fixture self-test of :adoption-mode staged behavior; verifies tooling, enforces no corpus mandate"
+    :reviewed-in :md-2026-05-018}])
 
 (def allowed-statuses #{:pilot :planned :exploratory :disabled})
 (def allowed-target-modes #{:template :project})
@@ -294,6 +317,56 @@
 (defn- print-diagnostic [{:keys [level path message]}]
   (println (str (str/upper-case (name level)) ": " path ": " message)))
 
+(defn- script-basename [path]
+  (last (str/split path #"/")))
+
+(defn- mandate-binding-diagnostics
+  "Reverse-direction mandate-binding drift audit (plan §10.4 b/c). (b) warns on a
+   mandate stated in prose but named by no enforcer. (c) errors when a gate
+   script run by check-workspace-integrity.sh is neither a mandate enforced-by
+   nor a backed pure-infrastructure classification.
+
+   The audit applies to a full template repo. When the generated mandate index
+   or the integrity script is absent (e.g. a synthetic --mandate-root fixture),
+   it does not apply and yields no diagnostics."
+  [root]
+  (let [index-file (io/file root default-mandates-index)
+        integrity-file (io/file root default-integrity-script)]
+    (cond
+      (not (.isFile index-file)) []
+      (not (.isFile integrity-file)) []
+
+      :else
+      (let [mandates (:mandates (edn/read-string (slurp index-file)))
+            prayer (for [[id m] (sort mandates)
+                         :when (empty? (:enforced-by m))]
+                     (warning (str "mandate " id)
+                              "stated in prose but named by no enforcer (祈りの規約)"))
+            bound (set (for [[_ m] mandates
+                             e (:enforced-by m)
+                             :when (str/ends-with? (str e) ".sh")]
+                         (script-basename e)))
+            classified (into {} (map (juxt :script identity)) pure-infrastructure-gate-scripts)
+            gate (set (re-seq gate-script-re (slurp integrity-file)))
+            unbound (for [g (sort gate)
+                          :when (not (bound g))
+                          :when (not (contains? classified g))]
+                      (error "mandate-binding"
+                             (str "gate script " g " is run by check-workspace-integrity.sh"
+                                  " but is neither a mandate enforced-by nor a backed"
+                                  " pure-infrastructure classification")))
+            unbacked (for [{:keys [script reason reviewed-in]} pure-infrastructure-gate-scripts
+                           :when (or (str/blank? (str reason)) (nil? reviewed-in))]
+                       (warning "mandate-binding"
+                                (str "pure-infrastructure classification of " script
+                                     " lacks backing (:reason / :reviewed-in)")))
+            stale (for [{:keys [script]} pure-infrastructure-gate-scripts
+                        :when (not (contains? gate script))]
+                    (warning "mandate-binding"
+                             (str "pure-infrastructure classification of " script
+                                  " is stale: not run by check-workspace-integrity.sh")))]
+        (vec (concat prayer unbound unbacked stale))))))
+
 (defn -main [& args]
   (let [{:keys [cases incident-index mandate-root help unknown]} (parse-args args)]
     (cond
@@ -309,10 +382,11 @@
       :else
       (try
         (let [mandates (collect-mandates mandate-root)
-              diagnostics (validate (read-edn-file cases)
-                                    (read-edn-file incident-index)
-                                    (:mandate-ids mandates)
-                                    (:diagnostics mandates))
+              diagnostics (concat (validate (read-edn-file cases)
+                                            (read-edn-file incident-index)
+                                            (:mandate-ids mandates)
+                                            (:diagnostics mandates))
+                                  (mandate-binding-diagnostics mandate-root))
               errors (filter #(= :error (:level %)) diagnostics)
               warnings (filter #(= :warning (:level %)) diagnostics)]
           (doseq [d warnings] (print-diagnostic d))
