@@ -740,6 +740,12 @@ DESIGN 由来の test obligation を検証する `deftest` には、`design-ir.e
 
 ### 14.1 1 ファイル 1 名前空間
 
+[mandate: M-0018/single-ns-per-file type:invariant tier:extended]
+
+1 つの `.clj` / `.cljc` / `.cljs` ファイルに `(ns ...)` 宣言を 2 つ以上書かない。1 ファイル＝1 名前空間に保つことで require グラフとファイル構造が一致し、ツールの名前空間解決と Polylith の brick 境界判定が単純になる。`.llm/scripts/check-single-ns-per-file.sh` が構文判定で検出する。
+
+[/mandate]
+
 ### 14.2 require は `:as` 優先
 
 **Rule**: `:refer` は `clojure.test` 等の例外のみ。通常は `:as`。

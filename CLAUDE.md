@@ -414,7 +414,7 @@ Malli は必須技術基盤。`dev/user.clj` で `(malli-on!)` helper を提供�
 
 `m/=>` 契約付き関数を REPL で呼び出した瞬間に契約違反が例外として顕在化。実行方法は本書 §9.1 と `development/src/dev/user.clj` の docstring を参照。
 `poly test` / `poly test :all` の通過は回帰確認であり、契約検証完了を意味しない。
-特に `interface.clj`、`m/=>` 契約、外部入力 schema の変更では、Malli instrumentation を有効化した REPL eval、または instrumentation を有効化した test fixture で契約を別途確認する。
+特に `interface.clj`、`m/=>` 契約、外部入力 schema の変更では、Malli instrumentation を有効化した REPL eval、または instrumentation を有効化した test fixture で契約を別途確認する。test fixture 側の instrumentation 有効化は `.llm/scripts/check-test-instrumentation.sh` が `:once` fixture を辿って検査する。
 
 [/mandate]
 
@@ -448,7 +448,11 @@ test obligation への対応は実装関数ではなく `deftest` に置く。
 
 `.llm/scripts/gen-trace-index.sh` は trace metadata から `docs/TRACE.md` と `.llm/data/trace-index.edn` を生成する。LLM は DESIGN 更新時や requirement / use case / test obligation を触る前に trace-index を読み、影響する public boundary と `deftest` を先に列挙してから実装する。
 
-Work Frontier / obligation coverage を実装する時は、本節の trace を逆方向にも使う。DESIGN 側の obligation から public boundary / `deftest` / evidence へ辿れない場合は coverage hole として扱い、`:adoption-mode :complete` では ERROR、`:retrofit` / `:partial` では WARN、`:repo-kind :template` の空 DESIGN scaffold では許容する。`:deferred` / `:out-of-scope` / `:manual-verified` などの disposition は DESIGN または Evidence 側の backing が無ければ complete 扱いしない。
+[/mandate]
+
+[mandate: M-0019/obligation-coverage-complete type:invariant tier:kernel]
+
+Work Frontier / obligation coverage を実装する時は、本節の trace を逆方向にも使う。DESIGN 側の obligation から public boundary / `deftest` / evidence へ辿れない場合は coverage hole として扱い、`:adoption-mode :complete` では ERROR、`:retrofit` / `:partial` では WARN、`:repo-kind :template` の空 DESIGN scaffold では許容する。`:deferred` / `:out-of-scope` / `:manual-verified` などの disposition は DESIGN または Evidence 側の backing が無ければ complete 扱いしない。coverage hole は `.llm/scripts/check-obligation-index.sh` が `.llm/data/obligation-index.edn` の drift と strict coverage を検査して検出する。
 ∵ .llm/guide/MAINTAINERS_GUIDE.md §5.16
 
 [/mandate]

@@ -92,7 +92,13 @@ Residual は EDN を手編集せず、必ず `evidence.sh declare` で更新す�
 
 close が blocked になった場合、`.llm/work/views/<task-id>.md` は blocked-close state で更新される。表示された `declare` コマンドで pending residual を埋め、必要な修正や evidence run を行ってから close を再実行する。
 
-Review Fatigue Packet と declaration は Authority source ではない。中で新しい requirement、decision、knowledge を定義してはいけない。close 前や workspace check では次の validator がこれを確認する。
+[mandate: M-0023/structural-evidence-boundary type:invariant tier:extended]
+
+Review Fatigue Packet（Structural Evidence packet）と declaration は generated view であり Authority source ではない。packet の中で新しい requirement・decision・knowledge を定義しない。境界規律は 3 検査が守る。`.llm/scripts/check-evidence-gate.sh` が save-required な staged diff を packet / close record の有無で gate し、`.llm/scripts/check-evidence-boundary.sh` が packet 内に新 authority が定義されていないか検査し、`.llm/scripts/check-residual-declared.sh` が residual declaration の充足を検査する。
+
+[/mandate]
+
+close 前や workspace check では次の validator が packet 境界を確認する。
 
 ```bash
 ./.llm/scripts/check-evidence-boundary.sh

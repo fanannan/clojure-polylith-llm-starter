@@ -167,6 +167,12 @@ ADR の発行（§4）は実施後報告 (L2) として LLM が自動実施し�
 
 **技術選定に迷う場合**: 判断済み推奨集を確認し、それでも迷う場合は **Q を立ててユーザに相談**（自己判断禁止）。
 
+[mandate: M-0020/no-placeholders type:invariant tier:extended]
+
+初期化が完了した派生プロジェクトには、配布時プレースホルダ（`workspace.edn` の `:top-namespace`、brick ソースの `(ns ...)` 宣言に現れる `myorg.myapp` 等）を残さない。`.llm/scripts/check-placeholders.sh`（`check-workspace-integrity.sh` 配下で起動）が brick ソースと workspace 設定を走査して残存を検出する。テンプレート repo 自身（`:repo-kind :template`）ではプレースホルダは正常状態として許容される。
+
+[/mandate]
+
 **初期化 identity gate（§2.3 brick 作成の前提条件）**: 次の 4 つが確定するまで §2.2 以降、特に §2.3 の brick 作成へ進まない。
 
 - `workspace.edn` の `:top-namespace` が実プロジェクト名（`myorg.myapp` から書き換え済み）

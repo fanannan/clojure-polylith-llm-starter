@@ -1252,9 +1252,15 @@ session briefing は `:mode-and-ownership` の pilot input であり、計測器
 | 未決事項 | `.llm/memory/QUESTIONS.md` |
 | 派生プロジェクトの決定履歴 | `.llm/memory/adr/NNNN-topic.md` |
 
-`.llm/memory/adr/` は派生プロジェクト専用領域である。テンプレート保守作業では、テンプレート自身の決定を ADR に置かない。所有権の正本は `.llm/repo-context.edn` を参照する。
+[mandate: M-0022/template-adr-dir-empty type:invariant tier:extended]
+
+`.llm/memory/adr/` は派生プロジェクト専用領域である。テンプレート保守作業（`:repo-kind :template`）では、テンプレート自身の決定を ADR に置かず、`.llm/memory/adr/` に README と ADR 雛形以外の実 ADR を残さない。所有権の正本は `.llm/repo-context.edn` を参照する。`.llm/scripts/check-adr-dir-empty.sh` が実 ADR の混入を、`.llm/scripts/check-no-dead-adr-refs.sh` が削除済み ADR への dead reference を検出する。
+
+[/mandate]
 
 ### 7.2 Archive entry の状態
+
+[mandate: M-0021/archive-staging-discipline type:workflow tier:extended]
 
 archive entry は、議論中の staging record として次の形式で始める。
 
@@ -1275,6 +1281,8 @@ archive entry は、議論中の staging record として次の形式で始め�
 `retained-process` は、同類の decision が再発しやすく、かつ git history だけでは経緯を追えない場合に限る。迷う場合は削除側に倒す。`absorbed` の `吸収先` は、実在する file / section / script を指す。吸収先の検査は `.llm/scripts/check-archive-staleness.sh` が行う。
 
 30 日超 open の警告閾値は `.llm/scripts/check_archive_staleness.clj` の `open-warn-days` が正本である。長期レビュー中の正当な open も WARN になり得るが、これは block ではなく棚卸しの合図として扱う。
+
+[/mandate]
 
 ### 7.3 却下案の扱い
 
