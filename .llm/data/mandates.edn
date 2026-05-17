@@ -6,18 +6,18 @@
  :artifact/manifest
  #:derivation{:tool "gen-mandates",
               :action-key
-              "sha256:db0647369e5ad7902309295e393da983e795ae88d72987301d3ae00d03eff308",
+              "sha256:e2cfa48f5613175af657b275c5e0761738e20246ee8c171dff672ec09778effc",
               :input-policy
               {:missing :explicit-empty,
                :directory-roots :recursive-digest},
               :inputs
               [{:path "CLAUDE.md",
                 :digest
-                "sha256:fccefb1e2c7df60bf057096ea52b1215aa28816fa5572fff0e181817cf7bfcc2"}
+                "sha256:f5b9916d4c3c985230ca9f70f8c8dabbc182e7657f4eecb048a115532c84bfef"}
                {:path ".llm/guide",
                 :input/kind :directory,
                 :digest
-                "sha256:4894516084ee744ce24b182e97a0761f7d1d5e7ed1ede2c13e31f1e482ac11c7"}],
+                "sha256:6a15c2b236b34912363b342086f7fb887d3ef255ae67fabd0c7c935e57d93dcf"}],
               :generated-at "deterministic",
               :output-path ".llm/data/mandates.edn",
               :tool-inputs
@@ -29,14 +29,14 @@
               :generator
               {:path ".llm/scripts/gen_mandates.clj",
                :digest
-               "sha256:08ec987de2b62285987532deae60eb7dbe2002b3f72325fb95a6da89b54689ac"},
+               "sha256:630b91d2b8eec6df69a295230b3215420a93ea4bce628c6f2ff5211d99cb5e1e"},
               :schema "derivation.1",
               :regime :derived-view,
               :id :mandates},
  :mandates
  {"M-0001"
   {:tier :kernel,
-   :source/git-rev "1a8d5839e1f73688c5b6b3bed75a7e37f5f9779d",
+   :source/git-rev "69a9b136e282f7b3b577ace76d7a8299934ed7f8",
    :verified-by [],
    :source/digest
    "sha256:1fcf692bdff4d16460741811363e1d9209459ddbaa895c4f3097532f2baa2dbf",
@@ -48,7 +48,7 @@
    :source/heading "8.0 実装着手前の確認（すべての作業に共通）"},
   "M-0002"
   {:tier :kernel,
-   :source/git-rev "1a8d5839e1f73688c5b6b3bed75a7e37f5f9779d",
+   :source/git-rev "69a9b136e282f7b3b577ace76d7a8299934ed7f8",
    :verified-by [],
    :source/digest
    "sha256:11ffa8ba74f1f248d876ac17c10edafba479ed252c4b53f405b79f0aae714253",
@@ -60,7 +60,7 @@
    :source/heading "参照マーカー規約"},
   "M-0003"
   {:tier :kernel,
-   :source/git-rev "1a8d5839e1f73688c5b6b3bed75a7e37f5f9779d",
+   :source/git-rev "69a9b136e282f7b3b577ace76d7a8299934ed7f8",
    :verified-by [],
    :source/digest
    "sha256:ef3c2e7d9f92d7ba57c28fd7736b270bbc51b491a11e22373544bed2e6a47f8f",
@@ -72,7 +72,7 @@
    :source/heading "5.1 clj-kondo（保存時にエディタで赤線）"},
   "M-0004"
   {:tier :kernel,
-   :source/git-rev "1a8d5839e1f73688c5b6b3bed75a7e37f5f9779d",
+   :source/git-rev "69a9b136e282f7b3b577ace76d7a8299934ed7f8",
    :verified-by [],
    :source/digest
    "sha256:a31460115e317a82e60d6c11308620c3ade47fde9c5d36e565fa497f65079f4e",
@@ -84,7 +84,7 @@
    :source/heading "5.2 cljfmt（保存時自動整形）"},
   "M-0005"
   {:tier :kernel,
-   :source/git-rev "1a8d5839e1f73688c5b6b3bed75a7e37f5f9779d",
+   :source/git-rev "69a9b136e282f7b3b577ace76d7a8299934ed7f8",
    :verified-by [],
    :source/digest
    "sha256:c14210ed8801e05a417c021ec19f70b5c5f6d110babbb4e3b6c6c898e7064519",
@@ -96,7 +96,7 @@
    :source/heading "5.3 `poly check`（Polylith 構造違反）"},
   "M-0006"
   {:tier :kernel,
-   :source/git-rev "1a8d5839e1f73688c5b6b3bed75a7e37f5f9779d",
+   :source/git-rev "69a9b136e282f7b3b577ace76d7a8299934ed7f8",
    :verified-by [],
    :source/digest
    "sha256:11e4ad8293813face98d4c9911488bac53dbf050367564be1bdb57f304cd6727",
@@ -108,7 +108,7 @@
    :source/heading "5.4 Malli instrumentation"},
   "M-0007"
   {:tier :kernel,
-   :source/git-rev "1a8d5839e1f73688c5b6b3bed75a7e37f5f9779d",
+   :source/git-rev "69a9b136e282f7b3b577ace76d7a8299934ed7f8",
    :verified-by [],
    :source/digest
    "sha256:be951be84a6ab115e5c801dbae7179240b641ed447e6a57118f2629a38fe258a",
@@ -122,7 +122,7 @@
    :source/heading "5.4.1 仕様 trace metadata"},
   "M-0008"
   {:tier :kernel,
-   :source/git-rev "1a8d5839e1f73688c5b6b3bed75a7e37f5f9779d",
+   :source/git-rev "69a9b136e282f7b3b577ace76d7a8299934ed7f8",
    :verified-by [],
    :source/digest
    "sha256:35561c9028d34cae22991bf944bf19a0f10ae86e704fc066016a9b6062198924",
@@ -131,4 +131,42 @@
    :hint "completion-gate-before-report",
    :status :active,
    :instruction/type :workflow,
-   :source/heading "5.5 完了条件（以下全通過で初めて完了報告）"}}}
+   :source/heading "5.5 完了条件（以下全通過で初めて完了報告）"},
+  "M-0009"
+  {:tier :kernel,
+   :source/git-rev "69a9b136e282f7b3b577ace76d7a8299934ed7f8",
+   :verified-by [],
+   :source/digest
+   "sha256:68bb4e741c034dd23e886fc24e8fac81a5153a0b80cd88f6d33b187fadbaf208",
+   :enforced-by [".llm/scripts/check-mode-scope.sh"],
+   :defined-in "CLAUDE.md",
+   :hint "template-no-project-owned-write",
+   :status :active,
+   :instruction/type :prohibition,
+   :source/heading "11.1 4 種類の文書と参照先"},
+  "M-0010"
+  {:tier :kernel,
+   :source/git-rev "69a9b136e282f7b3b577ace76d7a8299934ed7f8",
+   :verified-by [],
+   :source/digest
+   "sha256:54a8408fccd3fa67d26b19de3ec5dbf5ada55848cd7e60df51e9d7af60d50fc6",
+   :enforced-by
+   [".llm/scripts/check-repo-context-consistency.sh"
+    ".llm/scripts/check-workspace-integrity.sh"],
+   :defined-in "CLAUDE.md",
+   :hint "repo-context-consistency",
+   :status :active,
+   :instruction/type :invariant,
+   :source/heading "11.1 4 種類の文書と参照先"},
+  "M-0011"
+  {:tier :extended,
+   :source/git-rev "69a9b136e282f7b3b577ace76d7a8299934ed7f8",
+   :verified-by [],
+   :source/digest
+   "sha256:ccced72bae26198b1d0c8176b83d6d67abbb18c215a1d0773faac4088ab3cb75",
+   :enforced-by [],
+   :defined-in "CODING_GUIDE.md",
+   :hint "function-structure-limits",
+   :status :active,
+   :instruction/type :invariant,
+   :source/heading "4. 関数設計"}}}

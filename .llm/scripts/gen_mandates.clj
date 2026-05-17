@@ -33,10 +33,13 @@
 (def mandate-id-re #"M-\d{4}")
 (def mandate-annotation-re #"(?m)^\[mandate:\s*(.+?)\]\s*$")
 ;; Optional explicit end marker. A mandate annotation governs the prose from its
-;; line until the first of: a [/mandate] line, the next heading, the next
-;; annotation, or EOF. Place [/mandate] when the governed prose ends before the
-;; next heading, so source/digest covers only the rule and not unrelated prose.
-(def mandate-end-re #"^\[/mandate\]\s*$")
+;; line until the first of: a [/mandate] marker, the next heading, the next
+;; annotation, or EOF. The marker is honored whether it sits on its own line or
+;; appears inline at the end of a prose line; when inline, the text before it is
+;; kept in the governed section and the marker (and anything after it) is
+;; dropped. Place [/mandate] when the governed prose ends before the next
+;; heading, so source/digest covers only the rule and not unrelated prose.
+(def mandate-end-marker "[/mandate]")
 (def heading-re #"^#{1,6}\s")
 (def script-mention-re #"\.llm/scripts/[a-z0-9_-]+\.(?:sh|clj)")
 (def test-mention-re #"\.llm/template-only/tests/[a-z0-9_-]+\.sh")
@@ -99,20 +102,26 @@
     (not (contains? allowed-mandate-tiers tier))
     (conj (str path ": tier: must be one of " (pr-str allowed-mandate-tiers)))))
 
-(defn- section-bounds
+(defn- section-lines
   "Given fence-stripped lines and the index of an annotation line, return the
-   [start end) line range of the prose section the annotation governs: from the
-   annotation line up to (not including) the first of an explicit [/mandate]
-   end marker, the next heading, the next annotation, or EOF."
+   vector of prose lines the annotation governs. The section runs from the
+   annotation line until the first of: a [/mandate] marker, the next heading,
+   the next annotation, or EOF. A [/mandate] marker is honored whether it stands
+   on its own line or appears inline; inline, the prose before it is kept and
+   the marker and everything after it are dropped."
   [lines idx]
-  (let [end (loop [i (inc idx)]
-              (cond
-                (>= i (count lines)) i
-                (re-find mandate-end-re (nth lines i)) i
-                (re-find heading-re (nth lines i)) i
-                (re-find mandate-annotation-re (nth lines i)) i
-                :else (recur (inc i))))]
-    [idx end]))
+  (loop [i (inc idx)
+         acc [(nth lines idx)]]
+    (if (>= i (count lines))
+      acc
+      (let [line (nth lines i)
+            marker (str/index-of line mandate-end-marker)]
+        (cond
+          marker (let [before (subs line 0 marker)]
+                   (cond-> acc (not (str/blank? before)) (conj before)))
+          (re-find heading-re line) acc
+          (re-find mandate-annotation-re line) acc
+          :else (recur (inc i) (conj acc line)))))))
 
 (defn- nearest-heading [lines idx]
   (loop [i (dec idx)]
@@ -127,8 +136,7 @@
      (fn [idx line]
        (when-let [[_ body] (re-find mandate-annotation-re line)]
          (let [annotation (parse-annotation body)
-               [start end] (section-bounds lines idx)
-               section (str/join "\n" (subvec lines start end))
+               section (str/join "\n" (section-lines lines idx))
                errors (annotation-errors (str path " [mandate:" idx "]") annotation)]
            {:annotation annotation
             :errors errors

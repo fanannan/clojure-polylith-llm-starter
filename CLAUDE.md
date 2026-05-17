@@ -88,6 +88,8 @@ Markdown 文書から別の Markdown 文書を指す時は、本文中に裸で�
 - 本文中の無印 `FOO.md §X` を禁止する
 - 監査は `./.llm/scripts/check-doc-references.sh` が行う
 
+[/mandate]
+
 ### フェーズ別の参照マップ
 
 「いつ読むか」（状況→文書）の正本はこの表である。各文書の役割は上の 3 表（カタログ）を見る。
@@ -379,11 +381,15 @@ Integrant・FlowStorm・Portal は必須技術基盤ではない。前者はプ�
 - `println` / `prn` / `with-redefs` は `:discouraged-var`
 - ドメイン系コンポーネントでの I/O ライブラリ使用も `:discouraged-var`
 
+[/mandate]
+
 ### 5.2 cljfmt（保存時自動整形）
 
 [mandate: M-0004/cljfmt-conformance type:invariant tier:kernel]
 
 `cljfmt.edn` の設定で、フォーマット議論を完全排除。
+
+[/mandate]
 
 ### 5.3 `poly check`（Polylith 構造違反）
 
@@ -394,6 +400,8 @@ Integrant・FlowStorm・Portal は必須技術基盤ではない。前者はプ�
 - `base` から `component` への依存は可（単方向）。`component` が `base` を参照するのは不可
 - project は `:local/root` のみ
 - 違反時は CI が落ちる（詳細は `.llm/guide/POLYLITH_GUIDE.md`）
+
+[/mandate]
 
 ### 5.4 Malli instrumentation
 
@@ -407,6 +415,8 @@ Malli は必須技術基盤。`dev/user.clj` で `(malli-on!)` helper を提供�
 `m/=>` 契約付き関数を REPL で呼び出した瞬間に契約違反が例外として顕在化。実行方法は本書 §9.1 と `development/src/dev/user.clj` の docstring を参照。
 `poly test` / `poly test :all` の通過は回帰確認であり、契約検証完了を意味しない。
 特に `interface.clj`、`m/=>` 契約、外部入力 schema の変更では、Malli instrumentation を有効化した REPL eval、または instrumentation を有効化した test fixture で契約を別途確認する。
+
+[/mandate]
 
 ### 5.4.1 仕様 trace metadata
 
@@ -440,6 +450,8 @@ test obligation への対応は実装関数ではなく `deftest` に置く。
 
 Work Frontier / obligation coverage を実装する時は、本節の trace を逆方向にも使う。DESIGN 側の obligation から public boundary / `deftest` / evidence へ辿れない場合は coverage hole として扱い、`:adoption-mode :complete` では ERROR、`:retrofit` / `:partial` では WARN、`:repo-kind :template` の空 DESIGN scaffold では許容する。`:deferred` / `:out-of-scope` / `:manual-verified` などの disposition は DESIGN または Evidence 側の backing が無ければ complete 扱いしない。
 ∵ .llm/guide/MAINTAINERS_GUIDE.md §5.16
+
+[/mandate]
 
 ### 5.5 完了条件（以下全通過で初めて完了報告）
 
@@ -490,6 +502,8 @@ release 前・週次 CI では追加で以下を実行:
 | `.llm/scripts/*.sh` / `.llm/scripts/*.clj` | 該当 script 単体 + `check-workspace-integrity.sh` | format/lint/poly check まで |
 | Clojure code / Polylith 構造 | REPL 必須判定 + `poly check` / 対象 test | §5.5 の該当全行 |
 | deps.edn / workspace.edn | `poly check` + 依存解決 + `check-workspace-integrity.sh` | §5.5 の該当全行 |
+
+[/mandate]
 
 ### 5.6 CLI 呼び出しの統一
 
@@ -1076,10 +1090,20 @@ Exit codes: `0` 成功 / `1` eval-error・namespace-not-found・:ex / `2` 接続
 分類に迷う場合は、先に QUESTIONS に Q を立てる。分類自体を自己解釈しない。
 ¤ .llm/memory/QUESTIONS.md
 
+[mandate: M-0009/template-no-project-owned-write type:prohibition tier:kernel]
+
+テンプレート保守 mode（`.llm/repo-context.edn :repo-kind :template`）では、manifest が `:project-owned` と分類するパスに書き込まない。派生プロジェクトの記録領域はテンプレート保守の対象外であり、`.llm/scripts/check-mode-scope.sh` が境界違反を検出する。
+
+[/mandate]
+
 **TEMPLATE mode の読み替え**: `.llm/repo-context.edn :repo-kind :template` で作業している時、テンプレート自身の保守決定は ADR にしない。テンプレ保守の議論・却下案・吸収先は maintainer archive staging に置き、現行ルールへ吸収後に削除または圧縮する。派生プロジェクトの ADR 規律をテンプレート本体へ持ち込まない。規約変更を過去文書へどこまで遡及するかは MAINTAINERS_GUIDE の遡及適用規則に従う。
 ∵ .llm/guide/MAINTAINERS_GUIDE.md §7
 
-**記録体系は `:repo-kind` が決める**: 決定の記録先（ADR か maintainer archive か）は、その場の判断ではなく `.llm/repo-context.edn` の `:repo-kind` で一意に決まる。`:project` なら ADR、`:template` なら maintainer archive。1 つの repo は同時に 1 つの記録体系だけを使う。派生プロジェクトは bootstrap の早期（識別情報の確定時）に repo-context を `:template → :project` へ transform するため、bootstrap 期間を通じて記録体系は ADR である。`:repo-kind` は repo の種類を表す軸であり、bootstrap の進捗は別軸（`:adoption-mode`）が表す。manifest が `:template` を主張したまま派生プロジェクトの判断を未記録で残さない（この CONFLICT は `check-workspace-integrity.sh` が検出する）。
+[mandate: M-0010/repo-context-consistency type:invariant tier:kernel]
+
+**記録体系は `:repo-kind` が決める**: 決定の記録先（ADR か maintainer archive か）は、その場の判断ではなく `.llm/repo-context.edn` の `:repo-kind` で一意に決まる。`:project` なら ADR、`:template` なら maintainer archive。1 つの repo は同時に 1 つの記録体系だけを使う。派生プロジェクトは bootstrap の早期（識別情報の確定時）に repo-context を `:template → :project` へ transform するため、bootstrap 期間を通じて記録体系は ADR である。`:repo-kind` は repo の種類を表す軸であり、bootstrap の進捗は別軸（`:adoption-mode`）が表す。manifest が `:template` を主張したまま派生プロジェクトの判断を未記録で残さない（この CONFLICT は `.llm/scripts/check-workspace-integrity.sh` 配下の `.llm/scripts/check-repo-context-consistency.sh` が検出する）。
+
+[/mandate]
 ∵ .llm/guide/BOOTSTRAP_GUIDE.md §2.1.1
 
 ### 11.2 サイクル全体図（羅針盤）
