@@ -16,6 +16,7 @@ Phase 1 is deterministic and does not call an LLM:
 
 ```bash
 ./.llm/template-only/tests/check-session-briefing-scenarios.sh
+./.llm/template-only/instrument/check-cases.sh
 ```
 
 Phase 2 prepares an outside-observer run target, but still does not launch an agent:
@@ -66,6 +67,8 @@ The summary routes split valid outcomes to `:spec-ambiguous` instead of averagin
 
 - `incident-index.edn`: observed incident seeds and measurement policy.
 - `cases.edn`: initial case catalog. Cases must trace to an incident or an authored md mandate.
+- `check-cases.sh`: validates case catalog trace and shape invariants.
+- `check_instrument_cases.clj`: EDN parser-backed implementation of `check-cases.sh`.
 - `setup-run.sh`: prepares a target repo and outside observer store.
 - `score-run.sh`: path-level preliminary scorer for a single observed run.
 - `summarize-runs.sh`: multi-run count/dispersion summary; no point estimates.

@@ -19,6 +19,7 @@ copy_scripts() {
   mkdir -p "$repo/.llm/scripts" "$repo/components" "$repo/bases"
   cp "$TEMPLATE_ROOT/.llm/scripts/gen_brick_map.clj" "$repo/.llm/scripts/"
   cp "$TEMPLATE_ROOT/.llm/scripts/gen_workspace_map.clj" "$repo/.llm/scripts/"
+  cp "$TEMPLATE_ROOT/.llm/scripts/derivation_manifest.clj" "$repo/.llm/scripts/"
   cp "$TEMPLATE_ROOT/.llm/scripts/run-clj-tool.sh" "$repo/.llm/scripts/"
   cp "$TEMPLATE_ROOT/.llm/scripts/check-brick-map.sh" "$repo/.llm/scripts/"
   cp "$TEMPLATE_ROOT/.llm/scripts/check-workspace-map.sh" "$repo/.llm/scripts/"
@@ -78,7 +79,9 @@ complete_metadata() {
  :brick/purpose "Invoice creation and validation"
  :brick/provides #{:invoice/create :invoice/validate}
  :brick/not-for #{:http/response}
- :brick/requirements ["INV-01"]}
+ :brick/requirements ["INV-01"]
+ :brick/authors ["Template Maintainer <maint@example.com>"]
+ :brick/license "Apache-2.0"}
 EOF
   cat > "$repo/bases/web-api/brick.edn" <<'EOF'
 {:brick/name :web-api
@@ -87,7 +90,8 @@ EOF
  :brick/purpose "HTTP API entrypoint delegating to component capabilities"
  :brick/entrypoint :http-api
  :brick/uses #{:invoice/create}
- :brick/requirements ["API-01"]}
+ :brick/requirements ["API-01"]
+ :brick/authors ["Template Maintainer <maint@example.com>"]}
 EOF
   cat > "$repo/projects/api/project.edn" <<'EOF'
 {:project/name :api
@@ -245,7 +249,8 @@ scenario_08_not_for_conflict_repair() {
  :brick/purpose "Invoice creation and validation"
  :brick/provides #{:invoice/create :invoice/validate}
  :brick/not-for #{:invoice/create}
- :brick/requirements ["INV-01"]}
+ :brick/requirements ["INV-01"]
+ :brick/authors ["Template Maintainer <maint@example.com>"]}
 EOF
   expect_fail "$repo" "./.llm/scripts/check-brick-map.sh" "not-for conflicts" "08-not-for"
   complete_metadata "$repo"
@@ -263,7 +268,8 @@ scenario_09_generic_allowed() {
  :brick/type :component
  :brick/purpose "Customer creation"
  :brick/provides #{:customer/create}
- :brick/requirements []}
+ :brick/requirements []
+ :brick/authors ["Template Maintainer <maint@example.com>"]}
 EOF
   cat > "$repo/components/customer/src/example/app/customer/interface.clj" <<'EOF'
 (ns example.app.customer.interface)
@@ -283,7 +289,8 @@ scenario_10_generic_ambiguous_repair() {
  :brick/type :component
  :brick/purpose "Customer creation"
  :brick/provides #{:customer/register}
- :brick/requirements []}
+ :brick/requirements []
+ :brick/authors ["Template Maintainer <maint@example.com>"]}
 EOF
   cat > "$repo/components/customer/src/example/app/customer/interface.clj" <<'EOF'
 (ns example.app.customer.interface)
@@ -500,7 +507,8 @@ scenario_26_same_group_operation_is_advisory() {
  :brick/group :invoice
  :brick/purpose "Payment creation"
  :brick/provides #{:payment/create}
- :brick/requirements []}
+ :brick/requirements []
+ :brick/authors ["Template Maintainer <maint@example.com>"]}
 EOF
   cat > "$repo/components/payment/src/example/app/payment/interface.clj" <<'EOF'
 (ns example.app.payment.interface)
@@ -521,7 +529,8 @@ scenario_27_multi_group_base_is_advisory() {
  :brick/group :customer
  :brick/purpose "Customer lookup"
  :brick/provides #{:customer/find}
- :brick/requirements []}
+ :brick/requirements []
+ :brick/authors ["Template Maintainer <maint@example.com>"]}
 EOF
   cat > "$repo/components/customer/src/example/app/customer/interface.clj" <<'EOF'
 (ns example.app.customer.interface)
@@ -533,7 +542,8 @@ EOF
  :brick/group :inventory
  :brick/purpose "Inventory lookup"
  :brick/provides #{:inventory/find}
- :brick/requirements []}
+ :brick/requirements []
+ :brick/authors ["Template Maintainer <maint@example.com>"]}
 EOF
   cat > "$repo/components/inventory/src/example/app/inventory/interface.clj" <<'EOF'
 (ns example.app.inventory.interface)
@@ -542,6 +552,30 @@ EOF
   sed -i 's/:brick\/uses #{:invoice\/create}/:brick\/uses #{:invoice\/create :customer\/find :inventory\/find}/' "$repo/bases/web-api/brick.edn"
   (cd "$repo" && clj -Sdeps '{:paths [".llm/scripts"]}' -X gen-brick-map/generate >/dev/null 2>&1)
   expect_warn_success "$repo" "./.llm/scripts/check-brick-map.sh" "uses capabilities across 3 groups" "27-multi-group-base"
+}
+
+scenario_28_brick_author_mismatch_repair() {
+  local repo="$BASE/28-brick-author-mismatch-repair"
+  base_files "$repo" complete
+  complete_metadata "$repo"
+  # synthetic repo を git 化し、既知の author 1 名で commit する。
+  (
+    cd "$repo"
+    git init -q
+    git config user.name "Test Author"
+    git config user.email "test@example.com"
+    git config commit.gpgsign false
+    git add -A
+    git commit -q -m "seed synthetic repo"
+  )
+  # complete_metadata の宣言 :brick/authors は git commit author と異なるため、
+  # :adoption-mode :complete では宣言・証拠の不一致が ERROR になる。
+  expect_fail "$repo" "./.llm/scripts/check-brick-map.sh" "disagrees with git history" "28-author-mismatch"
+  # 宣言を git 履歴の author に一致させると解消する。
+  sed -i 's|Template Maintainer <maint@example.com>|Test Author <test@example.com>|g' \
+    "$repo/components/invoice/brick.edn" "$repo/bases/web-api/brick.edn"
+  run_generate_all "$repo"
+  run_check_all "$repo"
 }
 
 scenario "01 new complete" scenario_01_new_complete
@@ -571,5 +605,6 @@ scenario "24 brick group must be keyword" scenario_24_brick_group_must_be_keywor
 scenario "25 brick group mismatch is advisory" scenario_25_brick_group_mismatch_is_advisory
 scenario "26 same group operation is advisory" scenario_26_same_group_operation_is_advisory
 scenario "27 multi group base is advisory" scenario_27_multi_group_base_is_advisory
+scenario "28 brick author mismatch repair" scenario_28_brick_author_mismatch_repair
 
 echo "ALL TEMPLATE MAP SCENARIOS PASSED"

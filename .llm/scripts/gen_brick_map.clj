@@ -3,6 +3,7 @@
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]
+   [clojure.java.shell :as shell]
    [clojure.pprint :as pprint]
    [clojure.string :as str]
    [derivation-manifest :as derivation]))
@@ -140,6 +141,18 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
 (defn- todo-skeleton? [data]
   (contains-todo? data))
 
+;; :brick/authors と :brick/license は component / base 共通の著作権属性。
+;; 検査が重複するため共有 helper にまとめる（MD-2026-05-020）。
+(defn- validate-authorship! [path data]
+  (when-not (string-coll? (:brick/authors data))
+    (error! (str "ERROR: " path " must have :brick/authors as a collection of strings")))
+  (when (empty? (:brick/authors data))
+    (error! (str "ERROR: " path
+                 " must have non-empty :brick/authors; declare brick authors as \"Name <email>\"")))
+  (when (and (contains? data :brick/license)
+             (not (nonblank-string? (:brick/license data))))
+    (error! (str "ERROR: " path " must have :brick/license as a non-blank string when present"))))
+
 (defn- validate-component! [path data]
   (when-not (= :component (:brick/type data))
     (error! (str "ERROR: " path " must have :brick/type :component")))
@@ -161,7 +174,8 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
              (not (keyword-coll? (:brick/not-for data))))
     (error! (str "ERROR: " path " must have :brick/not-for as a collection of keywords")))
   (when (:brick/entrypoint data)
-    (error! (str "ERROR: " path " component must not have :brick/entrypoint"))))
+    (error! (str "ERROR: " path " component must not have :brick/entrypoint")))
+  (validate-authorship! path data))
 
 (defn- validate-base! [path data]
   (when-not (= :base (:brick/type data))
@@ -180,7 +194,8 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
   (when-not (keyword-coll? (:brick/uses data))
     (error! (str "ERROR: " path " must have :brick/uses as a collection of keywords")))
   (when-not (string-coll? (:brick/requirements data))
-    (error! (str "ERROR: " path " must have :brick/requirements as a collection of strings"))))
+    (error! (str "ERROR: " path " must have :brick/requirements as a collection of strings")))
+  (validate-authorship! path data))
 
 (defn- interface-files [brick-path]
   (->> (file-seq (io/file brick-path))
@@ -341,7 +356,9 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
         :brick/purpose "TODO: describe this component's responsibility"
         :brick/provides #{}
         :brick/not-for #{}
-        :brick/requirements []}
+        :brick/requirements []
+        :brick/authors ["TODO: brick authors as \"Name <email>\""]
+        :brick/license "TODO: SPDX license id, or remove this line to inherit the repo LICENSE"}
         (seq api) (assoc :brick/public-api-candidates api))
 
       :base
@@ -351,7 +368,9 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
         :brick/purpose "TODO: describe this base entrypoint and delegation responsibility"
         :brick/entrypoint :TODO
         :brick/uses #{}
-        :brick/requirements []}
+        :brick/requirements []
+        :brick/authors ["TODO: brick authors as \"Name <email>\""]
+        :brick/license "TODO: SPDX license id, or remove this line to inherit the repo LICENSE"}
         (seq api) (assoc :brick/public-api-candidates api)))))
 
 (defn- load-brick [{:keys [kind path]}]
@@ -482,6 +501,55 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
   (doseq [warning (group-advisory-warnings bricks)]
     (warn! warning)))
 
+;; brick.edn の :brick/authors（宣言＝主張）を git 履歴（証拠）と照合する。
+;; 照合は check 時のみ行い、生成物 brick-map.edn には焼き込まない（MD-2026-05-020 D4）。
+(defn- git-authors
+  "Derive the set of git authors (\"Name <email>\") who committed to brick-path.
+   Returns nil when brick-path is outside a git repo, git is unavailable, or the
+   path has no commit history yet (uncommitted new brick)."
+  [brick-path]
+  (try
+    (let [{:keys [exit out]} (shell/sh "git" "log" "--format=%an <%ae>" "--" brick-path)]
+      (when (zero? exit)
+        (let [authors (->> (str/split-lines (or out ""))
+                           (map str/trim)
+                           (remove str/blank?)
+                           set)]
+          (when (seq authors) authors))))
+    (catch Throwable _ nil)))
+
+(defn- normalize-author [s]
+  (-> s str str/trim str/lower-case))
+
+(defn- author-evidence-mismatch
+  "Compare a brick's declared :brick/authors with git-derived authors.
+   Returns a mismatch map, or nil when they agree, when the declaration is still
+   a TODO skeleton, or when there is no git evidence yet."
+  [brick]
+  (let [declared (:brick/authors brick)]
+    (when-not (contains-todo? declared)
+      (when-let [derived (git-authors (:brick/path brick))]
+        (when-not (= (set (map normalize-author declared))
+                     (set (map normalize-author derived)))
+          {:path (:brick/path brick)
+           :declared (vec (sort declared))
+           :derived (vec (sort derived))})))))
+
+(defn- report-author-evidence! [bricks {:keys [strict?]}]
+  (let [mismatches (keep author-evidence-mismatch bricks)]
+    (when (seq mismatches)
+      (let [lines (map (fn [m]
+                         (str "  " (:path m)
+                              " declares :brick/authors " (pr-str (:declared m))
+                              " but git history shows " (pr-str (:derived m))))
+                       mismatches)
+            header (str (if strict? "ERROR" "WARN")
+                        ": brick.edn :brick/authors disagrees with git history"
+                        " (L0 reconciliation required; see POLYLITH_GUIDE.md §9.4):")]
+        (if strict?
+          (apply error! header lines)
+          (apply warn! header lines))))))
+
 (defn- bullet-list [items empty-text]
   (if (seq items)
     (str/join "\n" (map #(str "- `" % "`") items))
@@ -530,6 +598,9 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
      (when (seq (:brick/not-for b))
        (str "- Not for:\n" (bullet-list (:brick/not-for b) "- none") "\n"))
      "- Requirements:\n" (bullet-list (:brick/requirements b) "- none") "\n"
+     "- Authors:\n" (bullet-list (:brick/authors b) "- none") "\n"
+     (when (:brick/license b)
+       (str "- License: `" (:brick/license b) "`\n"))
      "- Public API:\n" (bullet-list (:brick/public-api b) "- none") "\n")))
 
 (defn- render [bricks]
@@ -561,6 +632,8 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
          :brick/entrypoint
          :brick/uses
          :brick/requirements
+         :brick/authors
+         :brick/license
          :brick/public-api]))
 
 (defn- render-index [bricks]
@@ -652,6 +725,7 @@ brick の責務や capability を変える場合は各 `brick.edn` を、公開 
         (validate-cross-brick! bricks)
         (report-migration-quality! bricks {:strict? (= :complete (adoption-mode))})
         (report-group-advisories! bricks)
+        (report-author-evidence! bricks {:strict? (= :complete (adoption-mode))})
         (when-not (file? default-doc-file)
           (error! "ERROR: docs/BRICKS.md is missing. Run gen-brick-map/generate after adding bricks."))
         (when-not (file? default-index-file)

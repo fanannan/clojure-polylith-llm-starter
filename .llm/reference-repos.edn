@@ -10,6 +10,12 @@
 ;;   「これらのローカル repo を read-only で読んでよい」という人間の承認である。
 ;;   ファイルが無い、または :allowed-repos が空なら、参照は許可されていない。
 ;;
+;; 管理コマンド:
+;;   .llm/scripts/reference-repos.sh add <path>   出自を検証して allowlist に追加
+;;   .llm/scripts/reference-repos.sh list         登録済みの参照 repo を一覧
+;;   .llm/scripts/reference-repos.sh check        各エントリの有効性と brick 一覧を表示
+;;   EDN を直接手編集してもよいが、add は出自条件（下記）を自動検証するため推奨。
+;;
 ;; 参照可能の条件:
 ;;   各 path は、その repo の .llm/repo-context.edn の :template-name または
 ;;   :derived-from が "clojure-polylith-llm-starter" 系列である（= 同系テンプレート

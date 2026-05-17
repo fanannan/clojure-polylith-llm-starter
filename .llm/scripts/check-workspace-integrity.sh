@@ -263,6 +263,12 @@ run_step_if_capability "llm-guides" "Structural Evidence packet boundary 検査"
 run_step_if_capability "llm-guides" "Structural Evidence staged gate advisory" \
   "$SCRIPT_DIR/check-evidence-gate.sh" --staged --advisory
 
+# --- 参照 repo allowlist の有効性 ---
+# .llm/reference-repos.edn が空 / 不在なら check は SKIP して exit 0。
+# エントリがある場合のみパス実在・Polylith・template 由来を検証する。
+run_step_if_capability "llm-guides" "参照 repo allowlist 検査" \
+  "$SCRIPT_DIR/reference-repos.sh" check
+
 # --- 1 ファイル 1 ns ---
 run_step_if_capability "deps-edn" "1 ファイル 1 ns 検査" \
   "$SCRIPT_DIR/check-single-ns-per-file.sh"

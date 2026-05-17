@@ -378,6 +378,23 @@ git_hooks_brief() {
   fi
 }
 
+reference_repos_brief() {
+  local f=".llm/reference-repos.edn"
+  if [ ! -f "$f" ]; then
+    echo "- 未登録（任意機能）。別 repo の brick 設計を比較参照する場合は \`reference-repos.sh add <path>\`"
+    return
+  fi
+  # 軽量カウント: コメント行を除き、引用符付きパスを持つ行数を数える
+  # （briefing は重検査を呼ばない。有効性検証は reference-repos.sh check に委譲）。
+  local n
+  n="$(grep -vE '^[[:space:]]*;;' "$f" 2>/dev/null | grep -cE '"[^"]+"' || true)"
+  if [ "${n:-0}" -gt 0 ]; then
+    echo "- 登録済み: $n 件（\`reference-repos.sh list\` で詳細 / \`reference-repos.sh check\` で有効性検証）"
+  else
+    echo "- 未登録（任意機能）。別 repo の brick 設計を比較参照する場合は \`reference-repos.sh add <path>\`"
+  fi
+}
+
 trace_health_brief() {
   if [ ! -x ".llm/scripts/trace-impact.sh" ]; then
     echo "- trace health: skipped（trace-impact.sh がありません）"
@@ -744,6 +761,11 @@ else
   trace_health_brief
   echo ""
 fi
+
+echo "## 参照可能 repo（POLYLITH_GUIDE.md §9）"
+echo ""
+reference_repos_brief
+echo ""
 
 # 以下の section は PROJECT モード時のみ表示する（テンプレ保守では非該当）
 if [ "$REPO_KIND" != "project" ]; then

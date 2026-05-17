@@ -53,6 +53,8 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 | `trace_impact.clj` | `trace-impact.sh` の Clojure 実装。DESIGN 更新前後の探索、commit 前の変更差分確認、session briefing の trace health に使う |
 | `install-git-hooks.sh` | repo-local hooks を `git config core.hooksPath .githooks` で有効化する。Claude Code / Codex / human 共通 |
 | `run-clj-tool.sh` | `.llm/scripts` 配下の Clojure script 共通 launcher。`LLM_CLJ_RUNTIME=auto|bb|clj` を見て、bb がある場合は optional accelerator として使い、無ければ Clojure CLI に fallback する |
+| `reference-repos.sh` | `.llm/reference-repos.edn` allowlist の管理 wrapper。`add` / `list` / `check` で参照可能 repo の追加（出自検証付き）・一覧・有効性検査を行う（POLYLITH_GUIDE.md §9）。`check` は `check-workspace-integrity.sh` の完了条件にも組み込まれる |
+| `reference_repos.clj` | `reference-repos.sh` の Clojure 実装。allowlist EDN の読み書き、参照先 repo の Polylith 判定・`clojure-polylith-llm-starter` 由来判定、各 brick.edn の作成者・ライセンス表示を担う |
 | `evidence.sh` | Structural Evidence workflow の主入口。`what-now` / `status` / `search` / `is-verified` / `why` / `stale` / `gate` / `predict` / `declare` / `run` / `close` / `backfill-invalidated-by` で次 action、現在状態、過去 record、claim 検証、stale record、staged gate、residual 宣言、command-backed evidence 記録、close 直前の evidence state、旧 record migration を扱う |
 | `check-evidence-gate.sh` | Structural Evidence gate の正本 primitive。pre-commit hook / CI / briefing / workspace check から同じ script を呼ぶ |
 | `check-evidence-boundary.sh` | Review Fatigue Packet が第 5 の正本になっていないかを検査する。packet 内で新しい requirement / knowledge / decision を定義することを禁止する |
@@ -100,6 +102,7 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 | `.llm/template-only/tests/check-map-scenarios.sh` | テンプレート自身の Brick / Project / Workspace Map E2E。synthetic repo で生成・移行・エラー検出・自力修復を検査する。通常ゲート外 |
 | `.llm/template-only/tests/check-design-ir-scenarios.sh` | DESIGN IR 生成・drift 検出・既存分析 EDN 連携の E2E。通常ゲート外 |
 | `.llm/template-only/tests/check-session-briefing-scenarios.sh` | session briefing の mode 別 `Control Plane` key phrase / forbidden phrase と `--audit --format edn` を synthetic repo で検査する。LLM は呼ばない。通常ゲート外 |
+| `.llm/template-only/tests/check-instrument-cases-smoke.sh` | Instruction-Following Instrument の case catalog を EDN として検査し、non-exploratory case の incident / mandate trace と unknown incident 検出を確認する。LLM は呼ばない。通常ゲート外 |
 | `.llm/template-only/tests/check-instrument-setup-smoke.sh` | Instruction-Following Instrument の setup runner が template / project target repo と outside observer store を作り、instrument artifact を target repo に混入させないことを検査する。LLM は呼ばない。通常ゲート外 |
 | `.llm/template-only/tests/check-instrument-summary-smoke.sh` | Instruction-Following Instrument の synthetic score 集約で、N / invalid 数 / result 分布を保持し、割れた結果を `:spec-ambiguous` に route することを検査する。LLM は呼ばない。通常ゲート外 |
 | `apply-repo-context-migration.sh` | 人間承認後に `.llm/repo-context.edn` を作成する migration wrapper。既定では `APPLY` 入力を要求 |
@@ -138,6 +141,7 @@ map generator / checker / migration script を変更した時、またはテン�
 ```bash
 ./.llm/template-only/tests/check-map-scenarios.sh
 ./.llm/template-only/tests/check-session-briefing-scenarios.sh
+./.llm/template-only/tests/check-instrument-cases-smoke.sh
 ./.llm/template-only/tests/check-instrument-setup-smoke.sh
 ./.llm/template-only/tests/check-instrument-summary-smoke.sh
 ```

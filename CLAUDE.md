@@ -289,9 +289,11 @@ LLM は、次の条件をすべて満たす範囲では自律的に実装・修�
 | DB マイグレーション実行 | 人間専権 (L0) | 生成は可、実行は人間 |
 | 必須技術基盤の入れ替え・削除 | 人間専権 (L0) | 設定変更も含む |
 | コンポーネントの統合・分割 | 人間専権 (L0) | 境界変更は影響甚大 |
+| 別レポ brick の参照・流用（作者が別人/複数/不明）、宣言作者と git 作者の不一致 | 人間専権 (L0) | ライセンス・著作権判断（参照 brick の流用可否） |
 | 4 種文書の編集・状態変更 | 文書別 | 正本マトリクスを見る |
 
 ∵ .llm/guide/COLLABORATION_GUIDE.md §2.3
+∵ .llm/guide/POLYLITH_GUIDE.md §9.4
 
 ---
 
@@ -1054,7 +1056,8 @@ Exit codes: `0` 成功 / `1` eval-error・namespace-not-found・:ex / `2` 接続
 **TEMPLATE mode の読み替え**: `.llm/repo-context.edn :repo-kind :template` で作業している時、テンプレート自身の保守決定は ADR にしない。テンプレ保守の議論・却下案・吸収先は maintainer archive staging に置き、現行ルールへ吸収後に削除または圧縮する。派生プロジェクトの ADR 規律をテンプレート本体へ持ち込まない。規約変更を過去文書へどこまで遡及するかは MAINTAINERS_GUIDE の遡及適用規則に従う。
 ∵ .llm/guide/MAINTAINERS_GUIDE.md §7
 
-**記録体系は `:repo-kind` が決める**: 決定の記録先（ADR か maintainer archive か）は、その場の判断ではなく `.llm/repo-context.edn` の `:repo-kind` で一意に決まる。`:project` なら ADR、`:template` なら maintainer archive。1 つの repo は同時に 1 つの記録体系だけを使い、bootstrap 完了の前後で混在させない。派生プロジェクトの bootstrap が完了し repo-context が `:template → :project` に transform された後は、記録体系は ADR に切り替わる。bootstrap 期間中に下した派生プロジェクトの設計判断（技術選定・推奨からの逸脱等）は、transform 後に ADR として記録する。manifest が `:template` を主張したまま派生プロジェクトの判断を未記録で残さない（この CONFLICT は `check-workspace-integrity.sh` が検出する）。
+**記録体系は `:repo-kind` が決める**: 決定の記録先（ADR か maintainer archive か）は、その場の判断ではなく `.llm/repo-context.edn` の `:repo-kind` で一意に決まる。`:project` なら ADR、`:template` なら maintainer archive。1 つの repo は同時に 1 つの記録体系だけを使う。派生プロジェクトは bootstrap の早期（識別情報の確定時）に repo-context を `:template → :project` へ transform するため、bootstrap 期間を通じて記録体系は ADR である。`:repo-kind` は repo の種類を表す軸であり、bootstrap の進捗は別軸（`:adoption-mode`）が表す。manifest が `:template` を主張したまま派生プロジェクトの判断を未記録で残さない（この CONFLICT は `check-workspace-integrity.sh` が検出する）。
+∵ .llm/guide/BOOTSTRAP_GUIDE.md §2.1.1
 
 ### 11.2 サイクル全体図（羅針盤）
 

@@ -129,6 +129,7 @@
 | .llm/template-only/benchmark/SCENARIOS.md | template-only | 保守者向けの評価意図。agent には見せない |
 | .llm/template-only/instrument/incident-index.edn | template-only | 指示追随計測器の実インシデント接地 index。contract case の種を maintainer archive / md mandate に trace するための保守者用 seed。派生プロジェクトへ配布しない |
 | .llm/template-only/instrument/cases.edn | template-only | 指示追随計測器の初期 case catalog。正本ではなく、実インシデント / md mandate に trace した観測 seed |
+| .llm/template-only/instrument/check-cases.sh | template-only | `cases.edn` / `incident-index.edn` を EDN として読み、case の trace / family / target mode / prompt / observable expectation を検査する |
 | .llm/template-only/instrument/setup-run.sh | template-only | LLM を起動せず、template / project target repo と outside observer store を準備する instrument runner |
 | .llm/template-only/instrument/score-run.sh | template-only | 観測済み run の diff path / terminal marker から path-level preliminary score を作る単一 run scorer。model 能力値は出さない |
 | .llm/template-only/instrument/summarize-runs.sh | template-only | 複数 `score.edn` を case 単位に集約し、N / invalid 数 / result 分布と `:spec-ambiguous` route を出す。点推定は出さない |
@@ -813,7 +814,7 @@ Brick / Project / Workspace Map は、Polylith 構造に対するテンプレー
 
 正本の分担:
 
-- `brick.edn`: brick の責務、component capability ownership、base entrypoint / uses、not-for、requirement 対応
+- `brick.edn`: brick の責務、component capability ownership、base entrypoint / uses、not-for、requirement 対応、作成者（`:brick/authors`）、ライセンス（`:brick/license`）
 - `project.edn`: deploy / build intent、entrypoint、include brick、requirement 対応
 - `interface.clj`: 公開 API と契約の実装事実
 - `deps.edn` / `workspace.edn`: classpath と Polylith 構造事実
@@ -829,6 +830,7 @@ Brick / Project / Workspace Map は、Polylith 構造に対するテンプレー
 - `brick.edn` / `project.edn` に TODO が残っていない
 - DESIGN の requirement ID に重複がない
 - `brick.edn` / `project.edn` の requirement 参照が DESIGN に存在する
+- `brick.edn` の宣言 `:brick/authors` が git 履歴の作者と一致する（不一致は L0 reconciliation 対象）
 - component/base の責務分離違反がない
 - component capability の重複がない
 - base の `:brick/uses` が存在する component capability を指す
@@ -855,7 +857,7 @@ Requirement ID の検査順序:
 
 テンプレート保守で `session-briefing.sh` の mode 表示、`Control Plane`、または `--audit` を変更した場合は、通常ゲートとは別に `.llm/template-only/tests/check-session-briefing-scenarios.sh` を実行対象にする。この E2E は LLM を呼ばず、briefing という教材自体の key phrase / forbidden phrase / audit EDN を検査する。
 
-テンプレート保守で Instruction-Following Instrument の setup runner、case catalog、observer isolation、path-level scorer を変更した場合は、通常ゲートとは別に `.llm/template-only/tests/check-instrument-setup-smoke.sh` を実行対象にする。この smoke は LLM を呼ばず、template / project target repo の作成、instrument artifact の非混入、outside observer store、observation / terminal marker、単一 run の preliminary score と template run record への mirror を検査する。複数 run 集約や曖昧性 route を変更した場合は、`.llm/template-only/tests/check-instrument-summary-smoke.sh` も実行対象にする。
+テンプレート保守で Instruction-Following Instrument の case catalog または incident index を変更した場合は、通常ゲートとは別に `.llm/template-only/tests/check-instrument-cases-smoke.sh` を実行対象にする。setup runner、observer isolation、path-level scorer を変更した場合は `.llm/template-only/tests/check-instrument-setup-smoke.sh` も実行する。この smoke は LLM を呼ばず、template / project target repo の作成、instrument artifact の非混入、outside observer store、observation / terminal marker、単一 run の preliminary score と template run record への mirror を検査する。複数 run 集約や曖昧性 route を変更した場合は、`.llm/template-only/tests/check-instrument-summary-smoke.sh` も実行対象にする。
 
 ### 5.15 Structural Evidence View の保守
 

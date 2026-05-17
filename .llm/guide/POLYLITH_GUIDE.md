@@ -92,7 +92,7 @@ brick の機能分担は Markdown を正本にしない。各 brick 直下の `b
 
 目的は、必要な機能をどの component に頼ればよいか、base がどの entrypoint からどの component capability を使うか、重複実装が発生していないかを常に機械検査できる状態にすることである。
 
-`brick.edn` はコードの代替正本ではない。公開 API と Malli 契約の正本は `interface.clj`、実装事実の正本は `core.clj` / `system.clj` 等、ライブラリ依存の正本は brick の `deps.edn` である。`brick.edn` が担うのは、コードだけから安全に復元できない責務・capability ownership・not-for・要求対応である。
+`brick.edn` はコードの代替正本ではない。公開 API と Malli 契約の正本は `interface.clj`、実装事実の正本は `core.clj` / `system.clj` 等、ライブラリ依存の正本は brick の `deps.edn` である。`brick.edn` が担うのは、コードだけから安全に復元できない責務・capability ownership・not-for・要求対応・作成者・ライセンスである。作成者（`:brick/authors`）とライセンス（`:brick/license`）は、別 repo の brick を参照・流用する際の著作権判断に使う（§9.4）。
 
 `:brick/group` を導入する場合、その役割は類似 brick の検索・俯瞰・再分割 smell の発見に限定する。group は Polylith の構造単位ではなく、依存境界、capability ownership、project inclusion、テスト範囲、deploy 単位を決める正本にしてはならない。構造事実は component / base / project、`interface.clj`、`workspace.edn`、`deps.edn`、`project.edn`、`poly check` に残す。
 
@@ -111,7 +111,9 @@ component の `brick.edn` は capability の所有を表す。
  :brick/purpose "請求書エンティティの生成・検証・金額計算"
  :brick/provides #{:invoice/create :invoice/validate :invoice/total-amount}
  :brick/not-for #{:pdf/render :email/send :http/response}
- :brick/requirements ["INV-01" "INV-02"]}
+ :brick/requirements ["INV-01" "INV-02"]
+ :brick/authors ["Hanako Tanaka <hanako@example.com>"]
+ :brick/license "Apache-2.0"}
 ```
 
 `component` は pure domain component と adapter component の両方を取り得る。現時点の `brick.edn` schema には `:brick/effect` を導入しないが、設計時は `:pure` / `:adapter` / `:entry` 相当の区別を必ず考える。特に `:pure` 相当の component では、時刻・乱数・I/O・可変状態を内側に置かない。将来この区別を機械検査へ接続する場合は、`brick.edn` に `:brick/effect` を追加する案を検討する。
@@ -125,7 +127,8 @@ base の `brick.edn` は外部 entrypoint と利用 capability を表す。base 
  :brick/purpose "HTTP API として外部リクエストを受け、component の機能へ委譲する"
  :brick/entrypoint :http-api
  :brick/uses #{:invoice/create :invoice/validate}
- :brick/requirements ["API-01"]}
+ :brick/requirements ["API-01"]
+ :brick/authors ["Hanako Tanaka <hanako@example.com>"]}
 ```
 
 `docs/BRICKS.md` と `.llm/data/brick-map.edn` は自動生成物であり、直接編集しない。再生成は次で行う。
@@ -134,7 +137,7 @@ base の `brick.edn` は外部 entrypoint と利用 capability を表す。base 
 clj -Sdeps '{:paths [".llm/scripts"]}' -X gen-brick-map/generate
 ```
 
-`./.llm/scripts/check-workspace-integrity.sh` は、全 brick の `brick.edn` 存在、component/base の意味違反、重複 capability、base の未提供 capability 参照、`:brick/not-for` との衝突、capability 命名、capability と公開 API 名の対応、閲覧用 Brick Map / `.llm/data/brick-map.edn` の drift を検査する。
+`./.llm/scripts/check-workspace-integrity.sh` は、全 brick の `brick.edn` 存在、component/base の意味違反、重複 capability、base の未提供 capability 参照、`:brick/not-for` との衝突、capability 命名、capability と公開 API 名の対応、閲覧用 Brick Map / `.llm/data/brick-map.edn` の drift を検査する。あわせて `brick.edn` の宣言作成者（`:brick/authors`）が git 履歴と不一致なら L0 reconciliation 対象として検出する（§9.4）。
 
 `check-interface-contracts.sh` が検査するのは、`interface.clj` の公開 `defn` に対応する `m/=>` が存在することまでである。arity 整合、schema の意味妥当性、失敗表現の妥当性はこの gate では保証しない。これらは Malli instrumentation 下の REPL eval、interface test、必要に応じた property test で検証する。
 
@@ -150,7 +153,7 @@ clj -Sdeps '{:paths [".llm/scripts"]}' -X gen-brick-map/generate
 ./.llm/scripts/ensure-brick-map.sh
 ```
 
-`:brick/name`、`:brick/type`、公開 API 候補は実装から推測できるが、`:brick/purpose`、`:brick/provides`、`:brick/not-for`、`:brick/requirements` は設計意図なので TODO として生成される。TODO は警告であり、移行完了前に人間/LLM が DESIGN と実装を見て確定する。
+`:brick/name`、`:brick/type`、公開 API 候補は実装から推測できるが、`:brick/purpose`、`:brick/provides`、`:brick/not-for`、`:brick/requirements`、`:brick/authors`、`:brick/license` は設計意図・著作権情報なので TODO として生成される。TODO は警告であり、移行完了前に人間/LLM が DESIGN と実装を見て確定する。
 
 TODO・空の `:brick/provides`・曖昧な capability / API 対応は、`:adoption-mode :retrofit` / `:partial` では WARN、`:complete` では ERROR として扱う。これにより既存 repo 導入時は移行を止めず、strict template 準拠後は未確認事項を残さない。
 
@@ -1035,6 +1038,8 @@ CI 通過時以外にも、人間が `git tag stable-$(date +%Y%m%d-%H%M%S)` を
 
 参照してよいローカル repo は `.llm/reference-repos.edn` の `:allowed-repos` に人間が明示的に列挙する。このファイルが存在し path が列挙されていること自体が、「これらの repo を read-only で読んでよい」という人間の承認である。ファイルが無い、または `:allowed-repos` が空なら参照は許可されていない。
 
+allowlist の追加・一覧・有効性検査には `.llm/scripts/reference-repos.sh` を使う。`reference-repos.sh add <path>` はパス実在・Polylith repo か・テンプレート由来かを検証してから追加し、`list` で登録内容、`check` で各エントリの有効性と brick 一覧を表示する。EDN を直接手編集してもよいが、出自条件を自動検証する `add` を推奨する。
+
 参照先 repo は、その `.llm/repo-context.edn` の `:template-name` または `:derived-from` が `clojure-polylith-llm-starter` 系列である（= 同系テンプレート由来）場合のみ参照可とする。出自証明は repo 単位で足り、brick 単位のマーカーは設けない。
 
 ### 9.2 何を読んでよいか
@@ -1047,6 +1052,8 @@ allowlist された参照 repo では、次を比較材料として読んでよ�
 - 近接 test（境界テストの観点）
 - `deps.edn`（用途別機能カテゴリごとのライブラリ選定）
 
+`reference-repos.sh check` は各参照先 repo の brick 一覧と、各 brick の `:brick/authors` / `:brick/license` を表示する。何を比較材料にでき、どの brick が著作権上 L0 判定を要するか（§9.4）を事前に把握できる。
+
 ### 9.3 セキュリティ境界（厳守）
 
 - **read-only**: 参照 repo を編集しない
@@ -1056,6 +1063,27 @@ allowlist された参照 repo では、次を比較材料として読んでよ�
 - **コピーしない**: 参照先のコードをコピーせず、現在 repo の DESIGN と trace に合わせて再実装する。参照 repo は比較材料であって import 元ではない
 
 `.llm/data/brick-map.edn` の構造は、参照カタログの比較材料としても流用してよい。
+
+### 9.4 参照 brick の流用と L0 判定
+
+参照先 brick を比較材料に再実装する時、著作権・ライセンスの判断が必要になる。アイデアだけの流用でも、別作者の成果は法的リスクを持ちうる。判断材料は `brick.edn` の `:brick/authors`（作成者）と `:brick/license`（ライセンス、SPDX 識別子。欠落時は参照先 repo ルートの LICENSE 継承と解釈する）である。
+
+**cross-repo 参照の L0 判定**:
+
+1. 参照先 brick の `brick.edn :brick/authors` を読む。
+2. 現作業者の git author（`git config user.name` / `user.email`）と照合する。
+3. `:brick/authors` が現作業者と一致する単一作者なら、通常の再実装承認フロー（§8.1）で進めてよい。
+4. `:brick/authors` に現作業者以外が含まれる、複数作者である、または欠落・TODO のままなら、**L0（人間専権）**。LLM は再実装へ進まず、流用範囲・ライセンス論点・著作権リスク・選択肢を整理して人間に提示する。アイデアのみの流用もこの判定の対象とする。
+
+`reference-repos.sh check` は各参照先 brick の `:brick/authors` / `:brick/license` を表示するので、L0 判定の材料を事前に俯瞰できる。
+
+**within-repo の宣言・証拠不一致**:
+
+自 repo でも、`brick.edn` の宣言 `:brick/authors` と git 履歴から導出した実際の作者が食い違う場合がある。`check-workspace-integrity.sh`（`gen-brick-map` の check）はこの不一致を検出し、`:adoption-mode :complete` では ERROR、`:retrofit` / `:partial` では WARN とする。不一致は L0 reconciliation 対象であり、人間が宣言の修正か、作者が変わった正当性の判断を行う。git 履歴のない未コミット新規 brick は不一致扱いしない。
+
+**元 repo の ID を持ち込まない**:
+
+再実装は取り込み先の DESIGN / QUESTIONS / ADR に合わせる。参照先の `:trace/requirements` / `:trace/use-cases` / `:trace/test-obligations` メタデータ、`;; TODO(Q-...)` コメント、ADR 参照を持ち込まず、取り込み先の ID 体系へ再マッピングする。誤って持ち込んだ場合、`check-trace-metadata.sh`（未知 ID）・`gen-brick-map` の `:brick/requirements` 検査（DESIGN 不在 ID）・TODO 検査が事後の安全網として検出する。
 
 ---
 

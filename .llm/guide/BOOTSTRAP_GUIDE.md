@@ -104,10 +104,10 @@ README のキックオフプロンプトを受信した LLM は、以下のゲ�
 
 | ゲート | 直前で提示する内容（実テキスト / 実操作） | 承認後に実施する節 |
 |---|---|---|
-| ★ゲート 1（仕様 + 技術選定） | reconciliation table（IDEA に実内容がある場合）／`../DESIGN.md` 反映案／`.llm/data/design-ir.edn` 生成結果／既存分析 EDN との照合結果／`workspace.edn` :top-namespace 差分／プロダクト README 生成方針／必要な用途別機能カテゴリと推奨ライブラリ案 | §2.1 |
+| ★ゲート 1（仕様 + 技術選定） | reconciliation table（IDEA に実内容がある場合）／`../DESIGN.md` 反映案／`.llm/data/design-ir.edn` 生成結果／既存分析 EDN との照合結果／`workspace.edn` :top-namespace 差分／`.llm/repo-context.edn` の派生プロジェクト用 transform 差分（§2.1.1）／プロダクト README 生成方針／必要な用途別機能カテゴリと推奨ライブラリ案 | §2.1 |
 | ★ゲート 2（構造 + 依存） | `poly create component/base/project` 3 コマンド／brick `deps.edn` 追加内容（実コード） | §2.3, §2.4 |
 
-ゲート 1 は brick 作成（§2.3）の前提 gate である。`:top-namespace` 確定・`../DESIGN.md` §1-4/§8・デプロイ構成決定が揃うまでゲート 2 へ進まない（§2.1 初期化 identity gate）。identity 未確定のまま brick を作ると placeholder namespace のまま実装が「完了」報告される取りこぼしが起きる。
+ゲート 1 は brick 作成（§2.3）の前提 gate である。`:top-namespace` 確定・`../DESIGN.md` §1-4/§8・デプロイ構成決定・repo-context の `:project` 化（§2.1.1）が揃うまでゲート 2 へ進まない（§2.1 初期化 identity gate）。identity 未確定のまま brick を作ると placeholder namespace のまま実装が「完了」報告される取りこぼしが起きる。
 
 ゲート 3 は**縮退**（`COLLABORATION_GUIDE.md` §2.2 で ADR 発行を実施後報告 (L2) 化済）:
 
@@ -167,13 +167,30 @@ ADR の発行（§4）は実施後報告 (L2) として LLM が自動実施し�
 
 **技術選定に迷う場合**: 判断済み推奨集を確認し、それでも迷う場合は **Q を立ててユーザに相談**（自己判断禁止）。
 
-**初期化 identity gate（§2.3 brick 作成の前提条件）**: 次の 3 つが確定するまで §2.2 以降、特に §2.3 の brick 作成へ進まない。
+**初期化 identity gate（§2.3 brick 作成の前提条件）**: 次の 4 つが確定するまで §2.2 以降、特に §2.3 の brick 作成へ進まない。
 
 - `workspace.edn` の `:top-namespace` が実プロジェクト名（`myorg.myapp` から書き換え済み）
 - `../DESIGN.md` の必須項目（§1 目的、§2 スコープ、§3 主要ユースケース、§4 受入基準、§8 プロジェクト固有情報）が埋まっている
 - デプロイ構成（単一 / 複数 uberjar / Docker / Lambda）が決定済み
+- `.llm/repo-context.edn` が派生プロジェクト用に transform 済み（§2.1.1、`:repo-kind :project`）
 
 この gate 未通過のまま brick を作ると、`workspace.edn` の `:top-namespace` だけ書き換えて brick の `(ns ...)` 宣言が placeholder のまま残る、deploy project が未作成のまま brick 実装が「完了」報告される、といった取りこぼしが起きる（分類管理の原則、`../CLAUDE.md` §1.2.5 失敗早期検知）。
+
+### 2.1.1 repo-context.edn を派生プロジェクト用に transform する（承認必須 (L1)）
+
+§2.1 でプロジェクトの識別情報（`:top-namespace` 等）が確定したら、その場で `.llm/repo-context.edn` を派生プロジェクト用に transform する。bootstrap 完了まで待たない。
+
+- `:repo-kind :template` → `:project`
+- `:template-name "clojure-polylith-llm-starter"` → `:derived-from "clojure-polylith-llm-starter"` にリネーム
+- `:project-name "<:top-namespace の実値>"` を追加（例: `:project-name "acme.shop"`）
+- `:adoption-mode :complete` → `:partial`（bootstrap 進行中。strict template 準拠の完了は §4 で `:complete` へ昇格して表す）
+- `:workspace-kind :polylith` / `:capabilities`（テンプレート由来の 6 capability）は保持する
+- `:ownership` ブロックは保持する（派生プロジェクトでも所有権 SSOT として機能させる）
+- manifest を削除しない
+
+**なぜ bootstrap の早期に transform するか**: `:repo-kind` は「この repo がテンプレートか派生プロジェクトか」を表す軸であり、bootstrap の進捗とは別軸である。派生プロジェクトは着手の瞬間から派生プロジェクトであり、未完了であることは `:adoption-mode :partial` が表す。早期に `:project` 化することで、`check-placeholders.sh` が placeholder 残存を bootstrap 期間中ずっと ERROR として検出し、`myorg.myapp` のまま実装が「完了」報告される取りこぼしを構造的に防ぐ。また ADR がこの時点から正規の記録体系になる（§4、`../CLAUDE.md` §11.1）。
+
+transform 後、その差分を含めてコミットする（`check-mode-scope.sh` は `.llm/repo-context.edn` の未コミット変更を WARN するため）。
 
 ### 2.2 ワークスペースルート deps.edn の変更は不要
 
@@ -181,7 +198,7 @@ ADR の発行（§4）は実施後報告 (L2) として LLM が自動実施し�
 
 ### 2.3 最初の brick を作成
 
-**前提（§2.1 初期化 identity gate）**: brick 作成に着手する前に、§2.1 の identity gate（`:top-namespace` 確定・DESIGN 必須節 §1-4/§8・デプロイ構成決定）がすべて通過していることを確認する。未通過なら §2.1 へ戻る。placeholder namespace のまま brick を作らない。
+**前提（§2.1 初期化 identity gate）**: brick 作成に着手する前に、§2.1 の identity gate（`:top-namespace` 確定・DESIGN 必須節 §1-4/§8・デプロイ構成決定・repo-context の `:project` 化（§2.1.1））がすべて通過していることを確認する。未通過なら §2.1 へ戻る。placeholder namespace のまま brick を作らない。
 
 判断権限と実行主体を混同しない。component は承認必須 (L1)、base / project は人間専権 (L0) で採否を決める。実際のコマンド実行は、承認または指示が確定した後に行う。
 ∵ COLLABORATION_GUIDE.md §2.0
@@ -429,6 +446,7 @@ I/O リソースの起動・停止管理が必要な場合のみ実施する。�
 - [ ] 採用した各用途別機能カテゴリの確認事項がすべて点検済み
 - [ ] `../.llm/memory/QUESTIONS.md` に残っている 未対応(open) Q を点検済み
 - [ ] **`../README.md` がプロダクト向けに書き換えられている**（§4 で実施）
+- [ ] `../.llm/repo-context.edn` の `:adoption-mode` が `:complete` に昇格済みで、`../.llm/template-only/` 削除後に `:complete` の strict モードで `check-workspace-integrity.sh` が再通過している（§4）
 
 ### 3.2 初回 hardening 項目
 
@@ -455,19 +473,13 @@ I/O リソースの起動・停止管理が必要な場合のみ実施する。�
 3. 解決した Q の結果が継続参照されるものは KNOWLEDGE へ反映（承認必須 (L1)、ゲート 3 承認対象、実テキストで提示）
 ¤ ../.llm/memory/KNOWLEDGE.md
 4. 重要な設計判断（技術選定、推奨からの逸脱等）は `../.llm/memory/adr/NNNN-topic.md` として ADR を発行し、事後報告する
-5. **`../.llm/repo-context.edn` を transform する**（モード境界の SSOT を派生プロジェクト用に書き換え。承認必須 (L1)）:
-   - `:repo-kind :template` → `:project`
-   - `:template-name "clojure-polylith-llm-starter"` → `:derived-from "clojure-polylith-llm-starter"` にリネーム
-   - `:project-name "<myorg.myapp の実値>"` を追加（例: `:project-name "acme.shop"`）
-   - `:workspace-kind` / `:capabilities` / `:adoption-mode` は `.llm/scripts/propose-repo-context.sh` の候補を人間が確認して決める
-   - `:ownership` ブロックは保持する（派生プロジェクトでも所有権 SSOT として機能させる）
-   - 削除しない（manifest 不在は session-briefing が non-blocking ERROR と migration 手順を表示する）
-6. **`../.llm/template-only/` を削除する**（テンプレート保守・評価用の配布外領域。派生プロジェクトの通常運用物ではない）
+5. **`../.llm/repo-context.edn` の `:adoption-mode` を `:partial` → `:complete` に昇格する**（承認必須 (L1)）。`:repo-kind` 等の transform は §2.1.1 で実施済み。本ステップは strict template 準拠が完了したことを表す。昇格後、`:complete` の strict モードで `./.llm/scripts/check-workspace-integrity.sh` を再実行し、通過を確認する。
+6. **`../.llm/template-only/` を削除する**（テンプレート保守・評価用の配布外領域。派生プロジェクトの通常運用物ではない）。step 5 の `:complete` 昇格と同一の完了処理として行う。
    - `:ownership :template-only` は manifest に残してよい。残すのは所有権規則であり、実ディレクトリではない
-   - `:repo-kind :project` かつ `:adoption-mode :complete` で `.llm/template-only/` が残る場合、repo-context consistency check が失敗する
+   - `:repo-kind :project` かつ `:adoption-mode :complete` で `.llm/template-only/` が残ると repo-context consistency check が失敗するため、step 5 と step 6 は揃えて行う
 7. 初期化完了をコミット（例: `"Complete project bootstrap"`）— **このコマンドは LLM が提示、実行はユーザが行う**
 
-**記録体系の整合**: 上記 4（ADR 発行）と 5（repo-context transform）は同じ完了処理に属する。transform 完了後、本 repo の `:repo-kind` は `:project` になり、決定の記録体系は ADR になる。bootstrap 期間中に下した派生プロジェクトの設計判断は、ここで ADR として記録する（テンプレート保守決定ではないため maintainer archive には置かない）。記録先が曖昧なまま判断を未記録で残さない。bootstrap 完了の前後で記録体系を混在させない。
+**記録体系の整合**: `:repo-kind` の transform は §2.1.1 で実施済みであり、本 repo は bootstrap 期間を通じて `:repo-kind :project` である。したがって上記 4 の ADR 発行は、本 repo が既に `:project` である状態で行う正規の記録であり、bootstrap 期間中に下した派生プロジェクトの設計判断はすべて ADR に記録する（テンプレート保守決定ではないため maintainer archive には置かない）。記録先が曖昧なまま判断を未記録で残さない。
 
 以降は CLAUDE の作業プロトコルで日常開発に移行する。本文書（BOOTSTRAP_GUIDE）は物理的には残るが、フェーズ判定により、完了後は自動的に読まれない。
 ¤ ../CLAUDE.md §8
