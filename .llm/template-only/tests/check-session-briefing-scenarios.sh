@@ -3,6 +3,8 @@
 #
 # These are deterministic fixture tests for the briefing input shown to an LLM.
 # They do not call an LLM and do not evaluate model behavior.
+#
+# verified-mandates: [MANDATE:M-0001]
 
 set -euo pipefail
 

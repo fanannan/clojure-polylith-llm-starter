@@ -4,6 +4,8 @@
 # This is not an application test for derived projects. It creates synthetic
 # Polylith-like repos under /tmp and verifies migration/generation/check/repair
 # behavior for brick.edn, project.edn, and generated map files.
+#
+# verified-mandates: [MANDATE:M-0016]
 
 set -euo pipefail
 

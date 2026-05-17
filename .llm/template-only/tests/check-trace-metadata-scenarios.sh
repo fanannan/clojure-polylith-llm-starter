@@ -4,6 +4,8 @@
 # This is not an application test for derived projects. It creates synthetic
 # repos under /tmp and verifies that specification trace metadata is accepted
 # only on stable public boundaries and deftest forms.
+#
+# verified-mandates: [MANDATE:M-0007]
 
 set -euo pipefail
 

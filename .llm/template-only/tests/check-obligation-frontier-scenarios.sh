@@ -4,6 +4,8 @@
 # This is not an application test for derived projects. It creates synthetic
 # repos under /tmp and verifies that DESIGN obligations become typed frontier
 # items, then disappear as trace-backed boundary/test coverage is added.
+#
+# verified-mandates: [MANDATE:M-0019]
 
 set -euo pipefail
 

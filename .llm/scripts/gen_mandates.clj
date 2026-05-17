@@ -7,7 +7,8 @@
    identifies. This generator scans CLAUDE.md and .llm/guide/*.md (the mandate
    scan range), extracts each annotation, and records an immutable derived value
    per mandate: prose home, source heading, source digest, git rev, type, tier,
-   and the enforcement / verification scripts the surrounding prose names.
+   the enforcement scripts the surrounding prose names, and the template-only
+   tests that declare a [MANDATE:M-NNNN] verification token.
 
    The index is a derived value, not an authority. The prose is the source of
    truth. Regenerate after editing any mandate annotation or its prose."
@@ -42,7 +43,12 @@
 (def mandate-end-marker "[/mandate]")
 (def heading-re #"^#{1,6}\s")
 (def script-mention-re #"\.llm/scripts/[a-z0-9_-]+\.(?:sh|clj)")
-(def test-mention-re #"\.llm/template-only/tests/[a-z0-9_-]+\.sh")
+(def test-dir ".llm/template-only/tests")
+;; A template-only test declares the mandate(s) it verifies with a visible
+;; [MANDATE:M-NNNN] token in its header comment. verified-by is the reverse of
+;; that declaration. The test directory is removed in derived projects, so the
+;; verified-by dimension is naturally empty there (plan §5.4).
+(def mandate-ref-re #"\[MANDATE:(M-\d{4})\]")
 
 (defn- file? [path]
   (.isFile (io/file path)))
@@ -148,8 +154,27 @@
                     :tier (:tier annotation)
                     :status :active
                     :enforced-by (vec (sort (distinct (re-seq script-mention-re section))))
-                    :verified-by (vec (sort (distinct (re-seq test-mention-re section))))}})))
+                    :verified-by []}})))
      lines)))
+
+(defn- collect-verifications
+  "Scan template-only test scripts for [MANDATE:M-NNNN] tokens and return a map
+   of mandate id -> set of test paths that declare verification of it. The test
+   directory is absent in derived projects, where this yields an empty map."
+  []
+  (let [dir (io/file test-dir)]
+    (if-not (.isDirectory dir)
+      {}
+      (reduce
+       (fn [acc f]
+         (let [path (str/replace (.getPath f) "\\" "/")
+               ids (map second (re-seq mandate-ref-re (slurp f)))]
+           (reduce (fn [m id] (update m id (fnil conj #{}) path)) acc ids)))
+       {}
+       (->> (.listFiles dir)
+            (filter #(.isFile %))
+            (filter #(str/ends-with? (.getName %) ".sh"))
+            (sort-by #(.getName %)))))))
 
 (defn- git-rev []
   (try
@@ -166,10 +191,18 @@
         by-id (group-by #(get-in % [:annotation :id]) collected)
         dups (keep (fn [[id items]] (when (< 1 (count items)) id)) by-id)
         _ (when (seq dups)
-            (error! (str "ERROR: duplicate mandate id(s): " (str/join ", " (sort dups)))))]
+            (error! (str "ERROR: duplicate mandate id(s): " (str/join ", " (sort dups)))))
+        verifications (collect-verifications)
+        unknown-refs (sort (remove (set (keys by-id)) (keys verifications)))
+        _ (when (seq unknown-refs)
+            (error! (str "ERROR: template-only test references unknown mandate id(s): "
+                         (str/join ", " unknown-refs))))]
     (into (sorted-map)
           (map (fn [{:keys [annotation entry]}]
-                 [(:id annotation) (assoc entry :source/git-rev rev)]))
+                 [(:id annotation)
+                  (assoc entry
+                         :source/git-rev rev
+                         :verified-by (vec (sort (get verifications (:id annotation) #{}))))]))
           collected)))
 
 (defn- mandates-manifest []
@@ -179,7 +212,7 @@
     :output-path default-index-file
     :generator-path generator-path
     :tool-input-paths [".llm/scripts/derivation_manifest.clj"]
-    :input-paths ["CLAUDE.md" ".llm/guide"]
+    :input-paths ["CLAUDE.md" ".llm/guide" ".llm/template-only/tests"]
     :input-policy {:missing :explicit-empty
                    :directory-roots :recursive-digest}
     :generated-at "deterministic"

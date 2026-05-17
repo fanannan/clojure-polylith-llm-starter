@@ -4,6 +4,8 @@
 # This is not an application test for derived projects. It creates synthetic
 # repos under /tmp and verifies DESIGN.md extraction, generated design-ir drift,
 # and joins with existing .llm/data analysis EDN.
+#
+# verified-mandates: [MANDATE:M-0016]
 
 set -euo pipefail
 
