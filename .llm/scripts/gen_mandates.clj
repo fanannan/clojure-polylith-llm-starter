@@ -5,16 +5,19 @@
    A mandate annotation is the visible one-line directive
    `[mandate: M-NNNN/hint type:<type> tier:<tier>]` placed above the prose it
    identifies. This generator scans CLAUDE.md and .llm/guide/*.md (the mandate
-   scan range), extracts each annotation, and records an immutable derived value
-   per mandate: prose home, source heading, source digest, git rev, type, tier,
-   the enforcement scripts the surrounding prose names, and the template-only
-   tests that declare a [MANDATE:M-NNNN] verification token.
+   scan range), extracts each annotation, and records a derived value per
+   mandate: prose home, source heading, source digest, type, tier, the
+   enforcement scripts the surrounding prose names, and the template-only tests
+   that declare a [MANDATE:M-NNNN] verification token.
+
+   The index carries no git rev or timestamp: it is a pure function of the
+   current source tree, so a fresh scan after any commit reproduces it exactly.
+   The per-mandate source/digest is the deterministic prose-snapshot identity.
 
    The index is a derived value, not an authority. The prose is the source of
    truth. Regenerate after editing any mandate annotation or its prose."
   (:require
    [clojure.java.io :as io]
-   [clojure.java.shell :as shell]
    [clojure.pprint :as pprint]
    [clojure.string :as str]
    [derivation-manifest :as derivation]))
@@ -180,18 +183,11 @@
             (filter #(str/ends-with? (.getName %) ".sh"))
             (sort-by #(.getName %)))))))
 
-(defn- git-rev []
-  (try
-    (let [{:keys [exit out]} (shell/sh "git" "rev-parse" "HEAD")]
-      (when (zero? exit) (str/trim out)))
-    (catch Throwable _ nil)))
-
 (defn- collect-mandates []
   (let [collected (mapcat collect-file-mandates (corpus-files))
         errors (mapcat :errors collected)
         _ (when (seq errors)
             (apply error! "ERROR: malformed mandate annotation(s):" errors))
-        rev (git-rev)
         by-id (group-by #(get-in % [:annotation :id]) collected)
         dups (keep (fn [[id items]] (when (< 1 (count items)) id)) by-id)
         _ (when (seq dups)
@@ -205,7 +201,6 @@
           (map (fn [{:keys [annotation entry]}]
                  [(:id annotation)
                   (assoc entry
-                         :source/git-rev rev
                          :verified-by (vec (sort (get verifications (:id annotation) #{}))))]))
           collected)))
 
