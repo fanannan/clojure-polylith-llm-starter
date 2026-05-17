@@ -681,6 +681,8 @@ subagent / tool 呼び出し / 長い shell 実行は、ユーザへの最終応
 
 セッション開始後、最初のファイル書き込みより前に session briefing を読む。session briefing は `.llm/scripts/session-briefing.sh` の出力で、Claude Code では SessionStart hook が自動注入し、他エージェントは起動時に手動実行する。
 
+[/mandate]
+
 どの作業を行う時も、着手前に以下を確認する。これは §1.3「現時点で有効な知識の活用で再発見の疲労を避ける」の具体実装：
 
 1. **仕様の確認**: DESIGN の関連節（特に §3 主要ユースケース、§4 受入基準）を読む

@@ -6,14 +6,14 @@
  :artifact/manifest
  #:derivation{:tool "gen-mandates",
               :action-key
-              "sha256:1818c93e17aee06c40f8feceeb6ccb701453a96d0bb7b20be307884518a88348",
+              "sha256:db0647369e5ad7902309295e393da983e795ae88d72987301d3ae00d03eff308",
               :input-policy
               {:missing :explicit-empty,
                :directory-roots :recursive-digest},
               :inputs
               [{:path "CLAUDE.md",
                 :digest
-                "sha256:4a92b4ec4972b11b35e6834c15c5bef228ece1129ec08e1211860738f7e547fc"}
+                "sha256:fccefb1e2c7df60bf057096ea52b1215aa28816fa5572fff0e181817cf7bfcc2"}
                {:path ".llm/guide",
                 :input/kind :directory,
                 :digest
@@ -29,17 +29,17 @@
               :generator
               {:path ".llm/scripts/gen_mandates.clj",
                :digest
-               "sha256:3a8ea2f818c3ddbb82af2383aeb2bd7fd68334c7fbb083138e1dc0c62dd2a872"},
+               "sha256:08ec987de2b62285987532deae60eb7dbe2002b3f72325fb95a6da89b54689ac"},
               :schema "derivation.1",
               :regime :derived-view,
               :id :mandates},
  :mandates
  {"M-0001"
   {:tier :kernel,
-   :source/git-rev "0f4258d15e812ed9a29e097cb13b34793bb64d2c",
+   :source/git-rev "1a8d5839e1f73688c5b6b3bed75a7e37f5f9779d",
    :verified-by [],
    :source/digest
-   "sha256:8b010637c6eb0140ef9457177ccbeada96139084f5d5d9323fa060b97bb64670",
+   "sha256:1fcf692bdff4d16460741811363e1d9209459ddbaa895c4f3097532f2baa2dbf",
    :enforced-by [".llm/scripts/session-briefing.sh"],
    :defined-in "CLAUDE.md",
    :hint "session-start-briefing-first",
@@ -48,7 +48,7 @@
    :source/heading "8.0 実装着手前の確認（すべての作業に共通）"},
   "M-0002"
   {:tier :kernel,
-   :source/git-rev "0f4258d15e812ed9a29e097cb13b34793bb64d2c",
+   :source/git-rev "1a8d5839e1f73688c5b6b3bed75a7e37f5f9779d",
    :verified-by [],
    :source/digest
    "sha256:11ffa8ba74f1f248d876ac17c10edafba479ed252c4b53f405b79f0aae714253",
@@ -60,7 +60,7 @@
    :source/heading "参照マーカー規約"},
   "M-0003"
   {:tier :kernel,
-   :source/git-rev "0f4258d15e812ed9a29e097cb13b34793bb64d2c",
+   :source/git-rev "1a8d5839e1f73688c5b6b3bed75a7e37f5f9779d",
    :verified-by [],
    :source/digest
    "sha256:ef3c2e7d9f92d7ba57c28fd7736b270bbc51b491a11e22373544bed2e6a47f8f",
@@ -72,7 +72,7 @@
    :source/heading "5.1 clj-kondo（保存時にエディタで赤線）"},
   "M-0004"
   {:tier :kernel,
-   :source/git-rev "0f4258d15e812ed9a29e097cb13b34793bb64d2c",
+   :source/git-rev "1a8d5839e1f73688c5b6b3bed75a7e37f5f9779d",
    :verified-by [],
    :source/digest
    "sha256:a31460115e317a82e60d6c11308620c3ade47fde9c5d36e565fa497f65079f4e",
@@ -84,7 +84,7 @@
    :source/heading "5.2 cljfmt（保存時自動整形）"},
   "M-0005"
   {:tier :kernel,
-   :source/git-rev "0f4258d15e812ed9a29e097cb13b34793bb64d2c",
+   :source/git-rev "1a8d5839e1f73688c5b6b3bed75a7e37f5f9779d",
    :verified-by [],
    :source/digest
    "sha256:c14210ed8801e05a417c021ec19f70b5c5f6d110babbb4e3b6c6c898e7064519",
@@ -96,7 +96,7 @@
    :source/heading "5.3 `poly check`（Polylith 構造違反）"},
   "M-0006"
   {:tier :kernel,
-   :source/git-rev "0f4258d15e812ed9a29e097cb13b34793bb64d2c",
+   :source/git-rev "1a8d5839e1f73688c5b6b3bed75a7e37f5f9779d",
    :verified-by [],
    :source/digest
    "sha256:11e4ad8293813face98d4c9911488bac53dbf050367564be1bdb57f304cd6727",
@@ -108,7 +108,7 @@
    :source/heading "5.4 Malli instrumentation"},
   "M-0007"
   {:tier :kernel,
-   :source/git-rev "0f4258d15e812ed9a29e097cb13b34793bb64d2c",
+   :source/git-rev "1a8d5839e1f73688c5b6b3bed75a7e37f5f9779d",
    :verified-by [],
    :source/digest
    "sha256:be951be84a6ab115e5c801dbae7179240b641ed447e6a57118f2629a38fe258a",
@@ -122,7 +122,7 @@
    :source/heading "5.4.1 仕様 trace metadata"},
   "M-0008"
   {:tier :kernel,
-   :source/git-rev "0f4258d15e812ed9a29e097cb13b34793bb64d2c",
+   :source/git-rev "1a8d5839e1f73688c5b6b3bed75a7e37f5f9779d",
    :verified-by [],
    :source/digest
    "sha256:35561c9028d34cae22991bf944bf19a0f10ae86e704fc066016a9b6062198924",

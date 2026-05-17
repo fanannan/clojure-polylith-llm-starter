@@ -32,6 +32,11 @@
 (def allowed-mandate-tiers #{:kernel :extended})
 (def mandate-id-re #"M-\d{4}")
 (def mandate-annotation-re #"(?m)^\[mandate:\s*(.+?)\]\s*$")
+;; Optional explicit end marker. A mandate annotation governs the prose from its
+;; line until the first of: a [/mandate] line, the next heading, the next
+;; annotation, or EOF. Place [/mandate] when the governed prose ends before the
+;; next heading, so source/digest covers only the rule and not unrelated prose.
+(def mandate-end-re #"^\[/mandate\]\s*$")
 (def heading-re #"^#{1,6}\s")
 (def script-mention-re #"\.llm/scripts/[a-z0-9_-]+\.(?:sh|clj)")
 (def test-mention-re #"\.llm/template-only/tests/[a-z0-9_-]+\.sh")
@@ -97,11 +102,13 @@
 (defn- section-bounds
   "Given fence-stripped lines and the index of an annotation line, return the
    [start end) line range of the prose section the annotation governs: from the
-   annotation line up to (not including) the next heading or next annotation."
+   annotation line up to (not including) the first of an explicit [/mandate]
+   end marker, the next heading, the next annotation, or EOF."
   [lines idx]
   (let [end (loop [i (inc idx)]
               (cond
                 (>= i (count lines)) i
+                (re-find mandate-end-re (nth lines i)) i
                 (re-find heading-re (nth lines i)) i
                 (re-find mandate-annotation-re (nth lines i)) i
                 :else (recur (inc i))))]
