@@ -460,6 +460,35 @@
 ;;     (catch Exception _ :portal-not-available)))
 
 ;; ---------------------------------------------------------------------------
+;; smoke — service 型 project の起動 smoke レシピ
+;;
+;; 【このセクションの扱い】
+;;   - 配布時点ではセクション全体が `;;` で無効化されている（scaffold）
+;;   - service 型 project（Web API・ワーカ等）を deploy する場合: 行頭 `;;` を
+;;     除去し、TODO を brick / deploy 構成に合わせて実装する
+;;   - CLI / バッチ / ライブラリ project、または smoke を projects/<deploy>/ 側の
+;;     スクリプトに置く場合: 本セクションは削除してよい
+;;
+;; 目的: 「動きますか」が実装完了報告の時点で既に答え済みになる状態を作る。
+;; uber ビルド成功は成果物が生成できることだけを示し、起動して応答することは
+;; 示さない。レシピは seed → 起動 → 代表リクエスト → assert → 後片付け を
+;; 1 コマンドに集約する。詳細規律は POLYLITH_GUIDE.md §7.4.3。
+;; ---------------------------------------------------------------------------
+
+;; (defn smoke!
+;;   "service 型 project の起動 smoke を 1 コマンドで実行する。冪等にすること
+;;    （連続実行してもエラーにしない）。正常時は :ok、想定どおりの応答が
+;;    得られなければ assert で停止する。"
+;;   []
+;;   ;; TODO: 以下 4 ステップを brick / deploy 構成に合わせて実装する。
+;;   ;;   1. 境界 state 投入（dev.fixtures の (seed-all!) 相当。DB を使う
+;;   ;;      project は smoke 用の ephemeral / in-memory store を使う）
+;;   ;;   2. 成果物の起動（DESIGN §8.4.1 の起動コマンド、または system 起動）
+;;   ;;   3. 代表リクエストの送出と応答の assert（正常系 1 件 + 主要な異常系）
+;;   ;;   4. プロセスの停止と後片付け（try/finally で stop を保証する）
+;;   :smoke-not-implemented)
+
+;; ---------------------------------------------------------------------------
 ;; リッチコメント — 典型操作
 ;;
 ;; 以下は lifecycle helper / GUI helper セクションのコメントを解除した後に使える例。
@@ -484,6 +513,9 @@
   ;; (portal-open!)
   ;; (tap> {:check :hello})
   ;; (portal-clear!)
+
+  ;; --- 起動 smoke（service 型 project、smoke セクション有効化時）---
+  ;; (smoke!)
 
   ;; --- 終了 ---
   ;; (halt)

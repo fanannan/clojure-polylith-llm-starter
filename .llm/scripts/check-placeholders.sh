@@ -10,9 +10,10 @@
 #
 # 対象:
 #   設定ファイル（workspace.edn / deps.edn）と brick ソース
-#   （components/*/src/** / bases/*/src/** の .clj/.cljc/.cljs）。
+#   （components/*/ と bases/*/ の src/** および test/** の .clj/.cljc/.cljs）。
 #   brick ソース検査は、bootstrap が workspace.edn の :top-namespace だけ書き換え、
 #   brick の (ns ...) 宣言を placeholder のまま残す取りこぼしを検出するためにある。
+#   test ファイルの (ns ...) も同じ取りこぼしの対象になるため src/ と同様に走査する。
 #   サンプルコード（POLYLITH_GUIDE.md / KNOWLEDGE.md 内のコード例）は対象外。
 #
 # 運用タイミング:
@@ -62,10 +63,10 @@ check_file() {
   fi
 }
 
-# brick ソース（components/*/src/** / bases/*/src/**）の (ns ...) 宣言などに
-# placeholder が残っていないか検査する。template repo は brick を同梱しないため
-# 通常は対象ファイルが存在せず空検査になる。万一存在する場合は check_file と
-# 同じく template repo では INFO 扱いとし、placeholder_found を立てない。
+# brick ソース（components/*/ と bases/*/ の src/** および test/**）の (ns ...)
+# 宣言などに placeholder が残っていないか検査する。template repo は brick を
+# 同梱しないため通常は対象ファイルが存在せず空検査になる。万一存在する場合は
+# check_file と同じく template repo では INFO 扱いとし、placeholder_found を立てない。
 check_brick_sources() {
   local base file
   for base in components bases; do
@@ -83,7 +84,7 @@ check_brick_sources() {
       placeholder_found=1
     done < <(find "$base" -type f \
                \( -name '*.clj' -o -name '*.cljc' -o -name '*.cljs' \) \
-               -path "$base/*/src/*" 2>/dev/null)
+               \( -path "$base/*/src/*" -o -path "$base/*/test/*" \) 2>/dev/null)
   done
 }
 

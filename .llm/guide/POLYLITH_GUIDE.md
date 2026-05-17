@@ -999,8 +999,8 @@ uber ビルド成功は成果物が生成できることだけを示し、起動
 
 **配置**:
 
-- レシピ本体は `development/` の helper（例: `dev/smoke.clj` の `(smoke!)`）または `projects/<deploy>/` の smoke スクリプトに置く
-- `dev/fixtures.clj` と同じく配布物には含めず、派生プロジェクトが brick 配置後に §7.4 の配布規律と整合する形で実体化する（YAGNI）
+- レシピ本体は `development/src/dev/user.clj` の smoke セクションに置く。テンプレートはこのセクションを commented scaffold として配布するため、派生プロジェクトはコメント解除し、TODO を brick / deploy 構成に合わせて実装する。smoke を `projects/<deploy>/` のスクリプトへ分離してもよい
+- fixture データ（`dev/fixtures.clj`）は引き続き配布しない（fixture は brick 固有の値であり scaffold 化の利得がない）。smoke レシピは構造が汎用なため scaffold を配布する、という非対称はこの差に基づく
 - 起動コマンド・代表リクエスト・期待応答は DESIGN §8.4.1 と受入基準から導く
 
 **運用規律**:
