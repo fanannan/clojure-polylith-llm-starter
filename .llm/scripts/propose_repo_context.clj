@@ -25,6 +25,7 @@
 
      :template-owned
      #{"CLAUDE.md"
+       "AGENTS.md"
        ".llm/guide/"
        ".llm/scripts/"
        ".clj-kondo/polyguard/"

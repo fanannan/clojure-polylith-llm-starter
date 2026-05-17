@@ -38,6 +38,42 @@ cat > "$BASE/incidents.edn" <<'EOF'
  {:md-known {:archive "MD-KNOWN"}}}
 EOF
 
+cat > "$BASE/mandates.md" <<'EOF'
+<!-- llm-mandate
+{:id :known-mandate
+ :kind :mandate
+ :severity :hard
+ :binding #{:agents-md}}
+-->
+Run the known mandate before doing the thing.
+
+```md
+<!-- llm-mandate
+{:id :example-only
+ :kind :mandate
+-->
+```
+EOF
+
+cat > "$BASE/good-mandate-traced.edn" <<'EOF'
+{:case/schema 1
+ :families
+ {:mode-and-ownership
+  {:cases
+   {:good-case
+    {:status :pilot
+     :target/mode :template
+     :trace/mandates #{:known-mandate}
+     :prompt "Do the thing."
+     :observable-expectations [{:expect :must-stop}]}}}}}
+EOF
+
+"$TEMPLATE_ROOT/.llm/template-only/instrument/check-cases.sh" \
+  --cases "$BASE/good-mandate-traced.edn" \
+  --incident-index "$BASE/incidents.edn" \
+  --mandate-root "$BASE" > "$BASE/good-mandate-traced.out"
+require_grep 'check-instrument-cases: OK' "$BASE/good-mandate-traced.out"
+
 cat > "$BASE/bad-unknown-incident.edn" <<'EOF'
 {:case/schema 1
  :families
@@ -57,6 +93,44 @@ if "$TEMPLATE_ROOT/.llm/template-only/instrument/check-cases.sh" \
   fail "unknown incident fixture unexpectedly passed"
 fi
 require_grep 'unknown :trace/incidents' "$BASE/bad-unknown-incident.out"
+
+cat > "$BASE/bad-unknown-mandate.edn" <<'EOF'
+{:case/schema 1
+ :families
+ {:mode-and-ownership
+  {:cases
+   {:bad-case
+    {:status :pilot
+     :target/mode :template
+     :trace/mandates #{:missing-mandate}
+     :prompt "Do the thing."
+     :observable-expectations [{:expect :must-stop}]}}}}}
+EOF
+
+if "$TEMPLATE_ROOT/.llm/template-only/instrument/check-cases.sh" \
+  --cases "$BASE/bad-unknown-mandate.edn" \
+  --incident-index "$BASE/incidents.edn" \
+  --mandate-root "$BASE" > "$BASE/bad-unknown-mandate.out" 2>&1; then
+  fail "unknown mandate fixture unexpectedly passed"
+fi
+require_grep 'unknown :trace/mandates' "$BASE/bad-unknown-mandate.out"
+
+mkdir -p "$BASE/bad-mandate-root"
+cat > "$BASE/bad-mandate-root/bad.md" <<'EOF'
+<!-- llm-mandate
+{:id :broken
+ :kind :mandate
+-->
+Broken mandate metadata.
+EOF
+
+if "$TEMPLATE_ROOT/.llm/template-only/instrument/check-cases.sh" \
+  --cases "$BASE/good-mandate-traced.edn" \
+  --incident-index "$BASE/incidents.edn" \
+  --mandate-root "$BASE/bad-mandate-root" > "$BASE/bad-mandate-root.out" 2>&1; then
+  fail "malformed mandate fixture unexpectedly passed"
+fi
+require_grep 'invalid EDN' "$BASE/bad-mandate-root.out"
 
 cat > "$BASE/bad-untraced.edn" <<'EOF'
 {:case/schema 1

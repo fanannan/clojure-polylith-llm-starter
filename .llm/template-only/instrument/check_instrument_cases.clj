@@ -3,7 +3,8 @@
 
    This checker protects the instrument from becoming a free-floating synthetic
    suite. Non-exploratory cases must trace to an observed incident or an authored
-   mandate, and incident traces must be known to incident-index.edn."
+   mandate. Incident traces must be known to incident-index.edn, and mandate
+   traces must point at authored llm-mandate annotations."
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]
@@ -11,24 +12,35 @@
 
 (def default-cases ".llm/template-only/instrument/cases.edn")
 (def default-incident-index ".llm/template-only/instrument/incident-index.edn")
+(def default-mandate-root ".")
 
 (def allowed-statuses #{:pilot :planned :exploratory :disabled})
 (def allowed-target-modes #{:template :project})
 (def allowed-project-phases #{:bootstrap :development})
+(def allowed-instruction-kinds #{:mandate
+                                 :prohibition
+                                 :workflow
+                                 :heuristic
+                                 :principle
+                                 :anti-pattern})
+(def allowed-severities #{:hard :soft :advisory})
+(def mandate-block-re #"(?s)<!--\s*llm-mandate\s*(.*?)\s*-->")
 
 (defn- usage []
   (binding [*out* *err*]
-    (println "Usage: .llm/template-only/instrument/check-cases.sh [--cases <path>] [--incident-index <path>]")))
+    (println "Usage: .llm/template-only/instrument/check-cases.sh [--cases <path>] [--incident-index <path>] [--mandate-root <path>]")))
 
 (defn- parse-args [args]
   (loop [m {:cases default-cases
-            :incident-index default-incident-index}
+            :incident-index default-incident-index
+            :mandate-root default-mandate-root}
          xs args]
     (if (empty? xs)
       m
       (case (first xs)
         "--cases" (recur (assoc m :cases (second xs)) (nnext xs))
         "--incident-index" (recur (assoc m :incident-index (second xs)) (nnext xs))
+        "--mandate-root" (recur (assoc m :mandate-root (second xs)) (nnext xs))
         ("-h" "--help") (assoc m :help true)
         (assoc m :unknown (first xs))))))
 
@@ -51,6 +63,117 @@
 
 (defn- non-empty-string? [x]
   (and (string? x) (not (str/blank? x))))
+
+(defn- keyword-set? [x]
+  (and (set? x) (every? keyword? x)))
+
+(defn- optional-keyword-set-errors [path field value]
+  (when (and (some? value) (not (keyword-set? value)))
+    [(error path (str field " must be a set of keywords"))]))
+
+(defn- normalize-trace-set [value]
+  (if (keyword-set? value) value #{}))
+
+(defn- relative-path [root file]
+  (let [root-path (.toPath (.getCanonicalFile (io/file root)))
+        file-path (.toPath (.getCanonicalFile file))]
+    (str/replace (str (.relativize root-path file-path)) "\\" "/")))
+
+(defn- ignored-mandate-file? [rel-path]
+  (or (str/starts-with? rel-path ".git/")
+      (str/starts-with? rel-path ".llm/work/")
+      (str/starts-with? rel-path ".llm/evidence/")
+      (str/starts-with? rel-path ".llm/template-only/instrument/runs/")))
+
+(defn- strip-fenced-code-blocks [content]
+  (let [lines (str/split-lines content)]
+    (->> (reduce
+          (fn [{:keys [in-code?] :as acc} line]
+            (if (str/starts-with? line "```")
+              (-> acc
+                  (update :lines conj "")
+                  (update :in-code? not))
+              (update acc :lines conj (if in-code? "" line))))
+          {:in-code? false :lines []}
+          lines)
+         :lines
+         (str/join "\n"))))
+
+(defn- markdown-files [root]
+  (let [root-file (io/file root)]
+    (if-not (.isDirectory root-file)
+      []
+      (->> (file-seq root-file)
+           (filter #(.isFile %))
+           (filter #(str/ends-with? (.getName %) ".md"))
+           (map (fn [file]
+                  {:file file
+                   :rel-path (relative-path root-file file)}))
+           (remove #(ignored-mandate-file? (:rel-path %)))))))
+
+(defn- mandate-form-errors [path form]
+  (if-not (map? form)
+    [(error path "llm-mandate annotation must be an EDN map")]
+    (vec
+     (concat
+      (when-not (keyword? (:id form))
+        [(error path ":id must be a keyword")])
+      (when-not (contains? allowed-instruction-kinds (:kind form))
+        [(error path (str ":kind must be one of " (pr-str allowed-instruction-kinds)))])
+      (when-not (contains? allowed-severities (:severity form))
+        [(error path (str ":severity must be one of " (pr-str allowed-severities)))])
+      (when-not (keyword-set? (:binding form))
+        [(error path ":binding must be a set of keywords")])
+      (when (and (contains? form :applies-to)
+                 (not (keyword-set? (:applies-to form))))
+        [(error path ":applies-to must be a set of keywords")])
+      (when (and (contains? form :instrument/family)
+                 (not (keyword? (:instrument/family form))))
+        [(error path ":instrument/family must be a keyword")])))))
+
+(defn- parse-mandate-file [{:keys [file rel-path]}]
+  (let [content (strip-fenced-code-blocks (slurp file))]
+    (reduce
+     (fn [acc [idx [_ body]]]
+       (let [path (str rel-path " llm-mandate[" idx "]")]
+         (try
+           (let [form (edn/read-string body)]
+             (-> acc
+                 (update :annotations conj {:source/file rel-path
+                                            :source/index idx
+                                            :form form})
+                 (update :diagnostics into (mandate-form-errors path form))))
+           (catch Exception e
+             (update acc :diagnostics conj
+                     (error path (str "invalid EDN: " (.getMessage e))))))))
+     {:annotations [] :diagnostics []}
+     (map-indexed vector (re-seq mandate-block-re content)))))
+
+(defn- collect-mandates [root]
+  (let [root-file (io/file root)]
+    (if-not (.isDirectory root-file)
+      {:mandate-ids #{}
+       :diagnostics [(error "llm-mandate" (str "--mandate-root is not a directory: " root))]}
+      (let [{:keys [annotations diagnostics]}
+            (reduce
+             (fn [acc file-item]
+               (let [parsed (parse-mandate-file file-item)]
+                 (-> acc
+                     (update :annotations into (:annotations parsed))
+                     (update :diagnostics into (:diagnostics parsed)))))
+             {:annotations [] :diagnostics []}
+             (markdown-files root-file))
+            by-id (->> annotations
+                      (filter #(keyword? (get-in % [:form :id])))
+                      (group-by #(get-in % [:form :id])))
+            duplicate-errors
+            (for [[id items] by-id
+                  :when (> (count items) 1)]
+              (error "llm-mandate"
+                     (str "duplicate :id " id " in "
+                          (str/join ", " (map :source/file items)))))]
+        {:mandate-ids (set (keys by-id))
+         :diagnostics (vec (concat diagnostics duplicate-errors))}))))
 
 (defn- case-seq [cases]
   (for [[family-id family] (:families cases)
@@ -76,7 +199,7 @@
                  "expectation must be a map with keyword :expect")))
       expectations))))
 
-(defn- validate-case [incident-index known-families known-incidents family-seed-incidents
+(defn- validate-case [known-families known-incidents known-mandates family-seed-incidents
                       seen-counts case-item]
   (let [family-id (:family/id case-item)
         case-id (:case/id case-item)
@@ -85,10 +208,13 @@
         status (:status case-map)
         target-mode (:target/mode case-map)
         project-phase (:target/project-phase case-map)
-        incidents (set (:trace/incidents case-map))
-        mandates (set (:trace/mandates case-map))
+        incidents-value (:trace/incidents case-map)
+        mandates-value (:trace/mandates case-map)
+        incidents (normalize-trace-set incidents-value)
+        mandates (normalize-trace-set mandates-value)
         exploratory? (= :exploratory status)
         unknown-incidents (seq (remove known-incidents incidents))
+        unknown-mandates (seq (remove known-mandates mandates))
         family-known? (contains? known-families family-id)
         family-seeds (get family-seed-incidents family-id #{})
         incidents-outside-family (seq (remove family-seeds incidents))]
@@ -113,20 +239,21 @@
       (when-not (non-empty-string? (:prompt case-map))
         [(error path ":prompt must be a non-empty string")])
       (expectation-errors path (:observable-expectations case-map))
+      (optional-keyword-set-errors path ":trace/incidents" incidents-value)
+      (optional-keyword-set-errors path ":trace/mandates" mandates-value)
       (when-not (or exploratory? (seq incidents) (seq mandates))
         [(error path "non-exploratory case must trace to an incident or authored mandate")])
       (when unknown-incidents
         [(error path (str "unknown :trace/incidents " (pr-str (vec unknown-incidents))))])
+      (when unknown-mandates
+        [(error path (str "unknown :trace/mandates " (pr-str (vec unknown-mandates))))])
       (when incidents-outside-family
         [(error path (str ":trace/incidents are not in this family seed-incidents "
                           (pr-str (vec incidents-outside-family))))])
       (when (and exploratory? (seq incidents))
-        [(warning path "exploratory case has incident traces; consider promoting it out of exploratory status")])
-      (when-not (or (contains? incident-index :incidents)
-                    (contains? incident-index :families))
-        [(error "incident-index.edn" "incident index must contain :incidents and :families")])))))
+        [(warning path "exploratory case has incident traces; consider promoting it out of exploratory status")])))))
 
-(defn validate [cases incident-index]
+(defn validate [cases incident-index mandate-ids mandate-diagnostics]
   (let [case-items (vec (case-seq cases))
         seen-counts (frequencies (map :case/id case-items))
         known-families (set (keys (:families incident-index)))
@@ -141,13 +268,17 @@
         [(error "cases.edn" ":case/schema must be 1")])
       (when-not (= 1 (:instrument/schema incident-index))
         [(error "incident-index.edn" ":instrument/schema must be 1")])
+      (when-not (and (contains? incident-index :incidents)
+                     (contains? incident-index :families))
+        [(error "incident-index.edn" "incident index must contain :incidents and :families")])
       (when-not (map? (:families cases))
         [(error "cases.edn" ":families must be a map")])
       (when-not (seq case-items)
         [(error "cases.edn" "at least one case is required")])
-      (mapcat #(validate-case incident-index
-                              known-families
+      mandate-diagnostics
+      (mapcat #(validate-case known-families
                               known-incidents
+                              mandate-ids
                               family-seed-incidents
                               seen-counts
                               %)
@@ -157,7 +288,7 @@
   (println (str (str/upper-case (name level)) ": " path ": " message)))
 
 (defn -main [& args]
-  (let [{:keys [cases incident-index help unknown]} (parse-args args)]
+  (let [{:keys [cases incident-index mandate-root help unknown]} (parse-args args)]
     (cond
       help
       (do (usage) (System/exit 0))
@@ -170,8 +301,11 @@
 
       :else
       (try
-        (let [diagnostics (validate (read-edn-file cases)
-                                    (read-edn-file incident-index))
+        (let [mandates (collect-mandates mandate-root)
+              diagnostics (validate (read-edn-file cases)
+                                    (read-edn-file incident-index)
+                                    (:mandate-ids mandates)
+                                    (:diagnostics mandates))
               errors (filter #(= :error (:level %)) diagnostics)
               warnings (filter #(= :warning (:level %)) diagnostics)]
           (doseq [d warnings] (print-diagnostic d))

@@ -88,6 +88,7 @@
   ;; テンプレートが所有・保守する領域。派生プロジェクトでは原則編集しない。
   :template-owned
   #{"CLAUDE.md"
+    "AGENTS.md"
     ".llm/guide/"
     ".llm/scripts/"
     ".clj-kondo/polyguard/"

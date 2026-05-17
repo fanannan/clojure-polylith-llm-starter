@@ -91,6 +91,7 @@
 |---|---|---|
 | README.md | A（テンプレート入口）→ プロジェクトで完全置換 | テンプレート配布物の入口。派生プロジェクトでは編集継続せず、半自動生成したプロダクト README で完全置換 |
 | CLAUDE.md | A | 毎セッション必読、第一原理と常時制約。§0 は極小（DESIGN.md への導線のみ） |
+| AGENTS.md | A | Codex 等の非 Claude agent 向け bootstrap redirect。session briefing first mandate の authored metadata を保持する |
 | IDEA.md | A（テンプレートでは雛形）→ E（プロジェクトでは任意更新対象） | 未整理の着想メモ。仕様正本ではなく、DESIGN.md へ構造化するための入力補助。雛形だけなら無視される |
 | DESIGN.md | A（テンプレートでは雛形）→ E（プロジェクトでは継続更新対象） | プロダクト仕様。テンプレートは必須/推奨/任意項目の骨組みのみ。プロジェクト固有情報（§8）もここに集約 |
 
@@ -127,9 +128,9 @@
 | .llm/template-only/benchmark/README.md | template-only | benchmark の考え方。無人完走ではなく gate 間自律 segment を観測する |
 | .llm/template-only/benchmark/setup-run.sh | template-only | demo repo 作成、IDEA コピー、template-only 削除、post-commit hook、承認マーカー入口の最小 setup |
 | .llm/template-only/benchmark/SCENARIOS.md | template-only | 保守者向けの評価意図。agent には見せない |
-| .llm/template-only/instrument/incident-index.edn | template-only | 指示追随計測器の実インシデント接地 index。contract case の種を maintainer archive / md mandate に trace するための保守者用 seed。派生プロジェクトへ配布しない |
-| .llm/template-only/instrument/cases.edn | template-only | 指示追随計測器の初期 case catalog。正本ではなく、実インシデント / md mandate に trace した観測 seed |
-| .llm/template-only/instrument/check-cases.sh | template-only | `cases.edn` / `incident-index.edn` を EDN として読み、case の trace / family / target mode / prompt / observable expectation を検査する |
+| .llm/template-only/instrument/incident-index.edn | template-only | 指示追随計測器の実インシデント接地 index。contract case の種を maintainer archive / authored `llm-mandate` annotation に trace するための保守者用 seed。派生プロジェクトへ配布しない |
+| .llm/template-only/instrument/cases.edn | template-only | 指示追随計測器の初期 case catalog。正本ではなく、実インシデント / authored `llm-mandate` annotation に trace した観測 seed |
+| .llm/template-only/instrument/check-cases.sh | template-only | `cases.edn` / `incident-index.edn` / authored `llm-mandate` annotation を EDN として読み、case の trace / family / target mode / prompt / observable expectation を検査する |
 | .llm/template-only/instrument/setup-run.sh | template-only | LLM を起動せず、template / project target repo と outside observer store を準備する instrument runner |
 | .llm/template-only/instrument/score-run.sh | template-only | 観測済み run の diff path / terminal marker から path-level preliminary score を作る単一 run scorer。model 能力値は出さない |
 | .llm/template-only/instrument/summarize-runs.sh | template-only | 複数 `score.edn` を case 単位に集約し、N / invalid 数 / result 分布と `:spec-ambiguous` route を出す。点推定は出さない |
@@ -745,11 +746,11 @@ STACK_GUIDE.md は**テンプレート設計者の知見を蓄積する中核文
 **LLM contract test との接続**:
 
 - LLM contract test は指示追随計測器（§5.18）の一部であり、第一目的はモデル採点ではなく、指示 corpus の曖昧性・摩擦・改善圧を観測することである
-- 最初の pilot family は `:briefing-mode-recognition` とし、session briefing を読んだ結果、mode / ownership / next action を守れるかを観測する。ただし briefing は嚆矢であり、対象を session briefing に閉じない
+- 最初の pilot family は `:mode-and-ownership` とし、session briefing はその pilot input として、mode / ownership / next action を守れるかを観測する。ただし briefing は嚆矢であり、対象を session briefing に閉じない
 - `:instrumented-contract` は runner 側の観測分類であり、agent に見せる repo mode ではない。agent が見るのは通常どおり `:repo-kind :template` / `:project` / conflict の briefing 出力だけである
 - 最初の implementation slice では LLM を呼ばない。`check-session-briefing-scenarios.sh` と `session-briefing.sh --audit` で教材品質を決定的に検査し、contract runner は別段階で導入する
 - 将来の misread taxonomy はまず `:absent` / `:hidden` / `:competing-surface` / `:stale` / `:ignored` の 5 値に限定する。observer / hook plane の環境失敗は `:run/valid? false` として扱い、model score に混ぜない
-- mandate-binding annotation は、本文 prose に既にある義務を追跡する metadata であり、新しい義務を定義してはならない。生成される index は derived view であって正本ではない
+- mandate-binding annotation は、本文 prose に既にある義務を追跡する metadata であり、新しい義務を定義してはならない。`check-cases.sh` は case catalog の `:trace/mandates` が authored annotation に実在することだけを検査し、生成される index は derived view であって正本ではない
 
 ### 5.11 `lint-import-hooks.sh` 再実行のタイミング
 

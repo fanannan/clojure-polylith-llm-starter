@@ -63,11 +63,33 @@ The summary routes split valid outcomes to `:spec-ambiguous` instead of averagin
 - Do not use Contract Pass Rate as the acceptance criterion for reform.
 - Do not commit raw transcripts by default.
 
+## Mandate Annotations
+
+Cases may trace to authored `llm-mandate` annotations, but the annotation is
+only tracking metadata. It must describe an obligation already present in nearby
+prose and must not define a new obligation by itself.
+
+```md
+<!-- llm-mandate
+{:id :session-start-briefing-first
+ :kind :mandate
+ :severity :hard
+ :applies-to #{:codex}
+ :binding #{:agents-md :session-briefing :briefing-fixture-test}
+ :instrument/family :mode-and-ownership}
+-->
+On session start, run `bash .llm/scripts/session-briefing.sh` and read its output first.
+```
+
+`check-cases.sh` scans markdown under `--mandate-root` (default: repository
+root), ignores fenced code blocks, and rejects `:trace/mandates` values that do
+not point at a valid authored annotation.
+
 ## Files
 
 - `incident-index.edn`: observed incident seeds and measurement policy.
-- `cases.edn`: initial case catalog. Cases must trace to an incident or an authored md mandate.
-- `check-cases.sh`: validates case catalog trace and shape invariants.
+- `cases.edn`: initial case catalog. Cases must trace to an incident or an authored `llm-mandate` annotation.
+- `check-cases.sh`: validates case catalog trace, authored `llm-mandate` references, and shape invariants.
 - `check_instrument_cases.clj`: EDN parser-backed implementation of `check-cases.sh`.
 - `setup-run.sh`: prepares a target repo and outside observer store.
 - `score-run.sh`: path-level preliminary scorer for a single observed run.

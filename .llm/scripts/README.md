@@ -104,7 +104,7 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 | `.llm/template-only/tests/check-trace-metadata-scenarios.sh` | trace metadata / trace index の配置・未知 ID・誤配置検出を synthetic repo で検査する。通常ゲート外 |
 | `.llm/template-only/tests/check-obligation-frontier-scenarios.sh` | DESIGN obligation frontier の missing-boundary / missing-test / disposition / Q 参照の状態遷移を synthetic repo で検査する。通常ゲート外 |
 | `.llm/template-only/tests/check-session-briefing-scenarios.sh` | session briefing の mode 別 `Control Plane` key phrase / forbidden phrase と `--audit --format edn` を synthetic repo で検査する。LLM は呼ばない。通常ゲート外 |
-| `.llm/template-only/tests/check-instrument-cases-smoke.sh` | Instruction-Following Instrument の case catalog を EDN として検査し、non-exploratory case の incident / mandate trace と unknown incident 検出を確認する。LLM は呼ばない。通常ゲート外 |
+| `.llm/template-only/tests/check-instrument-cases-smoke.sh` | Instruction-Following Instrument の case catalog を EDN として検査し、non-exploratory case の incident / authored `llm-mandate` trace と unknown incident / mandate / malformed annotation 検出を確認する。LLM は呼ばない。通常ゲート外 |
 | `.llm/template-only/tests/check-instrument-setup-smoke.sh` | Instruction-Following Instrument の setup runner が template / project target repo と outside observer store を作り、instrument artifact を target repo に混入させないことを検査する。LLM は呼ばない。通常ゲート外 |
 | `.llm/template-only/tests/check-instrument-summary-smoke.sh` | Instruction-Following Instrument の synthetic score 集約で、N / invalid 数 / result 分布を保持し、割れた結果を `:spec-ambiguous` に route することを検査する。LLM は呼ばない。通常ゲート外 |
 | `.llm/template-only/tests/check-benchmark-setup-smoke.sh` | benchmark setup harness が demo repo / outside observer store / marker scripts を作成し、protocol を demo repo に混入させないことを検査する。通常ゲート外 |
