@@ -15,13 +15,13 @@
  :artifact/manifest
  #:derivation{:tool "gen-obligation-index",
               :action-key
-              "sha256:8c8cddd208159e5d45e2f01293227c5f4c60c422c3c4dd4327940600eef00828",
+              "sha256:cd562671d6b14b92b5c59a9492df2ca84a06345cb6d697cd520fab108ae94ef9",
               :input-policy
               {:untracked :error, :missing :explicit-empty},
               :inputs
               [{:path ".llm/data/design-ir.edn",
                 :digest
-                "sha256:7c09728b7c30ed131643ff425d580f15bae9b5235b8590f9208a6b943a2e09b7"}
+                "sha256:ddd14e32ff9f24c45f667280889856641b5c09b5d20a6e9c9754b4b10073b78c"}
                {:path ".llm/data/trace-index.edn", :missing true}
                {:path ".llm/memory/QUESTIONS.md",
                 :digest
@@ -29,12 +29,12 @@
                {:path ".llm/repo-context.edn",
                 :digest
                 "sha256:314b604c2528ee1a1c2c3b8c26c30ff65695fbfca12703c76a1656c8a4d288c0"}],
-              :generated-at "2026-05-17T03:30:34.840773283Z",
+              :generated-at "2026-05-17T05:19:00.631807382Z",
               :output-path ".llm/data/obligation-index.edn",
               :tool-inputs
               [{:path ".llm/scripts/derivation_manifest.clj",
                 :digest
-                "sha256:3f82095233187e53c14a5b53bf923c846dca73661e322e88cdc192b3620780cd"}],
+                "sha256:e55701221202793fe03b60510c9927e75de32860fc4720d2d0a8644acda28fdb"}],
               :regenerate-command
               "./.llm/scripts/gen-obligation-index.sh",
               :generator

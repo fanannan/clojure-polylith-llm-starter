@@ -22,6 +22,8 @@
     :kind :embedded-edn}
    {:path ".llm/data/obligation-index.edn"
     :kind :embedded-edn}
+   {:path ".llm/data/mandates.edn"
+    :kind :embedded-edn}
    {:path "docs/BRICKS.md"
     :kind :sidecar
     :manifest-path ".llm/data/brick-map.manifest.edn"}

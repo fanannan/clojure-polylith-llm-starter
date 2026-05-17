@@ -1,0 +1,48 @@
+;; GENERATED - do not edit by hand.
+;; Derived join index of [mandate: ...] annotations in CLAUDE.md / .llm/guide/*.md.
+;; The prose is the source of truth; this index is a derived value.
+;; Regenerate with: clj -Sdeps '{:paths [".llm/scripts"]}' -X gen-mandates/generate
+{:mandate/schema 1,
+ :artifact/manifest
+ #:derivation{:tool "gen-mandates",
+              :action-key
+              "sha256:74d6ea4773a06a215e7d5bf1d3ba1c9a390d672a66076152aec6979a9ff39fbf",
+              :input-policy
+              {:missing :explicit-empty,
+               :directory-roots :recursive-digest},
+              :inputs
+              [{:path "CLAUDE.md",
+                :digest
+                "sha256:3a2006230d119dba6507e66309b9fdd93c09ce23cc643b1dff57be8b85078100"}
+               {:path ".llm/guide",
+                :input/kind :directory,
+                :digest
+                "sha256:4894516084ee744ce24b182e97a0761f7d1d5e7ed1ede2c13e31f1e482ac11c7"}],
+              :generated-at "deterministic",
+              :output-path ".llm/data/mandates.edn",
+              :tool-inputs
+              [{:path ".llm/scripts/derivation_manifest.clj",
+                :digest
+                "sha256:e55701221202793fe03b60510c9927e75de32860fc4720d2d0a8644acda28fdb"}],
+              :regenerate-command
+              "clj -Sdeps '{:paths [\".llm/scripts\"]}' -X gen-mandates/generate",
+              :generator
+              {:path ".llm/scripts/gen_mandates.clj",
+               :digest
+               "sha256:3a8ea2f818c3ddbb82af2383aeb2bd7fd68334c7fbb083138e1dc0c62dd2a872"},
+              :schema "derivation.1",
+              :regime :derived-view,
+              :id :mandates},
+ :mandates
+ {"M-0001"
+  {:tier :kernel,
+   :source/git-rev "1411ee615dac4e3a3c5cf2a6758c5d45f3bbef54",
+   :verified-by [],
+   :source/digest
+   "sha256:8b010637c6eb0140ef9457177ccbeada96139084f5d5d9323fa060b97bb64670",
+   :enforced-by [".llm/scripts/session-briefing.sh"],
+   :defined-in "CLAUDE.md",
+   :hint "session-start-briefing-first",
+   :status :active,
+   :instruction/type :workflow,
+   :source/heading "8.0 実装着手前の確認（すべての作業に共通）"}}}
