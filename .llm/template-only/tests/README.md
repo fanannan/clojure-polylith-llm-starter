@@ -4,6 +4,7 @@
 派生プロジェクトのアプリケーションテストではない。
 
 通常の完了条件では実行しない。generator / checker / migration script を変更した時、またはテンプレート release 前に実行する。
+テンプレート保守 mode では `session-briefing.sh` が L0 の提言として、現在の git diff に対応する起動候補を `L0 Template Test Recommendation` に表示する。
 
 ## 実行
 
@@ -37,6 +38,8 @@ Instruction-Following Instrument は、ここにある deterministic test だけ
 - テンプレート保守 E2E: `./check-map-scenarios.sh`, `./check-design-ir-scenarios.sh`, `./check-trace-metadata-scenarios.sh`, `./check-obligation-frontier-scenarios.sh`, `./check-session-briefing-scenarios.sh`, `./check-instrument-cases-smoke.sh`, `./check-instrument-setup-smoke.sh`, `./check-instrument-summary-smoke.sh`, `./check-benchmark-setup-smoke.sh`
 
 `check-map-scenarios.sh`、`check-design-ir-scenarios.sh`、`check-trace-metadata-scenarios.sh`、`check-obligation-frontier-scenarios.sh`、`check-session-briefing-scenarios.sh`、`check-instrument-cases-smoke.sh`、`check-instrument-setup-smoke.sh`、`check-instrument-summary-smoke.sh`、`check-benchmark-setup-smoke.sh` は、日常作業の高速ループに入れない。テンプレート配布物の信頼性を確認するための重い保守テストとして扱う。
+
+L0 の提言は advisory であり、自動 gate ではない。該当する test が表示された場合は、bounded task の task-specific check として実行し、Structural Evidence close 時の検証結果に含める。表示がない場合でも、変更内容から必要な template-only test が分かるなら手動で追加する。
 
 ## 常備する観点
 

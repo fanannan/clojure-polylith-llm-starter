@@ -395,6 +395,114 @@ reference_repos_brief() {
   fi
 }
 
+add_template_test_command() {
+  local command="$1"
+  case "
+$TEMPLATE_TEST_COMMANDS
+" in
+    *"
+$command
+"*) ;;
+    *) TEMPLATE_TEST_COMMANDS="${TEMPLATE_TEST_COMMANDS}${command}
+" ;;
+  esac
+}
+
+collect_template_test_commands_for_path() {
+  local path="$1"
+
+  case "$path" in
+    .llm/scripts/session-briefing.sh|.llm/template-only/tests/check-session-briefing-scenarios.sh)
+      add_template_test_command "./.llm/template-only/tests/check-session-briefing-scenarios.sh"
+      ;;
+    .llm/scripts/gen_brick_map.clj|.llm/scripts/gen_workspace_map.clj|\
+.llm/scripts/check-brick-map.sh|.llm/scripts/check-workspace-map.sh|\
+.llm/scripts/ensure-brick-map.sh|.llm/scripts/ensure-workspace-map.sh|\
+.llm/scripts/propose-brick-edn.sh|.llm/scripts/propose-project-edn.sh|\
+.llm/template-only/tests/check-map-scenarios.sh)
+      add_template_test_command "./.llm/template-only/tests/check-map-scenarios.sh"
+      ;;
+    .llm/scripts/gen-design-ir.sh|.llm/scripts/gen_design_ir.clj|\
+.llm/scripts/check-design-ir.sh|.llm/template-only/tests/check-design-ir-scenarios.sh)
+      add_template_test_command "./.llm/template-only/tests/check-design-ir-scenarios.sh"
+      ;;
+    .llm/scripts/check-trace-metadata.sh|.llm/scripts/check_trace_metadata.clj|\
+.llm/scripts/check-trace-index.sh|.llm/scripts/gen-trace-index.sh|\
+.llm/scripts/gen_trace_index.clj|.llm/template-only/tests/check-trace-metadata-scenarios.sh)
+      add_template_test_command "./.llm/template-only/tests/check-trace-metadata-scenarios.sh"
+      ;;
+    .llm/scripts/gen-obligation-index.sh|.llm/scripts/gen_obligation_index.clj|\
+.llm/scripts/check-obligation-index.sh|.llm/scripts/derive-work-frontier.sh|\
+.llm/template-only/tests/check-obligation-frontier-scenarios.sh)
+      add_template_test_command "./.llm/template-only/tests/check-obligation-frontier-scenarios.sh"
+      ;;
+    .llm/template-only/instrument/cases.edn|\
+.llm/template-only/instrument/incident-index.edn|\
+.llm/template-only/instrument/check-cases.sh|\
+.llm/template-only/instrument/check_instrument_cases.clj|\
+.llm/template-only/tests/check-instrument-cases-smoke.sh)
+      add_template_test_command "./.llm/template-only/tests/check-instrument-cases-smoke.sh"
+      ;;
+    .llm/template-only/instrument/setup-run.sh|\
+.llm/template-only/instrument/score-run.sh|\
+.llm/template-only/tests/check-instrument-setup-smoke.sh)
+      add_template_test_command "./.llm/template-only/tests/check-instrument-setup-smoke.sh"
+      ;;
+    .llm/template-only/instrument/summarize-runs.sh|\
+.llm/template-only/tests/check-instrument-summary-smoke.sh)
+      add_template_test_command "./.llm/template-only/tests/check-instrument-summary-smoke.sh"
+      ;;
+    .llm/template-only/benchmark/setup-run.sh|.llm/template-only/benchmark/README.md|\
+.llm/template-only/tests/check-benchmark-setup-smoke.sh)
+      add_template_test_command "./.llm/template-only/tests/check-benchmark-setup-smoke.sh"
+      ;;
+  esac
+}
+
+template_test_recommendation_brief() {
+  echo "## L0 Template Test Recommendation"
+  echo ""
+  echo "- scope: advisory L0 prompt for template maintenance; this is not a repo mode or automatic gate"
+
+  if ! git rev-parse --git-dir >/dev/null 2>&1; then
+    echo "- current diff: unavailable (not a git repository)"
+    echo "- suggested template-only checks before close: consult .llm/template-only/tests/README.md"
+    return
+  fi
+
+  local changed_paths
+  changed_paths="$(git status --porcelain=v1 --untracked-files=all 2>/dev/null \
+    | sed -E 's/^...//' \
+    | sed -E 's/^.* -> //' \
+    | sort -u)"
+
+  if [ -z "$changed_paths" ]; then
+    echo "- current diff: none"
+    echo "- suggested template-only checks before close: none from current diff"
+    echo "- note: after editing template-owned scripts, re-run briefing or consult .llm/template-only/tests/README.md"
+    return
+  fi
+
+  TEMPLATE_TEST_COMMANDS=""
+  local path
+  while IFS= read -r path; do
+    [ -n "$path" ] || continue
+    collect_template_test_commands_for_path "$path"
+  done <<EOF
+$changed_paths
+EOF
+
+  if [ -z "$TEMPLATE_TEST_COMMANDS" ]; then
+    echo "- current diff: present, but no template-only E2E mapping matched"
+    echo "- suggested template-only checks before close: choose task-specific checks manually"
+    return
+  fi
+
+  echo "- current diff: matched template-maintenance test mapping"
+  echo "- suggested template-only checks before close:"
+  printf '%s' "$TEMPLATE_TEST_COMMANDS" | sed '/^$/d; s/^/  - /'
+}
+
 trace_health_brief() {
   if [ ! -x ".llm/scripts/trace-impact.sh" ]; then
     echo "- trace health: skipped（trace-impact.sh がありません）"
@@ -684,6 +792,8 @@ if [ "$REPO_KIND" = "template" ]; then
   echo "### テンプレ保守決定の記録先"
   echo "- 議論経緯: \`.llm/memory/archive/maintainer-discussions/YYYY/YYYY-MM.md\`"
   echo "- \`.llm/memory/adr/\` は派生プロジェクト専用のため使用しない"
+  echo ""
+  template_test_recommendation_brief
   echo ""
   echo "## 直近のコミット（git log -5 --oneline）"
   echo ""

@@ -114,8 +114,24 @@ scenario_template_clean() {
   require_line "template-clean" "operating intent: template maintenance; keep :project-owned paths untouched"
   require_line "template-clean" "decision log: maintainer archive, not ADR"
   require_line "template-clean" "next action surface: ./.llm/scripts/evidence.sh what-now"
+  require_line "template-clean" "L0 Template Test Recommendation"
+  require_line "template-clean" "advisory L0 prompt for template maintenance; this is not a repo mode or automatic gate"
   forbid_line "template-clean" "QUESTIONS / KNOWLEDGE / ADR by decision type"
   forbid_line "template-clean" "repo-control.sh"
+}
+
+scenario_template_l0_test_recommendation() {
+  local repo="$BASE/template-l0-test-recommendation"
+  base_repo "$repo"
+  write_template_context "$repo"
+  write_workspace "$repo" "myorg.myapp"
+  (cd "$repo" && git init -q)
+  run_briefing "template-l0-test-recommendation" "$repo"
+
+  require_line "template-l0-test-recommendation" "L0 Template Test Recommendation"
+  require_line "template-l0-test-recommendation" "current diff: matched template-maintenance test mapping"
+  require_line "template-l0-test-recommendation" "./.llm/template-only/tests/check-session-briefing-scenarios.sh"
+  forbid_line "template-l0-test-recommendation" "repo-control.sh"
 }
 
 scenario_template_conflict() {
@@ -183,6 +199,7 @@ scenario_audit_edn() {
 
 scenario "manifest missing" scenario_manifest_missing
 scenario "template clean" scenario_template_clean
+scenario "template L0 test recommendation" scenario_template_l0_test_recommendation
 scenario "template conflict" scenario_template_conflict
 scenario "project bootstrap" scenario_project_bootstrap
 scenario "project development" scenario_project_development

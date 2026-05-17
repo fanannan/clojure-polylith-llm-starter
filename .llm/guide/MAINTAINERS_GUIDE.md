@@ -854,6 +854,8 @@ Requirement ID の検査順序:
 4. 存在しない ID 参照を ERROR にする
 5. 未参照 DESIGN ID は WARN にする
 
+テンプレート保守では、L0 の `session-briefing.sh` が現在の git diff から該当しそうな `.llm/template-only/tests/` を `L0 Template Test Recommendation` として advisory に表示する。これは heavy test を自動 gate 化するものではなく、bounded task の早い段階で task-specific check 候補を見落とさないための提言である。表示された test は Structural Evidence close 時の検証結果に含める。表示がない場合でも、以下の対応表から必要な template-only test を手動で追加してよい。
+
 テンプレート保守で `gen_brick_map.clj` / `gen_workspace_map.clj` / wrapper / migration policy を変更した場合、通常ゲートとは別に `.llm/template-only/tests/check-map-scenarios.sh` を実行対象にする。この E2E は `/tmp` の synthetic repo で生成・移行・エラー検出・自力修復を検査するもので、派生プロジェクトのアプリケーションテストではない。
 
 テンプレート保守で `session-briefing.sh` の mode 表示、`Control Plane`、または `--audit` を変更した場合は、通常ゲートとは別に `.llm/template-only/tests/check-session-briefing-scenarios.sh` を実行対象にする。この E2E は LLM を呼ばず、briefing という教材自体の key phrase / forbidden phrase / audit EDN を検査する。

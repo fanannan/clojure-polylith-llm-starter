@@ -82,7 +82,7 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 | `check-vulnerabilities.sh` | `clj-watson` による依存脆弱性スキャン（release 前必須、完了条件外） |
 | `lint-import-hooks.sh` | 依存ライブラリ提供の `clj-kondo` hook を `.clj-kondo/configs/` に取り込む |
 | `check-toolchain.sh` | 前提ツール preflight doctor。OS レベルの実行ファイル（Java / `clj` / `git` 必須、`bb` 任意）の過不足を検出し、不足分の OS 別導入方法を提案する。検出と提案のみで副作用なし。初期化着手前に一度だけ実行（`BOOTSTRAP_GUIDE.md §0`）。per-machine で一度きりの確認であり、完了条件・`check-workspace-integrity.sh`・`session-briefing.sh` には組み込まない。`clj-kondo` / `cljfmt` / `Splint` / `clj-watson` / `Polylith` は tools.deps alias のため検査対象外 |
-| `session-briefing.sh` | セッション起動時の状態ブリーフィング。`.llm/repo-context.edn` から `:repo-kind` を読み TEMPLATE MAINTENANCE / PROJECT モードを判定（conflict 最優先、bootstrap 完了痕跡 + `:template` で non-blocking ERROR）。`Control Plane` として mode source / operating intent / decision log / next action surface / completion gate を短く表示し、モード別に表示内容を切り替える（CLAUDE.md §8.0 実装着手前の確認の機械化バックアップ）。`--audit` / `--audit --format edn` で Control Plane の位置・bullet 数・next action surface・forbidden surface・budget を確認できる |
+| `session-briefing.sh` | セッション起動時の状態ブリーフィング。`.llm/repo-context.edn` から `:repo-kind` を読み TEMPLATE MAINTENANCE / PROJECT モードを判定（conflict 最優先、bootstrap 完了痕跡 + `:template` で non-blocking ERROR）。`Control Plane` として mode source / operating intent / decision log / next action surface / completion gate を短く表示し、モード別に表示内容を切り替える（CLAUDE.md §8.0 実装着手前の確認の機械化バックアップ）。テンプレート保守時は現在の git diff から `L0 Template Test Recommendation` を advisory に表示する。`--audit` / `--audit --format edn` で Control Plane の位置・bullet 数・next action surface・forbidden surface・budget を確認できる |
 | `check-mode-scope.sh` | テンプレ保守 vs 派生プロジェクトの所有権境界違反を機械検出。`.llm/repo-context.edn` を EDN として読み、`:project-owned` 配下のテンプレ保守マーカー混入、`:section-scoped` の section 跨ぎ違反等を報告。CLAUDE.md §1.2.1 機械化の実装 |
 | `check-adr-dir-empty.sh` | TEMPLATE モードで `.llm/memory/adr/` に `README.md` / `template.md` 以外の実 ADR が残っていないか検査 |
 | `check-archive-staleness.sh` | maintainer discussion archive entry の staging schema、30 日超 open、吸収先 link 切れを検査 |
@@ -101,10 +101,13 @@ clj-kondo hook は per-call の AST 解析が得意で、複数 form 間の照�
 | `check-adoption-mode-scenarios.sh` | テンプレ本体では実運用されにくい `:retrofit` / `:partial` / `:complete` の manifest 段階挙動を fixture で検査 |
 | `.llm/template-only/tests/check-map-scenarios.sh` | テンプレート自身の Brick / Project / Workspace Map E2E。synthetic repo で生成・移行・エラー検出・自力修復を検査する。通常ゲート外 |
 | `.llm/template-only/tests/check-design-ir-scenarios.sh` | DESIGN IR 生成・drift 検出・既存分析 EDN 連携の E2E。通常ゲート外 |
+| `.llm/template-only/tests/check-trace-metadata-scenarios.sh` | trace metadata / trace index の配置・未知 ID・誤配置検出を synthetic repo で検査する。通常ゲート外 |
+| `.llm/template-only/tests/check-obligation-frontier-scenarios.sh` | DESIGN obligation frontier の missing-boundary / missing-test / disposition / Q 参照の状態遷移を synthetic repo で検査する。通常ゲート外 |
 | `.llm/template-only/tests/check-session-briefing-scenarios.sh` | session briefing の mode 別 `Control Plane` key phrase / forbidden phrase と `--audit --format edn` を synthetic repo で検査する。LLM は呼ばない。通常ゲート外 |
 | `.llm/template-only/tests/check-instrument-cases-smoke.sh` | Instruction-Following Instrument の case catalog を EDN として検査し、non-exploratory case の incident / mandate trace と unknown incident 検出を確認する。LLM は呼ばない。通常ゲート外 |
 | `.llm/template-only/tests/check-instrument-setup-smoke.sh` | Instruction-Following Instrument の setup runner が template / project target repo と outside observer store を作り、instrument artifact を target repo に混入させないことを検査する。LLM は呼ばない。通常ゲート外 |
 | `.llm/template-only/tests/check-instrument-summary-smoke.sh` | Instruction-Following Instrument の synthetic score 集約で、N / invalid 数 / result 分布を保持し、割れた結果を `:spec-ambiguous` に route することを検査する。LLM は呼ばない。通常ゲート外 |
+| `.llm/template-only/tests/check-benchmark-setup-smoke.sh` | benchmark setup harness が demo repo / outside observer store / marker scripts を作成し、protocol を demo repo に混入させないことを検査する。通常ゲート外 |
 | `apply-repo-context-migration.sh` | 人間承認後に `.llm/repo-context.edn` を作成する migration wrapper。既定では `APPLY` 入力を要求 |
 | `install-llm-template.sh` | 本テンプレート未導入の既存 repo に `.llm/` / root guide を持ち込む dry-run first の installer。`--apply` でも既存ファイルは上書きせず candidate を作る |
 | `repl-eval.sh` | 稼働中 nREPL に eval / load-file を送る LLM 向け client（CLAUDE.md §9 Live Workbench Protocol）。`.nrepl-port` 自動発見、永続 session 再利用（`.nrepl-session`）、`--expr` / `--load-file` / `--interrupt` / `--describe` / `--reset-session` / `--fresh` 対応 |
@@ -137,13 +140,18 @@ NVD API key 推奨（`https://nvd.nist.gov/developers/request-an-api-key`）。�
 `.llm/template-only/tests/` は、テンプレート自身の配布・移行・生成・検査を確認する E2E シナリオテストを置く。派生プロジェクトのアプリケーションテストではない。
 
 map generator / checker / migration script を変更した時、またはテンプレート release 前に実行する。
+テンプレート保守 mode の `session-briefing.sh` は、現在の git diff に対応する候補を `L0 Template Test Recommendation` に表示する。この提言は heavy test を自動 gate 化せず、bounded task の task-specific check 選択を前倒しするためのもの。
 
 ```bash
 ./.llm/template-only/tests/check-map-scenarios.sh
+./.llm/template-only/tests/check-design-ir-scenarios.sh
+./.llm/template-only/tests/check-trace-metadata-scenarios.sh
+./.llm/template-only/tests/check-obligation-frontier-scenarios.sh
 ./.llm/template-only/tests/check-session-briefing-scenarios.sh
 ./.llm/template-only/tests/check-instrument-cases-smoke.sh
 ./.llm/template-only/tests/check-instrument-setup-smoke.sh
 ./.llm/template-only/tests/check-instrument-summary-smoke.sh
+./.llm/template-only/tests/check-benchmark-setup-smoke.sh
 ```
 
 これらの検査は `/tmp` に synthetic repos を作成する。日常の `check-workspace-integrity.sh` には含めない。
